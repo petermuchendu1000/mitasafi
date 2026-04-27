@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" fill="none">
+  <!-- MitaSafi App Icon 192x192 - Android -->
+  <rect width="192" height="192" rx="40" fill="#0D9488"/>
+  
+  <g fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" transform="translate(20, 30)">
+    <!-- M shape with integrated house -->
+    <path d="M12 120 L12 58 L46 22"/>
+    <path d="M46 22 L76 50"/>
+    <path d="M76 50 L106 22"/>
+    <path d="M106 22 L140 58 L140 120"/>
+    <path d="M12 120 L140 120"/>
+    <!-- House roof inside -->
+    <path d="M50 82 L76 55 L102 82"/>
+    <!-- House walls -->
+    <path d="M56 82 L56 108 L96 108 L96 82"/>
+    <!-- Door -->
+    <path d="M70 108 L70 92 L82 92 L82 108"/>
+  </g>
+</svg>

@@ -1,0 +1,40 @@
+{
+  "name": "MitaSafi - Verified Rental Homes in Nairobi",
+  "short_name": "MitaSafi",
+  "description": "Find verified rental homes in Nairobi. Browse apartments, bedsitters, and houses with real photos, honest prices, and direct landlord contact.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F9FAFB",
+  "theme_color": "#0D9488",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/logo/app-icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/logo/app-icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/logo/app-icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/logo/app-icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["real-estate", "lifestyle", "utilities"],
+  "lang": "en-KE",
+  "dir": "ltr"
+}

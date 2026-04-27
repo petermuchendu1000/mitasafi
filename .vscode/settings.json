@@ -1,0 +1,16 @@
+{
+  "css.customData": [],
+  "css.validate": false,
+  "scss.validate": false,
+  "less.validate": false,
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+    ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
+  ],
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "prompt2image.outputFolder": "public/images/services-landing",
+  "prompt2image.imageFormat": "jpg",
+  "prompt2image.imageQuality": "high-resolution",
+  "git.ignoreLimitWarning": true
+}

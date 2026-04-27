@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" fill="none">
+  <!-- MitaSafi Icon - Teal on transparent -->
+  <g fill="none" stroke="#0D9488" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- M shape with integrated house -->
+    <!-- Left ascending stroke -->
+    <path d="M8 72 L8 35 L30 12"/>
+    <!-- Peak to middle valley -->
+    <path d="M30 12 L50 32"/>
+    <!-- Middle to right peak -->
+    <path d="M50 32 L70 12"/>
+    <!-- Right descending stroke -->
+    <path d="M70 12 L92 35 L92 72"/>
+    <!-- Base line -->
+    <path d="M8 72 L92 72"/>
+    <!-- House roof inside -->
+    <path d="M32 48 L50 30 L68 48"/>
+    <!-- House walls -->
+    <path d="M36 48 L36 65 L64 65 L64 48"/>
+    <!-- Door -->
+    <path d="M46 65 L46 54 L54 54 L54 65"/>
+  </g>
+</svg>

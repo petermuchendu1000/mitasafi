@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100" fill="none">
+  <!-- MitaSafi Icon - Stylized M with House -->
+  <g stroke="#0D9488" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Left leg of M -->
+    <path d="M10 85 L10 45 L35 15"/>
+    <!-- Right leg of M going to peak -->
+    <path d="M35 15 L60 45"/>
+    <!-- Right side of M -->
+    <path d="M60 45 L85 15 L110 45 L110 85"/>
+    <!-- Bottom connection -->
+    <path d="M10 85 L110 85"/>
+    <!-- House roof inside M -->
+    <path d="M35 55 L60 35 L85 55"/>
+    <!-- House body -->
+    <path d="M40 55 L40 75 L80 75 L80 55"/>
+    <!-- Door -->
+    <path d="M55 75 L55 60 L65 60 L65 75"/>
+  </g>
+</svg>

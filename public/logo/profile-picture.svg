@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <!-- MitaSafi Twitter/X Profile Picture -->
+  <rect width="400" height="400" rx="200" fill="#0D9488"/>
+  
+  <g fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" transform="translate(75, 100)">
+    <!-- M shape with integrated house -->
+    <path d="M15 180 L15 85 L65 35"/>
+    <path d="M65 35 L125 90"/>
+    <path d="M125 90 L185 35"/>
+    <path d="M185 35 L235 85 L235 180"/>
+    <path d="M15 180 L235 180"/>
+    <!-- House roof inside -->
+    <path d="M75 125 L125 75 L175 125"/>
+    <!-- House walls -->
+    <path d="M85 125 L85 165 L165 165 L165 125"/>
+    <!-- Door -->
+    <path d="M110 165 L110 145 L140 145 L140 165"/>
+  </g>
+</svg>

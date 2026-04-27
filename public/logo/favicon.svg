@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- MitaSafi Favicon 32x32 -->
+  <rect width="32" height="32" rx="6" fill="#0D9488"/>
+  
+  <g fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="translate(3, 5)">
+    <!-- Simplified M with house -->
+    <path d="M2 20 L2 10 L8 4"/>
+    <path d="M8 4 L13 9"/>
+    <path d="M13 9 L18 4"/>
+    <path d="M18 4 L24 10 L24 20"/>
+    <path d="M2 20 L24 20"/>
+    <!-- House roof -->
+    <path d="M8 14 L13 9 L18 14"/>
+    <!-- House body -->
+    <path d="M10 14 L10 18 L16 18 L16 14"/>
+  </g>
+</svg>
