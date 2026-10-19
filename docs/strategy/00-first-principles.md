@@ -1,5 +1,11 @@
 # Mitasafi — Thinking It Through
 
+> **Note added 2026-10-19.** Part 5 of this document ("The first 30 days") says: walk the estate
+> yourself. That has been replaced. See [`01-community-model.md`](01-community-model.md), which
+> puts the community in charge of collecting and checking everything, with residents of each
+> building checking their own building. Part 10 of that document also corrects the privacy
+> position in question 82 below.
+
 *A fresh look at the house hunting problem in Kenya. Written without looking at any code or past decisions.*
 
 Date: 2026-10-19
