@@ -91,17 +91,17 @@ provision against retaliatory eviction or retaliatory rent increase
 one-month notice is lawful and needs no reason. The honest statement to a prospective block rep is:
 *if your landlord decides to move you, nothing stops him.*
 
-**Does posting produce real trouble? Documented: yes.** The closest case is an estate WhatsApp group.
-The chairperson of Samburu Court Residents' Association posted during a thefts discussion; a
-neighbour complained she had implied they were "habouring thieves"; police moved to charge her
-criminally with defamation alongside a civil suit. The Kibera High Court quashed it, Justice Diana
-Kavedza holding that "the police should not be involved in the settlement of what is purely a civil
-dispute" and that "criminal justice powers are not toys to be played around with"
+**Does posting produce real trouble? Documented: yes.** The chairperson of Samburu Court Residents'
+Association posted in the estate WhatsApp group during a thefts discussion; a neighbour complained she
+had implied they were "habouring thieves"; police moved to charge her criminally with defamation
+alongside a civil suit. The Kibera High Court quashed it, Justice Diana Kavedza holding that "the
+police should not be involved in the settlement of what is purely a civil dispute" and that "criminal
+justice powers are not toys to be played around with"
 ([Business Daily](https://www.businessdailyafrica.com/bd/corporate/companies/judge-faults-dpp-police-over-estate-whatsapp-group-row-5001898);
 [Nation](https://nation.africa/kenya/news/judge-furious-with-police-over-feuds-from-estate-whatsapp-groups-5018892)).
 The lesson is not the verdict: **in a Kenyan estate, a post in a group can become a police visit.**
-She won — after lawyers, months and a High Court petition. A Githurai tenant will not do that. The
-deterrent is the OB number.
+She won after lawyers, months and a High Court petition. A Githurai tenant will not. The deterrent is
+the OB number.
 
 **Neighbours.** *Reasoning.* The strategy doc argues neighbours gain from a filled unit — security,
 service charge split wider. In this band service charge is usually bundled into rent, so what
@@ -131,9 +131,9 @@ a *fact* by *strangers who happen to be co-located* has none of those parts.
 Two conclusions.
 
 **Kenyan trust is person-to-person and consequential, not person-to-public and reputational.** There
-is no indigenous institution in which you certify a condition to an audience of strangers for a
-badge. The nearest is the boda chairman — whose status comes bundled with *arrest liability*. In
-Kenya a local title without liability reads as empty; with liability, as a trap.
+is no indigenous institution in which you certify a condition to an audience of strangers for a badge.
+The nearest is the boda chairman — whose status comes bundled with *arrest liability*. A local title
+without liability reads as empty; with liability, as a trap.
 
 **"Residents confirm each other" is epistemically inverted.** A vouch transfers trust from someone
 with standing to someone without. This mechanism asks four people with no standing with each other —
@@ -154,7 +154,7 @@ questioning fund management were removed from the platform, escalating into liti
 Estate officials control gate policy, service charge and contractors — and they hold on: Runda
 residents complained committee members had served over ten years, some selected unilaterally
 ([Kenyans.co.ke](https://www.kenyans.co.ke/news/66032-runda-residents-raise-concerns-over-services-offered-estate)).
-Chama treasurers hold money. Church committees allocate.
+Chama treasurers hold money; church committees allocate.
 
 **It goes bad by capture.** Kenya's own feature on resident associations names the cause — "a notable
 gap in their legal powers and framework," leaving room for conflict
@@ -209,14 +209,14 @@ That is the exact texture this product must not acquire.
    86%, not the participation.
 2. **A ten-household unit with a titled local reporter already exists in Kenyan minds, and the
    opinions are bad.** "Block rep" plus "report what you see" is the nyumba kumi silhouette. Use
-   *balozi*, or anything shaped like it, and you inherit the whole reputation.
+   *balozi*, or anything shaped like it, and you inherit the reputation.
 3. **Where community policing is credited, the frame is mutual protection against an outside
    threat** — 82.25% in one northern Kenya study said security would deteriorate without such
    structures ([GCERF](https://www.gcerf.org/community-security-relations-in-kenya/)). The analogue
    here is *protecting each other from fake agents and viewing fees*, not *reporting what is in your
    building.* Same data, opposite story. Pick that one.
-4. **Vigilantism is the documented failure mode** of volunteer local enforcement. Anything that lets
-   a block rep adjudicate a neighbour will be used that way.
+4. **Vigilantism is the documented failure mode** of volunteer local enforcement. Anything that lets a
+   block rep adjudicate a neighbour will be used that way.
 
 ---
 
@@ -228,7 +228,7 @@ ethnicity, tenants pay rents **6–11% higher**
 Refusals are documented anecdotally: the Urban Tenants Association of Kenya's Ephraim Murigo says
 "instances of landlords putting tribal boundaries are common," with Parklands, South C and Westlands
 landlords reported to favour tenants of Asian descent and men from certain communities suffering most
-([The Standard / Nairobian](https://standardmedia.co.ke/entertainment/thenairobian/article/2000197016/how-rogue-nairobi-landlords-discriminate-against-tenants-based-on-race-tribe-and-marital-status);
+([Nairobian](https://standardmedia.co.ke/entertainment/thenairobian/article/2000197016/how-rogue-nairobi-landlords-discriminate-against-tenants-based-on-race-tribe-and-marital-status);
 [BHRRC](https://www.business-humanrights.org/en/latest-news/kenya-tenants-association-says-landlords-discriminate-against-potential-tenants-based-on-ethnicity-race-marital-status/)).
 The Standard's own account opens with Joshua Otieno losing a Pangani tenancy *at signing* when the
 landlady reacted to his Luo surname
@@ -258,8 +258,8 @@ woman, in a named building, publicly in contact with strangers wanting to see ho
 to the caretaker whose favour economy she disrupted and to the moral-reputation sanction the same
 research documents. Publish the building, not the resident's name beside it.
 
-**Religion, sexuality, disability.** Documented: an APHRC 2024 study found narratives of eviction or
-being barred from renting in **every study site**, with only 26.6% of respondents never having faced
+**Sexuality and disability.** Documented: an APHRC 2024 study found narratives of eviction or being
+barred from renting in **every study site**, with only 26.6% of respondents never having faced
 discrimination
 ([APHRC](https://aphrc.org/wp-content/uploads/2025/07/Examination-of-sexual-and-gender-minorities-lived-experiences-in-Kenya.pdf));
 HRW records an interviewee evicted from roughly ten houses, with police refusing to intervene with
@@ -269,16 +269,16 @@ a landlord ordered 76 LGBT refugees out of Nairobi housing
 On disability, Nairobi work finds disabled residents concentrated in the densest, least accessible
 parts of the city
 ([AT2030](https://at2030.org/static/at2030_core/outputs/Inclusive_infrastructure_case_study_Kenya.pdf)),
-and the 2023/24 Kenya Housing Survey carries accessibility data by disability status
+with accessibility data by disability status in the 2023/24 Kenya Housing Survey
 ([KNBS](https://www.knbs.or.ke/wp-content/uploads/2025/01/2023-24-Kenya-Housing-Survey-Basic-Report.pdf)).
 
-*Reasoning:* for all three groups the asymmetry runs the same way, and it is the one genuine social
-good here — **a factual field does what a conversation cannot.** Floor number, lift or no lift,
-ground-floor availability, gate hours, water days, whether the block has children. Those spare a
-wheelchair user, a single mother and a gay tenant the fare and the doorstep refusal. That is a
-stronger reason for this product to exist than disintermediation. But a *resident-identity* layer cuts
-the other way: a public roster of who lives where, in a country that criminalises same-sex conduct,
-is a hazard. Make buildings public, never residence.
+*Reasoning:* for these groups the asymmetry runs one way, and it is the one genuine social good here —
+**a factual field does what a conversation cannot.** Floor number, lift or no lift, ground-floor
+availability, gate hours, water days, whether the block has children. Those spare a wheelchair user, a
+single mother and a gay tenant the fare and the doorstep refusal: a stronger reason for this product
+to exist than disintermediation. But a *resident-identity* layer cuts the other way — a public roster
+of who lives where, in a country that criminalises same-sex conduct, is a hazard. Make buildings
+public, never residence.
 
 ---
 
@@ -291,8 +291,8 @@ and "eliminating the need for middlemen"
 ([Bizna Kenya](https://biznakenya.com/social-media-house-hunting-communities-in-kenya/);
 [Mwakilishi](https://mwakilishi.com/article/real-estate-news/2025-03-05/whatsapp-and-facebook-become-lifelines-for-house-hunters-in)).
 The observable etiquette is a free design correction: **if a house does not suit you, you post it for
-the next person.** The actor is the *seeker who has already viewed*, not the resident — and that is
-the person with the lowest social cost for publishing a price.
+the next person.** The actor is the *seeker who has already viewed*, not the resident — the person
+with the lowest social cost for publishing a price.
 
 Commercial attempts have converged on the same gap: CribHunter charging a flat KSh 600 by M-Pesa to
 unlock landlord contact and location, Spot A Crib running paid house-hunters, Kejanova advertising
