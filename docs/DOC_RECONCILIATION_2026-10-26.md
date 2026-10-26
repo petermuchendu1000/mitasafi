@@ -295,12 +295,50 @@ These are checkable and should be fixed in whichever document is wrong.
 
 | # | Claim | Track B says | Track A says | Note |
 |---|---|---|---|---|
-| F1 | **Hauzisha** | §8: *"Hauzisha paying scouts to report vacant units. Crowdsourced verification works here already"* — cited as live Kenyan precedent | `agent-02`: *"Alive, but quit rentals entirely."* Own words: *"We chose to do one thing well… That focus is hard to deliver across a large, fast-moving rental market"* | **Direct contradiction.** If Hauzisha left rentals, Track B's one piece of local evidence that paid crowdsourced verification works does not stand. Resolve first — it is cheap and load-bearing |
+| F1 | **Hauzisha** | §8: *"Hauzisha paying scouts to report vacant units. Crowdsourced verification works here already"* — cited as live Kenyan precedent | `agent-02`: *"Alive, but quit rentals entirely."* Own words: *"We chose to do one thing well… That focus is hard to deliver across a large, fast-moving rental market"* | **RESOLVED 26 Oct 2026 — Track A was right, Track B was wrong and has been corrected.** See §5.1 below |
 | F2 | **Caretaker income** | *"His salary is unknown — this is the critical gap."* Structurally: modest wage + free housing + ~KSh 5,000–10,000 of viewing fees. Offer: ~KSh 5,000–8,000/month for 3–4 plots | `agent-05`: Glassdoor Nairobi caretaker average **≈ KSh 28,000/month**, plus informal commissions — *"early access to a list does not compete with that"* | Glassdoor is weak evidence for informal Nairobi caretakers and probably skews to formal property management. But a figure exists in the corpus, it is 3–5× Track B's offer, and Track B does not engage it |
 | F3 | **The "precedent" group size** | §5: WhatsApp community *"reportedly reached ~21,000 members… figure not independently verified"* | `agent-05`: largest named Kenyan rental Facebook group **23,943**. `voices-01`: the only citable counts are **284,571** and **81,290** from Kenyans.co.ke, **May 2019 — seven and a half years old**. `agent-02`: "Keja Hunters" WhatsApp group — **54 members** | Four numbers, different objects (a WhatsApp community, a Facebook group, a 2019 listicle, one group), used interchangeably as "the precedent." `voices-01` is blunt: *"The founder's distribution plan — post in large Kenyan Facebook groups — could not be verified in any respect"* |
 | F4 | **BuyRentKenya sale** | §10 gap 8: acquisition date unknown, needs desk research | `agent-01`: **November 2025** (TechTrends). `agent-05`: **December 2025** (Tracxn) | Two dates in Track A, unknown in Track B. Trivial to settle |
 | F5 | **Void arbitrage** | 20-unit plot, 30% turnover = 6 moves/yr, void 1 month → 1 week = **~KSh 45,000/yr saved** | `agent-03` Q6: 8 turnovers/yr, void 6 → 2 weeks = **KSh 73,900/yr** (3.1% of gross, inside UK guidance of 3–5%) | Different turnover and void assumptions. Both state there is **no Kenyan evidence on void length at this rent level**. The survey (C7) decides it, and Track B's own rule says a void under 10 days *"weakens the pitch badly"* |
 | F6 | **Tenancy length** | 30% annual turnover implied | `agent-03` A6: 30-month tenancies (= 40%/yr), while citing a 2025 report that many Kenyan renters stay **3–8 years** (= 12–33%/yr) | Inconsistent inside Track A, and it moves every number in the economics report |
+
+### 5.1 F1 settled — the verification record
+
+Checked against primary sources on 26 October 2026. **Track A's `agent-02` was correct. Track B's
+claim was wrong on both counts**, and both places it appeared
+(`HOUSE_HUNTING_SOCIAL_RESEARCH_KENYA.md` §6 and §8) have been corrected in place.
+
+| Claim | Verdict | Evidence |
+|---|---|---|
+| Hauzisha is a live nationwide rent/sale marketplace | **False** | `hauzisha.co.ke/houses-for-rent` states *"Hauzisha no longer lists rentals"*; 326 units, all **for sale**. About page: *"sells verified houses and apartments… One thing, done properly: selling homes… We curate, we do not list everything."* |
+| Hauzisha pays scouts to report vacant units | **No evidence found** | Nothing on its own pages, and a targeted search surfaced none. The surviving `rentals.hauzisha.co.ke` is landlord software — *"Built for Kenyan landlords and water providers… All houses in one dashboard — occupied, vacant, who's paid"* — a management dashboard, not a scout network |
+| Hauzisha runs a Teachable course paying people to find vacant units | **Unsubstantiated** | Searched; nothing found. Not disproved, but it should not be relied on |
+| A crowdsourced-scout model already exists in Kenya | **True, but it is not Hauzisha and it is tenant-funded** | **HouseHunt Kenya**: *"A trained property scout is then allocated and dispatched to physically search and vet properties on your behalf"*, priced at *"the Ksh 2,500 Standard Plan or Ksh 4,599 Priority Premium Bundle"* — **the tenant pays** |
+
+**One nuance on Track A's wording.** *"Quit rentals entirely"* is very slightly overstated: Hauzisha
+exited the rental **marketplace** but kept a landlord-facing rentals dashboard. The substance of
+`agent-02`'s finding — that it retreated from the mass rental listings market — holds, so that
+document is left as written. Dated research artefacts are not edited here; corrections go into the
+document carrying the error, and the verified record lives in this section.
+
+#### Why this one mattered
+
+It was not a footnote. §8 used it to conclude *"Crowdsourced verification works here already. The
+unsolved gap is a structured incentive to mark a unit TAKEN."* With the claim removed:
+
+- **There is no verified Kenyan precedent for platform-funded crowdsourced vacancy verification.**
+  The only working local precedent is unpaid peer altruism in WhatsApp groups.
+- **The one Kenyan paid-scout operation charges the tenant** — KSh 2,500–4,599 — which is the exact
+  pattern the research report's §2.1 and §9.3 and the incentive design's **ABSOLUTE RULE** all
+  forbid. So the nearest local analogue to the paid-observer model is something the design has
+  already ruled out on principle.
+- **Hauzisha moves from the "precedent" column to the graveyard column**, joining KejaHunt as a
+  second Kenyan platform that reached this market and withdrew from it. Both tracks now point the
+  same way on that.
+- The paid-observer layer in `CARETAKER_AGENT_INCENTIVE_DESIGN` and `VACANCY_VERIFICATION_ARCHITECTURE`
+  should therefore be treated as **unprecedented in this market**, not as an extension of something
+  already proven to work locally. It does not make the design wrong; it removes its local support and
+  raises what the 15-interview survey has to establish.
 
 ---
 

@@ -462,9 +462,16 @@ moderation line on this **before** it becomes a live problem.
 - **Jiji Kenya / PigiaMe** — general classifieds with rentals as a category. Jiji
   self-reports "10m+ visitors, 5m active ads" *(company claim, unaudited)*. PigiaMe status
   `[UNVERIFIED]`.
-- **Hauzisha** — nationwide rent/sale marketplace. **Note: already runs a Teachable course
-  that pays people to find vacant units.** A crowdsourced-scout model already exists in
-  Kenya. Traction `[UNVERIFIED]`.
+- **Hauzisha** — **exited rental listings; now sells apartments only.** Verified 26 Oct 2026:
+  `/houses-for-rent` says *"Hauzisha no longer lists rentals"*, 326 units for sale, about page
+  *"One thing, done properly: selling homes."* A separate landlord-facing dashboard
+  (`rentals.hauzisha.co.ke`) tracks occupied/vacant units for landlords and water providers.
+  **This is a retreat from the mass rental market, and belongs with the dead or exited above.**
+  An earlier claim here that Hauzisha *"runs a Teachable course that pays people to find vacant
+  units"* could not be substantiated by any search and should not be relied on
+  `[UNSUBSTANTIATED — searched 26 Oct 2026, nothing found]`. The Kenyan paid-scout model that
+  does exist is **HouseHunt Kenya**, and the **tenant** pays for it (KSh 2,500 / KSh 4,599
+  plans) — see the correction in §8.
 - **Reemio / Remio** — the one with current traction coverage (Jul 2026): **~28,000 Nairobi
   listings, 150+ placements in four months, 60%+ of users women, mostly under 35.** Demand
   concentrated in **1–2 beds under KSh 25,000** in **Ruiru, Juja, Kiambu Road**; renters
@@ -613,9 +620,34 @@ contracts; takes first month's rent + a transaction %; >R$20bn TTV in the year t
 terminating ~45,000 guarantee contracts in Jun 2025.** The guarantee product is the hard
 part — do not start there.
 
-**Kenyan precedent already working informally:** free WhatsApp housing communities (§5) and
-**Hauzisha paying scouts to report vacant units**. Crowdsourced verification works here
-already. The unsolved gap is **a structured incentive to mark a unit TAKEN.**
+**Kenyan precedent already working informally:** free WhatsApp housing communities (§5).
+That is the only one, and it is unpaid peer altruism, not a funded verification layer.
+
+> **Correction, 26 Oct 2026.** An earlier version of this section claimed *"Hauzisha paying
+> scouts to report vacant units — crowdsourced verification works here already."* **That was
+> wrong on both counts and the conclusion it supported does not stand.** Checked against
+> primary sources:
+>
+> - **Hauzisha has exited rental listings.** `hauzisha.co.ke/houses-for-rent` states
+>   *"Hauzisha no longer lists rentals"* and now shows 326 apartments **for sale**. Its about
+>   page: *"One thing, done properly: selling homes… We curate, we do not list everything."*
+>   Its surviving rentals product (`rentals.hauzisha.co.ke`) is landlord management software —
+>   *"Built for Kenyan landlords and water providers… All houses in one dashboard — occupied,
+>   vacant, who's paid"* — not a marketplace and not a scout network. **No evidence was found
+>   that Hauzisha ever paid anyone to report vacant units.** It belongs in §6's graveyard as a
+>   platform that retreated from this exact market, which is how
+>   `strategy/agent-02-graveyard.md` already recorded it.
+> - **The Kenyan paid-scout model is HouseHunt Kenya, and the tenant pays for it.** Its about
+>   page: *"A trained property scout is then allocated and dispatched to physically search and
+>   vet properties on your behalf,"* priced as *"the Ksh 2,500 Standard Plan or Ksh 4,599
+>   Priority Premium Bundle."* That is tenant-funded paid search — the pattern §2.1, §9.3 and
+>   the incentive design's **ABSOLUTE RULE** all forbid.
+>
+> **What this changes:** there is **no verified Kenyan precedent for platform-funded
+> crowdsourced vacancy verification.** The unsolved gap is therefore wider than *"a structured
+> incentive to mark a unit TAKEN"* — nobody here has been shown to fund the verification layer
+> at all without charging the tenant for it. Treat the whole paid-observer model as
+> unprecedented in this market rather than as an extension of something already working.
 
 ---
 
