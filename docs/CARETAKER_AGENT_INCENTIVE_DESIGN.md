@@ -66,6 +66,31 @@ not survive contact with a caretaker's budget.
 free housing, with **viewing fees as the bonus layer.** Five showings/month at
 KSh 1,000–2,000 ≈ **KSh 5,000–10,000**, plausibly doubling his income.
 
+> **Verification note, 26 Oct 2026.** "Unknown" is now positively established rather than
+> assumed, and three anchors are available. They do not close the gap, but they bound it.
+>
+> | Reference | Figure | What it actually measures |
+> |---|---|---|
+> | **Statutory floor** — Regulation of Wages (General) (Amendment) Order 2026, Legal Notice 108, Gazette Supplement 160, gazetted 26 Jun 2026, effective 1 May 2026 | **Night watchman, cities: KSh 20,133.72/month.** General labourer (cleaner, sweeper, gardener, ayah, house servant, day watchman, messenger): **KSh 18,047.40/month.** Both **exclusive of housing allowance** | The legal minimum for a **formally employed** worker in Nairobi. **"Caretaker" is not a named category in the Order** — which is itself evidence that the role is structurally informal |
+> | **Formal market rate** | Advertised "Caretaker (Rental Apartments), Nairobi" roles at **KSh 25,000–30,000/month**; Glassdoor base average ~KSh 28,000 (range reported as skewed by a few large employers; page is 403 from automated fetch, so second-hand) | Salaried caretakers at **managed blocks** — a different population from the caretaker of a mass-market plot |
+> | **Informal reality** | ILO: informal-enterprise wages ~**KSh 2,000–5,000 per worker per month**, informal work at 83% of employment | The band the mass-market plot caretaker plausibly sits in. **No reliable Kenyan data on informal plot-caretaker pay exists** — searched and confirmed absent |
+>
+> **What this means for the payment schedule.** Its viability depends entirely on which
+> population the pilot recruits, and that is not yet specified anywhere:
+>
+> - Against an **informal** base (~KSh 2,000–5,000 cash plus free housing), the §3.3 worked
+>   example of KSh 5,000–8,000/month **is** roughly a doubling. The claim holds.
+> - Against a **formal** base (KSh 18,000–30,000), the same offer is a 20–40% uplift. Still
+>   material, but the "doubling his income" framing does not survive, and the conversion
+>   price in §10 question 2 would be far higher than the schedule assumes.
+>
+> **Free housing is not priced anywhere in this document, and it should be.** It is plausibly
+> worth a whole mass-market unit's rent, which makes it a large share of his package — and it
+> is simultaneously **the retaliation lever**: a caretaker who loses this job loses his home.
+> That sharpens risk #1 here and the resident-exposure arguments in
+> `strategy/agent-03-economics.md` Q5 and `strategy/agent-01-red-team.md` §6 considerably. The
+> field survey did not ask about it; question **E1b** has been added to close that.
+
 **He participates in the fee economy as arithmetic, not greed.** Design accordingly.
 
 ---

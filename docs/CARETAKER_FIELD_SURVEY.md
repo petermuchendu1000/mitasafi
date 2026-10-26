@@ -237,6 +237,14 @@ he knows it exists, but make clear it is not payment for particular answers.
 *Mshahara wako ni pesa ngapi kwa mwezi?*
 → KSh ______  ☐ Prefers not to say  ← **THE number this whole survey exists for**
 
+**E1b. Do you live here? Do you pay rent for your house, or does it come with the job?**
+*Unakaa hapa? Unalipa rent ya nyumba yako, ama inakuja na kazi?*
+→ ☐ Free with the job  ☐ Pays reduced rent: KSh ______  ☐ Pays full rent: KSh ______  ☐ Lives elsewhere
+→ *If free or reduced:* **what would a house like yours cost to rent here?** → KSh ______
+← **Added 26 Oct 2026.** Free accommodation is plausibly a large share of his package, so E1
+alone understates what we must beat. It is also the retaliation lever — losing the job loses
+the house — which the incentive doc's risk #1 depends on. Do not skip this one.
+
 **E2. Is it paid on time every month?**
 *Inalipwa kwa wakati kila mwezi?*
 
@@ -463,7 +471,7 @@ Then ladder: KSh 500 ☐ · 1,000 ☐ · 1,500 ☐ · 2,000 ☐
 
 | # | From | Number | Why it decides things |
 |---|---|---|---|
-| 1 | **E1 + E11** | Salary + extra income | The income we must match or beat. Everything in the payment schedule is guesswork until we have this. |
+| 1 | **E1 + E1b + E11** | Salary + value of free housing + extra income | The income we must match or beat. Everything in the payment schedule is guesswork until we have this. **E1b matters as much as E1**: a cash wage of KSh 4,000 plus a free KSh 8,000 unit is a KSh 12,000 package, and an offer priced against E1 alone would be less than half of what it looks like. |
 | 2 | **G9** | Price to stop charging for viewings | The cost of converting one caretaker. Multiply by coverage target = our real CAC. |
 | 3 | **C7** | Days a house sits empty | The landlord's loss, which funds the whole model. If this is already short, the subscription pitch weakens badly. |
 | 4 | **C5** | Days of notice before a tenant leaves | Whether the 30-day early-warning engine is even possible. If tenants give 3 days, redesign. |

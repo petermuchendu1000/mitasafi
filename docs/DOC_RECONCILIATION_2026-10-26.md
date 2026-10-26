@@ -296,7 +296,7 @@ These are checkable and should be fixed in whichever document is wrong.
 | # | Claim | Track B says | Track A says | Note |
 |---|---|---|---|---|
 | F1 | **Hauzisha** | §8: *"Hauzisha paying scouts to report vacant units. Crowdsourced verification works here already"* — cited as live Kenyan precedent | `agent-02`: *"Alive, but quit rentals entirely."* Own words: *"We chose to do one thing well… That focus is hard to deliver across a large, fast-moving rental market"* | **RESOLVED 26 Oct 2026 — Track A was right, Track B was wrong and has been corrected.** See §5.1 below |
-| F2 | **Caretaker income** | *"His salary is unknown — this is the critical gap."* Structurally: modest wage + free housing + ~KSh 5,000–10,000 of viewing fees. Offer: ~KSh 5,000–8,000/month for 3–4 plots | `agent-05`: Glassdoor Nairobi caretaker average **≈ KSh 28,000/month**, plus informal commissions — *"early access to a list does not compete with that"* | Glassdoor is weak evidence for informal Nairobi caretakers and probably skews to formal property management. But a figure exists in the corpus, it is 3–5× Track B's offer, and Track B does not engage it |
+| F2 | **Caretaker income** | *"His salary is unknown — this is the critical gap."* Structurally: modest wage + free housing + ~KSh 5,000–10,000 of viewing fees. Offer: ~KSh 5,000–8,000/month for 3–4 plots | `agent-05`: Glassdoor Nairobi caretaker average **≈ KSh 28,000/month**, plus informal commissions — *"early access to a list does not compete with that"* | **RESOLVED 26 Oct 2026 — Track B was right that it is unknown; Track A's figure measures a different population and does not refute the design.** See §5.2 below |
 | F3 | **The "precedent" group size** | §5: WhatsApp community *"reportedly reached ~21,000 members… figure not independently verified"* | `agent-05`: largest named Kenyan rental Facebook group **23,943**. `voices-01`: the only citable counts are **284,571** and **81,290** from Kenyans.co.ke, **May 2019 — seven and a half years old**. `agent-02`: "Keja Hunters" WhatsApp group — **54 members** | Four numbers, different objects (a WhatsApp community, a Facebook group, a 2019 listicle, one group), used interchangeably as "the precedent." `voices-01` is blunt: *"The founder's distribution plan — post in large Kenyan Facebook groups — could not be verified in any respect"* |
 | F4 | **BuyRentKenya sale** | §10 gap 8: acquisition date unknown, needs desk research | `agent-01`: **November 2025** (TechTrends). `agent-05`: **December 2025** (Tracxn) | Two dates in Track A, unknown in Track B. Trivial to settle |
 | F5 | **Void arbitrage** | 20-unit plot, 30% turnover = 6 moves/yr, void 1 month → 1 week = **~KSh 45,000/yr saved** | `agent-03` Q6: 8 turnovers/yr, void 6 → 2 weeks = **KSh 73,900/yr** (3.1% of gross, inside UK guidance of 3–5%) | Different turnover and void assumptions. Both state there is **no Kenyan evidence on void length at this rent level**. The survey (C7) decides it, and Track B's own rule says a void under 10 days *"weakens the pitch badly"* |
@@ -321,7 +321,52 @@ exited the rental **marketplace** but kept a landlord-facing rentals dashboard. 
 document is left as written. Dated research artefacts are not edited here; corrections go into the
 document carrying the error, and the verified record lives in this section.
 
-#### Why this one mattered
+### 5.2 F2 settled — caretaker income
+
+Unlike F1, this one does not resolve to "one document was wrong." **Track B was right that the
+number is unknown, and that is now positively established rather than assumed. Track A's figure is
+real but measures a different population, and should not be used to reject Track B's payment
+schedule.**
+
+| Reference | Figure | What it measures | Weight |
+|---|---|---|---|
+| **Statutory floor** — Regulation of Wages (General) (Amendment) Order 2026, Legal Notice 108, Kenya Gazette Supplement 160, gazetted 26 Jun 2026, effective 1 May 2026 | Night watchman, cities **KSh 20,133.72/month**; general labourer (cleaner, sweeper, gardener, ayah, house servant, day watchman, messenger) **KSh 18,047.40/month**. Both **exclusive of housing allowance** | The legal minimum for **formal** employment in Nairobi | **Hard.** Gazetted. The one firm anchor the corpus lacked |
+| **Formal market** | Advertised "Caretaker (Rental Apartments), Nairobi" at **KSh 25,000–30,000/month**; Glassdoor base average ~KSh 28,000, range reported as skewed by *"a few large employers"* | Salaried caretakers at **managed blocks** | **Weak–moderate.** Job ads corroborate the band. The Glassdoor page returns **403** to automated fetch, so that figure is second-hand via the search index and its sample size is not stated |
+| **Informal reality** | ILO: informal-enterprise wages **~KSh 2,000–5,000 per worker per month**; informal work 83% of employment | The band a mass-market plot caretaker plausibly sits in | **Moderate**, but not caretaker-specific |
+| **Informal plot caretaker specifically** | **Nothing.** Searched and confirmed absent | — | The gap Track B named, still open |
+
+**Two findings that are new to the corpus:**
+
+1. **"Caretaker" is not a named occupational category in the Regulation of Wages Order.** Watchman,
+   cleaner, gardener, ayah, house servant and day watchman all are. That absence is itself evidence
+   that the role Track B's entire design rests on is **structurally informal** — which supports Track
+   B's framing and undercuts using a formal-sector salary survey to price it.
+2. **Whether the payment schedule works depends on which population the pilot recruits, and no
+   document specifies that.**
+   - Against an **informal** base (~KSh 2,000–5,000 cash plus free housing), `CARETAKER_AGENT_INCENTIVE_DESIGN`
+     §3.3's KSh 5,000–8,000/month for 3–4 plots **is** roughly a doubling. The claim stands.
+   - Against a **formal** base (KSh 18,000–30,000), the same offer is a 20–40% uplift — material, but
+     the "doubling his income" framing fails and the conversion price (§10 q2) would be far above
+     what the schedule assumes.
+   - The survey's own decision rule already says: **if the conversion price is routinely above
+     KSh 8,000/month, the caretaker-paid model does not pay for itself** at a KSh 50–100/unit
+     subscription. Recruiting formally-employed caretakers would trip that rule on day one.
+
+**A gap found while checking, and fixed.** Track B's survey asked E1 (salary) and E11 (extra income),
+and its own "five numbers" table defined the income to beat as **E1 + E11** — but **nothing in the
+instrument asked about free accommodation**, which its own §2 names as part of the package. A cash
+wage of KSh 4,000 plus a free KSh 8,000 unit is a KSh 12,000 package; an offer priced on E1 alone
+would be under half of what it appears to be. Added **E1b** (does the house come with the job, and
+what would it rent for) and updated the five-numbers table to **E1 + E1b + E11**.
+
+Free housing is also **the retaliation lever** — lose the job, lose the home — which neither track
+connects to its own risk analysis. It materially sharpens `agent-03` Q5 (the resident's hostage
+deposit) and `agent-01` §6 (*"pseudonymity is fake at n=40"*), because the caretaker is exposed the
+same way the resident is, and more so. Noted in the incentive document.
+
+---
+
+#### Why F1 mattered
 
 It was not a footnote. §8 used it to conclude *"Crowdsourced verification works here already. The
 unsolved gap is a structured incentive to mark a unit TAKEN."* With the claim removed:
