@@ -109,8 +109,8 @@ interface RawListingData {
   created_at: string;
   updated_at: string;
   
-  // Landlord join
-  profiles?: LandlordInfo | null;
+  // No landlord join: it is fetched separately from public_profiles.
+  // See getListingById and migration 20261028000000_restrict_profiles_pii.
 }
 
 /**
@@ -129,15 +129,7 @@ export async function getListingById(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase as any)
       .from("listings")
-      .select(`
-        *,
-        profiles:landlord_id (
-          id,
-          full_name,
-          avatar_url,
-          is_verified
-        )
-      `)
+      .select("*")
       .eq("id", listingId);
     
     // If not including unavailable, only get active listings
@@ -166,8 +158,23 @@ export async function getListingById(
       (supabase as any).rpc("increment_listing_views", { listing_id: listingId }).then(() => {});
     }
 
-    // Parse JSON fields and structure landlord info
-    const profileData = listing.profiles as LandlordInfo | null;
+    // Landlord info comes from public_profiles, a view that excludes email and
+    // phone. public.profiles itself is self-read only as of migration
+    // 20261028000000_restrict_profiles_pii, so it cannot be embedded here.
+    // A failure to resolve the landlord must not fail the listing: the page
+    // renders without the landlord block, exactly as it already does when the
+    // viewer is logged out.
+    const { data: landlordRow, error: landlordError } = await (supabase as any)
+      .from("public_profiles")
+      .select("id, full_name, avatar_url, is_verified")
+      .eq("id", listing.landlord_id)
+      .maybeSingle();
+
+    if (landlordError) {
+      console.error("Error fetching landlord profile:", landlordError);
+    }
+
+    const profileData = (landlordRow as LandlordInfo | null) ?? null;
     
     // Cast to Listing type with proper field transformations
     const parsedListing: Listing = {

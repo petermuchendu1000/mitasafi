@@ -331,9 +331,6 @@ export async function getProviderBookings(
           id,
           name,
           description
-        ),
-        customer:profiles!customer_id (
-          full_name
         )
         `,
         { count: "exact" }
@@ -363,8 +360,42 @@ export async function getProviderBookings(
     const total = count ?? 0;
     const totalPages = Math.ceil(total / pageSize);
 
+    // Customer names come from public_profiles, a view that excludes email and
+    // phone. public.profiles became self-read only in migration
+    // 20261028000000_restrict_profiles_pii, so a provider can no longer embed
+    // their customers' profile rows. One batched lookup keeps this to a single
+    // extra query per page rather than one per booking.
+    const rows = (data ?? []) as BookingWithDetails[];
+    const customerIds = Array.from(
+      new Set(rows.map((b) => b.customer_id).filter(Boolean))
+    );
+
+    const nameById = new Map<string, string | null>();
+    if (customerIds.length > 0) {
+      // Cast required until `npm run db:gen-types` is re-run against a database
+      // carrying the migration above; public_profiles is not yet in Database.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: people, error: peopleError } = await (supabase as any)
+        .from("public_profiles")
+        .select("id, full_name")
+        .in("id", customerIds);
+
+      if (peopleError) {
+        // Non-fatal: the list still renders and names fall back to the UI
+        // default ("Customer"). Failing the whole page would be worse.
+        console.error("[Bookings] customer name lookup failed:", peopleError);
+      } else {
+        for (const p of (people ?? []) as { id: string; full_name: string | null }[]) {
+          nameById.set(p.id, p.full_name);
+        }
+      }
+    }
+
     return {
-      bookings: (data ?? []) as BookingWithDetails[],
+      bookings: rows.map((b) => ({
+        ...b,
+        customer: { full_name: nameById.get(b.customer_id) ?? null },
+      })),
       pagination: {
         page,
         pageSize,
