@@ -62,13 +62,25 @@ export async function GET(request: Request) {
 
     if (user) {
       // Check if user has a profile
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileReadError } = await supabase
         .from('profiles')
         .select('id, primary_role, full_name')
         .eq('id', user.id)
         .single()
 
-      const profile = profileData as { 
+      // PGRST116 is "no rows" - the expected answer for a genuinely new user.
+      // Any other error means the read itself failed, and we cannot tell a new
+      // user from an existing one. Guessing "new" sends an existing user down
+      // the insert path, where the primary key rejects it; that error used to be
+      // logged and ignored, so the user landed on a dashboard with no profile
+      // row. Stop here instead, and leave the signup cookies in place so a retry
+      // resumes with the same role and destination.
+      if (profileReadError && profileReadError.code !== 'PGRST116') {
+        console.error('Auth callback: profile lookup failed:', profileReadError)
+        return NextResponse.redirect(`${origin}/login?error=profile_lookup_failed`)
+      }
+
+      const profile = profileData as {
         id: string; 
         primary_role: string | null; 
         full_name: string | null 
@@ -119,8 +131,14 @@ export async function GET(request: Request) {
           .from('profiles')
           .insert(newProfile as never)
 
-        if (insertError) {
+        // 23505 is unique_violation: the row appeared between the read above
+        // and this insert. The profile exists, which is all this step wanted.
+        // Anything else leaves the user authenticated with no profile row, so
+        // every later read fails; say so rather than redirecting to a dashboard
+        // that cannot load. Cookies survive so the retry keeps the chosen role.
+        if (insertError && insertError.code !== '23505') {
           console.error('Error creating profile:', insertError)
+          return NextResponse.redirect(`${origin}/login?error=profile_create_failed`)
         }
 
         // Add role to user_roles table if pendingRole was set
@@ -136,8 +154,14 @@ export async function GET(request: Request) {
             .from('user_roles')
             .insert(roleInsert as never)
 
-          if (roleError) {
+          // user_roles carries UNIQUE(user_id, role), so 23505 again means the
+          // row is already there. A real failure leaves the account without the
+          // role it signed up for, and the redirect below would drop it into a
+          // dashboard it has no role for. Retrying takes the existing-profile
+          // branch further down, which adds the role properly.
+          if (roleError && roleError.code !== '23505') {
             console.error('Error creating user role:', roleError)
+            return NextResponse.redirect(`${origin}/login?error=role_create_failed`)
           }
 
           // For service providers, create the service_providers business profile

@@ -32,6 +32,25 @@ function sanitizeClientRedirectUrl(url: string | null): string {
   }
 }
 
+// Error codes that /auth/callback redirects here with. Until these were mapped,
+// nothing on this page read ?error=, so a failed OAuth sign-in or a failed
+// profile write returned the user to a login form that looked perfectly normal.
+// The raw code is never rendered - an unrecognised one falls back to the
+// generic message rather than echoing whatever was in the URL.
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  auth_failed: "We couldn't complete that sign-in. Please try again.",
+  profile_lookup_failed: "We couldn't load your account just now. Please try again.",
+  profile_create_failed: "We couldn't finish setting up your account. Please try again.",
+  role_create_failed: "Your account was created but we couldn't set up your role. Please try again.",
+};
+
+const GENERIC_AUTH_ERROR = "Something went wrong signing you in. Please try again.";
+
+function authErrorMessage(code: string | null): string | null {
+  if (!code) return null;
+  return AUTH_ERROR_MESSAGES[code] ?? GENERIC_AUTH_ERROR;
+}
+
 // Kenya Flag SVG Component
 function KenyaFlag({ className }: { className?: string }) {
   return (
@@ -123,7 +142,12 @@ function LoginPageContent() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Seeded from ?error= so a redirect out of /auth/callback is visible in the
+  // existing error block below. Lazy initialiser: it reads the URL once, and
+  // the first keystroke clears it like any other error.
+  const [error, setError] = useState<string | null>(() =>
+    authErrorMessage(searchParams.get("error"))
+  );
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [noAccountFound, setNoAccountFound] = useState(false);
