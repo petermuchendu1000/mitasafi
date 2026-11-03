@@ -37,11 +37,26 @@ import type {
 // =============================================================================
 
 /** Booking statuses from which a customer can file a dispute. */
+/**
+ * Statuses from which a customer or provider may raise a dispute.
+ *
+ * 'resolved' was missing, and a successful payment sets a booking to exactly
+ * that. So paying removed the customer's ability to complain: the one moment
+ * they have the strongest reason to dispute — money has left their account —
+ * was the one moment they could not. With no refund path implemented either,
+ * that left a paying customer with no recourse at all.
+ *
+ * The matching resolved -> disputed transition is added in
+ * 20260326000000_allow_dispute_after_payment.sql, and any refund recorded on
+ * the dispute is capped at the amount actually collected for the booking by
+ * the booking_disputes_refund_within_paid trigger.
+ */
 const DISPUTABLE_STATUSES: ReadonlySet<BookingStatus> = new Set([
   "completed",
   "customer_confirmed",
   "payment_pending",
   "payment_failed",
+  "resolved",
 ]);
 
 /** All valid dispute type values. */
