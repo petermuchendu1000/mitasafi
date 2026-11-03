@@ -34,6 +34,35 @@ let cachedToken: string | null = null;
 let tokenExpiresAt = 0;
 
 /**
+ * Outbound timeouts for the Daraja API.
+ *
+ * None of the three fetches below had a timeout. A fetch with no timeout on a
+ * serverless platform does not fail -- it runs until the PLATFORM kills the
+ * whole invocation, which is the worst possible outcome on a payment path:
+ * the function dies mid-operation, after the STK prompt has reached the
+ * customer's handset but before our row records the checkout id, leaving a
+ * payment nothing can ever match a callback to.
+ *
+ * These values are derived from the invocation budget, not chosen for taste:
+ *
+ *   - No maxDuration is set in vercel.json or any route, so the budget is the
+ *     Vercel platform default. Taken conservatively as 10s.
+ *   - The OAuth token is cached per module instance (see getAccessToken), but
+ *     serverless gives each cold start a fresh module scope, so a cold callback
+ *     makes TWO Daraja calls: OAuth, then the status query.
+ *   - Worst case must satisfy  T_oauth + T_call + DB work  <  budget.
+ *       callback:  3 + 5 + ~1 = 9s  < 10s
+ *       initiate:  3 + 6 + ~1 = 10s — tight, which is itself the finding:
+ *                  the budget should be set explicitly rather than inherited.
+ *
+ * Raising these without also raising maxDuration re-opens the platform-kill
+ * window they exist to close. They are a matched pair.
+ */
+const DARAJA_OAUTH_TIMEOUT_MS = 3_000;
+const DARAJA_STK_PUSH_TIMEOUT_MS = 6_000;
+const DARAJA_STATUS_QUERY_TIMEOUT_MS = 5_000;
+
+/**
  * Get a valid Daraja OAuth2 access token.
  * Reuses cached token if it hasn't expired.
  */
@@ -57,6 +86,7 @@ export async function getAccessToken(): Promise<string> {
       },
       // No cache — always get fresh when needed
       cache: "no-store",
+      signal: AbortSignal.timeout(DARAJA_OAUTH_TIMEOUT_MS),
     }
   );
 
@@ -214,6 +244,7 @@ export async function initiateStkPush(
         },
         body: JSON.stringify(requestBody),
         cache: "no-store",
+        signal: AbortSignal.timeout(DARAJA_STK_PUSH_TIMEOUT_MS),
       }
     );
 
@@ -301,6 +332,7 @@ export async function queryStkPushStatus(
         },
         body: JSON.stringify(requestBody),
         cache: "no-store",
+        signal: AbortSignal.timeout(DARAJA_STATUS_QUERY_TIMEOUT_MS),
       }
     );
 
