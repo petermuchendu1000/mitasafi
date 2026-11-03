@@ -183,22 +183,82 @@ export async function acceptBooking(bookingId: string): Promise<ActionResult> {
       .eq("is_active", true)
       .maybeSingle();
 
+    // custom_pricing.amount is a BILLING INPUT on this path -- it becomes
+    // agreed_price, which the commission and the charge are computed from --
+    // and it is unvalidated jsonb written by the provider.
+    //
+    // WHAT WAS WRONG: the only guard was `typeof amount === "number" && amount > 0`.
+    // That is three separate defects:
+    //   - a JSON *string* such as "500" failed `typeof === "number"`, so
+    //     agreedPrice stayed null and the booking was confirmed SILENTLY
+    //     UNPRICED -- which then violates pricing_snapshot_required_after_
+    //     confirmation and fails the whole accept with a raw database error;
+    //   - a fractional value such as 100.555 passed, was stored into
+    //     numeric(10,2) as 100.56, and the commission was computed in
+    //     TypeScript on 100.555 -- the app and the database disagreeing about
+    //     a price;
+    //   - 1e30 passed `typeof`/`> 0` and overflowed numeric(10,2).
     if (providerService?.custom_pricing) {
       const pricing = providerService.custom_pricing as Record<string, unknown>;
-      const amount = pricing?.amount as number | undefined;
-      if (typeof amount === "number" && amount > 0) {
-        agreedPrice = amount;
+      const raw = pricing?.amount;
+
+      // Accept a JSON number or a numeric string, but only a well-formed one.
+      const candidate =
+        typeof raw === "number"
+          ? raw
+          : typeof raw === "string" && /^\d{1,8}(\.\d{1,2})?$/.test(raw.trim())
+            ? Number(raw.trim())
+            : null;
+
+      if (
+        candidate !== null &&
+        Number.isFinite(candidate) &&
+        candidate > 0 &&
+        // Must survive numeric(10,2) unchanged, so the database stores exactly
+        // what we priced and charged.
+        Math.round(candidate * 100) === candidate * 100 &&
+        candidate <= 99_999_999.99
+      ) {
+        agreedPrice = candidate;
+      } else {
+        console.error("[Jobs] Unusable custom_pricing.amount, cannot price this job:", {
+          bookingId,
+          providerId,
+          typeofAmount: typeof raw,
+        });
       }
     }
 
-    // Update booking status to confirmed (with agreed_price if available)
+    // A job cannot be accepted at an unknown price. Previously this fell
+    // through and confirmed the booking with no price at all.
+    if (agreedPrice === null) {
+      return {
+        success: false,
+        error:
+          "This service has no usable fixed price set, so it cannot be accepted directly. Send the customer a quote instead.",
+      };
+    }
+
+    // Update booking status to confirmed.
+    //
+    // pricing_snapshot is written here with `total`. It is required by
+    // pricing_snapshot_required_after_confirmation for any status past
+    // provider_viewed, and this path never set it -- so a direct accept could
+    // not satisfy its own CHECK. `total` is also the field
+    // enforce_price_synchronization compares agreed_price against.
     const updatePayload: Record<string, unknown> = {
       status: "confirmed",
       provider_responded_at: new Date().toISOString(),
+      agreed_price: agreedPrice,
+      pricing_snapshot: {
+        total: agreedPrice,
+        quoted_price: agreedPrice,
+        currency: "KES",
+        source: "provider_direct_accept",
+        note: "Fixed price taken from provider_services.custom_pricing at acceptance",
+        captured_at: new Date().toISOString(),
+      },
     };
-    if (agreedPrice !== null) {
-      updatePayload.agreed_price = agreedPrice;
-    }
 
     const { error: updateError } = await admin
       .from("bookings")

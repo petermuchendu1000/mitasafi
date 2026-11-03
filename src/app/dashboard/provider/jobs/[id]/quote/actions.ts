@@ -56,6 +56,15 @@ async function setAuditContext(
  */
 function buildPricingSnapshot(formData: QuoteFormData): Record<string, unknown> {
   return {
+    // `total` is the field migration 20260109120007 declares to be "the legally
+    // authoritative price after customer_confirmed", and which
+    // enforce_price_synchronization compares agreed_price against. No writer
+    // ever set it, so the authoritative price was permanently NULL and the
+    // comparison evaluated to NULL -- meaning the guard never fired and
+    // agreed_price could diverge from the quote the customer actually saw with
+    // nothing objecting. It is written here, and the guard is made strict in
+    // 20260327000000.
+    total: formData.quotedPrice,
     quoted_price: formData.quotedPrice,
     currency: "KES",
     breakdown: formData.breakdown,
