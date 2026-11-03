@@ -708,10 +708,13 @@ export type Database = {
       booking_payments: {
         Row: {
           amount: number
+          amount_mismatch: boolean
           booking_id: string
+          claimed_amount: number | null
           confirmed_at: string | null
           created_at: string
           currency: string
+          expires_at: string | null
           failed_at: string | null
           failure_reason: string | null
           id: string
@@ -724,21 +727,27 @@ export type Database = {
           mpesa_receipt_number: string | null
           mpesa_result_code: number | null
           mpesa_result_desc: string | null
+          needs_reconciliation: boolean
           payer_id: string
           payment_method: Database["public"]["Enums"]["payment_method_type"]
           platform_fee: number
           provider_amount: number
           provider_id: string
+          reconciliation_note: string | null
           refunded_at: string | null
+          settlement_verified_by: string | null
           status: Database["public"]["Enums"]["payment_transaction_status"]
           updated_at: string
         }
         Insert: {
           amount: number
+          amount_mismatch?: boolean
           booking_id: string
+          claimed_amount?: number | null
           confirmed_at?: string | null
           created_at?: string
           currency?: string
+          expires_at?: string | null
           failed_at?: string | null
           failure_reason?: string | null
           id?: string
@@ -751,21 +760,27 @@ export type Database = {
           mpesa_receipt_number?: string | null
           mpesa_result_code?: number | null
           mpesa_result_desc?: string | null
+          needs_reconciliation?: boolean
           payer_id: string
           payment_method?: Database["public"]["Enums"]["payment_method_type"]
           platform_fee?: number
           provider_amount: number
           provider_id: string
+          reconciliation_note?: string | null
           refunded_at?: string | null
+          settlement_verified_by?: string | null
           status?: Database["public"]["Enums"]["payment_transaction_status"]
           updated_at?: string
         }
         Update: {
           amount?: number
+          amount_mismatch?: boolean
           booking_id?: string
+          claimed_amount?: number | null
           confirmed_at?: string | null
           created_at?: string
           currency?: string
+          expires_at?: string | null
           failed_at?: string | null
           failure_reason?: string | null
           id?: string
@@ -778,12 +793,15 @@ export type Database = {
           mpesa_receipt_number?: string | null
           mpesa_result_code?: number | null
           mpesa_result_desc?: string | null
+          needs_reconciliation?: boolean
           payer_id?: string
           payment_method?: Database["public"]["Enums"]["payment_method_type"]
           platform_fee?: number
           provider_amount?: number
           provider_id?: string
+          reconciliation_note?: string | null
           refunded_at?: string | null
+          settlement_verified_by?: string | null
           status?: Database["public"]["Enums"]["payment_transaction_status"]
           updated_at?: string
         }
@@ -4027,6 +4045,71 @@ export type Database = {
           },
         ]
       }
+      provider_wallet_ledger: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          entry_type: string
+          id: string
+          note: string | null
+          payment_id: string | null
+          payout_id: string | null
+          provider_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          entry_type: string
+          id?: string
+          note?: string | null
+          payment_id?: string | null
+          payout_id?: string | null
+          provider_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          entry_type?: string
+          id?: string
+          note?: string | null
+          payment_id?: string | null
+          payout_id?: string | null
+          provider_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_wallet_ledger_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "booking_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_wallet_ledger_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "provider_payouts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_wallet_ledger_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "provider_capacity_status"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "provider_wallet_ledger_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "service_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       review_helpful_votes: {
         Row: {
           created_at: string | null
@@ -6236,6 +6319,22 @@ export type Database = {
           reason: string
         }[]
       }
+      check_provider_capacity_locked: {
+        Args: {
+          p_busy_from: string
+          p_busy_to: string
+          p_is_emergency?: boolean
+          p_provider_id: string
+          p_service_id: string
+        }
+        Returns: {
+          available_slots: number
+          capacity_available: boolean
+          current_bookings: number
+          max_bookings: number
+          reason: string
+        }[]
+      }
       check_provider_capacity_with_units: {
         Args: {
           p_busy_from: string
@@ -6285,6 +6384,18 @@ export type Database = {
         Returns: undefined
       }
       expire_phone_verifications: { Args: never; Returns: number }
+      expire_stale_booking_payments: {
+        Args: { p_booking_id?: string; p_older_than?: string }
+        Returns: number
+      }
+      fail_booking_payment: {
+        Args: {
+          p_payment_id: string
+          p_result_code: number
+          p_result_desc: string
+        }
+        Returns: Json
+      }
       find_listing_by_id_prefix: {
         Args: { id_prefix: string }
         Returns: {
@@ -6355,7 +6466,28 @@ export type Database = {
         }
         Returns: Json
       }
+      request_provider_payout: {
+        Args: {
+          p_amount: number
+          p_mpesa_phone: string
+          p_payout_method: string
+          p_provider_id: string
+          p_reference: string
+        }
+        Returns: Json
+      }
       set_config: { Args: { setting: string; value: string }; Returns: string }
+      settle_booking_payment: {
+        Args: {
+          p_claimed_amount?: number
+          p_payment_id: string
+          p_receipt_number?: string
+          p_result_code?: number
+          p_result_desc?: string
+          p_verified_by?: string
+        }
+        Returns: Json
+      }
       user_has_role: {
         Args: { p_role: string; p_user_id: string }
         Returns: boolean

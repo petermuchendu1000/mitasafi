@@ -46,6 +46,49 @@ import type { BookingStatus } from "@/types/bookings";
 // AUDIT CONTEXT
 // =============================================================================
 
+/**
+ * Daraja ResultCodes that represent a DEFINITELY terminal failure, where the
+ * customer's attempt is over and retrying is the only way forward.
+ *
+ * Deliberately conservative. A code that is not listed here is treated as
+ * "still in progress" and the payment is left open, because closing a payment
+ * that is actually still live would let the customer start a second one and be
+ * charged twice. Anything genuinely abandoned is retired by
+ * expire_stale_booking_payments instead, which is bounded by time rather than
+ * by our interpretation of a vendor code.
+ *
+ * Notably absent: 1001 ("transaction in process") and 1037 in its
+ * "request in progress" sense, both of which can still settle.
+ */
+const TERMINAL_STK_FAILURE_CODES: ReadonlySet<number> = new Set([
+  1,    // insufficient balance
+  1019, // transaction expired
+  1032, // request cancelled by user
+  2001, // wrong PIN / invalid credentials
+]);
+
+/**
+ * Normalise a Daraja result code to a number, or null if it cannot be trusted.
+ *
+ * The two Daraja endpoints disagree about this field's type: the STK callback
+ * delivers ResultCode as a JSON number, while stkpushquery returns it as a
+ * STRING ("0" means success). Comparing the string form against 0 silently
+ * never matches, which is how `queryResult.resultCode` being falsy-at-zero hid
+ * the success case in the old polling code.
+ *
+ * Returns null for absent, blank or non-integer values. Null must always be
+ * treated as "unknown", never as success and never as failure — an unparseable
+ * code is not evidence of anything.
+ */
+function parseStkResultCode(code: string | number | undefined | null): number | null {
+  if (code === undefined || code === null) return null;
+  if (typeof code === "number") return Number.isInteger(code) ? code : null;
+  const trimmed = code.trim();
+  if (trimmed === "") return null;
+  const parsed = Number(trimmed);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
 async function setAuditContext(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
@@ -143,25 +186,35 @@ export async function initiatePayment(
     // 4. Calculate commission
     const commission = calculateCommission(booking.agreed_price);
 
-    // 5. Check for existing pending payment (prevent duplicates)
-    const idempotencyKey = `pay_${bookingId}_${Date.now()}`;
-    const { data: existingPending } = await admin
-      .from("booking_payments")
-      .select("id, status, mpesa_checkout_request_id")
-      .eq("booking_id", bookingId)
-      .eq("status", "pending")
-      .maybeSingle();
-
-    if (existingPending) {
-      // A pending payment already exists — return its info instead of creating another
-      return {
-        success: true,
-        paymentId: existingPending.id,
-        checkoutRequestId: existingPending.mpesa_checkout_request_id ?? undefined,
-        customerMessage:
-          "A payment is already pending. Please check your phone for the M-Pesa prompt.",
-      };
+    // 5. Duplicate prevention.
+    //
+    // WHAT WAS WRONG: the key was `pay_${bookingId}_${Date.now()}`, which is
+    // unique by construction, so the UNIQUE index on idempotency_key could
+    // never fire and the migration's claim that it "prevents duplicate
+    // payments" was false. The real guard was the read-then-insert below it:
+    // it discarded its own error, looked only for status='pending' (ignoring
+    // 'processing'), and took no lock, so two concurrent attempts could both
+    // see "nothing pending" and both create a chargeable row.
+    //
+    // NOW: a partial unique index on (booking_id) WHERE status IN
+    // ('pending','processing') makes a second open payment impossible at the
+    // storage layer, and we insert first and interpret 23505 rather than
+    // asking a question whose answer can change before we act on it.
+    //
+    // First, retire anything abandoned. STK prompts expire in about a minute,
+    // so a row still open well past that is dead — and because of the unique
+    // index, leaving it would make this booking unpayable forever.
+    const { error: expireError } = await admin.rpc("expire_stale_booking_payments", {
+      p_older_than: "15 minutes",
+      p_booking_id: bookingId,
+    });
+    if (expireError) {
+      // Not fatal: the insert below will simply report an open payment if one
+      // genuinely remains. But it must be visible, not swallowed.
+      console.error("[Payments] Stale payment expiry failed:", expireError);
     }
+
+    const idempotencyKey = crypto.randomUUID();
 
     // 6. Insert payment row
     const { data: payment, error: insertError } = await admin
@@ -187,6 +240,35 @@ export async function initiatePayment(
       .single();
 
     if (insertError || !payment) {
+      // 23505 on booking_payments_one_open_per_booking means a payment for this
+      // booking is already open — either a concurrent attempt won the race, or
+      // the customer still has an unanswered STK prompt. Both cases should hand
+      // back the existing attempt rather than create a second chargeable row.
+      if (insertError?.code === "23505") {
+        const { data: open } = await admin
+          .from("booking_payments")
+          .select("id, mpesa_checkout_request_id")
+          .eq("booking_id", bookingId)
+          .in("status", ["pending", "processing"])
+          .maybeSingle();
+
+        if (open) {
+          return {
+            success: true,
+            paymentId: open.id,
+            checkoutRequestId: open.mpesa_checkout_request_id ?? undefined,
+            customerMessage:
+              "A payment is already pending. Please check your phone for the M-Pesa prompt.",
+          };
+        }
+        // The conflicting row was settled between the insert and this read, so
+        // the booking is already paid.
+        return {
+          success: false,
+          error: "This booking has already been paid.",
+        };
+      }
+
       console.error("[Payments] Insert error:", insertError);
       return { success: false, error: "Failed to create payment record." };
     }
@@ -222,24 +304,27 @@ export async function initiatePayment(
       });
 
       if (!stkResult.success) {
-        // STK Push failed — update payment status
-        await admin
-          .from("booking_payments")
-          .update({
-            status: "failed",
-            failure_reason: stkResult.error,
-            failed_at: new Date().toISOString(),
-          })
-          .eq("id", payment.id);
+        // STK Push failed. Record it through the same guarded path the callback
+        // uses, so the payment row and the booking move together in one
+        // transaction and a late success callback cannot be overwritten by this.
+        //
+        // WHAT WAS WRONG: this was two fire-and-forget updates whose errors
+        // were both discarded, and it reverted the booking unconditionally.
+        // Combined with the lock-free duplicate check, a second attempt whose
+        // push was rejected would revert the booking out from under the first
+        // attempt's in-flight payment.
+        const { error: failError } = await admin.rpc("fail_booking_payment", {
+          p_payment_id: payment.id,
+          p_result_code: -1,
+          p_result_desc: stkResult.error ?? "STK push rejected",
+        });
 
-        // Revert booking to payment_failed
-        await admin
-          .from("bookings")
-          .update({
-            status: "payment_failed",
-            payment_status: "pending",
-          })
-          .eq("id", bookingId);
+        if (failError) {
+          // The row is left open deliberately: expire_stale_booking_payments
+          // will retire it, and inventing a status here could contradict a
+          // settlement that is already in flight.
+          console.error("[Payments] Failed to record STK failure:", failError);
+        }
 
         return {
           success: false,
@@ -332,7 +417,11 @@ export async function processPaymentCallback(params: {
     // 1. Find the payment by CheckoutRequestID
     const { data: payment, error: findError } = await admin
       .from("booking_payments")
-      .select("id, booking_id, payer_id, provider_id, amount, provider_amount, status")
+      // mpesa_checkout_request_id is needed to verify this callback against
+      // Safaricom's own status endpoint before anything is settled.
+      .select(
+        "id, booking_id, payer_id, provider_id, amount, provider_amount, status, mpesa_checkout_request_id"
+      )
       .eq("mpesa_checkout_request_id", params.checkoutRequestId)
       .single();
 
@@ -347,9 +436,23 @@ export async function processPaymentCallback(params: {
       };
     }
 
-    // Idempotency: if payment is already completed or refunded, skip
-    if (payment.status === "completed" || payment.status === "refunded") {
-      console.log("[Payments] Callback: payment already processed:", payment.id);
+    // Idempotency.
+    //
+    // WHAT WAS WRONG: this tested only 'completed' and 'refunded' — 2 of the 6
+    // payment_transaction_status values. A payment sitting at 'failed' or
+    // 'cancelled' fell straight through to the success path below and was
+    // credited, so an attacker could forge a failure and then a success and
+    // mint wallet balance on repeat. Reproduced: wallet 900 -> 1350.
+    //
+    // The authoritative guard is now a compare-and-set inside
+    // settle_booking_payment, held under a row lock, which only settles a
+    // payment in 'pending' or 'processing'. This early return is purely to
+    // avoid a pointless outbound provider call for an already-closed payment.
+    if (payment.status !== "pending" && payment.status !== "processing") {
+      console.log("[Payments] Callback: payment not open, ignoring:", {
+        paymentId: payment.id,
+        status: payment.status,
+      });
       return { success: true, paymentId: payment.id };
     }
 
@@ -357,41 +460,107 @@ export async function processPaymentCallback(params: {
 
     if (isSuccess && params.metadata) {
       // ── SUCCESS PATH ──
-      const now = new Date().toISOString();
+      //
+      // A CALLBACK BODY IS A CLAIM, NOT EVIDENCE. This endpoint is reachable
+      // from the internet and its only authenticator is the source IP, so we
+      // do not settle on the strength of what the request says. We ask
+      // Safaricom directly and settle only if Safaricom agrees.
+      //
+      // Note what we deliberately do NOT do: compare the amount. Neither
+      // Safaricom's stkpushquery nor PayHero's transaction-status returns an
+      // amount (both verified), so there is nothing authoritative to compare
+      // against. The amount the callback claims is therefore passed to
+      // settle_booking_payment as a TRIPWIRE: it is recorded in claimed_amount
+      // and flagged when it disagrees with our stored amount, but the figure
+      // that gets booked is always our own. Previously the claimed amount was
+      // written to metadata and logged and compared to nothing at all, so
+      // "Amount": 1 would settle a KES 150,000 booking.
+      if (!payment.mpesa_checkout_request_id) {
+        console.error("[Payments] Callback: no checkout id to verify against:", payment.id);
+        return { success: false, error: "Payment cannot be verified." };
+      }
 
-      // 2a. Update payment row
-      await admin
-        .from("booking_payments")
-        .update({
-          status: "completed",
-          mpesa_receipt_number: params.metadata.mpesaReceiptNumber,
-          mpesa_result_code: params.resultCode,
-          mpesa_result_desc: params.resultDesc,
-          confirmed_at: now,
-          metadata: {
-            callback_amount: params.metadata.amount,
-            callback_phone: params.metadata.phoneNumber,
-            callback_date: params.metadata.transactionDate,
-          },
-        })
-        .eq("id", payment.id);
+      const verification = await queryStkPushStatus(payment.mpesa_checkout_request_id);
 
-      // 2b. Update booking to resolved + paid
-      await setAuditContext(admin, payment.payer_id, "customer");
-      await admin
-        .from("bookings")
-        .update({
-          status: "resolved",
-          payment_status: "paid",
-          payment_ref: params.metadata.mpesaReceiptNumber,
-        })
-        .eq("id", payment.booking_id);
+      if (!verification.success) {
+        // We could not reach the authority. Leave the payment open: the client
+        // poller and the reaper will resolve it. Settling here on the
+        // callback's word alone is exactly the hole being closed.
+        console.error("[Payments] Callback: authoritative verification unavailable:", {
+          paymentId: payment.id,
+          error: verification.error,
+        });
+        return { success: false, error: "Could not verify payment with M-Pesa." };
+      }
 
-      // 2c. Credit provider wallet
-      await admin.rpc("credit_provider_wallet", {
-        p_provider_id: payment.provider_id,
-        p_amount: payment.provider_amount,
-      });
+      const authoritativeCode = parseStkResultCode(verification.resultCode);
+
+      if (authoritativeCode !== 0) {
+        // The callback claimed success and the authority disagrees. This is
+        // either a forged callback or a genuine race; either way it does not
+        // settle. Record the claim and leave the payment open.
+        console.error("[Payments] Callback claimed success but M-Pesa disagrees:", {
+          paymentId: payment.id,
+          claimedResultCode: params.resultCode,
+          authoritativeResultCode: verification.resultCode,
+          parsed: authoritativeCode,
+        });
+        return { success: false, error: "Payment not confirmed by M-Pesa." };
+      }
+
+      // Safaricom confirms it. Settle atomically: compare-and-set the payment,
+      // credit the wallet through the append-only ledger, move the booking —
+      // one transaction, exactly once, and every error surfaced.
+      const { data: settleResult, error: settleError } = await admin.rpc(
+        "settle_booking_payment",
+        {
+          p_payment_id: payment.id,
+          p_receipt_number: params.metadata.mpesaReceiptNumber,
+          p_result_code: params.resultCode,
+          p_result_desc: params.resultDesc,
+          p_claimed_amount: params.metadata.amount ?? null,
+          p_verified_by: "authoritative_query",
+        }
+      );
+
+      if (settleError) {
+        console.error("[Payments] Settlement failed:", settleError);
+        return { success: false, error: "Failed to record payment." };
+      }
+
+      const outcome = (settleResult as { outcome?: string } | null)?.outcome;
+
+      if (outcome !== "settled") {
+        // 'not_settleable' means a concurrent caller already settled it. That
+        // is success from the caller's point of view, and crucially it means we
+        // must NOT send a second "payment received" notification.
+        console.log("[Payments] Settlement skipped:", { paymentId: payment.id, outcome });
+        return { success: true, paymentId: payment.id };
+      }
+
+      const settled = settleResult as {
+        amount_mismatch?: boolean;
+        booking_moved?: boolean;
+        booking_error?: string | null;
+      };
+
+      if (settled.amount_mismatch) {
+        console.error("[Payments] AMOUNT MISMATCH — callback amount differs from charged amount:", {
+          paymentId: payment.id,
+          claimed: params.metadata.amount,
+          flaggedForReconciliation: true,
+        });
+      }
+
+      if (settled.booking_moved === false) {
+        // The money is correct and recorded; only the booking status lagged.
+        // The payment row carries needs_reconciliation for an operator.
+        console.error("[Payments] Payment settled but booking did not transition:", {
+          paymentId: payment.id,
+          bookingId: payment.booking_id,
+          bookingError: settled.booking_error,
+        });
+      }
 
       // 2d. Get details for notifications
       const [bookingInfo, providerInfo, customerInfo] = await Promise.all([
@@ -453,29 +622,25 @@ export async function processPaymentCallback(params: {
       return { success: true, paymentId: payment.id };
     } else {
       // ── FAILURE PATH ──
-      const now = new Date().toISOString();
+      //
+      // Recorded through fail_booking_payment, which compare-and-sets under a
+      // row lock so a late or forged failure can never downgrade a payment
+      // that has already settled.
+      //
+      // WHAT WAS WRONG: two fire-and-forget updates whose errors were both
+      // discarded. A failure callback arriving after a successful settlement
+      // would overwrite 'completed' with 'failed' while the wallet stayed
+      // credited, leaving the books contradicting the payment row.
+      const { error: failError } = await admin.rpc("fail_booking_payment", {
+        p_payment_id: payment.id,
+        p_result_code: params.resultCode,
+        p_result_desc: params.resultDesc,
+      });
 
-      // 3a. Update payment row
-      await admin
-        .from("booking_payments")
-        .update({
-          status: "failed",
-          mpesa_result_code: params.resultCode,
-          mpesa_result_desc: params.resultDesc,
-          failure_reason: params.resultDesc,
-          failed_at: now,
-        })
-        .eq("id", payment.id);
-
-      // 3b. Update booking to payment_failed
-      await setAuditContext(admin, payment.payer_id, "customer");
-      await admin
-        .from("bookings")
-        .update({
-          status: "payment_failed",
-          payment_status: "pending",
-        })
-        .eq("id", payment.booking_id);
+      if (failError) {
+        console.error("[Payments] Failed to record payment failure:", failError);
+        return { success: false, error: "Failed to record payment failure." };
+      }
 
       // 3c. Notify customer
       await notifyCustomerPaymentFailed({
@@ -584,25 +749,74 @@ export async function pollPaymentStatus(
       return { success: false, error: "Access denied." };
     }
 
-    // Only poll if payment is still pending and has a checkout ID
-    if (payment.status !== "pending" || !payment.mpesa_checkout_request_id) {
+    // Only poll an open payment that has something to poll with.
+    if (
+      (payment.status !== "pending" && payment.status !== "processing") ||
+      !payment.mpesa_checkout_request_id
+    ) {
       return { success: true, payment: payment as unknown as Payment };
     }
 
-    // Query Daraja
+    // Query Daraja. This is the SAME authoritative source the callback path
+    // now requires, so settling here is not a second mechanism — it is the
+    // same one, reached without waiting for an inbound request. That matters
+    // because the callback is forgeable and may also simply never arrive:
+    // previously this function deliberately wrote nothing ("let the callback
+    // handle it"), which left genuinely-paid bookings stuck at 'pending' with
+    // no path to resolution, since no cron or admin surface could settle them.
     const queryResult = await queryStkPushStatus(
       payment.mpesa_checkout_request_id
     );
 
-    if (queryResult.success && queryResult.resultCode) {
-      // If Daraja says it's complete but we haven't processed the callback yet,
-      // the callback should arrive shortly. Don't update here — let the callback
-      // handle it to avoid race conditions.
-      console.log("[Payments] Poll result:", {
-        paymentId,
-        resultCode: queryResult.resultCode,
-        desc: queryResult.resultDesc,
-      });
+    // NOTE: the old condition here was `queryResult.success &&
+    // queryResult.resultCode`, and ResultCode 0 means SUCCESS — which is
+    // falsy. So the branch was skipped in exactly the case that mattered.
+    const polledCode = parseStkResultCode(queryResult.resultCode);
+
+    if (queryResult.success && polledCode !== null) {
+      if (polledCode === 0) {
+        // Confirmed paid. Settle through the same atomic, exactly-once path as
+        // the callback; if the callback already settled it, the compare-and-set
+        // inside returns 'not_settleable' and nothing is credited twice.
+        const { data: settleResult, error: settleError } = await admin.rpc(
+          "settle_booking_payment",
+          {
+            p_payment_id: payment.id,
+            // Omitted, not nulled: stkpushquery returns neither a receipt nor
+            // an amount, and settle_booking_payment coalesces so an absent
+            // receipt cannot erase one a callback already recorded.
+            p_result_code: polledCode,
+            p_result_desc: queryResult.resultDesc ?? "Confirmed by status query",
+            p_verified_by: "authoritative_query",
+          }
+        );
+
+        if (settleError) {
+          console.error("[Payments] Poll settlement failed:", settleError);
+        } else {
+          console.log("[Payments] Poll settled payment:", {
+            paymentId,
+            outcome: (settleResult as { outcome?: string } | null)?.outcome,
+          });
+        }
+      } else if (TERMINAL_STK_FAILURE_CODES.has(polledCode)) {
+        // A definite, terminal failure (cancelled, timed out, wrong PIN...).
+        // Anything else — e.g. 1037 "request in progress" — is left open.
+        const { error: failError } = await admin.rpc("fail_booking_payment", {
+          p_payment_id: payment.id,
+          p_result_code: polledCode,
+          p_result_desc: queryResult.resultDesc ?? "Payment failed",
+        });
+        if (failError) {
+          console.error("[Payments] Poll failure recording failed:", failError);
+        }
+      } else {
+        console.log("[Payments] Poll: payment still in progress:", {
+          paymentId,
+          resultCode: polledCode,
+          desc: queryResult.resultDesc,
+        });
+      }
     }
 
     // Return current DB state (callback may have arrived between poll and response)
@@ -939,50 +1153,65 @@ export async function requestPayout(
     // Generate reference
     const reference = `PO-${Date.now().toString(36).toUpperCase()}`;
 
-    // Debit wallet first (atomic — uses FOR UPDATE lock in DB function)
-    const { error: debitError } = await admin.rpc("debit_provider_wallet", {
-      p_provider_id: providerId,
-      p_amount: amount,
-    });
+    // One transaction: balance check under a row lock, payout row, wallet
+    // debit, and the ledger entry. All of it, or none of it.
+    //
+    // WHAT WAS WRONG: the debit and the payout insert were two separate
+    // transactions. If the process died between them — a serverless timeout is
+    // enough — the provider's wallet was debited with no payout record
+    // anywhere, and the compensating re-credit could not run because the code
+    // that would have run it was already gone. That was the only genuinely
+    // unrecoverable money-loss path in the system.
+    //
+    // The old compensating path was also wrong in its own right: it re-credited
+    // via credit_provider_wallet, which increments total_earnings as well, so
+    // every failed payout request permanently inflated the provider's lifetime
+    // earnings figure. A payout moves money out of the wallet; it does not
+    // un-earn it. request_provider_payout touches wallet_balance only.
+    const { data: payoutResult, error: payoutError } = await admin.rpc(
+      "request_provider_payout",
+      {
+        p_provider_id: providerId,
+        p_amount: amount,
+        p_payout_method: payoutMethod,
+        p_mpesa_phone: payoutPhone,
+        p_reference: reference,
+      }
+    );
 
-    if (debitError) {
-      console.error("[Payments] Wallet debit error:", debitError);
+    if (payoutError) {
+      console.error("[Payments] Payout request error:", payoutError);
       return {
         success: false,
-        error: debitError.message.includes("Insufficient")
-          ? "Insufficient wallet balance."
-          : "Failed to process payout. Please try again.",
+        error: "Failed to process payout. Please try again.",
       };
     }
 
-    // Create payout record
-    const { data: payout, error: insertError } = await admin
-      .from("provider_payouts")
-      .insert({
-        provider_id: providerId,
-        amount,
-        currency: "KES",
-        payout_method: payoutMethod,
-        mpesa_phone: payoutPhone,
-        status: "pending",
-        reference,
-      })
-      .select("id")
-      .single();
+    const result = payoutResult as { outcome?: string; payout_id?: string; available?: number } | null;
 
-    if (insertError || !payout) {
-      // Rollback: re-credit the wallet
-      await admin.rpc("credit_provider_wallet", {
-        p_provider_id: providerId,
-        p_amount: amount,
-      });
-      console.error("[Payments] Payout insert error:", insertError);
+    if (result?.outcome === "insufficient_balance") {
+      return {
+        success: false,
+        error: `Insufficient balance. Available: KES ${Number(result.available ?? 0).toLocaleString()}`,
+      };
+    }
+
+    if (result?.outcome === "payout_already_open") {
+      return {
+        success: false,
+        error:
+          "You already have a pending payout. Please wait for it to be processed.",
+      };
+    }
+
+    if (result?.outcome !== "requested" || !result.payout_id) {
+      console.error("[Payments] Unexpected payout outcome:", result);
       return { success: false, error: "Failed to create payout request." };
     }
 
     revalidatePath("/dashboard/provider/earnings");
 
-    return { success: true, payoutId: payout.id };
+    return { success: true, payoutId: result.payout_id };
   } catch (err) {
     console.error("[Payments] requestPayout error:", err);
     return {
@@ -1040,10 +1269,23 @@ export async function processPayoutCompletion(
       };
     }
 
-    // 2. Update payout status to completed
+    // 2. Update payout status to completed.
+    //
+    // WHAT WAS WRONG: this wrote `completed_at`, which is not a column on
+    // provider_payouts (the column is `processed_at`). PostgREST rejects the
+    // whole write, so this function could never have completed a payout even
+    // once it had a caller — and it has none: the only reference to
+    // processPayoutCompletion in the repository is its own console.error.
+    // Combined with the one-open-payout guard, a provider's first payout
+    // request therefore blocked every later one, permanently.
+    //
+    // Fixing the column makes the function correct, but it is still unreachable
+    // until an operator surface calls it. Wiring that surface is deliberately
+    // NOT done here: it disburses real money and needs an approval flow and
+    // explicit sign-off, not a quiet addition inside a bug fix.
     const updatePayload: Record<string, unknown> = {
       status: "completed",
-      completed_at: new Date().toISOString(),
+      processed_at: new Date().toISOString(),
     };
     if (mpesaReceipt) {
       updatePayload.mpesa_receipt_number = mpesaReceipt;
@@ -1052,7 +1294,10 @@ export async function processPayoutCompletion(
     const { error: updateError } = await admin
       .from("provider_payouts")
       .update(updatePayload)
-      .eq("id", payoutId);
+      .eq("id", payoutId)
+      // Compare-and-set: only a payout still open may complete, so a duplicate
+      // or late callback cannot re-complete one that has already been closed.
+      .in("status", ["pending", "processing"]);
 
     if (updateError) {
       console.error("[Payments] Payout completion update error:", updateError);
