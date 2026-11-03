@@ -30,7 +30,7 @@ import {
   isInsecureCallbackModeEnabled,
 } from "@/lib/payments/mpesa-config";
 import type { MpesaEnvironment } from "@/lib/payments/mpesa-config";
-import { processPaymentCallback } from "@/lib/services/payments";
+import { processPaymentCallback } from "@/lib/services/payments-internal";
 import type { MpesaStkCallback } from "@/types/payments";
 
 /** Safaricom callbacks should never exceed this size. */
