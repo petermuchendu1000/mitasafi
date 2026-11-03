@@ -23,6 +23,11 @@
 // =============================================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  isJobValueAllowed,
+  loadCommissionConfig,
+  minimumJobAmount,
+} from "@/lib/payments/commission";
 import { getCachedProviderId, getCachedUser } from "@/lib/cache/queries";
 import { notifyCustomerQuoteSent } from "@/lib/notifications/triggers";
 import { revalidatePath } from "next/cache";
@@ -144,6 +149,18 @@ export async function submitQuote(
     // ── Validate form data ──
     if (formData.quotedPrice <= 0) {
       return { success: false, error: "Quoted price must be greater than zero." };
+    }
+    // Minimum job value, read from the commission config rather than hardcoded.
+    // The database enforces this too (00_enforce_minimum_job_value); this check
+    // exists so the provider gets an actionable message instead of a raw
+    // constraint error, and learns the limit before the customer is involved.
+    const { config: quoteCommissionConfig } = await loadCommissionConfig(admin);
+    if (!isJobValueAllowed(formData.quotedPrice, quoteCommissionConfig)) {
+      const minimum = minimumJobAmount(quoteCommissionConfig);
+      return {
+        success: false,
+        error: `The minimum job value is KES ${minimum.toLocaleString()}. Quote at or above that, or decline the job.`,
+      };
     }
     if (formData.validityDays < 1 || formData.validityDays > 90) {
       return { success: false, error: "Validity must be between 1 and 90 days." };

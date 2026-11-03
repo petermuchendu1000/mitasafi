@@ -13,6 +13,11 @@
 // =============================================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  isJobValueAllowed,
+  loadCommissionConfig,
+  minimumJobAmount,
+} from "@/lib/payments/commission";
 import { getCachedProviderId, getCachedUser } from "@/lib/cache/queries";
 import {
   notifyCustomerBookingConfirmed,
@@ -236,6 +241,18 @@ export async function acceptBooking(bookingId: string): Promise<ActionResult> {
         success: false,
         error:
           "This service has no usable fixed price set, so it cannot be accepted directly. Send the customer a quote instead.",
+      };
+    }
+
+    // Minimum job value, read from the commission config rather than hardcoded.
+    // Also enforced in the database by 00_enforce_minimum_job_value; this check
+    // turns that into an actionable message and names the alternative.
+    const { config: acceptCommissionConfig } = await loadCommissionConfig(admin);
+    if (!isJobValueAllowed(agreedPrice, acceptCommissionConfig)) {
+      const minimum = minimumJobAmount(acceptCommissionConfig);
+      return {
+        success: false,
+        error: `This service's fixed price of KES ${agreedPrice.toLocaleString()} is below the minimum job value of KES ${minimum.toLocaleString()}. Raise the service price or quote the customer individually.`,
       };
     }
 

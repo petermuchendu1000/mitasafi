@@ -30,10 +30,25 @@ import {
   getCommissionConfig,
   loadCommissionConfig,
   toCents,
-} from "@/lib/payments/commission";
+  minimumJobAmount,
+  isJobValueAllowed,} from "@/lib/payments/commission";
 import type { CommissionConfig } from "@/types/payments";
 
-const CFG = FALLBACK_COMMISSION_CONFIG;
+/**
+ * Base config for the FLOOR AND CAP ARITHMETIC tests.
+ *
+ * The live schedule is now a flat 10% with NO floor and no minimum job value,
+ * so the floor-driven vectors below are no longer the production behaviour.
+ * They are still pinned because the floor/cap/clamp logic in the fee function
+ * must not silently rot: a floor can be reintroduced by one INSERT into
+ * commission_config, and if that ever happens this arithmetic has to still be
+ * correct. Tests about the LIVE schedule use the real default config.
+ */
+const CFG: CommissionConfig = {
+  ...FALLBACK_COMMISSION_CONFIG,
+  minimumFeeCents: 5000,
+  minJobAmountCents: 0,
+};
 
 /**
  * Independent integer-cent oracle. Deliberately NOT written the same way as the
@@ -156,7 +171,7 @@ describe("calculateCommission — golden vectors", () => {
   ];
 
   it.each(VECTORS)("KES $total -> fee $feeCents cents ($why)", ({ total, feeCents, providerCents }) => {
-    const b = calculateCommission(total);
+    const b = calculateCommission(total, CFG);
     expect(b.platformFeeCents).toBe(feeCents);
     expect(b.providerAmountCents).toBe(providerCents);
     expect(b.totalCents).toBe(feeCents + providerCents);
@@ -185,7 +200,7 @@ describe("calculateCommission — golden vectors", () => {
 
   it("returns an all-zero breakdown for non-positive totals", () => {
     for (const total of [0, -1, -0.01, -99999]) {
-      const b = calculateCommission(total);
+      const b = calculateCommission(total, CFG);
       expect(b.totalCents).toBe(0);
       expect(b.platformFeeCents).toBe(0);
       expect(b.providerAmountCents).toBe(0);
@@ -195,16 +210,17 @@ describe("calculateCommission — golden vectors", () => {
   });
 
   it("reports the effective rate the floor and cap actually produce", () => {
-    expect(calculateCommission(100).effectiveRate).toBe(0.5);
-    expect(calculateCommission(1000).effectiveRate).toBe(0.1);
-    expect(calculateCommission(150000).effectiveRate).toBe(0.0333);
+    expect(calculateCommission(100, CFG).effectiveRate).toBe(0.5);
+    expect(calculateCommission(1000, CFG).effectiveRate).toBe(0.1);
+    expect(calculateCommission(150000, CFG).effectiveRate).toBe(0.0333);
   });
 
   it("snapshots the config that priced the breakdown", () => {
     const b = calculateCommission(1000);
     expect(b.configId).toBeNull();
     expect(b.rateBps).toBe(1000);
-    expect(b.minimumFeeCents).toBe(5000);
+    // The live schedule: no fee floor, no minimum job value.
+    expect(b.minimumFeeCents).toBe(0);
     expect(b.maximumFeeCents).toBe(500000);
     expect(b.minJobAmountCents).toBe(0);
   });
@@ -345,7 +361,7 @@ describe("config semantics", () => {
     expect(b.providerAmountCents).toBe(9_999);
   });
 
-  it("min_job_amount of 0 changes nothing (the seeded value)", () => {
+  it("min_job_amount of 0 disables the threshold entirely", () => {
     const cfg = withConfig({ minJobAmountCents: 0 });
     let differences = 0;
     for (let cents = 1; cents <= 20_000; cents++) {
@@ -522,16 +538,24 @@ describe("display helpers", () => {
 
 describe("the compiled-in fallback matches the seeded DB config", () => {
   // If these drift, the display path and the money path disagree, which is the
-  // whole class of bug this work removes. Parsed from the migration so the two
+  // whole class of bug this work removes. Parsed from the migrations so the two
   // cannot be changed independently.
-  const migration = fs.readFileSync(
+  const v1Migration = fs.readFileSync(
     path.join(process.cwd(), "supabase/migrations/20260321000000_commission_config.sql"),
     "utf8"
   );
+  const v2Migration = fs.readFileSync(
+    path.join(process.cwd(), "supabase/migrations/20260328000000_flat_rate_no_fee_floor.sql"),
+    "utf8"
+  );
+  // That migration annotates each seeded value with a trailing -- comment, so
+  // strip comments before matching rather than writing a regex that tolerates
+  // them. A comment-aware regex is how a drift guard quietly stops guarding.
+  const v2Sql = v2Migration.replace(/--[^\n]*/g, "");
 
-  it("seeds exactly one config row with the current live values", () => {
-    const seed = migration.match(
-      /VALUES\s*\n\s*\('global',\s*'KES',\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+),/
+  it("mirrors the CURRENTLY ACTIVE seeded row (v2: flat 10%, no floor, no minimum)", () => {
+    const seed = v2Sql.match(
+      /\('global',\s*'KES',\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+),/
     );
     expect(seed).not.toBeNull();
     const [, version, rateBps, minFee, maxFee, minJob] = seed as RegExpMatchArray;
@@ -540,11 +564,102 @@ describe("the compiled-in fallback matches the seeded DB config", () => {
     expect(Number(minFee)).toBe(FALLBACK_COMMISSION_CONFIG.minimumFeeCents);
     expect(Number(maxFee)).toBe(FALLBACK_COMMISSION_CONFIG.maximumFeeCents);
     expect(Number(minJob)).toBe(FALLBACK_COMMISSION_CONFIG.minJobAmountCents);
+    // The decision itself: no fee floor, no minimum job value.
+    expect(Number(minFee)).toBe(0);
+    expect(Number(minJob)).toBe(0);
+  });
+
+  it("leaves v1 untouched so historical pricing stays reproducible", () => {
+    // v1 must still seed a ZERO minimum. If a later migration edits v1 in place
+    // instead of adding a version, every past booking is silently repriced.
+    const seed = v1Migration.match(
+      /VALUES\s*\n\s*\('global',\s*'KES',\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+),/
+    );
+    expect(seed).not.toBeNull();
+    const [, version, , minFee] = seed as RegExpMatchArray;
+    expect(Number(version)).toBe(1);
+    // v1 carried the KES 50 floor. If a later migration edits v1 in place
+    // instead of adding a version, every past booking is silently repriced.
+    expect(Number(minFee)).toBe(5000);
+  });
+
+  it("closes the previous range rather than mutating it", () => {
+    expect(v2Migration).toMatch(/tstzrange\(lower\(effective\), v_now, '\[\)'\)/);
+    expect(v2Migration).toMatch(/upper\(effective\) IS NULL/);
   });
 
   it("keeps the no-overlap guard and the integer half-up divisor in the migration", () => {
-    expect(migration).toMatch(/EXCLUDE USING gist/);
-    expect(migration).toMatch(/btree_gist/);
-    expect(migration).toMatch(/\+ 5000\) \/ 10000/);
+    expect(v1Migration).toMatch(/EXCLUDE USING gist/);
+    expect(v1Migration).toMatch(/btree_gist/);
+    expect(v1Migration).toMatch(/\+ 5000\) \/ 10000/);
+  });
+});
+
+describe("the live schedule: flat 10%, no floor, micro-providers served", () => {
+  // The platform must work for boda boda riders and mama mboga vendors, whose
+  // jobs are routinely KES 20-300. Under the previous KES 50 fee floor a KES 50
+  // job paid the provider NOTHING and a KES 100 job cost them half, which
+  // excluded exactly those providers.
+  const MICRO: Array<{ total: number; feeCents: number; providerCents: number }> = [
+    { total: 20, feeCents: 200, providerCents: 1800 },
+    { total: 50, feeCents: 500, providerCents: 4500 },
+    { total: 80, feeCents: 800, providerCents: 7200 },
+    { total: 100, feeCents: 1000, providerCents: 9000 },
+    { total: 150, feeCents: 1500, providerCents: 13500 },
+    { total: 300, feeCents: 3000, providerCents: 27000 },
+  ];
+
+  it.each(MICRO)("a KES $total job charges $feeCents cents and pays the provider $providerCents", ({ total, feeCents, providerCents }) => {
+    const r = calculateCommission(total);
+    expect(r.platformFeeCents).toBe(feeCents);
+    expect(r.providerAmountCents).toBe(providerCents);
+  });
+
+  it("has no fee floor and no minimum job value", () => {
+    expect(FALLBACK_COMMISSION_CONFIG.minimumFeeCents).toBe(0);
+    expect(FALLBACK_COMMISSION_CONFIG.minJobAmountCents).toBe(0);
+    expect(minimumJobAmount()).toBe(0);
+  });
+
+  it("allows any positive job value, however small", () => {
+    expect(isJobValueAllowed(20)).toBe(true);
+    expect(isJobValueAllowed(1)).toBe(true);
+    expect(isJobValueAllowed(0.01)).toBe(true);
+    // Still refuses nonsense.
+    expect(isJobValueAllowed(0)).toBe(false);
+    expect(isJobValueAllowed(-1)).toBe(false);
+  });
+
+  it("NEVER leaves the provider with nothing, at any price", () => {
+    // This is the property that decides whether a rider will use the platform.
+    // Under the old floor every total at or below KES 50 paid them zero.
+    for (let cents = 1; cents <= 200_000; cents++) {
+      const fee = commissionFeeCents(cents, FALLBACK_COMMISSION_CONFIG);
+      expect(cents - fee).toBeGreaterThan(0);
+    }
+  });
+
+  it("makes the advertised 10% true at every price, within half-cent rounding", () => {
+    // The public copy says 10%. Previously the effective rate ran from 10% to
+    // 100%, which made that claim a misrepresentation. Sweep and bound it.
+    let worstExcessTenths = 0;
+    for (let cents = 1; cents <= 500_000; cents++) {
+      const fee = commissionFeeCents(cents, FALLBACK_COMMISSION_CONFIG);
+      const excess = fee * 10 - cents; // > 0 means above 10%
+      if (excess > worstExcessTenths) worstExcessTenths = excess;
+    }
+    // At most half a cent of half-up rounding; never a floor-driven lift.
+    expect(worstExcessTenths).toBeLessThanOrEqual(5);
+  });
+
+  it("still caps the fee on large jobs", () => {
+    expect(commissionFeeCents(5_000_000, FALLBACK_COMMISSION_CONFIG)).toBe(500_000);
+    expect(commissionFeeCents(15_000_000, FALLBACK_COMMISSION_CONFIG)).toBe(500_000);
+  });
+
+  it("keeps the float-bug fix independent of the floor", () => {
+    // 640.55 was the first input the old float expression got wrong. The fix is
+    // in the integer arithmetic, so removing the floor must not disturb it.
+    expect(calculateCommission(640.55).platformFeeCents).toBe(6406);
   });
 });

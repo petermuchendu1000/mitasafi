@@ -43,32 +43,76 @@ import type { CommissionConfig, CommissionConfigRow } from "@/types/payments";
 // =============================================================================
 // FALLBACK COMMISSION CONFIG
 // =============================================================================
-// The authoritative config lives in `commission_config` (see
-// supabase/migrations/20260321000000_commission_config.sql). This object is the
+// The authoritative config lives in `commission_config`. This object is the
 // fallback used when a caller has no DB handle (e.g. a pure display path) and
-// MUST stay byte-for-byte equivalent to the seeded version-1 row:
-//   rate_bps 1000, min_fee_cents 5000, max_fee_cents 500000,
+// MUST mirror the CURRENTLY ACTIVE seeded row, which is version 2 from
+// supabase/migrations/20260328000000_flat_rate_no_fee_floor.sql:
+//   rate_bps 1000, min_fee_cents 0, max_fee_cents 500000,
 //   min_job_amount_cents 0, currency KES.
+// A test parses that migration and fails if the two ever drift.
 // Changing pricing is a one-row INSERT into commission_config, NOT a code edit.
 
 export const FALLBACK_COMMISSION_CONFIG: CommissionConfig = {
   /** No DB row backs the fallback. */
   id: null,
   /** Config version of the seeded row this fallback mirrors. */
-  version: 1,
+  version: 2,
   /** Scope key this config applies to. */
   scope: "global",
   /** 1000 bps = 10.00% platform commission. */
   rateBps: 1000,
-  /** Minimum fee of KES 50.00 per transaction, in cents. */
-  minimumFeeCents: 5000,
+  /**
+   * NO fee floor.
+   *
+   * This was KES 50, which made the platform's share 100% of a KES 50 job and
+   * half of a KES 100 job. That excluded the micro-providers the platform
+   * exists to serve -- boda boda riders and mama mboga vendors, whose jobs are
+   * routinely KES 20 to KES 300 -- because no one accepts a job that pays them
+   * nothing. With no floor the fee is at most 10% of the job, so 90% always
+   * reaches the provider, and the advertised "10%" is true at every price.
+   */
+  minimumFeeCents: 0,
   /** Maximum fee of KES 5,000.00 per transaction, in cents. null = no cap. */
   maximumFeeCents: 500000,
-  /** Jobs below this amount are not commissioned. 0 = no threshold (current behaviour). */
+  /**
+   * NO minimum job value: a KES 20 job is welcome.
+   *
+   * The mechanism is retained rather than removed. commissionFeeCents() charges
+   * no commission below this threshold, and the database trigger
+   * 00_enforce_minimum_job_value refuses to quote or agree a price below it --
+   * both inert at 0. Introducing a minimum later is one INSERT into
+   * commission_config, and no minimum can be configured without being enforced.
+   *
+   * Note the two meanings are NOT the same: the config value means "charge no
+   * commission below this", while the trigger is what makes it "disallow jobs
+   * below this". Setting the value alone would make small jobs commission-free
+   * rather than disallowed.
+   */
   minJobAmountCents: 0,
   /** Currency. */
   currency: "KES",
 };
+
+/** The minimum job value in major units (KES), for validation and display. */
+export function minimumJobAmount(
+  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG
+): number {
+  return config.minJobAmountCents / 100;
+}
+
+/**
+ * Whether a proposed job total is allowed.
+ *
+ * A total exactly equal to the minimum is allowed: at KES 500 the fee is
+ * exactly 10%, which is why 500 was chosen.
+ */
+export function isJobValueAllowed(
+  totalAmount: number,
+  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG
+): boolean {
+  if (!Number.isFinite(totalAmount) || totalAmount <= 0) return false;
+  return toCents(totalAmount) >= config.minJobAmountCents;
+}
 
 /** Name of the SQL function that returns the active config row. */
 export const COMMISSION_CONFIG_RPC = "commission_config_active";
