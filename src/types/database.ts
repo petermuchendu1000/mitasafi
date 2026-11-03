@@ -2888,10 +2888,13 @@ export type Database = {
           email_failed_at: string | null
           email_sent: boolean | null
           email_sent_at: string | null
+          entity_id: string | null
+          entity_type: string | null
           id: string
           in_app: boolean | null
           is_read: boolean | null
           message: string
+          metadata: Json
           provider_id: string | null
           read_at: string | null
           review_id: string | null
@@ -2912,10 +2915,13 @@ export type Database = {
           email_failed_at?: string | null
           email_sent?: boolean | null
           email_sent_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
           id?: string
           in_app?: boolean | null
           is_read?: boolean | null
           message: string
+          metadata?: Json
           provider_id?: string | null
           read_at?: string | null
           review_id?: string | null
@@ -2936,10 +2942,13 @@ export type Database = {
           email_failed_at?: string | null
           email_sent?: boolean | null
           email_sent_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
           id?: string
           in_app?: boolean | null
           is_read?: boolean | null
           message?: string
+          metadata?: Json
           provider_id?: string | null
           read_at?: string | null
           review_id?: string | null
@@ -3052,6 +3061,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      phone_verifications: {
+        Row: {
+          attempts: number
+          code: string | null
+          code_hash: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          max_attempts: number
+          phone: string
+          status: string
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          code?: string | null
+          code_hash?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          max_attempts?: number
+          phone: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          code?: string | null
+          code_hash?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          max_attempts?: number
+          phone?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -4907,6 +4961,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          keywords: string[]
           meta_description: string | null
           meta_title: string | null
           name: string
@@ -4923,6 +4978,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          keywords?: string[]
           meta_description?: string | null
           meta_title?: string | null
           name: string
@@ -4939,6 +4995,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          keywords?: string[]
           meta_description?: string | null
           meta_title?: string | null
           name?: string
@@ -6095,6 +6152,10 @@ export type Database = {
     }
     Functions: {
       auto_confirm_completed_bookings: { Args: never; Returns: number }
+      calculate_provider_profile_completion: {
+        Args: { p_provider_id: string }
+        Returns: number
+      }
       check_capacity_availability: {
         Args: {
           p_from: string
@@ -6223,6 +6284,22 @@ export type Database = {
         Args: { p_amount: number; p_provider_id: string }
         Returns: undefined
       }
+      expire_phone_verifications: { Args: never; Returns: number }
+      find_listing_by_id_prefix: {
+        Args: { id_prefix: string }
+        Returns: {
+          area: string
+          bedrooms: number
+          city: string
+          cover_photo: string
+          currency: string
+          description: string
+          id: string
+          property_type: string
+          rent_amount: number
+          title: string
+        }[]
+      }
       get_building_stats: { Args: { p_building_id: string }; Returns: Json }
       get_landlord_portfolio_stats: {
         Args: { p_landlord_id: string }
@@ -6268,9 +6345,24 @@ export type Database = {
         Args: { p_booking_id: string; p_reason: string }
         Returns: boolean
       }
+      request_phone_otp: {
+        Args: {
+          p_expiry_minutes?: number
+          p_max_sends?: number
+          p_phone: string
+          p_user_id: string
+          p_window_minutes?: number
+        }
+        Returns: Json
+      }
+      set_config: { Args: { setting: string; value: string }; Returns: string }
       user_has_role: {
         Args: { p_role: string; p_user_id: string }
         Returns: boolean
+      }
+      verify_phone_otp: {
+        Args: { p_code: string; p_phone: string; p_user_id: string }
+        Returns: Json
       }
     }
     Enums: {

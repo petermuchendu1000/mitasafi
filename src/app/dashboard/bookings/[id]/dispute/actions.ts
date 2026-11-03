@@ -261,7 +261,7 @@ export async function fileDispute(
       const fileName = `dispute-evidence/${user.id}/${bookingId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
 
       const { data: uploadData, error: uploadError } = await admin.storage
-        .from("provider-documents")
+        .from("dispute-evidence")
         .upload(fileName, file, {
           contentType: file.type,
           upsert: false,
@@ -278,7 +278,7 @@ export async function fileDispute(
       const {
         data: { publicUrl },
       } = admin.storage
-        .from("provider-documents")
+        .from("dispute-evidence")
         .getPublicUrl(uploadData.path);
 
       evidenceUrls.push(publicUrl);

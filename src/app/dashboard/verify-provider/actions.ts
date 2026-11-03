@@ -17,6 +17,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createSignedUrl } from "@/lib/storage/signed-url";
 import { revalidatePath } from "next/cache";
 import { sendOTP } from "@/lib/sms";
 import { notifyAdminNewVerificationSubmission } from "@/lib/notifications/triggers";
@@ -455,10 +456,12 @@ export async function uploadVerificationDocument(
       return { success: false, error: "Failed to upload file" };
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = admin.storage
-      .from("provider-documents")
-      .getPublicUrl(data.path);
+    // provider-documents is PRIVATE (KYC). Persist the storage PATH and mint a
+    // short-lived signed URL for the immediate in-form preview. Never
+    // getPublicUrl() here: it would 404, and flipping the bucket public to
+    // "fix" that would expose every identity document in it.
+    const documentPath = data.path;
+    const previewUrl = await createSignedUrl("provider-documents", documentPath);
 
     // Record in provider_documents table (non-blocking — table may not exist yet)
     const { error: docInsertError } = await admin
@@ -466,7 +469,7 @@ export async function uploadVerificationDocument(
       .insert({
         provider_id: providerId,
         document_type: documentType,
-        document_url: publicUrl,
+        document_url: documentPath,
         status: "pending",
       });
 
@@ -475,7 +478,7 @@ export async function uploadVerificationDocument(
       console.warn("provider_documents insert skipped:", docInsertError.message);
     }
 
-    return { success: true, url: publicUrl };
+    return { success: true, url: previewUrl ?? undefined };
 
   } catch (error) {
     console.error("Error in uploadVerificationDocument:", error);

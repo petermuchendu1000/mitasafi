@@ -201,7 +201,7 @@ export async function uploadCustomerAvatar(
 
     // Upload to storage (upsert to overwrite existing)
     const { error: uploadError } = await admin.storage
-      .from("provider-documents")
+      .from("avatars")
       .upload(filePath, file, {
         upsert: true,
         contentType: file.type,
@@ -215,7 +215,7 @@ export async function uploadCustomerAvatar(
     // Get the public URL
     const {
       data: { publicUrl },
-    } = admin.storage.from("provider-documents").getPublicUrl(filePath);
+    } = admin.storage.from("avatars").getPublicUrl(filePath);
 
     // Update profile
     const { error: updateError } = await admin

@@ -14,6 +14,7 @@
 // =============================================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createSignedUrl } from "@/lib/storage/signed-url";
 import { getCachedUser } from "@/lib/cache/queries";
 import { revalidatePath } from "next/cache";
 import {
@@ -58,7 +59,13 @@ export interface VerificationQueueResult {
 export interface VerificationDocument {
   id: string;
   documentType: string;
-  documentUrl: string;
+  /**
+   * Short-lived signed URL for the stored object, or null when it could not be
+   * signed (missing object, storage error). The underlying column holds a
+   * storage PATH, not a URL, because provider-documents is a private bucket.
+   * Consumers must render a placeholder for null rather than an <img src="">.
+   */
+  documentUrl: string | null;
   status: string;
   rejectionReason: string | null;
   reviewedAt: string | null;
@@ -339,16 +346,18 @@ export async function getVerificationDetail(
       userId: provider.user_id,
       createdAt: provider.created_at ?? new Date().toISOString(),
       verificationLevel: (profile as { verification_level?: string })?.verification_level || null,
-      documents: (docs ?? []).map((d) => ({
+      documents: await Promise.all((docs ?? []).map(async (d) => ({
         id: d.id,
         documentType: d.document_type,
-        documentUrl: d.document_url,
+        // document_url holds a storage PATH for the private KYC bucket.
+        // Signed at read time; null renders as a placeholder.
+        documentUrl: await createSignedUrl("provider-documents", d.document_url),
         status: d.status,
         rejectionReason: d.rejection_reason,
         reviewedAt: (d as Record<string, unknown>).reviewed_at as string | null ?? null,
         reviewedBy: (d as Record<string, unknown>).reviewed_by as string | null ?? null,
         createdAt: d.created_at,
-      })),
+      }))),
     };
 
     return { data: detail, error: null };

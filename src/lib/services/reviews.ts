@@ -1084,7 +1084,7 @@ export async function uploadReviewPhoto(
     const fileName = `review-photos/${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
 
     const { data, error: uploadError } = await admin.storage
-      .from("provider-documents")
+      .from("provider-public")
       .upload(fileName, file, {
         contentType: file.type,
         upsert: false,
@@ -1097,7 +1097,7 @@ export async function uploadReviewPhoto(
 
     const {
       data: { publicUrl },
-    } = admin.storage.from("provider-documents").getPublicUrl(data.path);
+    } = admin.storage.from("provider-public").getPublicUrl(data.path);
 
     return { success: true, url: publicUrl };
   } catch (err) {

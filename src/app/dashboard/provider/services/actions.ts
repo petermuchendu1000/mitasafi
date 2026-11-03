@@ -148,7 +148,7 @@ export async function uploadServiceImage(formData: FormData): Promise<ActionResu
     const fileName = `service-images/${providerId}/${serviceId}_${Date.now()}.${fileExt}`;
 
     const { data, error: uploadError } = await admin.storage
-      .from("provider-documents")
+      .from("provider-public")
       .upload(fileName, file, {
         contentType: file.type,
         upsert: false,
@@ -160,7 +160,7 @@ export async function uploadServiceImage(formData: FormData): Promise<ActionResu
     }
 
     const { data: { publicUrl } } = admin.storage
-      .from("provider-documents")
+      .from("provider-public")
       .getPublicUrl(data.path);
 
     return { success: true, data: { url: publicUrl } };
@@ -196,7 +196,7 @@ export async function deleteServiceImage(publicUrl: string): Promise<ActionResul
 
     const admin = createAdminClient();
     const { error: deleteError } = await admin.storage
-      .from("provider-documents")
+      .from("provider-public")
       .remove([storagePath]);
 
     if (deleteError) {
@@ -483,7 +483,7 @@ export async function deleteProviderService(providerServiceId: string): Promise<
         .filter((p): p is string => p !== null);
 
       if (paths.length > 0) {
-        await admin.storage.from("provider-documents").remove(paths);
+        await admin.storage.from("provider-public").remove(paths);
       }
     }
 

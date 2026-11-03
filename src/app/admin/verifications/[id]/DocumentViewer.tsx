@@ -22,7 +22,8 @@ interface DocumentViewerProps {
   document: {
     id: string;
     documentType: string;
-    documentUrl: string;
+    /** Short-lived signed URL, or null when the object could not be signed. */
+    documentUrl: string | null;
     status: string;
     rejectionReason: string | null;
     reviewedAt: string | null;
@@ -53,8 +54,12 @@ const statusConfig: Record<
 
 export function DocumentViewer({ document: doc }: DocumentViewerProps) {
   const [showLightbox, setShowLightbox] = useState(false);
-  const isImage = /\.(jpg|jpeg|png|webp|gif|svg)(\?|$)/i.test(doc.documentUrl);
-  const isPdf = /\.pdf(\?|$)/i.test(doc.documentUrl);
+  // provider-documents is a private bucket: documentUrl is a short-lived signed
+  // URL minted at read time, and is null when signing failed (missing object or
+  // storage error). Render a placeholder rather than an empty <img src="">.
+  const url = doc.documentUrl;
+  const isImage = !!url && /\.(jpg|jpeg|png|webp|gif|svg)(\?|$)/i.test(url);
+  const isPdf = !!url && /\.pdf(\?|$)/i.test(url);
 
   const statusCfg = statusConfig[doc.status] ?? statusConfig.pending;
   const StatusIcon = statusCfg.icon;
@@ -71,7 +76,7 @@ export function DocumentViewer({ document: doc }: DocumentViewerProps) {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={doc.documentUrl}
+                src={url}
                 alt={doc.documentType}
                 className="w-full h-full object-contain"
               />
@@ -80,7 +85,7 @@ export function DocumentViewer({ document: doc }: DocumentViewerProps) {
             <div className="flex flex-col items-center justify-center h-full gap-2">
               <FileText className="w-12 h-12 text-gray-400" />
               <a
-                href={doc.documentUrl}
+                href={url ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700"
@@ -88,11 +93,16 @@ export function DocumentViewer({ document: doc }: DocumentViewerProps) {
                 Open PDF <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
+          ) : !url ? (
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+              <ImageIcon className="w-12 h-12 text-gray-300" />
+              <span className="text-sm text-gray-500">Document unavailable</span>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-2">
               <ImageIcon className="w-12 h-12 text-gray-400" />
               <a
-                href={doc.documentUrl}
+                href={url ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700"
@@ -163,7 +173,7 @@ export function DocumentViewer({ document: doc }: DocumentViewerProps) {
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={doc.documentUrl}
+            src={url}
             alt={doc.documentType}
             className="max-w-full max-h-[90vh] object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}

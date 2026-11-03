@@ -407,7 +407,7 @@ export async function uploadProfilePhoto(formData: FormData): Promise<{
     const fileName = `profile-photos/${provider.id}/${Date.now()}.${fileExt}`;
 
     const { data, error: uploadError } = await admin.storage
-      .from("provider-documents")
+      .from("provider-public")
       .upload(fileName, file, {
         contentType: file.type,
         upsert: false,
@@ -419,7 +419,7 @@ export async function uploadProfilePhoto(formData: FormData): Promise<{
     }
 
     const { data: { publicUrl } } = admin.storage
-      .from("provider-documents")
+      .from("provider-public")
       .getPublicUrl(data.path);
 
     // Update the profile_photo_url in the database
