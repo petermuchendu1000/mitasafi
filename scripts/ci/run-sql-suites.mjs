@@ -1,0 +1,162 @@
+#!/usr/bin/env node
+/**
+ * Run the SQL regression suites in supabase/tests and fail the build on any
+ * failing assertion.
+ *
+ * WHY THIS EXISTS RATHER THAN `psql -f each-file`:
+ *
+ * Every suite deliberately ends with `RAISE EXCEPTION 'X_RESULT pass=N fail=M ...'`.
+ * The exception is how the suite forces its fixtures to roll back, so psql
+ * ALWAYS exits non-zero, for a passing run and a failing run alike. Wiring
+ * these to a plain `psql -f` step gives a check that can never pass; inverting
+ * it with `|| true` gives a check that can never fail. Both are worthless.
+ *
+ * So the contract is explicit:
+ *   - the suite MUST emit a `..._RESULT pass=<n> fail=<m>` line, or it is
+ *     treated as a failure (it did not run, or it died before reporting)
+ *   - fail > 0 is a failure
+ *   - pass == 0 is a failure (a suite that asserts nothing is not a suite)
+ *
+ * Run:   node scripts/ci/run-sql-suites.mjs "$DATABASE_URL"
+ * Check: node scripts/ci/run-sql-suites.mjs --self-test
+ */
+
+import { execFileSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const SUITE_DIR = "supabase/tests";
+
+/**
+ * Extract the verdict from a suite's combined output.
+ *
+ * Returns { pass, fail } or null when no verdict line is present. Null is a
+ * failure, never a pass: a suite that produced no verdict did not run.
+ */
+export function parseVerdict(output) {
+  const m = /(?:^|\s)(?:[A-Z0-9_]*RESULT)\s+pass=(\d+)\s+fail=(\d+)/.exec(output);
+  if (!m) return null;
+  return { pass: Number(m[1]), fail: Number(m[2]) };
+}
+
+/** A suite passes only if it reported a verdict, asserted something, and failed nothing. */
+export function isPass(verdict) {
+  return verdict !== null && verdict.fail === 0 && verdict.pass > 0;
+}
+
+function selfTest() {
+  // Proves the parser can FAIL. If these ever all pass trivially, the runner is
+  // lying and every red build would look green.
+  const cases = [
+    ["CAPACITY_RESULT pass=8 fail=0\nPASS C1 ...", { pass: 8, fail: 0 }, true],
+    ["SUITE_RESULT pass=15 fail=0", { pass: 15, fail: 0 }, true],
+    ["RESULT pass=19 fail=0", { pass: 19, fail: 0 }, true],
+    ["MUTANT_RESULT pass=6 fail=2\nFAIL C3 ...", { pass: 6, fail: 2 }, false],
+    ["RECOVERY_RESULT pass=0 fail=0", { pass: 0, fail: 0 }, false], // asserted nothing
+    ["ERROR:  relation does not exist", null, false],              // never ran
+    ["", null, false],                                             // no output
+    ["psql: connection refused", null, false],                     // no database
+  ];
+
+  let bad = 0;
+  for (const [output, expectedVerdict, expectedPass] of cases) {
+    const v = parseVerdict(output);
+    const okVerdict = JSON.stringify(v) === JSON.stringify(expectedVerdict);
+    const okPass = isPass(v) === expectedPass;
+    if (!okVerdict || !okPass) {
+      bad++;
+      console.error(
+        `  SELF-TEST FAIL  input=${JSON.stringify(output.slice(0, 40))} ` +
+          `verdict=${JSON.stringify(v)} (want ${JSON.stringify(expectedVerdict)}) ` +
+          `pass=${isPass(v)} (want ${expectedPass})`
+      );
+    }
+  }
+  if (bad) {
+    console.error(`self-test: ${bad} case(s) wrong`);
+    process.exit(1);
+  }
+  console.log(`self-test: ${cases.length}/${cases.length} ok — the parser accepts passes and rejects failures, missing verdicts and empty suites`);
+}
+
+function main() {
+  const arg = process.argv[2];
+
+  if (arg === "--self-test") {
+    selfTest();
+    return;
+  }
+
+  const dbUrl = arg || process.env.DATABASE_URL;
+  if (!dbUrl) {
+    console.error("usage: run-sql-suites.mjs <DATABASE_URL>   (or set DATABASE_URL)");
+    process.exit(2);
+  }
+
+  const files = readdirSync(SUITE_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
+
+  if (files.length === 0) {
+    console.error(`No suites found in ${SUITE_DIR}. Refusing to report success.`);
+    process.exit(1);
+  }
+
+  let failed = 0;
+  let totalPass = 0;
+  let totalFail = 0;
+
+  for (const file of files) {
+    const path = join(SUITE_DIR, file);
+    let output = "";
+    try {
+      // psql exits non-zero because each suite raises to force a rollback, so
+      // the exit code is deliberately ignored. The verdict line is the signal.
+      output = execFileSync("psql", [dbUrl, "-v", "ON_ERROR_STOP=0", "-f", path], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (err) {
+      output = `${err.stdout ?? ""}\n${err.stderr ?? ""}`;
+    }
+
+    const verdict = parseVerdict(output);
+    if (isPass(verdict)) {
+      totalPass += verdict.pass;
+      console.log(`  PASS  ${file.padEnd(36)} ${verdict.pass} assertions`);
+    } else {
+      failed++;
+      if (verdict === null) {
+        console.log(`  FAIL  ${file.padEnd(36)} no verdict line — the suite did not run`);
+        console.log(
+          output
+            .split("\n")
+            .filter((l) => /ERROR|FATAL|psql:/.test(l))
+            .slice(0, 6)
+            .map((l) => `          ${l.trim()}`)
+            .join("\n")
+        );
+      } else {
+        totalPass += verdict.pass;
+        totalFail += verdict.fail;
+        console.log(`  FAIL  ${file.padEnd(36)} ${verdict.fail} failing assertion(s)`);
+        console.log(
+          output
+            .split("\n")
+            .filter((l) => l.includes("FAIL"))
+            .slice(0, 10)
+            .map((l) => `          ${l.trim()}`)
+            .join("\n")
+        );
+      }
+    }
+  }
+
+  console.log(
+    `\n${files.length - failed}/${files.length} suites passed ` +
+      `(${totalPass} assertions passed, ${totalFail} failed)`
+  );
+  process.exit(failed === 0 ? 0 : 1);
+}
+
+main();

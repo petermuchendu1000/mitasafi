@@ -1,0 +1,148 @@
+name: CI
+
+# Until this existed, nothing ran the tests. 541 jest tests and 8 SQL suites --
+# including the regression proofs for several SEV-0 money and security defects
+# -- were executed only when someone remembered to run them by hand. A single
+# careless commit could silently reopen any of them.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # One run per branch; a new push cancels the previous run.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Types and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # `npm ci` rather than `npm install`: it fails on a lockfile that does not
+      # match package.json, which is itself a check worth having.
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Tests
+        run: npx jest --ci --runInBand
+
+      # The SQL suite runner's own parser, checked before it is trusted to
+      # report on anything. It ends in a deliberate RAISE, so a careless harness
+      # would read every suite as either always-failing or always-passing.
+      - name: SQL runner self-test
+        run: node scripts/ci/run-sql-suites.mjs --self-test
+
+  database:
+    name: Migrations and SQL suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mitasafi_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/mitasafi_ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install psql client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      # Creates the auth/storage schemas, the three client roles and the
+      # extensions the migrations assume Supabase has provisioned.
+      - name: Bootstrap the Supabase surface
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/ci/bootstrap.sql
+
+      # Applies every migration in filename order, from nothing. This is a real
+      # check in its own right: migrations have been applied to the live project
+      # in a different order during development, so "the ledger matches" is NOT
+      # evidence that a clean-room apply works. If two migrations have an
+      # ordering dependency, this is where it surfaces.
+      #
+      # 00000000000000_reset_database.sql is skipped deliberately: it is a
+      # DROP ... CASCADE loop that sorts first and would tear down the schema
+      # the rest of the run depends on.
+      - name: Apply migrations from scratch
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          applied=0
+          for f in supabase/migrations/*.sql; do
+            base="$(basename "$f")"
+            # Skip rules MIRROR scratchpad/apply-migrations.js exactly: the
+            # reset script, and files whose NAME BEGINS WITH _skip_ or _test_.
+            # Prefix, not infix -- 20260109120005_test_enforcement.sql and
+            # 20260109120021_test_service_type_immutability.sql contain "_test_"
+            # but ARE applied to the live project. An infix pattern would make
+            # CI validate a different schema than production runs, which is
+            # worse than no check.
+            case "$base" in
+              00000000000000_reset_database.sql) echo "skip  $base"; continue ;;
+              _skip_*|_test_*)                   echo "skip  $base"; continue ;;
+            esac
+            echo "apply $base"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f"
+            applied=$((applied + 1))
+          done
+          echo "applied $applied migrations"
+          # A run that applied nothing must not report success.
+          test "$applied" -gt 0
+          # And it must apply EVERY non-skipped migration. If these diverge, CI
+          # is validating a schema the production project does not have.
+          expected=$(ls supabase/migrations/*.sql | grep -vcE '/(00000000000000_reset_database|_skip_|_test_)')
+          echo "expected $expected"
+          test "$applied" -eq "$expected"
+
+      - name: SQL regression suites
+        run: node scripts/ci/run-sql-suites.mjs "$DATABASE_URL"
+
+      # Re-applying must be safe. A migration that only works once cannot be
+      # replayed into another environment, and several of these are
+      # CREATE OR REPLACE over live objects.
+      - name: Migrations are idempotent
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in supabase/migrations/*.sql; do
+            base="$(basename "$f")"
+            case "$base" in
+              00000000000000_reset_database.sql|_skip_*|_test_*) continue ;;
+            esac
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+          echo "all migrations re-applied cleanly"

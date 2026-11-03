@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+# Fast local gate. The authoritative gate is CI (.github/workflows/ci.yml);
+# this exists to catch the cheap mistakes before they cost a CI round trip.
+#
+# husky was installed and `lint-staged` configured, but no hook file existed,
+# so neither ever ran. That is why this file is here.
+#
+# Deliberately does NOT run the test suite: jest is ~15s and so is
+# `--findRelatedTests` on anything non-trivial, which is too slow to pay on
+# every commit now that CI runs the full suite on every push. Typecheck is 4s
+# and catches the breakage that actually blocks a colleague.
+
+set -e
+
+# Formats only the files being committed.
+npx lint-staged
+
+# 4s, and it has repeatedly caught real breakage in this repo -- a renamed
+# export, a nullable type reaching a consumer, an RPC signature that drifted
+# from the database after a migration.
+echo "pre-commit: typechecking..."
+npx tsc --noEmit

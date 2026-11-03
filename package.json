@@ -9,8 +9,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "lint:fix": "next lint --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -19,7 +19,9 @@
     "db:gen-types": "npx supabase gen types typescript --project-id qnlhhojnagwvqzsqvmuz > src/types/database.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "test:sql": "node scripts/ci/run-sql-suites.mjs",
+    "test:sql:self": "node scripts/ci/run-sql-suites.mjs --self-test"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
@@ -79,7 +81,6 @@
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
       "prettier --write"
     ],
     "*.{json,md,css}": [
