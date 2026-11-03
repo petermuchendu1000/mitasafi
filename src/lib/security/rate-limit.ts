@@ -141,14 +141,63 @@ export const authLimiter = createRateLimiter({
 // =============================================================================
 
 /**
- * Extract client IP from NextRequest (works behind proxies).
+ * Extract the client IP for rate-limiting purposes.
+ *
+ * SECURITY FIX: this read `x-forwarded-for.split(",")[0]` and then fell back to
+ * `x-real-ip`. Both are positions an attacker controls. In a proxy chain the
+ * untrusted client value is PREPENDED and each proxy APPENDS what it actually
+ * saw, so element [0] is pure client input — which meant every rate limit in
+ * the app could be evaded by sending a different `x-forwarded-for` on each
+ * request, and `x-real-ip` could be set freely on any platform that does not
+ * overwrite it. Rate limits that an attacker can reset at will are not limits.
+ *
+ * We now take the entry our own edge appended: the RIGHTMOST one. Vercel (this
+ * repo's platform) and Fly.io each append exactly one entry, hence hop count 1.
+ * If we cannot identify a client we return "unknown", which buckets all
+ * unidentifiable callers TOGETHER — deliberately the pessimistic choice for a
+ * limiter, since the alternative hands each forged header its own fresh quota.
+ *
+ * The payment callback path needs a stricter decision than a limiter does
+ * (allow/deny against a provider whitelist rather than bucketing), and has its
+ * own hardened implementation with CIDR matching and an opt-in platform header
+ * in `@/lib/payments/mpesa-config`. Keep the two consistent if you change either.
  */
+const TRUSTED_PROXY_HOPS = 1;
+const MAX_XFF_ENTRIES = 64;
+
 export function getClientIp(headers: Headers): string {
-  return (
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headers.get("x-real-ip") ||
-    "unknown"
-  );
+  const forwarded = headers.get("x-forwarded-for");
+  if (!forwarded || !forwarded.trim()) {
+    return "unknown";
+  }
+
+  const entries = forwarded
+    .split(",")
+    .map((e) => e.trim())
+    .filter((e) => e.length > 0);
+
+  // An absurdly long chain is an attempt to push the trusted position out of
+  // range; refuse to guess.
+  if (entries.length === 0 || entries.length > MAX_XFF_ENTRIES) {
+    return "unknown";
+  }
+
+  const index = entries.length - TRUSTED_PROXY_HOPS;
+  if (index < 0) {
+    // Fewer entries than our edge should have written: not a chain we vouched for.
+    return "unknown";
+  }
+
+  // Strip an IPv6-mapped IPv4 prefix and any :port suffix so the same caller
+  // always lands in the same bucket.
+  const raw = entries[index];
+  const normalized = raw.replace(/^::ffff:/i, "").replace(/^\[|\]$/g, "");
+  const withoutPort =
+    normalized.includes(".") && normalized.includes(":")
+      ? normalized.split(":")[0]
+      : normalized;
+
+  return withoutPort || "unknown";
 }
 
 /**
