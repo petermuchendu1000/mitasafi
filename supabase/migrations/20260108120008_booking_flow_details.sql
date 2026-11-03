@@ -350,7 +350,9 @@ SELECT
   bpd.budget_range_max,
   
   -- Personal details
-  bpsd.service_location_id,
+  -- Aliased: bookings.service_location_id (primary location anchor) is already
+  -- exposed via b.* above, so an unaliased name here collides (42701).
+  bpsd.service_location_id as personal_service_location_id,
   bpsd.duration_hours,
   bpsd.emergency_contact_name,
   bpsd.emergency_contact_phone,
