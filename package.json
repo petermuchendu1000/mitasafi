@@ -16,7 +16,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:supabase": "npx ts-node scripts/test-supabase-connection.ts",
-    "db:gen-types": "npx supabase gen types typescript --project-id syoolvgoaqnckgmngvse > src/types/database.ts",
+    "db:gen-types": "npx supabase gen types typescript --project-id qnlhhojnagwvqzsqvmuz > src/types/database.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky install"
