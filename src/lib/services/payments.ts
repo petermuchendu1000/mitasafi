@@ -23,7 +23,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCachedUser, getCachedProviderId } from "@/lib/cache/queries";
 import { initiateStkPush, queryStkPushStatus } from "@/lib/payments/mpesa";
-import { calculateCommission } from "@/lib/payments/commission";
+import { calculateCommission, loadCommissionConfig } from "@/lib/payments/commission";
 import {
   notifyProviderPaymentReceived,
   notifyCustomerPaymentConfirmed,
@@ -184,7 +184,30 @@ export async function initiatePayment(
     }
 
     // 4. Calculate commission
-    const commission = calculateCommission(booking.agreed_price);
+    // Price from the database-backed, effective-dated commission config rather
+    // than a constant compiled into the deploy. Previously rate/floor/cap lived
+    // in commission.ts, so changing a fee meant a redeploy, and a redeploy
+    // mid-flight silently repriced bookings already agreed with the customer.
+    //
+    // loadCommissionConfig never throws: if the config table is unreachable it
+    // falls back to the compiled-in values, which are identical to the seeded
+    // row, so pricing cannot change and payments cannot be taken down by a
+    // lookup failure. A fallback is logged loudly because the resulting payment
+    // cannot be attributed to a config row.
+    const {
+      config: commissionConfig,
+      usedFallback: commissionUsedFallback,
+      reason: commissionFallbackReason,
+    } = await loadCommissionConfig(admin);
+
+    if (commissionUsedFallback) {
+      console.error(
+        "[Payments] commission_config unavailable; priced with the compiled-in fallback:",
+        commissionFallbackReason
+      );
+    }
+
+    const commission = calculateCommission(booking.agreed_price, commissionConfig);
 
     // 5. Duplicate prevention.
     //
@@ -235,6 +258,22 @@ export async function initiatePayment(
           commission_rate: commission.effectiveRate,
           booking_agreed_price: booking.agreed_price,
         },
+        // Record WHICH config priced this booking, so the fee is reproducible
+        // forensically instead of being recomputed against whatever config
+        // happens to be current. All five fields or none: the
+        // booking_payments_commission_snapshot_complete CHECK rejects a partial
+        // snapshot, so when the fallback priced it (configId null) they are all
+        // omitted and the commission_payment_audit view reports the row as
+        // snapshot_missing rather than silently appearing attributable.
+        ...(commission.configId
+          ? {
+              commission_config_id: commission.configId,
+              commission_rate_bps: commission.rateBps,
+              commission_min_fee_cents: commission.minimumFeeCents,
+              commission_max_fee_cents: commission.maximumFeeCents,
+              commission_min_job_amount_cents: commission.minJobAmountCents,
+            }
+          : {}),
       })
       .select("id")
       .single();

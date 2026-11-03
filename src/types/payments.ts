@@ -73,6 +73,13 @@ export interface Payment {
   metadata: Record<string, unknown> | null;
   idempotency_key: string | null;
 
+  // Commission snapshot (see CommissionSnapshot)
+  commission_config_id?: string;
+  commission_rate_bps?: number;
+  commission_min_fee_cents?: number;
+  commission_max_fee_cents?: number | null;
+  commission_min_job_amount_cents?: number;
+
   // Timestamps
   initiated_at: string;
   confirmed_at: string | null;
@@ -98,6 +105,11 @@ export interface PaymentInsert {
   status?: PaymentTransactionStatus;
   idempotency_key?: string | null;
   metadata?: Record<string, unknown>;
+  commission_config_id?: string;
+  commission_rate_bps?: number;
+  commission_min_fee_cents?: number;
+  commission_max_fee_cents?: number | null;
+  commission_min_job_amount_cents?: number;
 }
 
 /** Row shape for the `provider_payouts` table. */
@@ -306,14 +318,58 @@ export interface PayoutRequestFormData {
 // COMMISSION CONFIG
 // =============================================================================
 
-/** Platform commission configuration. */
+/**
+ * Platform commission configuration.
+ *
+ * Mirrors a row of `commission_config` (see
+ * 20260321000000_commission_config.sql). All money is in INTEGER CENTS and the
+ * rate is in INTEGER BASIS POINTS so that the TypeScript and SQL
+ * implementations can do byte-identical integer arithmetic.
+ *
+ * Note for anyone porting old code: the previous shape used `rate: 0.10`,
+ * `minimumFee: 50`, `maximumFee: 5000` in major units, and treated
+ * `maximumFee > 0` as "cap enabled" — which made a genuine zero cap
+ * unexpressible. "No cap" is now `maximumFeeCents: null`.
+ */
 export interface CommissionConfig {
-  /** Commission rate as a decimal (e.g., 0.10 for 10%). */
-  rate: number;
-  /** Minimum platform fee in KES. */
-  minimumFee: number;
-  /** Maximum platform fee in KES (0 = no cap). */
-  maximumFee: number;
+  /** `commission_config.id`, or null when the compiled-in fallback is in use. */
+  id: string | null;
+  /** `commission_config.version` — monotonic per (scope, currency). */
+  version: number;
+  /** Scope key this config applies to (currently always "global"). */
+  scope: string;
+  /** Commission rate in integer basis points (1000 = 10.00%). */
+  rateBps: number;
+  /** Minimum platform fee, in integer cents (5000 = KES 50.00). */
+  minimumFeeCents: number;
+  /** Maximum platform fee, in integer cents. null = NO CAP (never 0 as a sentinel). */
+  maximumFeeCents: number | null;
+  /** Totals strictly below this (integer cents) are not commissioned. 0 = no threshold. */
+  minJobAmountCents: number;
   /** Currency code. */
   currency: string;
+}
+
+/** Raw `commission_config` row as returned by PostgREST / the active-config RPC. */
+export interface CommissionConfigRow {
+  id: string;
+  scope: string;
+  currency: string;
+  version: number | string;
+  rate_bps: number | string;
+  min_fee_cents: number | string;
+  max_fee_cents: number | string | null;
+  min_job_amount_cents: number | string;
+}
+
+/**
+ * Commission snapshot written onto a `booking_payments` row so that any fee can
+ * be reproduced forensically from the exact config that priced it.
+ */
+export interface CommissionSnapshot {
+  commission_config_id: string;
+  commission_rate_bps: number;
+  commission_min_fee_cents: number;
+  commission_max_fee_cents: number | null;
+  commission_min_job_amount_cents: number;
 }

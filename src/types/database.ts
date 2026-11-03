@@ -711,6 +711,11 @@ export type Database = {
           amount_mismatch: boolean
           booking_id: string
           claimed_amount: number | null
+          commission_config_id: string | null
+          commission_max_fee_cents: number | null
+          commission_min_fee_cents: number | null
+          commission_min_job_amount_cents: number | null
+          commission_rate_bps: number | null
           confirmed_at: string | null
           created_at: string
           currency: string
@@ -744,6 +749,11 @@ export type Database = {
           amount_mismatch?: boolean
           booking_id: string
           claimed_amount?: number | null
+          commission_config_id?: string | null
+          commission_max_fee_cents?: number | null
+          commission_min_fee_cents?: number | null
+          commission_min_job_amount_cents?: number | null
+          commission_rate_bps?: number | null
           confirmed_at?: string | null
           created_at?: string
           currency?: string
@@ -777,6 +787,11 @@ export type Database = {
           amount_mismatch?: boolean
           booking_id?: string
           claimed_amount?: number | null
+          commission_config_id?: string | null
+          commission_max_fee_cents?: number | null
+          commission_min_fee_cents?: number | null
+          commission_min_job_amount_cents?: number | null
+          commission_rate_bps?: number | null
           confirmed_at?: string | null
           created_at?: string
           currency?: string
@@ -825,6 +840,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings_with_legacy_busy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_payments_commission_config_id_fkey"
+            columns: ["commission_config_id"]
+            isOneToOne: false
+            referencedRelation: "commission_config"
             referencedColumns: ["id"]
           },
           {
@@ -1944,6 +1966,51 @@ export type Database = {
           max_categories_individual?: number | null
           name?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      commission_config: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          effective: unknown
+          id: string
+          max_fee_cents: number | null
+          min_fee_cents: number
+          min_job_amount_cents: number
+          notes: string | null
+          rate_bps: number
+          scope: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective?: unknown
+          id?: string
+          max_fee_cents?: number | null
+          min_fee_cents?: number
+          min_job_amount_cents?: number
+          notes?: string | null
+          rate_bps: number
+          scope?: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective?: unknown
+          id?: string
+          max_fee_cents?: number | null
+          min_fee_cents?: number
+          min_job_amount_cents?: number
+          notes?: string | null
+          rate_bps?: number
+          scope?: string
+          version?: number
         }
         Relationships: []
       }
@@ -4088,6 +4155,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "provider_wallet_ledger_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "commission_payment_audit"
+            referencedColumns: ["payment_id"]
+          },
+          {
             foreignKeyName: "provider_wallet_ledger_payout_id_fkey"
             columns: ["payout_id"]
             isOneToOne: false
@@ -6159,6 +6233,83 @@ export type Database = {
           },
         ]
       }
+      commission_payment_audit: {
+        Row: {
+          booking_id: string | null
+          commission_config_id: string | null
+          expected_fee_cents: number | null
+          fee_matches: boolean | null
+          parts_sum: boolean | null
+          payment_id: string | null
+          snapshot_missing: boolean | null
+          status:
+            | Database["public"]["Enums"]["payment_transaction_status"]
+            | null
+          stored_fee_cents: number | null
+          stored_provider_cents: number | null
+          total_cents: number | null
+        }
+        Insert: {
+          booking_id?: string | null
+          commission_config_id?: string | null
+          expected_fee_cents?: never
+          fee_matches?: never
+          parts_sum?: never
+          payment_id?: string | null
+          snapshot_missing?: never
+          status?:
+            | Database["public"]["Enums"]["payment_transaction_status"]
+            | null
+          stored_fee_cents?: never
+          stored_provider_cents?: never
+          total_cents?: never
+        }
+        Update: {
+          booking_id?: string | null
+          commission_config_id?: string | null
+          expected_fee_cents?: never
+          fee_matches?: never
+          parts_sum?: never
+          payment_id?: string | null
+          snapshot_missing?: never
+          status?:
+            | Database["public"]["Enums"]["payment_transaction_status"]
+            | null
+          stored_fee_cents?: never
+          stored_provider_cents?: never
+          total_cents?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_full_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_with_legacy_busy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_payments_commission_config_id_fkey"
+            columns: ["commission_config_id"]
+            isOneToOne: false
+            referencedRelation: "commission_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_capacity_status: {
         Row: {
           available_for_regular: number | null
@@ -6352,6 +6503,60 @@ export type Database = {
         }[]
       }
       cleanup_old_notifications: { Args: never; Returns: number }
+      commission_breakdown: {
+        Args: {
+          p_at?: string
+          p_currency?: string
+          p_scope?: string
+          p_total: number
+        }
+        Returns: {
+          config_id: string
+          config_version: number
+          currency: string
+          max_fee_cents: number
+          min_fee_cents: number
+          min_job_amount_cents: number
+          platform_fee_cents: number
+          provider_amount_cents: number
+          rate_bps: number
+          total_cents: number
+        }[]
+      }
+      commission_config_active: {
+        Args: { p_at?: string; p_currency?: string; p_scope?: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          effective: unknown
+          id: string
+          max_fee_cents: number | null
+          min_fee_cents: number
+          min_job_amount_cents: number
+          notes: string | null
+          rate_bps: number
+          scope: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "commission_config"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      commission_fee_cents: {
+        Args: {
+          p_max_fee_cents: number
+          p_min_fee_cents: number
+          p_min_job_amount_cents?: number
+          p_rate_bps: number
+          p_total_cents: number
+        }
+        Returns: number
+      }
+      commission_to_cents: { Args: { p_amount: number }; Returns: number }
       complete_commitment: { Args: { p_booking_id: string }; Returns: boolean }
       create_booking_with_capacity_check: {
         Args: {

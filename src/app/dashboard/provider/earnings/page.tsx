@@ -28,6 +28,10 @@ import {
   getProviderTransactions,
 } from "@/lib/services/payments";
 import type { EarningsTransaction } from "@/types/payments";
+import {
+  formatCommissionRate,
+  getCommissionConfig,
+} from "@/lib/payments/commission";
 
 export const metadata: Metadata = {
   title: "Earnings | MitaSafi Provider",
@@ -215,6 +219,12 @@ export default async function ProviderEarningsPage() {
 
   const hasTransactions = transactions.length > 0;
 
+  // The displayed rate comes from the commission config, never from a literal.
+  // getCommissionConfig() is the synchronous fallback, which mirrors the seeded
+  // commission_config row; see the note in src/lib/payments/commission.ts for
+  // the DB-backed read (it needs the service layer to pass the loaded config).
+  const commissionRate = formatCommissionRate(getCommissionConfig());
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -268,7 +278,7 @@ export default async function ProviderEarningsPage() {
           <div className="w-1 h-8 bg-gray-300 rounded-full" />
           <div>
             <p className="text-xs font-medium text-gray-600">
-              Platform commission: 10% on each completed job
+              Platform commission: {commissionRate} on each completed job
             </p>
             <p className="text-xs text-gray-400 mt-0.5">
               Total fees paid: {formatKES(summary.platformFeesTotal)} across{" "}
