@@ -1543,7 +1543,7 @@ export type Database = {
           service_id: string
           service_location_id: string | null
           service_type_id: string
-          status: Database["public"]["Enums"]["booking_status"] | null
+          status: Database["public"]["Enums"]["booking_status"]
           updated_at: string | null
         }
         Insert: {
@@ -1586,7 +1586,7 @@ export type Database = {
           service_id: string
           service_location_id?: string | null
           service_type_id: string
-          status?: Database["public"]["Enums"]["booking_status"] | null
+          status?: Database["public"]["Enums"]["booking_status"]
           updated_at?: string | null
         }
         Update: {
@@ -1629,7 +1629,7 @@ export type Database = {
           service_id?: string
           service_location_id?: string | null
           service_type_id?: string
-          status?: Database["public"]["Enums"]["booking_status"] | null
+          status?: Database["public"]["Enums"]["booking_status"]
           updated_at?: string | null
         }
         Relationships: [
@@ -6433,6 +6433,7 @@ export type Database = {
         Args: {
           p_busy_from: string
           p_busy_to: string
+          p_exclude_booking_id?: string
           p_is_emergency?: boolean
           p_provider_id: string
           p_service_id: string
@@ -6478,6 +6479,7 @@ export type Database = {
         Args: {
           p_busy_from: string
           p_busy_to: string
+          p_exclude_booking_id?: string
           p_is_emergency?: boolean
           p_provider_id: string
           p_service_id: string
