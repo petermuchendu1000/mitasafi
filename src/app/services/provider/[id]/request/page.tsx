@@ -116,7 +116,7 @@ export default async function BookingRequestPage({
     notFound();
   }
 
-  // Need service_type_id and default_booking_flow from the DB
+  // Need service_type_id and booking_flow from the DB
   const { data: serviceRow } = await supabase
     .from("services")
     .select(
@@ -126,7 +126,7 @@ export default async function BookingRequestPage({
       service_type_id,
       service_type:service_types!service_type_id (
         id,
-        default_booking_flow
+        booking_flow
       )
     `
     )
@@ -153,7 +153,7 @@ export default async function BookingRequestPage({
     providerServiceId: selectedPs.id,
     serviceId: serviceRow.id,
     serviceTypeId: serviceRow.service_type_id,
-    defaultBookingFlow: (serviceTypeData?.default_booking_flow ?? "standard") as BookingFlowType,
+    defaultBookingFlow: (serviceTypeData?.booking_flow ?? "standard") as BookingFlowType,
     name: selectedPs.service?.name || serviceRow.name || "Service",
     category: selectedPs.service?.subcategory?.category?.name || "",
     subcategory: selectedPs.service?.subcategory?.name || "",

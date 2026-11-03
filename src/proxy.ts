@@ -16,6 +16,11 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 import type { UserRole } from '@/types/db-helpers'
 import { PerformanceLogger } from '@/lib/performance/logger'
+import {
+  isPublicRoute,
+  isProtectedRoute,
+  isAuthRoute,
+} from '@/lib/security/route-access'
 
 // =============================================================================
 // SECURITY HEADERS
@@ -53,24 +58,8 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-// Routes that require authentication
-const protectedRoutes = ['/dashboard', '/settings']
 
-// Routes only for unauthenticated users
-const authRoutes = ['/login', '/signup']
 
-// Routes that NEVER need role checks (skip DB calls entirely)
-const publicRoutes = [
-  '/',
-  '/properties',
-  '/listings',
-  '/services',
-  '/service-providers',
-  '/landlords',
-  '/contact',
-  '/api/',
-  '/onboarding',
-]
 
 // Map URL role param to database role
 function mapRoleParam(roleParam: string): UserRole | null {
@@ -117,11 +106,11 @@ export async function proxy(request: NextRequest) {
   
   perf.start('route-check')
   // PERFORMANCE: Skip expensive operations for truly public routes
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
+  const isPublic = isPublicRoute(pathname)
   perf.end('route-check')
   
   // STRATEGY 3: For public routes, skip auth check entirely (no network calls!)
-  if (isPublicRoute) {
+  if (isPublic) {
     perf.start('public-route-bypass')
     const { supabaseResponse } = await updateSession(request, true) // skipAuthCheck = true
     perf.end('public-route-bypass')
@@ -137,12 +126,12 @@ export async function proxy(request: NextRequest) {
 
   // Check if route is protected
   perf.start('route-classification')
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
-  const isAuthRoute = authRoutes.some(route => pathname.startsWith(route))
+  const isProtected = isProtectedRoute(pathname)
+  const isAuth = isAuthRoute(pathname)
   perf.end('route-classification')
 
   // Unauthenticated user trying to access protected route
-  if (isProtectedRoute && !user) {
+  if (isProtected && !user) {
     perf.start('redirect-to-login')
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirectTo', pathname)
@@ -176,7 +165,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Authenticated user trying to access auth routes (login/signup)
-  if (isAuthRoute && user) {
+  if (isAuth && user) {
     perf.start('auth-route-logic')
     // Check if user has any active roles
     const roles = await getUserRoles()
@@ -244,7 +233,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Check role status for authenticated users on protected routes
-  if (isProtectedRoute && user) {
+  if (isProtected && user) {
     perf.start('protected-route-role-check')
     // PERFORMANCE: Reuse cached roles if already fetched, otherwise fetch
     const roles = await getUserRoles()

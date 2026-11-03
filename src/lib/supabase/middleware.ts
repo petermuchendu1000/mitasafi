@@ -1,63 +1,57 @@
 /**
  * Supabase Middleware Client
- * 
- * This client is used in Next.js middleware for:
- * - Session refresh
- * - Auth state management
- * - Protected route handling
- * 
- * PERFORMANCE OPTIMIZATIONS:
- * - Strategy 1: Local JWT verification (99% faster than network call)
- * - Strategy 2: In-memory session caching (30 second TTL)
- * - Strategy 3: Skip auth checks for public routes (handled in proxy.ts)
- * 
+ *
+ * Used by src/proxy.ts (Next.js 16 renamed middleware.ts -> proxy.ts) for:
+ * - Session/token refresh
+ * - Server-side authentication
+ *
+ * SECURITY NOTE — why this does not verify JWTs locally.
+ *
+ * A previous implementation verified the access token itself with
+ *   jwtVerify(token, process.env.SUPABASE_JWT_SECRET || NEXT_PUBLIC_SUPABASE_ANON_KEY)
+ * using HS256. That was an authentication bypass: the anon key is published in
+ * the browser bundle, and HS256 is symmetric, so anyone holding it could MINT a
+ * token for any `sub` and be accepted as that user, including an admin.
+ *
+ * It also cached sessions under `session:${token.substring(0, 32)}`. The first
+ * 32 characters of a Supabase JWT are the base64url-encoded header, which is
+ * identical for every token, so all users collided on one cache key and the
+ * first caller's identity was served to everyone else for 30 seconds.
+ *
+ * Supabase's documented server-side rule is to never trust an unvalidated
+ * cookie and never verify with a shared secret: call auth.getUser() (or
+ * auth.getClaims()), which validates against the Auth server.
+ * https://supabase.com/docs/guides/auth/server-side/nextjs
+ *
+ * getUser() is used rather than getClaims() because it is present across the
+ * pinned @supabase/supabase-js range. getClaims() is the newer call and
+ * verifies locally against cached public keys once asymmetric JWT signing keys
+ * are enabled for the project; migrating to it is a worthwhile follow-up.
+ *
  * @example
- * // In middleware.ts
  * import { updateSession } from '@/lib/supabase/middleware'
- * export async function middleware(request: NextRequest) {
- *   return await updateSession(request)
- * }
+ * const { supabaseResponse, user, supabase } = await updateSession(request)
  */
 
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { PerformanceLogger } from '@/lib/performance/logger'
-import { jwtVerify } from 'jose'
 
-// STRATEGY 2: In-memory session cache (30 second TTL)
-interface CachedSession {
-  user: any
-  expiresAt: number
-}
-
-const sessionCache = new Map<string, CachedSession>()
-
-// Simple cache cleanup on access (lazy cleanup)
-function cleanupExpiredSessions() {
-  const now = Date.now()
-  for (const [key, value] of sessionCache.entries()) {
-    if (value.expiresAt < now) {
-      sessionCache.delete(key)
-    }
-  }
-}
-
-export async function updateSession(request: NextRequest, skipAuthCheck = false) {
+/**
+ * Refresh the Supabase session and resolve the authenticated user.
+ *
+ * @param request - the incoming request
+ * @param skipRoleWork - advisory only. Token refresh ALWAYS runs, because
+ *   skipping it is what silently signs users out when the access token
+ *   expires. Callers may use this to skip their own downstream role lookups.
+ *   It deliberately no longer short-circuits this function.
+ */
+export async function updateSession(request: NextRequest, skipRoleWork = false) {
+  void skipRoleWork
   const perf = new PerformanceLogger('updateSession')
-  
-  // STRATEGY 3: For public routes, return immediately without any processing
-  if (skipAuthCheck) {
-    perf.start('skip-auth-fast-path')
-    const fastResponse = NextResponse.next({ request })
-    perf.end('skip-auth-fast-path')
-    perf.logSummary(50)
-    return { supabaseResponse: fastResponse, user: null, supabase: null as any }
-  }
-  
+
   perf.start('create-response')
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  let supabaseResponse = NextResponse.next({ request })
   perf.end('create-response')
 
   perf.start('create-supabase-client')
@@ -69,15 +63,24 @@ export async function updateSession(request: NextRequest, skipAuthCheck = false)
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+        setAll(
+          cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]
+        ) {
+          // Write refreshed cookies onto the request so Server Components see
+          // them, then rebuild the response and write them there too so the
+          // browser receives them. Returning a response that lacks these
+          // cookies signs the user out on the next request.
           cookiesToSet.forEach(({ name, value }: { name: string; value: string }) =>
             request.cookies.set(name, value)
           )
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }: { name: string; value: string; options?: Record<string, unknown> }) =>
-            supabaseResponse.cookies.set(name, value, options)
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(
+            ({
+              name,
+              value,
+              options,
+            }: { name: string; value: string; options?: Record<string, unknown> }) =>
+              supabaseResponse.cookies.set(name, value, options)
           )
         },
       },
@@ -85,81 +88,14 @@ export async function updateSession(request: NextRequest, skipAuthCheck = false)
   )
   perf.end('create-supabase-client')
 
-  let user: any = null
-
-  // STRATEGY 2: Check cache first
-  const cookies = request.cookies.getAll()
-  const accessTokenCookie = cookies.find(c => 
-    c.name.includes('access-token') || c.name.includes('access_token')
-  )
-  
-  if (accessTokenCookie) {
-    const cacheKey = `session:${accessTokenCookie.value.substring(0, 32)}` // Use first 32 chars as key
-    
-    // Lazy cleanup: remove expired entries when we access the cache
-    cleanupExpiredSessions()
-    
-    const cached = sessionCache.get(cacheKey)
-    
-    if (cached && cached.expiresAt > Date.now()) {
-      perf.start('cache-hit')
-      user = cached.user
-      perf.end('cache-hit', { cached: true })
-      perf.logSummary(50)
-      return { supabaseResponse, user, supabase }
-    }
-
-    // STRATEGY 1: Try local JWT verification first
-    perf.start('jwt-verify-local')
-    try {
-      const jwtSecret = process.env.SUPABASE_JWT_SECRET || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      const secret = new TextEncoder().encode(jwtSecret)
-      const { payload } = await jwtVerify(accessTokenCookie.value, secret, {
-        algorithms: ['HS256']
-      })
-      
-      // JWT is valid - extract user info
-      user = {
-        id: payload.sub,
-        email: payload.email,
-        // Add other fields from JWT payload as needed
-      }
-      
-      perf.end('jwt-verify-local', { method: 'local-jwt', userId: payload.sub })
-      
-      // Cache the session for 30 seconds
-      sessionCache.set(cacheKey, {
-        user,
-        expiresAt: Date.now() + 30000 // 30 seconds
-      })
-      
-      perf.logSummary(50)
-      return { supabaseResponse, user, supabase }
-      
-    } catch (jwtError) {
-      // JWT verification failed (expired or invalid) - fall back to network call
-      perf.end('jwt-verify-local', { method: 'jwt-failed', reason: 'invalid-or-expired' })
-    }
-  }
-
-  // Fallback: Network call to Supabase (only when JWT is invalid/expired)
-  perf.start('get-user-network')
+  // Single source of truth. Validates the token with the Auth server and
+  // refreshes it when needed, which is the reason this middleware exists.
+  perf.start('get-user')
   const {
-    data: { user: networkUser },
+    data: { user },
   } = await supabase.auth.getUser()
-  user = networkUser
-  perf.end('get-user-network', { hasUser: !!user, method: 'network-fallback' })
+  perf.end('get-user', { hasUser: !!user })
 
-  // Cache the result if we have a valid session
-  if (user && accessTokenCookie) {
-    const cacheKey = `session:${accessTokenCookie.value.substring(0, 32)}`
-    sessionCache.set(cacheKey, {
-      user,
-      expiresAt: Date.now() + 30000 // 30 seconds
-    })
-  }
-
-  // Log if session refresh is slow (>50ms)
   perf.logSummary(50)
 
   return { supabaseResponse, user, supabase }

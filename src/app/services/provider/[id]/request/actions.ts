@@ -8,7 +8,7 @@
 // Data flow:
 // 1. Authenticate caller → customer_id
 // 2. Resolve provider_services → services.id + services.service_type_id
-// 3. Look up service_types.default_booking_flow → booking_flow_type
+// 3. Look up service_types.booking_flow → booking_flow_type
 // 4. Optionally create a new location row
 // 5. INSERT into bookings (status = submitted)
 // 6. INSERT into booking_status_history (null → submitted)
@@ -132,7 +132,7 @@ export async function createBookingRequest(
           service_type_id,
           service_type:service_types!service_type_id (
             id,
-            default_booking_flow
+            booking_flow
           )
         )
       `
@@ -195,8 +195,8 @@ export async function createBookingRequest(
     let bookingFlowType: BookingFlowType = "standard";
     if (input.isEmergency) {
       bookingFlowType = "emergency";
-    } else if (serviceTypeData?.default_booking_flow) {
-      bookingFlowType = serviceTypeData.default_booking_flow as BookingFlowType;
+    } else if (serviceTypeData?.booking_flow) {
+      bookingFlowType = serviceTypeData.booking_flow as BookingFlowType;
     }
 
     // ── 4. Handle location ──

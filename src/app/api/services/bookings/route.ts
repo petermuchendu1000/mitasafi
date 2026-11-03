@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
           service_type_id,
           service_type:service_types!service_type_id (
             id,
-            default_booking_flow
+            booking_flow
           )
         )
       `
@@ -229,8 +229,8 @@ export async function POST(request: NextRequest) {
     let bookingFlowType: BookingFlowType = "standard";
     if (body.isEmergency) {
       bookingFlowType = "emergency";
-    } else if (serviceTypeData?.default_booking_flow) {
-      bookingFlowType = serviceTypeData.default_booking_flow as BookingFlowType;
+    } else if (serviceTypeData?.booking_flow) {
+      bookingFlowType = serviceTypeData.booking_flow as BookingFlowType;
     }
 
     // ── Handle location ──
