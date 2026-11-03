@@ -6385,6 +6385,10 @@ export type Database = {
       }
     }
     Functions: {
+      active_min_job_amount: {
+        Args: { p_at?: string; p_currency?: string; p_scope?: string }
+        Returns: number
+      }
       auto_confirm_completed_bookings: { Args: never; Returns: number }
       calculate_provider_profile_completion: {
         Args: { p_provider_id: string }
@@ -6685,6 +6689,7 @@ export type Database = {
       settle_booking_payment: {
         Args: {
           p_claimed_amount?: number
+          p_operator_id?: string
           p_payment_id: string
           p_receipt_number?: string
           p_result_code?: number

@@ -289,18 +289,99 @@ export async function processPaymentCallback(params: {
     } else {
       // ── FAILURE PATH ──
       //
-      // Recorded through fail_booking_payment, which compare-and-sets under a
-      // row lock so a late or forged failure can never downgrade a payment
-      // that has already settled.
+      // A CALLBACK CLAIMING FAILURE IS EXACTLY AS FORGEABLE AS ONE CLAIMING
+      // SUCCESS, and it is the more dangerous of the two.
       //
-      // WHAT WAS WRONG: two fire-and-forget updates whose errors were both
-      // discarded. A failure callback arriving after a successful settlement
-      // would overwrite 'completed' with 'failed' while the wallet stayed
-      // credited, leaving the books contradicting the payment row.
+      // WHAT WAS WRONG: the success path above was made to verify against
+      // Safaricom, and this path was left trusting the request body. That
+      // asymmetry was the hole. checkoutRequestId is not secret —
+      // initiatePayment returns it to the customer — so anyone holding one
+      // could post { resultCode: 1032 } and close a payment that was in
+      // flight. The genuine success callback then arrived, found the payment
+      // no longer open, and was DISCARDED by the early return above.
+      // Reproduced end to end: customer debited KES 10,000, provider credited
+      // 0, no ledger entry, and before the operator recovery route existed
+      // there was no way back.
+      //
+      // So this path now asks the same authority before closing anything, and
+      // treats the three possible answers differently:
+      //   authority says SUCCEEDED -> settle, do not fail
+      //   authority says FAILED    -> record the failure
+      //   authority cannot be read -> change nothing, leave the payment open
+      if (!payment.mpesa_checkout_request_id) {
+        console.error(
+          "[Payments] Callback: failure claimed but no checkout id to verify against:",
+          payment.id
+        );
+        return { success: false, error: "Payment cannot be verified." };
+      }
+
+      const failVerification = await queryStkPushStatus(
+        payment.mpesa_checkout_request_id
+      );
+
+      if (!failVerification.success) {
+        // Unreachable authority is NOT evidence of failure. Leaving the payment
+        // open is the safe choice: expire_stale_booking_payments will retire it
+        // on a time bound, and an orphan is flagged for operator recovery
+        // rather than silently closed on an unverified claim.
+        console.error("[Payments] Callback: cannot verify claimed failure:", {
+          paymentId: payment.id,
+          error: failVerification.error,
+        });
+        return { success: false, error: "Could not verify payment with M-Pesa." };
+      }
+
+      const failAuthoritativeCode = parseStkResultCode(failVerification.resultCode);
+
+      if (failAuthoritativeCode === null) {
+        // An unparseable code is not evidence of anything either.
+        console.error("[Payments] Callback: unparseable authoritative code on claimed failure:", {
+          paymentId: payment.id,
+          raw: failVerification.resultCode,
+        });
+        return { success: false, error: "Could not verify payment with M-Pesa." };
+      }
+
+      if (failAuthoritativeCode === 0) {
+        // THE FORGED-FAILURE ATTACK, DEFEATED. The callback said the payment
+        // failed; Safaricom says it succeeded. Settle it rather than closing
+        // it, and record that the claim disagreed with the authority.
+        console.error("[Payments] Callback claimed FAILURE but M-Pesa says SUCCESS:", {
+          paymentId: payment.id,
+          claimedResultCode: params.resultCode,
+          authoritativeResultCode: failVerification.resultCode,
+        });
+
+        const { data: rescueResult, error: rescueError } = await admin.rpc(
+          "settle_booking_payment",
+          {
+            p_payment_id: payment.id,
+            p_result_code: failAuthoritativeCode,
+            p_result_desc: "Settled despite a callback claiming failure; M-Pesa confirms success",
+            p_verified_by: "authoritative_query",
+          }
+        );
+
+        if (rescueError) {
+          console.error("[Payments] Settlement after contradicted failure failed:", rescueError);
+          return { success: false, error: "Failed to record payment." };
+        }
+
+        console.log("[Payments] Contradicted failure resolved:", {
+          paymentId: payment.id,
+          outcome: (rescueResult as { outcome?: string } | null)?.outcome,
+        });
+
+        return { success: true, paymentId: payment.id };
+      }
+
+      // The authority agrees this payment did not succeed. Record the failure
+      // with the AUTHORITATIVE code, not the one the request asserted.
       const { error: failError } = await admin.rpc("fail_booking_payment", {
         p_payment_id: payment.id,
-        p_result_code: params.resultCode,
-        p_result_desc: params.resultDesc,
+        p_result_code: failAuthoritativeCode,
+        p_result_desc: failVerification.resultDesc ?? params.resultDesc,
       });
 
       if (failError) {
