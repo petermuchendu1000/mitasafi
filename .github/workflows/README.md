@@ -2,41 +2,72 @@
 
 ## What runs, and what it is for
 
-Before this existed, nothing ran the tests. 541 jest tests and 8 SQL regression
+Before this existed, nothing ran the tests. 549 jest tests and 9 SQL regression
 suites — including the proofs for several SEV-0 money and security defects —
 were executed only when someone remembered to run them by hand.
 
-### `quality` — verified working
+### `quality`
 
-| Step                 | Why                                                                                                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm ci`             | Fails on a lockfile that disagrees with package.json, which is itself worth checking                                                                               |
-| `tsc --noEmit`       | Has repeatedly caught real breakage here: a renamed export, a nullable type reaching a consumer, an RPC signature that drifted from the database after a migration |
-| `jest --ci`          | 541 tests                                                                                                                                                          |
-| SQL runner self-test | Checks the suite runner's own parser before trusting it to report on anything                                                                                      |
+| Step                  | Why                                                                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm ci`              | Fails on a lockfile that disagrees with package.json, which is itself worth checking                                                                               |
+| `tsc --noEmit`        | Has repeatedly caught real breakage here: a renamed export, a nullable type reaching a consumer, an RPC signature that drifted from the database after a migration |
+| `jest --ci`           | 549 tests                                                                                                                                                          |
+| SQL runner self-test  | Checks the suite runner's own parser before trusting it to report on anything                                                                                      |
+| Idempotency self-test | Same, for the replay checker's compare logic                                                                                                                       |
 
-Every command in this job was run locally against this repository and passes.
-
-### `database` — NOT yet verified end to end
+### `database`
 
 Spins up `postgres:17`, applies the Supabase surface the migrations assume
-(`supabase/ci/bootstrap.sql`), applies all 98 migrations from nothing, runs the
-8 SQL suites, then re-applies every migration to prove idempotency.
+(`supabase/ci/bootstrap.sql`), applies all 100 migrations from nothing, runs the
+9 SQL suites, then replays every migration to check it can be re-applied.
 
-**This job has never been executed.** There was no Docker daemon in the
-environment where it was written, so the bootstrap and the from-scratch
-migration run are reasoned, not observed. Expect the first run to need a round
-of fixing. What _was_ verified locally:
+**Both jobs have now been run end to end** against a real PostgreSQL 16 server:
+bootstrap, a from-scratch apply of all 100 migrations, 9/9 suites with 108
+assertions, and the replay check. The GitHub runner uses postgres **17**, which
+is the one remaining untested difference.
 
-- the YAML parses and both jobs are well-formed
-- the skip rules select exactly 98 of 101 migrations, matching the live project
-- the count assertion discriminates (adding a real migration changes it;
-  adding a `_skip_` one does not)
-- the suite runner's parser, including its failure modes
+Running it for the first time found three things that the earlier
+"reasoned, not observed" version of this file had warned about:
 
-The most likely first-run failures are missing pieces of the Supabase surface
-in `bootstrap.sql` — a `storage.objects` column some policy references, or an
-`auth` helper beyond `uid()`.
+1. **`bootstrap.sql` was missing the `supabase_realtime` publication.** Four
+   migrations do `ALTER PUBLICATION supabase_realtime ADD TABLE ...`, which is
+   a hard ERROR when the publication does not exist. The whole job failed at
+   migration 9 of 100. Fixed in `bootstrap.sql`.
+
+2. **`run-sql-suites.mjs` could never report a pass.** It used `execFileSync`
+   and read only the return value — but each suite delivers its verdict through
+   `RAISE EXCEPTION`, so psql prints it to **stderr**, and under
+   `ON_ERROR_STOP=0` psql then exits **zero**, so the `catch` block that was
+   meant to recover stderr never ran. Every suite came back as "no verdict
+   line", passing suites included. The parser self-test could not see this,
+   because the parser was never the bug. Now uses `spawnSync` and reads both
+   streams; the self-test gained the two real-world stderr shapes.
+
+3. **26 of the 100 migrations are not replayable.** See below.
+
+### The replay check, and why it is a budget
+
+`scripts/ci/check-migration-idempotency.mjs`.
+
+Re-applying the tree fails on 26 migrations: legacy `CREATE POLICY` without a
+preceding drop, `ADD CONSTRAINT` without `IF NOT EXISTS`,
+`ALTER PUBLICATION ADD TABLE` for an already-published table, a
+`CREATE OR REPLACE VIEW` whose column order changed. None of that is caused by
+any change under review, and fixing all 26 is its own piece of work.
+
+A step that is red on every run is a step someone switches off. So the measured
+set lives in `supabase/ci/non-idempotent-migrations.txt` and the script fails on
+**movement**:
+
+- a migration **not** in the baseline that fails to replay — the regression
+  worth catching, a new migration that cannot reach staging
+- a migration **in** the baseline that now replays cleanly — fixed, so take it
+  off the list, because a stale baseline stops being evidence
+
+Both directions were checked with a real mutant: an added `CREATE TABLE`
+migration exits 1, a phantom baseline entry exits 1, the unmodified tree
+exits 0.
 
 ## Why the SQL suites need a runner rather than `psql -f`
 
@@ -44,9 +75,10 @@ Every suite ends in `RAISE EXCEPTION '..._RESULT pass=N fail=M'`. The exception
 is deliberate: it forces the suite's fixtures to roll back, so the tests leave
 nothing behind and are safe against any environment.
 
-The consequence is that `psql` **always** exits non-zero — for a passing run and
-a failing run alike. Wiring the suites to a plain `psql -f` step would give a
-check that can never pass; adding `|| true` would give one that can never fail.
+The consequence is that the verdict arrives on stderr, inside an `ERROR:` line,
+and psql's exit code carries no information about whether the assertions
+passed. Wiring the suites to a plain `psql -f` step would give a check that can
+never pass; adding `|| true` would give one that can never fail.
 
 `scripts/ci/run-sql-suites.mjs` parses the verdict line instead, and treats all
 three of these as failures:
@@ -57,16 +89,16 @@ three of these as failures:
 
 Run `npm run test:sql:self` to check the parser itself.
 
+That the suites can also go RED was checked, not assumed: reinstating
+`profiles_public_read USING (true)` on the test database fails 4 assertions in
+`profile_read_scope_test.sql` and the runner exits 1.
+
 ## The from-scratch migration run is a real check
 
 Migrations were applied to the live project in a different order during
 development, so "the ledger matches the directory" is not evidence that a
 clean-room apply works. If two migrations have an ordering dependency, this job
 is where it surfaces — before a new environment hits it.
-
-The idempotency step matters for the same reason: several migrations are
-`CREATE OR REPLACE` over live objects, and one that only works once cannot be
-replayed into staging.
 
 ## Not wired, and why
 

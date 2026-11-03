@@ -3,7 +3,7 @@
 // =============================================================================
 // Server-side functions for fetching and managing service providers.
 // Used by API routes and server components.
-// 
+//
 // Performance optimizations:
 // - Indexed queries where possible
 // - Parallel data fetching
@@ -20,7 +20,11 @@ import type {
   PaginatedResponse,
   ProviderReviewWithReviewer,
 } from "@/types/service-providers";
-import { PROVIDERS_PER_PAGE, FEATURED_PROVIDERS_LIMIT, SERVICE_CATEGORIES } from "@/lib/constants";
+import {
+  PROVIDERS_PER_PAGE,
+  FEATURED_PROVIDERS_LIMIT,
+  SERVICE_CATEGORIES,
+} from "@/lib/constants";
 
 // =============================================================================
 // TYPES
@@ -179,7 +183,11 @@ function mapProviderRow(provider: any): ServiceProviderCardData {
       : [];
 
     imageUrls.forEach((url) => {
-      if (typeof url === "string" && url.trim() && !orderedImageUrls.includes(url)) {
+      if (
+        typeof url === "string" &&
+        url.trim() &&
+        !orderedImageUrls.includes(url)
+      ) {
         orderedImageUrls.push(url);
       }
     });
@@ -193,7 +201,8 @@ function mapProviderRow(provider: any): ServiceProviderCardData {
   // Prefer the denormalized DB min_price (SC-7) — trigger-maintained and used
   // for SQL-level filtering / sorting. Fall back to the computed value for
   // backward-compatibility when the column hasn't been populated yet.
-  const dbMinPrice = typeof provider.min_price === "number" ? provider.min_price : null;
+  const dbMinPrice =
+    typeof provider.min_price === "number" ? provider.min_price : null;
   const finalMinPrice = dbMinPrice ?? computedMinPrice;
 
   // Extract unique area names from joined provider_service_areas
@@ -206,7 +215,8 @@ function mapProviderRow(provider: any): ServiceProviderCardData {
   // Resolve headline → tagline fallback chain.
   // Real providers write to `headline` via the profile form.
   // Seeded data may only have `tagline`. Prefer headline (the live write path).
-  const resolvedTagline: string | null = provider.headline || provider.tagline || null;
+  const resolvedTagline: string | null =
+    provider.headline || provider.tagline || null;
 
   return {
     id: provider.id,
@@ -242,17 +252,15 @@ function mapProviderRow(provider: any): ServiceProviderCardData {
 // GET PROVIDERS LIST (with full-text search support)
 // =============================================================================
 
-export async function getProviders(options: GetProvidersOptions = {}): Promise<GetProvidersResult> {
+export async function getProviders(
+  options: GetProvidersOptions = {},
+): Promise<GetProvidersResult> {
   const supabase = await createClient();
-  
-  const {
-    filters = {},
-    page = 1,
-    pageSize = PROVIDERS_PER_PAGE,
-  } = options;
-  
+
+  const { filters = {}, page = 1, pageSize = PROVIDERS_PER_PAGE } = options;
+
   const offset = (page - 1) * pageSize;
-  
+
   try {
     // Build the select statement based on filters.
     // Category filter → !inner join on service_categories (slug-based).
@@ -260,8 +268,9 @@ export async function getProviders(options: GetProvidersOptions = {}): Promise<G
     // No filter → left joins (all providers, even those without services).
     const needsCategoryFilter = !!filters.category;
     const needsSubcategoryFilter = !!filters.subcategory;
-    const needsAreaFilter = Array.isArray(filters.area) && filters.area.length > 0;
-    
+    const needsAreaFilter =
+      Array.isArray(filters.area) && filters.area.length > 0;
+
     let psJoin: string;
     if (needsSubcategoryFilter) {
       psJoin = PS_JOIN_INNER_SUBCATEGORY;
@@ -273,13 +282,13 @@ export async function getProviders(options: GetProvidersOptions = {}): Promise<G
     const areaJoin = needsAreaFilter ? AREA_JOIN_INNER : AREA_JOIN;
 
     const selectParts = `${SP_BASE_COLUMNS}, ${psJoin}, ${areaJoin}`;
-    
+
     // Build the query
     let query = supabase
       .from("service_providers")
       .select(selectParts, { count: "exact" })
       .eq("account_status", "active");
-    
+
     // Full-text search via GIN-indexed search_vector column (SC-7)
     // Each word gets :* for prefix matching, joined with & (AND).
     // Falls back to ILIKE for single-character queries where FTS is useless.
@@ -292,53 +301,66 @@ export async function getProviders(options: GetProvidersOptions = {}): Promise<G
 
       if (words.length > 0) {
         const tsQuery = words.map((w) => `'${w}':*`).join(" & ");
-        query = query.textSearch("search_vector", tsQuery, { config: "english" });
+        query = query.textSearch("search_vector", tsQuery, {
+          config: "english",
+        });
       } else if (raw.length > 0) {
         // Fallback for very short terms (< 2 chars per word)
         query = query.or(
-          `business_name.ilike.%${raw}%,tagline.ilike.%${raw}%,bio.ilike.%${raw}%`
+          `business_name.ilike.%${raw}%,tagline.ilike.%${raw}%,bio.ilike.%${raw}%`,
         );
       }
     }
-    
+
     // Apply category filter via service_categories.slug (matches dbCategoryIds)
     if (filters.category) {
-      const majorCategory = SERVICE_CATEGORIES.find((cat) => cat.id === filters.category);
+      const majorCategory = SERVICE_CATEGORIES.find(
+        (cat) => cat.id === filters.category,
+      );
       if (majorCategory && majorCategory.dbCategoryIds.length > 0) {
         // Major UI category → resolve to its constituent DB category slugs
-        query = query.in("provider_services.service.category.slug", majorCategory.dbCategoryIds);
+        query = query.in(
+          "provider_services.service.category.slug",
+          majorCategory.dbCategoryIds,
+        );
       } else {
         // Direct DB category slug (e.g., "plumbing")
-        query = query.eq("provider_services.service.category.slug", filters.category);
+        query = query.eq(
+          "provider_services.service.category.slug",
+          filters.category,
+        );
       }
     }
-    
+
     // Apply subcategory filter via service_subcategories.slug
     if (filters.subcategory) {
-      query = query.eq("provider_services.service.subcategory.slug", filters.subcategory);
+      query = query.eq(
+        "provider_services.service.subcategory.slug",
+        filters.subcategory,
+      );
     }
-    
+
     // Area filter — applied via !inner join on provider_service_areas
     if (needsAreaFilter && filters.area) {
       query = query.in("provider_service_areas.area_name", filters.area);
     }
-    
+
     if (filters.verifiedOnly) {
       query = query.eq("is_verified", true);
     }
-    
+
     if (filters.availableNow) {
       query = query.eq("is_active", true);
     }
-    
+
     if (filters.instantBooking) {
       query = query.eq("instant_booking", true);
     }
-    
+
     if (filters.ratingMin) {
       query = query.gte("average_rating", filters.ratingMin);
     }
-    
+
     // Price filters — now SQL-level using the denormalized min_price column
     // (SC-7). Providers with no price are preserved (same semantics as before).
     if (filters.priceMin != null) {
@@ -351,19 +373,34 @@ export async function getProviders(options: GetProvidersOptions = {}): Promise<G
     // Sorting — price sort now uses the denormalized min_price column (SC-7)
     switch (filters.sort) {
       case "rating-high":
-        query = query.order("average_rating", { ascending: false, nullsFirst: false });
+        query = query.order("average_rating", {
+          ascending: false,
+          nullsFirst: false,
+        });
         break;
       case "reviews-most":
-        query = query.order("total_reviews", { ascending: false, nullsFirst: false });
+        query = query.order("total_reviews", {
+          ascending: false,
+          nullsFirst: false,
+        });
         break;
       case "jobs-most":
-        query = query.order("total_jobs_completed", { ascending: false, nullsFirst: false });
+        query = query.order("total_jobs_completed", {
+          ascending: false,
+          nullsFirst: false,
+        });
         break;
       case "price-low":
-        query = query.order("min_price", { ascending: true, nullsFirst: false });
+        query = query.order("min_price", {
+          ascending: true,
+          nullsFirst: false,
+        });
         break;
       case "price-high":
-        query = query.order("min_price", { ascending: false, nullsFirst: false });
+        query = query.order("min_price", {
+          ascending: false,
+          nullsFirst: false,
+        });
         break;
       case "recommended":
       default:
@@ -373,30 +410,35 @@ export async function getProviders(options: GetProvidersOptions = {}): Promise<G
           .order("total_reviews", { ascending: false, nullsFirst: false });
         break;
     }
-    
+
     // Apply pagination
     query = query.range(offset, offset + pageSize - 1);
-    
+
     const { data, error, count } = await query;
-    
+
     if (error) {
-      console.error("Error fetching providers:", JSON.stringify(error, null, 2));
+      console.error(
+        "Error fetching providers:",
+        JSON.stringify(error, null, 2),
+      );
       return {
         providers: [],
         pagination: { page, pageSize, total: 0, totalPages: 0, hasMore: false },
         error: error.message || "Database query failed",
       };
     }
-    
+
     // Transform using shared helper
-    const providers: ServiceProviderCardData[] = ((data as any[]) || []).map(mapProviderRow);
-    
+    const providers: ServiceProviderCardData[] = ((data as any[]) || []).map(
+      mapProviderRow,
+    );
+
     // Price filtering and sorting are now handled at the SQL level (SC-7)
     // via the denormalized min_price column, so pagination counts are accurate.
-    
+
     const total = count || 0;
     const totalPages = Math.ceil(total / pageSize);
-    
+
     return {
       providers,
       pagination: {
@@ -423,10 +465,10 @@ export async function getProviders(options: GetProvidersOptions = {}): Promise<G
 
 export async function getFeaturedProviders(
   limit: number = FEATURED_PROVIDERS_LIMIT,
-  category?: string
+  category?: string,
 ): Promise<ServiceProviderCardData[]> {
   const supabase = await createClient();
-  
+
   try {
     // When a category filter is provided, use !inner join on categories
     // so PostgREST can filter at the DB level by slug.
@@ -441,29 +483,31 @@ export async function getFeaturedProviders(
       .order("verification_badge", { ascending: false })
       .order("average_rating", { ascending: false, nullsFirst: false })
       .limit(limit);
-    
+
     if (category) {
-      const majorCategory = SERVICE_CATEGORIES.find((cat) => cat.id === category);
+      const majorCategory = SERVICE_CATEGORIES.find(
+        (cat) => cat.id === category,
+      );
       if (majorCategory && majorCategory.dbCategoryIds.length > 0) {
         query = query.in(
           "provider_services.service.category.slug",
-          majorCategory.dbCategoryIds
+          majorCategory.dbCategoryIds,
         );
       } else {
-        query = query.eq(
-          "provider_services.service.category.slug",
-          category
-        );
+        query = query.eq("provider_services.service.category.slug", category);
       }
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) {
-      console.error("Error fetching featured providers:", JSON.stringify(error, null, 2));
+      console.error(
+        "Error fetching featured providers:",
+        JSON.stringify(error, null, 2),
+      );
       return [];
     }
-    
+
     return ((data as any[]) || []).map(mapProviderRow);
   } catch (error) {
     console.error("Error in getFeaturedProviders:", error);
@@ -476,17 +520,18 @@ export async function getFeaturedProviders(
 // =============================================================================
 
 export async function getProviderById(
-  providerId: string
+  providerId: string,
 ): Promise<{ provider: ServiceProviderWithDetails | null; error?: string }> {
   const supabase = await createClient();
-  
+
   try {
     // Fetch provider with services (sub-joined to subcategory → category)
     // and service areas so the profile page can display coverage.
     // Only active providers are publicly accessible.
     const { data, error } = await supabase
       .from("service_providers")
-      .select(`
+      .select(
+        `
         *,
         provider_services (
           *,
@@ -499,19 +544,23 @@ export async function getProviderById(
           )
         ),
         provider_service_areas (area_name)
-      `)
+      `,
+      )
       .eq("id", providerId)
       .eq("account_status", "active")
       .single();
-    
+
     if (error) {
       if (error.code === "PGRST116") {
         return { provider: null, error: "Provider not found" };
       }
       console.error("Error fetching provider:", JSON.stringify(error, null, 2));
-      return { provider: null, error: error.message || "Database query failed" };
+      return {
+        provider: null,
+        error: error.message || "Database query failed",
+      };
     }
-    
+
     // Fetch availability intervals separately (canonical source of truth)
     const { data: intervals } = await supabase
       .from("provider_availability_intervals")
@@ -519,36 +568,44 @@ export async function getProviderById(
       .eq("provider_id", providerId)
       .eq("is_exception", false)
       .eq("is_active", true);
-    
+
     // Convert RRULE-based intervals → WorkingHoursEntry for the UI
     const DAY_RULE_MAP: Record<string, number> = {
-      SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6,
+      SU: 0,
+      MO: 1,
+      TU: 2,
+      WE: 3,
+      TH: 4,
+      FR: 5,
+      SA: 6,
     };
-    
-    const workingHours = (intervals || []).map((interval: Record<string, unknown>) => {
-      let dayOfWeek = 0;
-      const rule = interval.recurrence_rule as string | null;
-      if (rule) {
-        const match = rule.match(/BYDAY=(\w{2})/);
-        if (match) dayOfWeek = DAY_RULE_MAP[match[1]] ?? 0;
-      }
-      const fromDate = new Date(interval.available_from as string);
-      const toDate = new Date(interval.available_to as string);
-      return {
-        day_of_week: dayOfWeek,
-        is_available: true,
-        start_time: fromDate.toTimeString().slice(0, 5),
-        end_time: toDate.toTimeString().slice(0, 5),
-      };
-    });
-    
+
+    const workingHours = (intervals || []).map(
+      (interval: Record<string, unknown>) => {
+        let dayOfWeek = 0;
+        const rule = interval.recurrence_rule as string | null;
+        if (rule) {
+          const match = rule.match(/BYDAY=(\w{2})/);
+          if (match) dayOfWeek = DAY_RULE_MAP[match[1]] ?? 0;
+        }
+        const fromDate = new Date(interval.available_from as string);
+        const toDate = new Date(interval.available_to as string);
+        return {
+          day_of_week: dayOfWeek,
+          is_available: true,
+          start_time: fromDate.toTimeString().slice(0, 5),
+          end_time: toDate.toTimeString().slice(0, 5),
+        };
+      },
+    );
+
     // Cast to any for Supabase complex join type inference
     const providerData = data as any;
-    
+
     // Extract categories and subcategories
     const categoriesSet = new Set<string>();
     const subcategoriesSet = new Set<string>();
-    
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (providerData.provider_services || []).forEach((ps: any) => {
       if (ps.service?.subcategory?.category?.id) {
@@ -565,7 +622,7 @@ export async function getProviderById(
     (providerData.provider_service_areas || []).forEach((psa: any) => {
       if (psa.area_name) areaNames.add(psa.area_name);
     });
-    
+
     const provider: ServiceProviderWithDetails = {
       ...providerData,
       services: providerData.provider_services || [],
@@ -576,7 +633,7 @@ export async function getProviderById(
       availability: [],
       working_hours: workingHours,
     };
-    
+
     return { provider };
   } catch (error) {
     console.error("Error in getProviderById:", error);
@@ -607,11 +664,11 @@ export const getProviderByIdCached = cache(getProviderById);
 export async function getProviderReviews(
   providerId: string,
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
 ): Promise<PaginatedResponse<ProviderReviewWithReviewer>> {
   const supabase = await createClient();
   const offset = (page - 1) * pageSize;
-  
+
   try {
     const { data, error, count } = await supabase
       .from("reviews")
@@ -620,7 +677,7 @@ export async function getProviderReviews(
       .eq("is_hidden", false)
       .order("created_at", { ascending: false })
       .range(offset, offset + pageSize - 1);
-    
+
     if (error) {
       console.error("Error fetching reviews:", error);
       return {
@@ -633,18 +690,23 @@ export async function getProviderReviews(
     const reviewsWithReviewers = await Promise.all(
       (data || []).map(async (review: Record<string, unknown>) => {
         if (!review.reviewer_id) return { ...review, reviewer: null };
+        // profiles_public, not profiles: this is a PUBLIC page reading ANOTHER
+        // user's row. It used to read the table under
+        // `profiles_public_read USING (true)`, which also exposed every user's
+        // email, phone and metadata to any signed-in account (RLS gates rows,
+        // not columns). See 20260335000000_scope_profile_reads.sql.
         const { data: profile } = await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("id, full_name, avatar_url")
           .eq("id", review.reviewer_id as string)
-          .single();
+          .maybeSingle();
         return { ...review, reviewer: profile };
-      })
+      }),
     );
-    
+
     const total = count || 0;
     const totalPages = Math.ceil(total / pageSize);
-    
+
     return {
       data: reviewsWithReviewers as any,
       pagination: {
@@ -676,10 +738,10 @@ export async function getProviderReviews(
 /** @deprecated Use `getProviders({ filters: { search: query } })` instead. */
 export async function searchProviders(
   query: string,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<ServiceProviderCardData[]> {
   const supabase = await createClient();
-  
+
   try {
     let dbQuery = supabase
       .from("service_providers")
@@ -695,12 +757,14 @@ export async function searchProviders(
 
     if (words.length > 0) {
       const tsQuery = words.map((w) => `'${w}':*`).join(" & ");
-      dbQuery = dbQuery.textSearch("search_vector", tsQuery, { config: "english" });
+      dbQuery = dbQuery.textSearch("search_vector", tsQuery, {
+        config: "english",
+      });
     } else if (query.trim().length > 0) {
       // Fallback for very short terms
       const raw = query.trim();
       dbQuery = dbQuery.or(
-        `business_name.ilike.%${raw}%,bio.ilike.%${raw}%,tagline.ilike.%${raw}%`
+        `business_name.ilike.%${raw}%,bio.ilike.%${raw}%,tagline.ilike.%${raw}%`,
       );
     }
 
@@ -710,12 +774,15 @@ export async function searchProviders(
       .limit(limit);
 
     const { data, error } = await dbQuery;
-    
+
     if (error) {
-      console.error("Error searching providers:", JSON.stringify(error, null, 2));
+      console.error(
+        "Error searching providers:",
+        JSON.stringify(error, null, 2),
+      );
       return [];
     }
-    
+
     return ((data as any[]) || []).map(mapProviderRow);
   } catch (error) {
     console.error("Error in searchProviders:", error);
@@ -729,15 +796,16 @@ export async function searchProviders(
 
 export async function getSimilarProviders(
   providerId: string,
-  limit: number = 4
+  limit: number = 4,
 ): Promise<ServiceProviderCardData[]> {
   const supabase = await createClient();
-  
+
   try {
     // First get the current provider's categories
     const { data: currentProvider } = await supabase
       .from("service_providers")
-      .select(`
+      .select(
+        `
         provider_services (
           service:services (
             subcategory:service_subcategories (
@@ -745,14 +813,15 @@ export async function getSimilarProviders(
             )
           )
         )
-      `)
+      `,
+      )
       .eq("id", providerId)
       .single();
-    
+
     if (!currentProvider) return [];
-    
+
     const currentProviderData = currentProvider as any;
-    
+
     // Extract categories
     const categories = new Set<string>();
     (currentProviderData.provider_services || []).forEach((ps: any) => {
@@ -760,7 +829,7 @@ export async function getSimilarProviders(
         categories.add(ps.service.subcategory.category_id);
       }
     });
-    
+
     // Fetch similar providers (active, excluding current)
     const { data, error } = await supabase
       .from("service_providers")
@@ -769,23 +838,28 @@ export async function getSimilarProviders(
       .neq("id", providerId)
       .order("average_rating", { ascending: false, nullsFirst: false })
       .limit(limit * 2);
-    
+
     if (error) {
-      console.error("Error fetching similar providers:", JSON.stringify(error, null, 2));
+      console.error(
+        "Error fetching similar providers:",
+        JSON.stringify(error, null, 2),
+      );
       return [];
     }
-    
-    const providers: ServiceProviderCardData[] = ((data as any[]) || []).map(mapProviderRow);
-    
+
+    const providers: ServiceProviderCardData[] = ((data as any[]) || []).map(
+      mapProviderRow,
+    );
+
     // Prioritize providers in same categories
     const categoryArray = Array.from(categories);
     const withMatchingCategory = providers.filter((p) =>
-      p.categories.some((c) => categoryArray.includes(c))
+      p.categories.some((c) => categoryArray.includes(c)),
     );
     const others = providers.filter(
-      (p) => !p.categories.some((c) => categoryArray.includes(c))
+      (p) => !p.categories.some((c) => categoryArray.includes(c)),
     );
-    
+
     return [...withMatchingCategory, ...others].slice(0, limit);
   } catch (error) {
     console.error("Error in getSimilarProviders:", error);
@@ -799,23 +873,25 @@ export async function getSimilarProviders(
 
 export async function isProviderSaved(providerId: string): Promise<boolean> {
   const supabase = await createClient();
-  
+
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return false;
-    
+
     const { data, error } = await supabase
       .from("saved_providers")
       .select("id")
       .eq("user_id", user.id)
       .eq("provider_id", providerId)
       .maybeSingle();
-    
+
     if (error) {
       console.error("Error checking saved provider:", error);
       return false;
     }
-    
+
     return !!data;
   } catch (error) {
     console.error("Error in isProviderSaved:", error);
@@ -828,16 +904,18 @@ export async function isProviderSaved(providerId: string): Promise<boolean> {
 // =============================================================================
 
 export async function toggleSaveProvider(
-  providerId: string
+  providerId: string,
 ): Promise<{ saved: boolean; error?: string }> {
   const supabase = await createClient();
-  
+
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       return { saved: false, error: "Not authenticated" };
     }
-    
+
     // Check if already saved
     const { data: existing } = await supabase
       .from("saved_providers")
@@ -845,28 +923,26 @@ export async function toggleSaveProvider(
       .eq("user_id", user.id)
       .eq("provider_id", providerId)
       .maybeSingle();
-    
+
     // Cast for Supabase type inference
     const existingData = existing as { id: string } | null;
-    
+
     if (existingData) {
       // Remove
       const { error } = await supabase
         .from("saved_providers")
         .delete()
         .eq("id", existingData.id);
-      
+
       if (error) throw error;
       return { saved: false };
     } else {
       // Add - use type assertion for Supabase insert
-      const { error } = await supabase
-        .from("saved_providers")
-        .insert({
-          user_id: user.id,
-          provider_id: providerId,
-        } as any);
-      
+      const { error } = await supabase.from("saved_providers").insert({
+        user_id: user.id,
+        provider_id: providerId,
+      } as any);
+
       if (error) throw error;
       return { saved: true };
     }
@@ -885,28 +961,35 @@ export async function toggleSaveProvider(
 
 export async function getSavedProviders(): Promise<ServiceProviderCardData[]> {
   const supabase = await createClient();
-  
+
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return [];
-    
+
     const { data, error } = await supabase
       .from("saved_providers")
-      .select(`
+      .select(
+        `
         provider:service_providers (
           ${SP_BASE_COLUMNS},
           ${PS_JOIN},
           ${AREA_JOIN}
         )
-      `)
+      `,
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
-    
+
     if (error) {
-      console.error("Error fetching saved providers:", JSON.stringify(error, null, 2));
+      console.error(
+        "Error fetching saved providers:",
+        JSON.stringify(error, null, 2),
+      );
       return [];
     }
-    
+
     // Transform data
     return (data || [])
       .map((item: any) => {

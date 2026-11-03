@@ -93,31 +93,51 @@ export async function submitReview(
     professionalismRating?: number | null;
     valueRating?: number | null;
     photoUrls?: string[];
-  }
+  },
 ): Promise<ReviewActionResult> {
   try {
     // 1. Authenticate
     const { user, error: authError } = await getCachedUser();
     if (authError || !user) {
-      return { success: false, error: "You must be signed in to leave a review." };
+      return {
+        success: false,
+        error: "You must be signed in to leave a review.",
+      };
     }
 
     // 2. Validate rating range
-    if (!data.rating || data.rating < 1 || data.rating > 5 || !Number.isInteger(data.rating)) {
-      return { success: false, error: "Rating must be a whole number between 1 and 5." };
+    if (
+      !data.rating ||
+      data.rating < 1 ||
+      data.rating > 5 ||
+      !Number.isInteger(data.rating)
+    ) {
+      return {
+        success: false,
+        error: "Rating must be a whole number between 1 and 5.",
+      };
     }
 
     // 3. Validate text lengths
     if (data.title && data.title.length > MAX_TITLE_LENGTH) {
-      return { success: false, error: `Title must be under ${MAX_TITLE_LENGTH} characters.` };
+      return {
+        success: false,
+        error: `Title must be under ${MAX_TITLE_LENGTH} characters.`,
+      };
     }
     if (data.reviewText && data.reviewText.length > MAX_REVIEW_TEXT_LENGTH) {
-      return { success: false, error: `Review must be under ${MAX_REVIEW_TEXT_LENGTH} characters.` };
+      return {
+        success: false,
+        error: `Review must be under ${MAX_REVIEW_TEXT_LENGTH} characters.`,
+      };
     }
 
     // 4. Validate photos count
     if (data.photoUrls && data.photoUrls.length > MAX_REVIEW_PHOTOS) {
-      return { success: false, error: `Maximum ${MAX_REVIEW_PHOTOS} photos allowed.` };
+      return {
+        success: false,
+        error: `Maximum ${MAX_REVIEW_PHOTOS} photos allowed.`,
+      };
     }
 
     // 5. Profanity / abuse filter
@@ -125,7 +145,8 @@ export async function submitReview(
     if (contentCheck.flagged) {
       return {
         success: false,
-        error: "Your review contains inappropriate language. Please revise and resubmit.",
+        error:
+          "Your review contains inappropriate language. Please revise and resubmit.",
       };
     }
 
@@ -139,7 +160,10 @@ export async function submitReview(
     ];
     for (const dr of dimensionRatings) {
       if (dr != null && (dr < 1 || dr > 5 || !Number.isInteger(dr))) {
-        return { success: false, error: "Dimension ratings must be whole numbers between 1 and 5." };
+        return {
+          success: false,
+          error: "Dimension ratings must be whole numbers between 1 and 5.",
+        };
       }
     }
 
@@ -157,7 +181,10 @@ export async function submitReview(
     }
 
     if (booking.customer_id !== user.id) {
-      return { success: false, error: "You can only review your own bookings." };
+      return {
+        success: false,
+        error: "You can only review your own bookings.",
+      };
     }
 
     if (!booking.status || !REVIEWABLE_STATUSES.has(booking.status)) {
@@ -168,7 +195,10 @@ export async function submitReview(
     }
 
     if (!booking.provider_id) {
-      return { success: false, error: "This booking has no assigned provider." };
+      return {
+        success: false,
+        error: "This booking has no assigned provider.",
+      };
     }
 
     // 8. Check for existing review (defense-in-depth; DB constraint also enforces)
@@ -179,7 +209,10 @@ export async function submitReview(
       .maybeSingle();
 
     if (existingReview) {
-      return { success: false, error: "You have already reviewed this booking." };
+      return {
+        success: false,
+        error: "You have already reviewed this booking.",
+      };
     }
 
     // 9. Convert numeric ratings to DB enum strings
@@ -215,9 +248,15 @@ export async function submitReview(
       console.error("[Reviews] Insert error:", insertError);
       // Handle specific constraint violations
       if (insertError.code === "23505") {
-        return { success: false, error: "You have already reviewed this booking." };
+        return {
+          success: false,
+          error: "You have already reviewed this booking.",
+        };
       }
-      return { success: false, error: "Failed to submit review. Please try again." };
+      return {
+        success: false,
+        error: "Failed to submit review. Please try again.",
+      };
     }
 
     // 11. Recalculate provider average rating and total reviews
@@ -272,7 +311,8 @@ export async function submitReview(
     console.error("[Reviews] submitReview unexpected error:", err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "An unexpected error occurred.",
+      error:
+        err instanceof Error ? err.message : "An unexpected error occurred.",
     };
   }
 }
@@ -307,7 +347,7 @@ async function recalculateProviderRating(providerId: string): Promise<void> {
     if (total > 0) {
       const sum = reviews.reduce(
         (acc: number, r: { rating: string }) => acc + parseInt(r.rating, 10),
-        0
+        0,
       );
       average = parseFloat((sum / total).toFixed(2));
     }
@@ -342,7 +382,7 @@ async function recalculateProviderRating(providerId: string): Promise<void> {
  */
 export async function submitProviderResponse(
   reviewId: string,
-  response: string
+  response: string,
 ): Promise<ReviewActionResult> {
   try {
     // 1. Authenticate as provider
@@ -357,7 +397,10 @@ export async function submitProviderResponse(
       return { success: false, error: "Response cannot be empty." };
     }
     if (trimmed.length > MAX_RESPONSE_LENGTH) {
-      return { success: false, error: `Response must be under ${MAX_RESPONSE_LENGTH} characters.` };
+      return {
+        success: false,
+        error: `Response must be under ${MAX_RESPONSE_LENGTH} characters.`,
+      };
     }
 
     // 2b. Profanity / abuse filter
@@ -383,7 +426,10 @@ export async function submitProviderResponse(
     }
 
     if (review.provider_id !== providerId) {
-      return { success: false, error: "You can only respond to reviews left for you." };
+      return {
+        success: false,
+        error: "You can only respond to reviews left for you.",
+      };
     }
 
     if (review.is_hidden) {
@@ -401,7 +447,10 @@ export async function submitProviderResponse(
 
     if (updateError) {
       console.error("[Reviews] Provider response update error:", updateError);
-      return { success: false, error: "Failed to save response. Please try again." };
+      return {
+        success: false,
+        error: "Failed to save response. Please try again.",
+      };
     }
 
     // 5. Notify the customer
@@ -431,7 +480,8 @@ export async function submitProviderResponse(
     console.error("[Reviews] submitProviderResponse error:", err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "An unexpected error occurred.",
+      error:
+        err instanceof Error ? err.message : "An unexpected error occurred.",
     };
   }
 }
@@ -446,7 +496,7 @@ export async function submitProviderResponse(
  */
 export async function voteReviewHelpful(
   reviewId: string,
-  isHelpful: boolean
+  isHelpful: boolean,
 ): Promise<VoteActionResult> {
   try {
     const { user, error: authError } = await getCachedUser();
@@ -480,7 +530,7 @@ export async function voteReviewHelpful(
           user_id: user.id,
           is_helpful: isHelpful,
         },
-        { onConflict: "review_id,user_id" }
+        { onConflict: "review_id,user_id" },
       );
 
     if (upsertError) {
@@ -493,7 +543,8 @@ export async function voteReviewHelpful(
     console.error("[Reviews] voteReviewHelpful error:", err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "An unexpected error occurred.",
+      error:
+        err instanceof Error ? err.message : "An unexpected error occurred.",
     };
   }
 }
@@ -505,7 +556,9 @@ export async function voteReviewHelpful(
 /**
  * Remove a user's vote on a review (toggle off).
  */
-export async function removeReviewVote(reviewId: string): Promise<VoteActionResult> {
+export async function removeReviewVote(
+  reviewId: string,
+): Promise<VoteActionResult> {
   try {
     const { user, error: authError } = await getCachedUser();
     if (authError || !user) {
@@ -530,7 +583,8 @@ export async function removeReviewVote(reviewId: string): Promise<VoteActionResu
     console.error("[Reviews] removeReviewVote error:", err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "An unexpected error occurred.",
+      error:
+        err instanceof Error ? err.message : "An unexpected error occurred.",
     };
   }
 }
@@ -544,17 +598,23 @@ export async function removeReviewVote(reviewId: string): Promise<VoteActionResu
  */
 export async function flagReview(
   reviewId: string,
-  reason: string
+  reason: string,
 ): Promise<FlagActionResult> {
   try {
     const { user, error: authError } = await getCachedUser();
     if (authError || !user) {
-      return { success: false, error: "You must be signed in to report a review." };
+      return {
+        success: false,
+        error: "You must be signed in to report a review.",
+      };
     }
 
     const trimmedReason = reason.trim();
     if (!trimmedReason) {
-      return { success: false, error: "Please provide a reason for reporting." };
+      return {
+        success: false,
+        error: "Please provide a reason for reporting.",
+      };
     }
     if (trimmedReason.length > 500) {
       return { success: false, error: "Reason must be under 500 characters." };
@@ -574,7 +634,10 @@ export async function flagReview(
     }
 
     if (review.is_flagged) {
-      return { success: false, error: "This review has already been reported." };
+      return {
+        success: false,
+        error: "This review has already been reported.",
+      };
     }
 
     // Flag the review
@@ -596,7 +659,8 @@ export async function flagReview(
     console.error("[Reviews] flagReview error:", err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "An unexpected error occurred.",
+      error:
+        err instanceof Error ? err.message : "An unexpected error occurred.",
     };
   }
 }
@@ -610,7 +674,7 @@ export async function flagReview(
  * Used by the review form page to prevent duplicate submissions.
  */
 export async function getReviewForBooking(
-  bookingId: string
+  bookingId: string,
 ): Promise<{ review: Review | null; error: string | null }> {
   try {
     const { user, error: authError } = await getCachedUser();
@@ -666,7 +730,11 @@ export async function getCustomerReviews(
     const offset = (page - 1) * pageSize;
 
     // Fetch reviews authored by this customer, ordered newest first
-    const { data: reviews, error, count } = await supabase
+    const {
+      data: reviews,
+      error,
+      count,
+    } = await supabase
       .from("reviews")
       .select("*", { count: "exact" })
       .eq("reviewer_id", userId)
@@ -693,8 +761,16 @@ export async function getCustomerReviews(
     }
 
     // Collect IDs for batch joining
-    const providerIds = [...new Set(reviews.map((r: { provider_id: string }) => r.provider_id))];
-    const serviceIds = [...new Set(reviews.map((r: { service_id: string }) => r.service_id).filter(Boolean))];
+    const providerIds = [
+      ...new Set(reviews.map((r: { provider_id: string }) => r.provider_id)),
+    ];
+    const serviceIds = [
+      ...new Set(
+        reviews
+          .map((r: { service_id: string }) => r.service_id)
+          .filter(Boolean),
+      ),
+    ];
 
     // Parallel fetch: provider names, service names
     const [providersResult, servicesResult] = await Promise.all([
@@ -703,44 +779,52 @@ export async function getCustomerReviews(
         .select("id, business_name, profile_photo_url")
         .in("id", providerIds),
       serviceIds.length > 0
-        ? supabase
-            .from("services")
-            .select("id, name")
-            .in("id", serviceIds)
+        ? supabase.from("services").select("id, name").in("id", serviceIds)
         : Promise.resolve({ data: [] }),
     ]);
 
     // Build lookup maps
-    const providerMap = new Map<string, { business_name: string; profile_photo_url: string | null }>();
+    const providerMap = new Map<
+      string,
+      { business_name: string; profile_photo_url: string | null }
+    >();
     for (const p of providersResult.data ?? []) {
-      providerMap.set(p.id, { business_name: p.business_name, profile_photo_url: p.profile_photo_url });
+      providerMap.set(p.id, {
+        business_name: p.business_name,
+        profile_photo_url: p.profile_photo_url,
+      });
     }
 
     const serviceMap = new Map<string, string>();
-    for (const s of (servicesResult as { data: Array<{ id: string; name: string }> | null }).data ?? []) {
+    for (const s of (
+      servicesResult as { data: Array<{ id: string; name: string }> | null }
+    ).data ?? []) {
       serviceMap.set(s.id, s.name);
     }
 
     // Assemble enriched items
-    const enriched: CustomerReviewItem[] = reviews.map((r: Record<string, unknown>) => {
-      const provider = providerMap.get(r.provider_id as string);
-      return {
-        id: r.id as string,
-        booking_id: r.booking_id as string,
-        provider_id: r.provider_id as string,
-        service_id: r.service_id as string,
-        rating: r.rating as ReviewRatingEnum,
-        title: (r.title as string | null) ?? null,
-        review_text: (r.review_text as string | null) ?? null,
-        review_photos: (r.review_photos as string[] | null) ?? null,
-        provider_response: (r.provider_response as string | null) ?? null,
-        provider_responded_at: (r.provider_responded_at as string | null) ?? null,
-        created_at: r.created_at as string,
-        provider_name: provider?.business_name ?? "Unknown Provider",
-        provider_photo_url: provider?.profile_photo_url ?? null,
-        service_name: serviceMap.get(r.service_id as string) ?? null,
-      };
-    });
+    const enriched: CustomerReviewItem[] = reviews.map(
+      (r: Record<string, unknown>) => {
+        const provider = providerMap.get(r.provider_id as string);
+        return {
+          id: r.id as string,
+          booking_id: r.booking_id as string,
+          provider_id: r.provider_id as string,
+          service_id: r.service_id as string,
+          rating: r.rating as ReviewRatingEnum,
+          title: (r.title as string | null) ?? null,
+          review_text: (r.review_text as string | null) ?? null,
+          review_photos: (r.review_photos as string[] | null) ?? null,
+          provider_response: (r.provider_response as string | null) ?? null,
+          provider_responded_at:
+            (r.provider_responded_at as string | null) ?? null,
+          created_at: r.created_at as string,
+          provider_name: provider?.business_name ?? "Unknown Provider",
+          provider_photo_url: provider?.profile_photo_url ?? null,
+          service_name: serviceMap.get(r.service_id as string) ?? null,
+        };
+      },
+    );
 
     const total = count ?? 0;
     const totalPages = Math.ceil(total / pageSize);
@@ -788,7 +872,7 @@ export interface CustomerReviewItem {
  * Used by the provider reviews dashboard and public provider page.
  */
 export async function getProviderReviewsWithVotes(
-  params: ReviewQueryParams
+  params: ReviewQueryParams,
 ): Promise<PaginatedResponse<ReviewWithReviewer>> {
   const {
     providerId,
@@ -825,7 +909,10 @@ export async function getProviderReviewsWithVotes(
 
     // Apply rating filter
     if (ratingFilter != null && ratingFilter >= 1 && ratingFilter <= 5) {
-      query = query.eq("rating", String(ratingFilter) as Database["public"]["Enums"]["review_rating"]);
+      query = query.eq(
+        "rating",
+        String(ratingFilter) as Database["public"]["Enums"]["review_rating"],
+      );
     }
 
     // Apply sort
@@ -834,10 +921,14 @@ export async function getProviderReviewsWithVotes(
         query = query.order("created_at", { ascending: true });
         break;
       case "highest":
-        query = query.order("rating", { ascending: false }).order("created_at", { ascending: false });
+        query = query
+          .order("rating", { ascending: false })
+          .order("created_at", { ascending: false });
         break;
       case "lowest":
-        query = query.order("rating", { ascending: true }).order("created_at", { ascending: false });
+        query = query
+          .order("rating", { ascending: true })
+          .order("created_at", { ascending: false });
         break;
       case "newest":
       default:
@@ -869,12 +960,18 @@ export async function getProviderReviewsWithVotes(
 
     // Batch-fetch reviewer profiles + vote counts
     const reviewIds = reviews.map((r: { id: string }) => r.id);
-    const reviewerIds = [...new Set(reviews.map((r: { reviewer_id: string }) => r.reviewer_id))];
+    const reviewerIds = [
+      ...new Set(reviews.map((r: { reviewer_id: string }) => r.reviewer_id)),
+    ];
 
     const [profilesResult, votesResult, userVotesResult] = await Promise.all([
-      // Reviewer profiles
+      // Reviewer profiles.
+      // profiles_public, not profiles: this is a PUBLIC page reading OTHER
+      // users' rows. See 20260335000000_scope_profile_reads.sql -- the blanket
+      // read policy it replaces handed over email/phone/metadata too, because
+      // RLS gates rows and cannot gate columns.
       supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("id, full_name, avatar_url")
         .in("id", reviewerIds),
 
@@ -895,14 +992,26 @@ export async function getProviderReviewsWithVotes(
     ]);
 
     // Build lookup maps
-    const profileMap = new Map<string, { id: string; full_name: string | null; avatar_url: string | null }>();
+    const profileMap = new Map<
+      string,
+      { id: string; full_name: string | null; avatar_url: string | null }
+    >();
     for (const p of profilesResult.data ?? []) {
-      profileMap.set(p.id, p);
+      // profiles_public is a view, so the generator types every column as
+      // nullable. id is the base table's primary key and cannot actually be
+      // null, but the guard keeps the map keyed by a real string.
+      if (p.id) profileMap.set(p.id, { ...p, id: p.id });
     }
 
-    const voteCountMap = new Map<string, { helpful: number; unhelpful: number }>();
+    const voteCountMap = new Map<
+      string,
+      { helpful: number; unhelpful: number }
+    >();
     for (const v of votesResult.data ?? []) {
-      const existing = voteCountMap.get(v.review_id) ?? { helpful: 0, unhelpful: 0 };
+      const existing = voteCountMap.get(v.review_id) ?? {
+        helpful: 0,
+        unhelpful: 0,
+      };
       if (v.is_helpful) {
         existing.helpful++;
       } else {
@@ -912,14 +1021,21 @@ export async function getProviderReviewsWithVotes(
     }
 
     const userVoteMap = new Map<string, boolean>();
-    for (const v of (userVotesResult as { data: Array<{ review_id: string; is_helpful: boolean }> | null }).data ?? []) {
+    for (const v of (
+      userVotesResult as {
+        data: Array<{ review_id: string; is_helpful: boolean }> | null;
+      }
+    ).data ?? []) {
       userVoteMap.set(v.review_id, v.is_helpful);
     }
 
     // Assemble enriched reviews
     const enrichedReviews: ReviewWithReviewer[] = reviews.map(
       (review: Record<string, unknown>) => {
-        const votes = voteCountMap.get(review.id as string) ?? { helpful: 0, unhelpful: 0 };
+        const votes = voteCountMap.get(review.id as string) ?? {
+          helpful: 0,
+          unhelpful: 0,
+        };
         return {
           ...review,
           reviewer: profileMap.get(review.reviewer_id as string) ?? null,
@@ -929,7 +1045,7 @@ export async function getProviderReviewsWithVotes(
             ? userVoteMap.get(review.id as string)
             : null,
         } as ReviewWithReviewer;
-      }
+      },
     );
 
     const total = count ?? 0;
@@ -960,7 +1076,7 @@ export async function getProviderReviewsWithVotes(
  * Used by the provider reviews dashboard header.
  */
 export async function getProviderReviewSummary(
-  providerId: string
+  providerId: string,
 ): Promise<ReviewSummary> {
   const defaultSummary: ReviewSummary = {
     averageRating: 0,
@@ -981,7 +1097,7 @@ export async function getProviderReviewSummary(
     const { data: reviews, error } = await supabase
       .from("reviews")
       .select(
-        "rating, quality_rating, communication_rating, timeliness_rating, professionalism_rating, value_rating"
+        "rating, quality_rating, communication_rating, timeliness_rating, professionalism_rating, value_rating",
       )
       .eq("provider_id", providerId)
       .eq("is_hidden", false);
@@ -991,7 +1107,10 @@ export async function getProviderReviewSummary(
     }
 
     const total = reviews.length;
-    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } as Record<number, number>;
+    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } as Record<
+      number,
+      number
+    >;
     let ratingSum = 0;
 
     // Dimension accumulators
@@ -1055,7 +1174,7 @@ export async function getProviderReviewSummary(
  * Returns the public URL of the uploaded image.
  */
 export async function uploadReviewPhoto(
-  formData: FormData
+  formData: FormData,
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
     const { user, error: authError } = await getCachedUser();
@@ -1071,7 +1190,10 @@ export async function uploadReviewPhoto(
     // Validate file type
     const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
-      return { success: false, error: "Only JPEG, PNG, and WebP images are allowed." };
+      return {
+        success: false,
+        error: "Only JPEG, PNG, and WebP images are allowed.",
+      };
     }
 
     // Validate file size (max 5MB)

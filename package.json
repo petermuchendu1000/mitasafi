@@ -21,7 +21,9 @@
     "format:check": "prettier --check .",
     "prepare": "husky install",
     "test:sql": "node scripts/ci/run-sql-suites.mjs",
-    "test:sql:self": "node scripts/ci/run-sql-suites.mjs --self-test"
+    "test:sql:self": "node scripts/ci/run-sql-suites.mjs --self-test",
+    "test:idempotency": "node scripts/ci/check-migration-idempotency.mjs",
+    "test:idempotency:self": "node scripts/ci/check-migration-idempotency.mjs --self-test"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

@@ -21,7 +21,7 @@
  * Check: node scripts/ci/run-sql-suites.mjs --self-test
  */
 
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -56,6 +56,20 @@ function selfTest() {
     ["ERROR:  relation does not exist", null, false],              // never ran
     ["", null, false],                                             // no output
     ["psql: connection refused", null, false],                     // no database
+    // The real-world shape: psql prints the verdict on stderr, prefixed, as
+    // part of an ERROR line. This is what the first version of the runner
+    // threw away.
+    [
+      "psql:supabase/tests/x.sql:140: ERROR:  MONEY_RESULT pass=12 fail=0\nPASS I1 ...",
+      { pass: 12, fail: 0 },
+      true,
+    ],
+    // ...and the same shape carrying failures.
+    [
+      "psql:supabase/tests/x.sql:140: ERROR:  MONEY_RESULT pass=9 fail=3\nFAIL I4 ...",
+      { pass: 9, fail: 3 },
+      false,
+    ],
   ];
 
   let bad = 0;
@@ -108,17 +122,34 @@ function main() {
 
   for (const file of files) {
     const path = join(SUITE_DIR, file);
-    let output = "";
-    try {
-      // psql exits non-zero because each suite raises to force a rollback, so
-      // the exit code is deliberately ignored. The verdict line is the signal.
-      output = execFileSync("psql", [dbUrl, "-v", "ON_ERROR_STOP=0", "-f", path], {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-    } catch (err) {
-      output = `${err.stdout ?? ""}\n${err.stderr ?? ""}`;
+
+    // spawnSync, and BOTH streams.
+    //
+    // The first version of this used execFileSync and read only its return
+    // value. That was wrong twice over, and the two errors cancelled into
+    // silence:
+    //   - the verdict is delivered by RAISE EXCEPTION, so psql prints it to
+    //     STDERR, and execFileSync returns stdout only;
+    //   - under ON_ERROR_STOP=0 psql then exits ZERO, so the catch block that
+    //     was supposed to recover stderr never ran.
+    // Every suite therefore came back as "no verdict line", including suites
+    // that were passing. A step that can only fail is no better than one that
+    // can only pass. Found by running this against a real postgres; the
+    // parser self-test cannot see it, because the parser was never the bug.
+    const run = spawnSync("psql", [dbUrl, "-v", "ON_ERROR_STOP=0", "-f", path], {
+      encoding: "utf8",
+    });
+
+    if (run.error) {
+      console.log(`  FAIL  ${file.padEnd(36)} could not run psql: ${run.error.message}`);
+      failed++;
+      continue;
     }
+
+    // The exit code is deliberately not consulted: each suite raises on
+    // purpose to roll its fixtures back, so psql's status says nothing about
+    // whether the assertions passed. The verdict line is the only signal.
+    const output = `${run.stdout ?? ""}\n${run.stderr ?? ""}`;
 
     const verdict = parseVerdict(output);
     if (isPass(verdict)) {

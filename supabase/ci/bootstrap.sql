@@ -124,6 +124,22 @@ GRANT ALL ON storage.buckets, storage.objects TO service_role;
 GRANT SELECT ON storage.buckets TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION storage.foldername(text) TO anon, authenticated, service_role;
 
+-- ── realtime ─────────────────────────────────────────────────────────────────
+-- Supabase provisions a logical replication publication named
+-- `supabase_realtime` and four migrations do
+--   ALTER PUBLICATION supabase_realtime ADD TABLE ...
+-- which is a hard ERROR when the publication is absent. Found by running this
+-- bootstrap plus a from-scratch migration apply against a real postgres: four
+-- migrations failed, exactly the class of gap the CI README predicted.
+-- CREATE PUBLICATION has no IF NOT EXISTS in PG16, hence the guard.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+END
+$$;
+
 -- ── migration ledger ─────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations (
   version text PRIMARY KEY,

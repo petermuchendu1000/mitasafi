@@ -531,22 +531,43 @@ END $$;
 -- Case (b) is currently saved by the fact that some queries use admin client,
 -- but any createClient() query joining profiles for another user will fail.
 --
--- Fix: Add a public-read policy. All profile data (full_name, avatar_url,
--- phone, verification_level) is needed for the marketplace to function.
--- Privacy-sensitive fields should be protected at the application layer, not
--- via RLS policy on the entire row — the column set is already minimal.
-
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE tablename = 'profiles'
-      AND policyname = 'profiles_public_read'
-  ) THEN
-    CREATE POLICY profiles_public_read ON public.profiles
-      FOR SELECT TO authenticated
-      USING (true);
-  END IF;
-END $$;
+-- WITHDRAWN 2026-11-03. This block used to create:
+--
+--   CREATE POLICY profiles_public_read ON public.profiles
+--     FOR SELECT TO authenticated USING (true);
+--
+-- and justified it with: "Privacy-sensitive fields should be protected at the
+-- application layer, not via RLS policy on the entire row — the column set is
+-- already minimal." Both halves of that were wrong.
+--
+--   The column set is NOT minimal. profiles carries email, phone and a
+--   free-form metadata jsonb, and SELECT was granted on all 11 columns.
+--   USING (true) therefore let any signed-in account run
+--   `select email, phone, metadata from profiles` across the whole user table.
+--   Measured on the live project: another user's email, phone and metadata
+--   were all readable from a second account.
+--
+--   The application layer cannot protect anything here. Clients hold the anon
+--   key and talk to PostgREST directly; the app's own `.select("full_name")`
+--   is a courtesy, not a boundary.
+--
+-- It was also broader than the problem it solved. The policy was OR'd with the
+-- ownership policy, so USING (true) subsumed it outright -- as `authenticated`,
+-- EXPLAIN on a profiles scan emitted no Filter line at all.
+--
+-- The creation is removed here rather than only dropped later, so that a
+-- from-scratch apply never passes through the vulnerable state and a partial
+-- replay of this file cannot resurrect it (the old guard was IF NOT EXISTS,
+-- which would have re-created the policy on every replay after it was dropped).
+-- 20260335000000_scope_profile_reads.sql still carries the DROP, for databases
+-- where this file already ran, and adds the `profiles_public` view that serves
+-- the three reads this policy was actually introduced for.
+--
+-- Cases (a) and (b) above are now served as follows:
+--   (a) own-row reads        -> "Users can view own profile" (auth.uid() = id)
+--   (b) cross-user name reads -> public.profiles_public (id, full_name,
+--                                avatar_url), scoped to rows the caller is
+--                                already entitled to see.
 
 
 -- #############################################################################

@@ -43,11 +43,15 @@ jobs:
       - name: Tests
         run: npx jest --ci --runInBand
 
-      # The SQL suite runner's own parser, checked before it is trusted to
-      # report on anything. It ends in a deliberate RAISE, so a careless harness
-      # would read every suite as either always-failing or always-passing.
+      # The two CI scripts' own self-tests, checked before either is trusted to
+      # report on anything. The suite runner ends in a deliberate RAISE, so a
+      # careless harness reads every suite as either always-failing or
+      # always-passing -- the first version of it did exactly that.
       - name: SQL runner self-test
         run: node scripts/ci/run-sql-suites.mjs --self-test
+
+      - name: Idempotency checker self-test
+        run: node scripts/ci/check-migration-idempotency.mjs --self-test
 
   database:
     name: Migrations and SQL suites
@@ -131,18 +135,16 @@ jobs:
       - name: SQL regression suites
         run: node scripts/ci/run-sql-suites.mjs "$DATABASE_URL"
 
-      # Re-applying must be safe. A migration that only works once cannot be
-      # replayed into another environment, and several of these are
-      # CREATE OR REPLACE over live objects.
+      # Re-applying must be safe: a migration that only works once cannot be
+      # replayed into staging or a fresh environment.
+      #
+      # This was a plain replay loop until it was run against a real postgres
+      # for the first time, which showed 26 of the 100 migrations are NOT
+      # replayable -- legacy CREATE POLICY without a drop, ADD CONSTRAINT
+      # without IF NOT EXISTS, ALTER PUBLICATION on an already-published table.
+      # A step that is red on every run is a step someone deletes, so the
+      # measured set is checked in and the script fails on MOVEMENT: a new
+      # migration that cannot be replayed, or a baseline entry that has been
+      # fixed and not removed.
       - name: Migrations are idempotent
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          for f in supabase/migrations/*.sql; do
-            base="$(basename "$f")"
-            case "$base" in
-              00000000000000_reset_database.sql|_skip_*|_test_*) continue ;;
-            esac
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f"
-          done
-          echo "all migrations re-applied cleanly"
+        run: node scripts/ci/check-migration-idempotency.mjs "$DATABASE_URL"

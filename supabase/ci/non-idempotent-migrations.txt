@@ -1,0 +1,42 @@
+# Migrations that cannot be re-applied over an already-migrated database.
+#
+# Measured, not guessed: PostgreSQL 16, bootstrap + a from-scratch apply of the
+# whole tree, then every migration replayed in filename order.
+#
+# These are legacy. The failures are CREATE POLICY without a preceding drop,
+# ADD CONSTRAINT without IF NOT EXISTS, ALTER PUBLICATION ADD TABLE for a table
+# already published, CREATE OR REPLACE VIEW with a changed column order, and a
+# couple of guards that assert against state a later migration legitimately
+# changed.
+#
+# scripts/ci/check-migration-idempotency.mjs fails if a migration NOT listed
+# here stops being replayable, and also fails if one listed here starts
+# replaying cleanly -- so the list can only shrink, and only deliberately.
+#
+# Do not add a new migration to this file. Guard the statement instead.
+20251231000002_create_schema.sql
+20260101000003_property_management.sql
+20260101000005_listings_table.sql
+20260102000001_engagement_tables.sql
+20260105000001_enable_realtime.sql
+20260105000002_notifications_system.sql
+20260105000003_search_alerts_source_tracking.sql
+20260108120005_support_tables.sql
+20260108120006_schema_fixes_critical.sql
+20260108120008_booking_flow_details.sql
+20260109120021_test_service_type_immutability.sql
+20260109120030_provider_capacity_enforcement.sql
+20260109120031_critical_gaps_complete_fix.sql
+20260109120032_adversarial_blockers_fix.sql
+20260109130000_add_capacity_scope.sql
+20260109130001_canonical_availability.sql
+20260109130003_deprecate_booking_busy_fields.sql
+20260109140001_booking_commitments_infrastructure.sql
+20260227000000_create_provider_documents.sql
+20260302000002_social_link_clicks.sql
+20260305000000_m6_payment_tables.sql
+20260305090000_analytics_tables.sql
+20260320000000_money_invariants.sql
+20260321000000_commission_config.sql
+20260325000000_settlement_receipt_optional.sql
+20260332000000_fix_availability_source.sql

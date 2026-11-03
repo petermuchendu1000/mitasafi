@@ -43,7 +43,7 @@ export interface GetCustomerBookingsResult {
  * Joins service name and provider details for display.
  */
 export async function getCustomerBookings(
-  params: GetCustomerBookingsParams
+  params: GetCustomerBookingsParams,
 ): Promise<GetCustomerBookingsResult> {
   const { customerId, status, page = 1, pageSize = 10 } = params;
   const offset = (page - 1) * pageSize;
@@ -76,7 +76,7 @@ export async function getCustomerBookings(
           average_rating
         )
         `,
-        { count: "exact" }
+        { count: "exact" },
       )
       .eq("customer_id", customerId)
       .order("created_at", { ascending: false })
@@ -138,7 +138,7 @@ export interface GetBookingByIdResult {
  */
 export async function getBookingById(
   bookingId: string,
-  userId: string
+  userId: string,
 ): Promise<GetBookingByIdResult> {
   try {
     const supabase = await createClient();
@@ -161,7 +161,7 @@ export async function getBookingById(
           phone,
           average_rating
         )
-        `
+        `,
       )
       .eq("id", bookingId)
       .single();
@@ -235,7 +235,7 @@ export interface BookingCounts {
 }
 
 export async function getCustomerBookingCounts(
-  customerId: string
+  customerId: string,
 ): Promise<BookingCounts> {
   try {
     const supabase = await createClient();
@@ -308,7 +308,7 @@ export interface GetProviderBookingsResult {
  * Joins service name and customer details for display.
  */
 export async function getProviderBookings(
-  params: GetProviderBookingsParams
+  params: GetProviderBookingsParams,
 ): Promise<GetProviderBookingsResult> {
   const { providerId, status, page = 1, pageSize = 10 } = params;
   const offset = (page - 1) * pageSize;
@@ -331,12 +331,9 @@ export async function getProviderBookings(
           id,
           name,
           description
-        ),
-        customer:profiles!customer_id (
-          full_name
         )
         `,
-        { count: "exact" }
+        { count: "exact" },
       )
       .eq("provider_id", providerId)
       .order("created_at", { ascending: false })
@@ -363,8 +360,57 @@ export async function getProviderBookings(
     const total = count ?? 0;
     const totalPages = Math.ceil(total / pageSize);
 
+    // Customer names are resolved in a second query rather than embedded.
+    //
+    // This used to be `customer:profiles!customer_id (full_name)`. That embed
+    // read the profiles TABLE under RLS, which only worked because of
+    // `profiles_public_read USING (true)` -- a policy that also handed every
+    // signed-in account every other user's email, phone and metadata, because
+    // RLS cannot restrict columns. 20260335000000 dropped it and introduced
+    // profiles_public, a three-column projection.
+    //
+    // The lookup is kept as a separate `.in()` rather than an embed on the
+    // view: PostgREST can sometimes infer a relationship through a view, but
+    // that inference is not something this page should silently depend on --
+    // when it fails it fails at request time, as PGRST200, in production.
+    const rows = (data ?? []) as BookingWithDetails[];
+    const customerIds = [
+      ...new Set(
+        rows
+          .map((b) => (b as { customer_id?: string | null }).customer_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+
+    const names = new Map<string, string | null>();
+    if (customerIds.length > 0) {
+      const { data: profileRows, error: profileError } = await supabase
+        .from("profiles_public")
+        .select("id, full_name")
+        .in("id", customerIds);
+
+      if (profileError) {
+        // A missing name must not blank the bookings list.
+        console.error("[Bookings] customer name lookup failed:", profileError);
+      } else {
+        for (const row of (profileRows ?? []) as {
+          id: string | null;
+          full_name: string | null;
+        }[]) {
+          if (row.id) names.set(row.id, row.full_name);
+        }
+      }
+    }
+
+    const bookings = rows.map((b) => {
+      const customerId = (b as { customer_id?: string | null }).customer_id;
+      return customerId && names.has(customerId)
+        ? { ...b, customer: { full_name: names.get(customerId) ?? null } }
+        : b;
+    });
+
     return {
-      bookings: (data ?? []) as BookingWithDetails[],
+      bookings,
       pagination: {
         page,
         pageSize,
@@ -400,50 +446,55 @@ export interface ProviderBookingCounts {
  * Used for dashboard badges and tab counts.
  */
 export async function getProviderBookingCounts(
-  providerId: string
+  providerId: string,
 ): Promise<ProviderBookingCounts> {
   try {
     const supabase = await createClient();
 
-    const [totalResult, pendingResult, activeResult, quotingResult, completedResult] =
-      await Promise.all([
-        supabase
-          .from("bookings")
-          .select("id", { count: "exact", head: true })
-          .eq("provider_id", providerId),
-        supabase
-          .from("bookings")
-          .select("id", { count: "exact", head: true })
-          .eq("provider_id", providerId)
-          .in("status", ["submitted", "provider_viewed"]),
-        supabase
-          .from("bookings")
-          .select("id", { count: "exact", head: true })
-          .eq("provider_id", providerId)
-          .in("status", [
-            "confirmed",
-            "scheduled",
-            "in_progress",
-            "partially_completed",
-            "requires_followup",
-            "rework_required",
-          ]),
-        supabase
-          .from("bookings")
-          .select("id", { count: "exact", head: true })
-          .eq("provider_id", providerId)
-          .in("status", [
-            "quote_pending",
-            "quote_sent",
-            "quote_accepted",
-            "quote_rejected",
-          ]),
-        supabase
-          .from("bookings")
-          .select("id", { count: "exact", head: true })
-          .eq("provider_id", providerId)
-          .in("status", ["completed", "customer_confirmed"]),
-      ]);
+    const [
+      totalResult,
+      pendingResult,
+      activeResult,
+      quotingResult,
+      completedResult,
+    ] = await Promise.all([
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("provider_id", providerId),
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("provider_id", providerId)
+        .in("status", ["submitted", "provider_viewed"]),
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("provider_id", providerId)
+        .in("status", [
+          "confirmed",
+          "scheduled",
+          "in_progress",
+          "partially_completed",
+          "requires_followup",
+          "rework_required",
+        ]),
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("provider_id", providerId)
+        .in("status", [
+          "quote_pending",
+          "quote_sent",
+          "quote_accepted",
+          "quote_rejected",
+        ]),
+      supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("provider_id", providerId)
+        .in("status", ["completed", "customer_confirmed"]),
+    ]);
 
     return {
       total: totalResult.count ?? 0,
@@ -467,7 +518,7 @@ export async function getProviderBookingCounts(
  */
 export async function getBookingWithQuotes(
   bookingId: string,
-  userId: string
+  userId: string,
 ): Promise<GetBookingByIdResult> {
   // First get the booking (which now supports both customer and provider access)
   const result = await getBookingById(bookingId, userId);
@@ -521,7 +572,7 @@ export interface CalendarBooking {
 export async function getProviderScheduledBookings(
   providerId: string,
   rangeStart: string,
-  rangeEnd: string
+  rangeEnd: string,
 ): Promise<{ bookings: CalendarBooking[]; error: string | null }> {
   try {
     const supabase = await createClient();
@@ -536,7 +587,7 @@ export async function getProviderScheduledBookings(
         status,
         customer_notes,
         service:services!service_id ( id, name )
-        `
+        `,
       )
       .eq("provider_id", providerId)
       .not("scheduled_start", "is", null)
