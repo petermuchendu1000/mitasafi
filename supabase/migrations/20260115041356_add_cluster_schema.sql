@@ -49,7 +49,7 @@ CREATE INDEX IF NOT EXISTS idx_cluster_adjacency_cluster ON cluster_adjacency(cl
 
 -- 1.4 Create provider_clusters table
 CREATE TABLE IF NOT EXISTS provider_clusters (
-  provider_id UUID PRIMARY KEY REFERENCES providers(id) ON DELETE CASCADE,
+  provider_id UUID PRIMARY KEY REFERENCES service_providers(id) ON DELETE CASCADE,
   cluster_id UUID NOT NULL REFERENCES clusters(id),
   primary_category_id UUID NOT NULL REFERENCES service_categories(id),
   secondary_category_id UUID REFERENCES service_categories(id),
@@ -63,7 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_provider_clusters_cluster ON provider_clusters(cl
 -- 1.5 Create provider_category_attempts table
 CREATE TABLE IF NOT EXISTS provider_category_attempts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  provider_id UUID REFERENCES providers(id) ON DELETE SET NULL,
+  provider_id UUID REFERENCES service_providers(id) ON DELETE SET NULL,
   attempted_primary UUID,
   attempted_secondary UUID,
   reason_code VARCHAR(50) NOT NULL,
@@ -75,9 +75,9 @@ CREATE INDEX IF NOT EXISTS idx_provider_category_attempts_provider ON provider_c
 CREATE INDEX IF NOT EXISTS idx_provider_category_attempts_created ON provider_category_attempts(created_at);
 CREATE INDEX IF NOT EXISTS idx_provider_category_attempts_reason ON provider_category_attempts(reason_code);
 
--- 1.6 Add provider_type column to providers table
-ALTER TABLE providers 
+-- 1.6 Add provider_type column to service_providers table
+ALTER TABLE service_providers 
 ADD COLUMN IF NOT EXISTS provider_type VARCHAR(20) DEFAULT 'individual'
 CHECK (provider_type IN ('individual', 'company'));
 
-CREATE INDEX IF NOT EXISTS idx_providers_type ON providers(provider_type);
+CREATE INDEX IF NOT EXISTS idx_providers_type ON service_providers(provider_type);
