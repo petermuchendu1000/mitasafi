@@ -1,6 +1,6 @@
 /**
  * Provider Verification Page
- * 
+ *
  * Multi-step verification flow for service providers:
  * Step 1: Phone verification
  * Step 2: Provider type selection (Individual / Business)
@@ -40,7 +40,7 @@ interface ProviderData {
 function getCurrentStep(
   verificationLevel: string,
   providerType: string | null,
-  hasIdentityDocs: boolean
+  hasIdentityDocs: boolean,
 ): number {
   if (verificationLevel === "none") return 1; // Phone verification
   if (!providerType) return 2; // Provider type selection
@@ -50,9 +50,11 @@ function getCurrentStep(
 
 export default async function ProviderVerifyPage() {
   const supabase = await createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
     redirect("/login?redirectTo=/dashboard/verify-provider");
   }
@@ -73,36 +75,19 @@ export default async function ProviderVerifyPage() {
 
   const provider = providerData as ProviderData | null;
 
-  // Check verification state
+  // Check verification state — read from the database, never promoted here.
+  // Reaching verification_level 'phone' requires completing the OTP flow
+  // (sendPhoneOTP / verifyPhoneOTP in ./actions.ts). Loading this page must not
+  // grant it: a previous version wrote verification_level='phone' on render and
+  // then assumed success in memory, so the page showed step 2+ while the row
+  // stayed at 'none'.
   let verificationLevel = profile?.verification_level || "none";
-  const supabasePhoneVerified = user.phone && user.phone_confirmed_at;
-  
-  // If Supabase already verified their phone (phone signup), auto-update
-  if (supabasePhoneVerified && verificationLevel === "none") {
-    await supabase
-      .from("profiles")
-      .update({ 
-        phone: user.phone,
-        verification_level: "phone",
-        updated_at: new Date().toISOString()
-      } as never)
-      .eq("id", user.id);
-
-    await supabase
-      .from("service_providers")
-      .update({ 
-        phone: user.phone,
-        updated_at: new Date().toISOString()
-      } as never)
-      .eq("user_id", user.id);
-
-    verificationLevel = "phone";
-  }
 
   // Determine identity docs status.
   // Documents submitted = verification_level "id" or "full", OR is_verified, OR account_status pending.
   // Only truly verified if is_verified === true AND verification_level === "full".
-  const isPendingVerification = provider?.account_status === "pending_verification";
+  const isPendingVerification =
+    provider?.account_status === "pending_verification";
   const isRejected = provider?.account_status === "rejected";
   const hasIdentityDocs = !!provider?.is_verified || isPendingVerification;
 
@@ -122,13 +107,17 @@ export default async function ProviderVerifyPage() {
 
   // Calculate current step
   const currentStep = getCurrentStep(
-    verificationLevel, 
+    verificationLevel,
     provider?.business_type || null,
-    hasIdentityDocs
+    hasIdentityDocs,
   );
 
   // If fully verified (admin approved), redirect to dashboard
-  if ((currentStep === 4 || verificationLevel === "full") && !isPendingVerification && !isRejected) {
+  if (
+    (currentStep === 4 || verificationLevel === "full") &&
+    !isPendingVerification &&
+    !isRejected
+  ) {
     redirect("/dashboard/provider");
   }
 
@@ -149,9 +138,9 @@ export default async function ProviderVerifyPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src="/logo/mitasafi-logo-teal.svg" 
-              alt="MitaSafi" 
+            <img
+              src="/logo/mitasafi-logo-teal.svg"
+              alt="MitaSafi"
               className="h-8"
             />
           </div>
@@ -170,21 +159,26 @@ export default async function ProviderVerifyPage() {
         <div className="flex items-center justify-center gap-2 mb-8">
           {steps.map((step, index) => (
             <div key={step.number} className="flex items-center">
-              <div className={`
+              <div
+                className={`
                 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
-                ${currentStep > step.number 
-                  ? "bg-teal-600 text-white" 
-                  : currentStep === step.number
+                ${
+                  currentStep > step.number
                     ? "bg-teal-600 text-white"
-                    : "bg-gray-200 text-gray-500"
+                    : currentStep === step.number
+                      ? "bg-teal-600 text-white"
+                      : "bg-gray-200 text-gray-500"
                 }
-              `}>
+              `}
+              >
                 {currentStep > step.number ? "✓" : step.number}
               </div>
               {index < steps.length - 1 && (
-                <div className={`w-12 h-0.5 mx-2 ${
-                  currentStep > step.number ? "bg-teal-600" : "bg-gray-200"
-                }`} />
+                <div
+                  className={`w-12 h-0.5 mx-2 ${
+                    currentStep > step.number ? "bg-teal-600" : "bg-gray-200"
+                  }`}
+                />
               )}
             </div>
           ))}
@@ -200,8 +194,8 @@ export default async function ProviderVerifyPage() {
               We&apos;ll send a 6-digit code to confirm your number
             </p>
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <PhoneVerificationForm 
-                initialPhone={phoneToVerify} 
+              <PhoneVerificationForm
+                initialPhone={phoneToVerify}
                 userId={user.id}
               />
             </div>
@@ -217,7 +211,7 @@ export default async function ProviderVerifyPage() {
             <p className="text-gray-500 text-center mb-8">
               Choose the type that best describes you
             </p>
-            <ProviderTypeForm 
+            <ProviderTypeForm
               userId={user.id}
               providerId={provider?.id || ""}
             />
@@ -231,12 +225,11 @@ export default async function ProviderVerifyPage() {
               Verify your identity
             </h1>
             <p className="text-gray-500 text-center mb-8">
-              {provider?.business_type === "company" 
+              {provider?.business_type === "company"
                 ? "Upload your business registration documents"
-                : "Upload your national ID for verification"
-              }
+                : "Upload your national ID for verification"}
             </p>
-            <IdentityVerificationForm 
+            <IdentityVerificationForm
               userId={user.id}
               providerId={provider?.id || ""}
               providerType={provider?.business_type as "individual" | "company"}
@@ -248,16 +241,26 @@ export default async function ProviderVerifyPage() {
         {isPendingVerification && !isRejected && currentStep === 4 && (
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-50 flex items-center justify-center">
-              <svg className="w-8 h-8 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-8 h-8 text-amber-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
             <h1 className="text-2xl font-semibold text-gray-900 mb-2">
               Verification under review
             </h1>
             <p className="text-gray-500 mb-6">
-              Your documents have been submitted and are being reviewed by our team.
-              This usually takes less than 24 hours.
+              Your documents have been submitted and are being reviewed by our
+              team. This usually takes less than 24 hours.
             </p>
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
               <p className="font-medium">What happens next?</p>

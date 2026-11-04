@@ -69,7 +69,23 @@ DROP POLICY IF EXISTS profiles_public_read ON public.profiles;
 -- is left in place and is now the only SELECT path into the base table.
 
 -- ── 2. the column-limited, relationship-scoped projection ────────────────────
-CREATE OR REPLACE VIEW public.profiles_public
+-- DROP-then-CREATE rather than CREATE OR REPLACE.
+--
+-- 20260338000000 later ADDS `is_verified` to this view. CREATE OR REPLACE VIEW
+-- cannot remove a column, so replaying THIS file over the four-column view
+-- fails with "cannot drop columns from view" -- which means a staging refresh
+-- or any `psql -v ON_ERROR_STOP=1` replay aborts here, before the migrations
+-- that follow. Caught by scripts/ci/check-migration-idempotency.mjs.
+--
+-- Dropping is safe and stays safe: this view has no dependents (verified
+-- against the live catalogue via pg_depend/pg_rewrite -> 0 rows), it is
+-- SELECT-only, and the grants are re-asserted a few lines below. On a replay
+-- the sequence is: this file recreates the three-column form, then
+-- 20260338000000 replaces it with the four-column form, so the end state is
+-- identical either way.
+DROP VIEW IF EXISTS public.profiles_public;
+
+CREATE VIEW public.profiles_public
 WITH (security_invoker = false) AS
 SELECT
   p.id,

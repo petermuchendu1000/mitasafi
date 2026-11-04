@@ -1,16 +1,16 @@
 /**
  * Get Listing
- * 
+ *
  * Fetches a single listing by ID with landlord info.
  * Used by the listing detail page.
  */
 
 import { createClient } from "@/lib/supabase/server";
 import type { Listing, LandlordInfo, PropertyType } from "./types";
-import { 
-  parseListingPhotos, 
-  parseSecurityFeatures, 
-  parseUtilities 
+import {
+  parseListingPhotos,
+  parseSecurityFeatures,
+  parseUtilities,
 } from "./types";
 
 export interface GetListingResult {
@@ -24,12 +24,12 @@ interface RawListingData {
   landlord_id: string;
   building_id: string | null;
   unit_id: string | null;
-  
+
   // Basic Info
   title: string;
   description: string;
   property_type: string;
-  
+
   // Location
   building_name: string | null;
   address: string | null;
@@ -39,7 +39,7 @@ interface RawListingData {
   latitude: number | null;
   longitude: number | null;
   hide_exact_address: boolean;
-  
+
   // Property Details
   bedrooms: number;
   bathrooms: number;
@@ -50,30 +50,30 @@ interface RawListingData {
   year_built: number | null;
   condition: string | null;
   furnishing: string;
-  
+
   // Amenities
   amenities: string[] | null;
-  
+
   // Parking
   parking: string;
   parking_spaces: number;
-  
+
   // Policies
   pet_policy: string;
   smoking_policy: string;
   pets_allowed: boolean;
   smoking_allowed: boolean;
   children_allowed: boolean;
-  
+
   // Security & Utilities (JSON)
   security_features: unknown;
   utilities: unknown;
-  
+
   // Photos
   photos: unknown;
   cover_photo: string | null;
   video_url: string | null;
-  
+
   // Pricing
   rent_amount: number;
   currency: string;
@@ -81,36 +81,35 @@ interface RawListingData {
   deposit_months: number | null;
   deposit_amount: number | null;
   service_charge: number | null;
-  
+
   // Lease Terms
   lease_term: string;
   min_lease_months: number;
-  
+
   // Availability
   available_from: string | null;
   available_now: boolean;
-  
+
   // Payment
   payment_methods: string[];
   rent_includes: string[] | null;
-  
+
   // Status
   status: string;
-  
+
   // Analytics
   views_count: number;
   inquiries_count: number;
-  
+
   // Verification
   is_verified: boolean;
-  
+
   // Timestamps
   published_at: string | null;
   created_at: string;
   updated_at: string;
-  
+
   // Landlord join
-  profiles?: LandlordInfo | null;
 }
 
 /**
@@ -119,32 +118,45 @@ interface RawListingData {
  */
 export async function getListingById(
   listingId: string,
-  options: { incrementViews?: boolean; includeUnavailable?: boolean } = {}
+  options: { incrementViews?: boolean; includeUnavailable?: boolean } = {},
 ): Promise<GetListingResult> {
   const supabase = await createClient();
   const { incrementViews = true, includeUnavailable = false } = options;
 
   try {
-    // Fetch listing with landlord profile
+    // The landlord is resolved in a SECOND query, not embedded.
+    //
+    // This used to be `profiles:landlord_id ( id, full_name, avatar_url,
+    // is_verified )`. That embed read the profiles TABLE under RLS and only
+    // ever worked because of `profiles_public_read USING (true)` -- a policy
+    // that also handed every signed-in account every other user's email, phone
+    // and metadata, because RLS gates rows and cannot gate columns.
+    // 20260335000000 dropped it, and this call site was missed: a PostgREST
+    // embed filtered by RLS resolves to NULL rather than erroring, so the
+    // landlord card silently went blank on every listing page with nothing
+    // logged and nothing thrown.
+    //
+    // The landlord now comes from public.profiles_public, which 20260338000000
+    // extended with `is_verified` and with a branch admitting the landlord of
+    // any listing whose status is 'active' -- the same predicate as the
+    // `Public can view active listings` policy, so no row becomes visible that
+    // was not already public.
+    //
+    // Kept as a separate `.eq()` rather than an embed on the view: PostgREST
+    // can sometimes infer a relationship through a view, but that inference is
+    // not something a public page should silently depend on -- when it fails it
+    // fails at request time, as PGRST200, in production.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase as any)
       .from("listings")
-      .select(`
-        *,
-        profiles:landlord_id (
-          id,
-          full_name,
-          avatar_url,
-          is_verified
-        )
-      `)
+      .select("*")
       .eq("id", listingId);
-    
+
     // If not including unavailable, only get active listings
     if (!includeUnavailable) {
       query = query.eq("status", "active");
     }
-    
+
     const { data, error } = await query.single();
 
     if (error) {
@@ -163,12 +175,33 @@ export async function getListingById(
     // Increment view count only for active listings (fire and forget)
     if (incrementViews && listing.status === "active") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).rpc("increment_listing_views", { listing_id: listingId }).then(() => {});
+      (supabase as any)
+        .rpc("increment_listing_views", { listing_id: listingId })
+        .then(() => {});
     }
 
     // Parse JSON fields and structure landlord info
-    const profileData = listing.profiles as LandlordInfo | null;
-    
+    let profileData: LandlordInfo | null = null;
+    if (listing.landlord_id) {
+      const { data: landlordRow, error: landlordError } = await supabase
+        .from("profiles_public")
+        .select("id, full_name, avatar_url, is_verified")
+        .eq("id", listing.landlord_id)
+        .maybeSingle();
+
+      if (landlordError) {
+        // A missing landlord card must not blank the whole listing.
+        console.error("[Listings] landlord lookup failed:", landlordError);
+      } else if (landlordRow?.id) {
+        profileData = {
+          id: landlordRow.id,
+          full_name: landlordRow.full_name,
+          avatar_url: landlordRow.avatar_url,
+          is_verified: landlordRow.is_verified ?? false,
+        };
+      }
+    }
+
     // Cast to Listing type with proper field transformations
     const parsedListing: Listing = {
       ...listing,
@@ -189,9 +222,9 @@ export async function getListingById(
     return { listing: parsedListing, error: null };
   } catch (error) {
     console.error("Error fetching listing:", error);
-    return { 
-      listing: null, 
-      error: error instanceof Error ? error.message : "Failed to fetch listing" 
+    return {
+      listing: null,
+      error: error instanceof Error ? error.message : "Failed to fetch listing",
     };
   }
 }
@@ -200,18 +233,20 @@ export async function getListingById(
  * Fetch a listing by slug (for SEO-friendly URLs)
  * Extracts ID from end of slug: "2br-apartment-kilimani-abc12345" -> "abc12345..."
  */
-export async function getListingBySlug(slug: string): Promise<GetListingResult> {
+export async function getListingBySlug(
+  slug: string,
+): Promise<GetListingResult> {
   // Extract the ID portion (last segment after final hyphen, should be 8+ chars)
   const parts = slug.split("-");
   const potentialId = parts[parts.length - 1];
-  
+
   if (!potentialId || potentialId.length < 8) {
     return { listing: null, error: "Invalid listing URL" };
   }
 
   // Try to find listing where ID starts with this prefix
   const supabase = await createClient();
-  
+
   // Fetch active listings and filter by ID prefix
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: allListings, error } = await (supabase as any)
@@ -224,8 +259,8 @@ export async function getListingBySlug(slug: string): Promise<GetListingResult> 
     return { listing: null, error: "Failed to search listings" };
   }
 
-  const matchedListing = (allListings as { id: string }[] | null)?.find(
-    l => l.id.startsWith(potentialId)
+  const matchedListing = (allListings as { id: string }[] | null)?.find((l) =>
+    l.id.startsWith(potentialId),
   );
 
   if (!matchedListing) {

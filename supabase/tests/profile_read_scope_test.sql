@@ -20,7 +20,7 @@
 --   `profiles_public`, which projects three columns and nothing else.
 --
 -- Run:  psql "$DATABASE_URL" -f supabase/tests/profile_read_scope_test.sql
--- A healthy run ends with   PROFILE_READ_RESULT pass=19 fail=0
+-- A healthy run ends with   PROFILE_READ_RESULT pass=21 fail=0
 --
 -- Every assertion below is reachable in both directions: run it against the
 -- schema BEFORE the migration and P1-P3, P6-P11 and P13-P17 fail.
@@ -33,6 +33,8 @@ DECLARE
   v_pu2     uuid := gen_random_uuid();   -- owns provider sp2, unrelated to v_cust
   v_rev     uuid := gen_random_uuid();   -- author of a VISIBLE review
   v_hid     uuid := gen_random_uuid();   -- author of a HIDDEN review only
+  v_ll1     uuid := gen_random_uuid();   -- landlord with a PUBLIC listing
+  v_ll2     uuid := gen_random_uuid();   -- landlord with only a draft listing
   v_sp1 uuid; v_sp2 uuid; v_svc uuid; v_stype uuid; b1 uuid; b2 uuid;
   rep text := E'\n'; pass int := 0; fail int := 0; n int; cols text;
   t0 timestamptz := date_trunc('hour', now() + interval '5 days');
@@ -71,6 +73,17 @@ BEGIN
   -- v_hid authors ONLY a hidden review, so hiding it must hide the byline.
   INSERT INTO reviews (booking_id,reviewer_id,provider_id,service_id,rating,is_hidden)
     VALUES (b2,v_hid,v_sp1,v_svc,'1'::review_rating,true);
+
+  -- Landlord fixtures for the fifth branch added by 20260338000000.
+  -- v_ll1 has a PUBLIC listing (status='active'); v_ll2 has only a draft.
+  INSERT INTO auth.users (id,email) VALUES (v_ll1,'ll1@t.invalid'),(v_ll2,'ll2@t.invalid');
+  INSERT INTO profiles (id,email,phone,full_name,is_verified) VALUES
+    (v_ll1,'ll1@t.invalid','+254700000106','Landlord Lucy',true),
+    (v_ll2,'ll2@t.invalid','+254700000107','Draft Dennis',true);
+  INSERT INTO listings (landlord_id,title,description,property_type,address,area,rent_amount,status)
+    VALUES (v_ll1,'Active flat','desc','apartment','1 Rd','Kilimani',50000,'active');
+  INSERT INTO listings (landlord_id,title,description,property_type,address,area,rent_amount,status)
+    VALUES (v_ll2,'Draft flat','desc','apartment','2 Rd','Kilimani',50000,'draft');
 
   -- ===== THE LIVE DEFECT: one account reads every user's contact details =====
   PERFORM set_config('request.jwt.claim.sub', v_cust::text, true);
@@ -233,14 +246,34 @@ BEGIN
   ELSE
     fail:=fail+1; rep:=rep||'FAIL P12 anon can enumerate customer names'||E'\n';
   END IF;
+
+  -- ===== the landlord branch (20260338000000) =====
+  -- A listing page is public, so a signed-out visitor must get the landlord's
+  -- identity, including the verified badge the owner has decided is public.
+  SELECT count(*) INTO n FROM profiles_public
+    WHERE id = v_ll1 AND full_name = 'Landlord Lucy' AND is_verified = true;
+  IF n = 1 THEN
+    pass:=pass+1; rep:=rep||'PASS P20 anon reads the landlord of an ACTIVE listing, with is_verified'||E'\n';
+  ELSE
+    fail:=fail+1; rep:=rep||'FAIL P20 landlord identity missing -> the listing card goes blank'||E'\n';
+  END IF;
+
+  -- ...and only where the listing is already public. A draft must not publish
+  -- its landlord: the predicate mirrors `Public can view active listings`.
+  SELECT count(*) INTO n FROM profiles_public WHERE id = v_ll2;
+  IF n = 0 THEN
+    pass:=pass+1; rep:=rep||'PASS P21 a draft-only landlord is NOT exposed'||E'\n';
+  ELSE
+    fail:=fail+1; rep:=rep||'FAIL P21 an unpublished listing still exposes its landlord'||E'\n';
+  END IF;
   RESET ROLE;
 
   -- ===== catalog assertions =================================================
   SELECT string_agg(column_name, ',' ORDER BY ordinal_position) INTO cols
     FROM information_schema.columns
     WHERE table_schema='public' AND table_name='profiles_public';
-  IF cols = 'id,full_name,avatar_url' THEN
-    pass:=pass+1; rep:=rep||'PASS P9  profiles_public projects exactly id,full_name,avatar_url'||E'\n';
+  IF cols = 'id,full_name,avatar_url,is_verified' THEN
+    pass:=pass+1; rep:=rep||'PASS P9  profiles_public projects exactly id,full_name,avatar_url,is_verified'||E'\n';
   ELSE
     fail:=fail+1; rep:=rep||'FAIL P9  profiles_public columns are ['||coalesce(cols,'<missing>')||']'||E'\n';
   END IF;

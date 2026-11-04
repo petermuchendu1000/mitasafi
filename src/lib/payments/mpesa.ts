@@ -74,7 +74,7 @@ export async function getAccessToken(): Promise<string> {
 
   const config = getMpesaConfig();
   const credentials = Buffer.from(
-    `${config.consumerKey}:${config.consumerSecret}`
+    `${config.consumerKey}:${config.consumerSecret}`,
   ).toString("base64");
 
   const response = await fetch(
@@ -87,7 +87,7 @@ export async function getAccessToken(): Promise<string> {
       // No cache — always get fresh when needed
       cache: "no-store",
       signal: AbortSignal.timeout(DARAJA_OAUTH_TIMEOUT_MS),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -136,7 +136,11 @@ export function generateTimestamp(): string {
  * Generate the Daraja password.
  * Formula: Base64(Shortcode + Passkey + Timestamp)
  */
-export function generatePassword(shortcode: string, passkey: string, timestamp: string): string {
+export function generatePassword(
+  shortcode: string,
+  passkey: string,
+  timestamp: string,
+): string {
   return Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
 }
 
@@ -159,7 +163,7 @@ export function normalizePhoneNumber(phone: string): string {
   const match = cleaned.match(/^(?:254|0)?([17]\d{8})$/);
   if (!match) {
     throw new Error(
-      `[M-Pesa] Invalid phone number: "${phone}". Expected format: 07XXXXXXXX, +254XXXXXXXX, or 254XXXXXXXX`
+      `[M-Pesa] Invalid phone number: "${phone}". Expected format: 07XXXXXXXX, +254XXXXXXXX, or 254XXXXXXXX`,
     );
   }
 
@@ -187,6 +191,23 @@ export interface StkPushResult {
   checkoutRequestId?: string;
   customerMessage?: string;
   error?: string;
+  /**
+   * True when the request was DISPATCHED but we never read a verdict — an
+   * abort/timeout, a dropped connection, a 5xx, or a malformed body after a
+   * 200. In that state Safaricom may already have prompted the customer and
+   * may already have taken the money.
+   *
+   * THE INVARIANT THIS EXISTS TO PROTECT: a booking_payments row may be moved
+   * to `failed` only on positive evidence that no charge happened. Absence of
+   * evidence is NOT evidence of absence. `failed` re-opens the booking for a
+   * retry (initiatePayment accepts `payment_failed`) and releases
+   * booking_payments_one_open_per_booking, so treating "we don't know" as
+   * "it failed" is a double-charge path.
+   *
+   * A caller seeing `indeterminate` must leave the payment row `pending`,
+   * where that unique index blocks a second charge until the row is resolved.
+   */
+  indeterminate?: boolean;
 }
 
 /**
@@ -196,13 +217,18 @@ export interface StkPushResult {
  * The result comes asynchronously via the callback URL.
  */
 export async function initiateStkPush(
-  params: StkPushParams
+  params: StkPushParams,
 ): Promise<StkPushResult> {
+  let pushDispatched = false;
   try {
     const config = getMpesaConfig();
     const token = await getAccessToken();
     const timestamp = generateTimestamp();
-    const password = generatePassword(config.shortcode, config.passkey, timestamp);
+    const password = generatePassword(
+      config.shortcode,
+      config.passkey,
+      timestamp,
+    );
     const phone = normalizePhoneNumber(params.phoneNumber);
 
     // M-Pesa only supports whole numbers
@@ -211,7 +237,10 @@ export async function initiateStkPush(
       return { success: false, error: "Amount must be at least KES 1." };
     }
     if (amount > 150000) {
-      return { success: false, error: "Amount exceeds M-Pesa transaction limit (KES 150,000)." };
+      return {
+        success: false,
+        error: "Amount exceeds M-Pesa transaction limit (KES 150,000).",
+      };
     }
 
     const requestBody: MpesaStkPushRequest = {
@@ -234,6 +263,12 @@ export async function initiateStkPush(
       reference: requestBody.AccountReference,
     });
 
+    // Everything above this line cannot have charged anyone: config, OAuth and
+    // the amount checks all happen before any request reaches Safaricom. Once
+    // this flag is set, a thrown error can no longer be read as "nothing
+    // happened" -- see `indeterminate` on StkPushResult.
+    pushDispatched = true;
+
     const response = await fetch(
       `${config.baseUrl}/mpesa/stkpush/v1/processrequest`,
       {
@@ -245,15 +280,23 @@ export async function initiateStkPush(
         body: JSON.stringify(requestBody),
         cache: "no-store",
         signal: AbortSignal.timeout(DARAJA_STK_PUSH_TIMEOUT_MS),
-      }
+      },
     );
 
     if (!response.ok) {
       const text = await response.text();
       console.error("[M-Pesa] STK Push HTTP error:", response.status, text);
+      // 4xx is Safaricom refusing the request: it was understood and declined,
+      // so nothing was charged. 5xx is Safaricom failing AFTER accepting it --
+      // the prompt may already be on the handset, so this is unknown, not
+      // failed.
+      const serverSide = response.status >= 500;
       return {
         success: false,
-        error: `M-Pesa service error (${response.status}). Please try again.`,
+        indeterminate: serverSide,
+        error: serverSide
+          ? "We could not confirm the payment request with M-Pesa."
+          : `M-Pesa service error (${response.status}). Please try again.`,
       };
     }
 
@@ -280,10 +323,22 @@ export async function initiateStkPush(
     };
   } catch (err) {
     console.error("[M-Pesa] STK Push error:", err);
+    // THE DEFECT THIS BRANCH USED TO HAVE: every throw was returned as a flat
+    // `success: false`, which the caller recorded via fail_booking_payment. An
+    // AbortSignal.timeout at 6s on a request Safaricom had already accepted
+    // therefore marked a LIVE payment `failed`, which re-opened the booking and
+    // invited the customer to pay a second time -- with the first charge
+    // unmatchable forever, because CheckoutRequestID was never read.
+    //
+    // Before the timeouts existed the platform simply killed the invocation and
+    // the row stayed `pending`. The timeout was the right change; returning its
+    // abort as a refusal was not.
     return {
       success: false,
-      error:
-        err instanceof Error
+      indeterminate: pushDispatched,
+      error: pushDispatched
+        ? "We could not confirm the payment request with M-Pesa."
+        : err instanceof Error
           ? err.message
           : "Failed to initiate M-Pesa payment.",
     };
@@ -307,13 +362,17 @@ export interface StkQueryResult {
  * Useful for polling when the callback hasn't arrived yet.
  */
 export async function queryStkPushStatus(
-  checkoutRequestId: string
+  checkoutRequestId: string,
 ): Promise<StkQueryResult> {
   try {
     const config = getMpesaConfig();
     const token = await getAccessToken();
     const timestamp = generateTimestamp();
-    const password = generatePassword(config.shortcode, config.passkey, timestamp);
+    const password = generatePassword(
+      config.shortcode,
+      config.passkey,
+      timestamp,
+    );
 
     const requestBody: MpesaStkQueryRequest = {
       BusinessShortCode: config.shortcode,
@@ -333,7 +392,7 @@ export async function queryStkPushStatus(
         body: JSON.stringify(requestBody),
         cache: "no-store",
         signal: AbortSignal.timeout(DARAJA_STATUS_QUERY_TIMEOUT_MS),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -357,9 +416,7 @@ export async function queryStkPushStatus(
     return {
       success: false,
       error:
-        err instanceof Error
-          ? err.message
-          : "Failed to query payment status.",
+        err instanceof Error ? err.message : "Failed to query payment status.",
     };
   }
 }
@@ -378,9 +435,7 @@ export async function queryStkPushStatus(
  *   - TransactionDate
  *   - PhoneNumber
  */
-export function parseStkCallback(
-  body: MpesaStkCallback
-): {
+export function parseStkCallback(body: MpesaStkCallback): {
   success: boolean;
   checkoutRequestId: string;
   merchantRequestId: string;

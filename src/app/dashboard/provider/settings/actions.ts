@@ -5,8 +5,12 @@
  *
  * Security model:
  * - Auth validated via getCachedUser() on every call
- * - User-scoped client enforces RLS (user_preferences + service_providers have policies)
- * - Provider ownership double-checked on deactivation (user_id match + RLS)
+ * - User-scoped client enforces RLS (user_preferences has policies)
+ * - Activation toggles use the admin client because `account_status` is
+ *   deliberately NOT granted to `authenticated` (a suspended provider must not
+ *   be able to un-suspend itself). The admin client bypasses RLS, so those
+ *   writes MUST carry an explicit ownership predicate:
+ *   .eq("id", providerId).eq("user_id", user.id)
  *
  * DB tables: user_preferences (upsert), service_providers (update)
  */
@@ -14,6 +18,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCachedUser, getCachedProviderId } from "@/lib/cache/queries";
 import { revalidatePath } from "next/cache";
 
@@ -86,7 +91,10 @@ export async function getNotificationPreferences(): Promise<
       push_notifications: data.push_notifications ?? true,
     };
   } catch (err) {
-    console.error("[Settings] Unexpected error in getNotificationPreferences:", err);
+    console.error(
+      "[Settings] Unexpected error in getNotificationPreferences:",
+      err,
+    );
     return {
       ...defaults,
       error: err instanceof Error ? err.message : "Unknown error",
@@ -105,7 +113,7 @@ export async function getNotificationPreferences(): Promise<
  * Input is validated: only known boolean keys are persisted.
  */
 export async function updateNotificationPreferences(
-  preferences: Partial<NotificationPreferences>
+  preferences: Partial<NotificationPreferences>,
 ): Promise<ActionResult> {
   try {
     const { user, error: authError } = await getCachedUser();
@@ -132,10 +140,7 @@ export async function updateNotificationPreferences(
 
     const { error } = await supabase
       .from("user_preferences")
-      .upsert(
-        { user_id: user.id, ...sanitized },
-        { onConflict: "user_id" }
-      );
+      .upsert({ user_id: user.id, ...sanitized }, { onConflict: "user_id" });
 
     if (error) {
       console.error("[Settings] Failed to update preferences:", error);
@@ -145,7 +150,10 @@ export async function updateNotificationPreferences(
     revalidatePath("/dashboard/provider/settings");
     return { success: true };
   } catch (err) {
-    console.error("[Settings] Unexpected error in updateNotificationPreferences:", err);
+    console.error(
+      "[Settings] Unexpected error in updateNotificationPreferences:",
+      err,
+    );
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error",
@@ -182,9 +190,12 @@ export async function deactivateProviderAccount(): Promise<ActionResult> {
       return { success: false, error: providerError || "Provider not found" };
     }
 
-    const supabase = await createClient();
+    // account_status is not UPDATE-grantable to `authenticated`, so this write
+    // needs the service role. The admin client bypasses RLS — the id + user_id
+    // predicate below is the ONLY thing scoping it to the caller's own row.
+    const admin = createAdminClient();
 
-    const { error } = await supabase
+    const { error } = await admin
       .from("service_providers")
       .update({
         is_active: false,
@@ -192,17 +203,23 @@ export async function deactivateProviderAccount(): Promise<ActionResult> {
         updated_at: new Date().toISOString(),
       })
       .eq("id", providerId)
-      .eq("user_id", user.id); // Ownership guard (also enforced by RLS)
+      .eq("user_id", user.id); // Ownership guard (REQUIRED: RLS is bypassed here)
 
     if (error) {
       console.error("[Settings] Failed to deactivate account:", error);
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: "Could not deactivate your account. Please try again.",
+      };
     }
 
     revalidatePath("/dashboard/provider", "layout");
     return { success: true };
   } catch (err) {
-    console.error("[Settings] Unexpected error in deactivateProviderAccount:", err);
+    console.error(
+      "[Settings] Unexpected error in deactivateProviderAccount:",
+      err,
+    );
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error",
@@ -236,9 +253,12 @@ export async function reactivateProviderAccount(): Promise<ActionResult> {
       return { success: false, error: providerError || "Provider not found" };
     }
 
-    const supabase = await createClient();
+    // account_status is not UPDATE-grantable to `authenticated`, so this write
+    // needs the service role. The admin client bypasses RLS — the id + user_id
+    // predicate below is the ONLY thing scoping it to the caller's own row.
+    const admin = createAdminClient();
 
-    const { error } = await supabase
+    const { error } = await admin
       .from("service_providers")
       .update({
         is_active: true,
@@ -246,17 +266,23 @@ export async function reactivateProviderAccount(): Promise<ActionResult> {
         updated_at: new Date().toISOString(),
       })
       .eq("id", providerId)
-      .eq("user_id", user.id); // Ownership guard (also enforced by RLS)
+      .eq("user_id", user.id); // Ownership guard (REQUIRED: RLS is bypassed here)
 
     if (error) {
       console.error("[Settings] Failed to reactivate account:", error);
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: "Could not reactivate your account. Please try again.",
+      };
     }
 
     revalidatePath("/dashboard/provider", "layout");
     return { success: true };
   } catch (err) {
-    console.error("[Settings] Unexpected error in reactivateProviderAccount:", err);
+    console.error(
+      "[Settings] Unexpected error in reactivateProviderAccount:",
+      err,
+    );
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error",

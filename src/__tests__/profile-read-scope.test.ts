@@ -109,8 +109,11 @@ describe("no migration re-opens a blanket read on profiles", () => {
     expect(sql).toMatch(
       /drop\s+policy\s+if\s+exists\s+profiles_public_read\s+on\s+public\.profiles/i,
     );
+    // Either form defines it. 20260335000000 uses DROP + CREATE because a
+    // later migration adds a column, and CREATE OR REPLACE VIEW cannot shrink a
+    // view on replay.
     expect(sql).toMatch(
-      /create\s+or\s+replace\s+view\s+public\.profiles_public/i,
+      /create\s+(?:or\s+replace\s+)?view\s+public\.profiles_public/i,
     );
 
     // Read-only by grant. A single-table view is auto-updatable and runs with
@@ -128,61 +131,152 @@ describe("no migration re-opens a blanket read on profiles", () => {
 
 describe("cross-user profile reads go through the view", () => {
   /**
-   * Every read in the app that resolves ANOTHER user's profile under RLS.
-   * Each is a public or semi-public surface that needs a display name and
-   * nothing else. If one of these reverts to `from("profiles")` it starts
-   * depending on a blanket policy again -- and silently returns nothing once
-   * that policy is gone, which is the quieter failure of the two.
+   * DISCOVERY, not a hardcoded list.
+   *
+   * The first version of this block named three files. That is precisely how
+   * the fourth shipped broken: src/lib/listings/get-listing.ts embedded
+   * `profiles:landlord_id (...)` on the RLS client, the dropped policy made it
+   * resolve to null, and the landlord card went blank on every listing page
+   * with nothing logged. A guard that enumerates the known cases cannot find
+   * the unknown one.
+   *
+   * So these two tests sweep all of src instead.
    */
-  const CROSS_USER_READS: { file: string; what: string }[] = [
-    {
-      file: "src/lib/services/reviews.ts",
-      what: "review author names (public provider page)",
-    },
-    {
-      file: "src/lib/services/providers.ts",
-      what: "review author names (public provider page)",
-    },
-    {
-      file: "src/lib/services/bookings.ts",
-      what: "customer names on a provider's bookings list",
-    },
-  ];
 
-  it.each(CROSS_USER_READS)(
-    "$file reads profiles_public for $what",
-    ({ file }) => {
-      const code = stripTsComments(read(file));
-      expect(code).toMatch(/\.from\(\s*["']profiles_public["']\s*\)/);
-
-      // ...and must not reach the base table through an RLS-BOUND client.
-      //
-      // `.from("profiles")` on an admin / service_role client is fine: it
-      // bypasses RLS by design and these files use it for server-side work such
-      // as resolving the acting user's own name for a notification. What must
-      // not come back is a read through the cookie-scoped `supabase` client,
-      // because that is the read the blanket policy was propping up.
-      const rlsBoundReads = [
-        ...code.matchAll(
-          /([A-Za-z_$][\w$]*)\s*\n?\s*\.from\(\s*["']profiles["']\s*\)/g,
-        ),
-      ].filter((m) => !/admin/i.test(m[1]));
-      expect(rlsBoundReads.map((m) => m[0].trim())).toEqual([]);
-    },
-  );
-
-  it("no cross-user read embeds profiles through a PostgREST join", () => {
-    // `customer:profiles!customer_id (full_name)` reads the TABLE under RLS.
-    // It only ever worked because of the blanket policy.
-    for (const { file } of CROSS_USER_READS) {
-      const code = stripTsComments(read(file));
-      expect(code).not.toMatch(/:\s*profiles\s*!/);
+  function sourceFiles(dir: string, acc: string[] = []): string[] {
+    for (const entry of fs.readdirSync(path.join(root, dir), {
+      withFileTypes: true,
+    })) {
+      const rel = path.join(dir, entry.name);
+      if (entry.isDirectory()) sourceFiles(rel, acc);
+      else if (/\.(ts|tsx)$/.test(entry.name)) acc.push(rel);
     }
+    return acc;
+  }
+
+  const RLS_CLIENT = /@\/lib\/supabase\/(server|client)/;
+  const ADMIN_CLIENT = /@\/lib\/supabase\/admin/;
+
+  it("no RLS-bound client reads ANOTHER user's profiles row", () => {
+    // Own-row reads through the cookie-scoped client are correct and must keep
+    // working -- that is what the surviving `auth.uid() = id` policy is for,
+    // and login, signup and every dashboard depends on it. What must not exist
+    // is an RLS-bound read filtered by someone ELSE's id, because the policy
+    // that used to permit it is gone and the read now returns nothing.
+    //
+    // `.from("profiles")` on an admin receiver is also fine: service_role
+    // bypasses RLS by design.
+    //
+    // The rule: within the call's filter window, the id must come from the
+    // authenticated user. An id taken off another record -- reviewer_id,
+    // landlord_id, customer_id -- is a cross-user read. No id filter at all
+    // means the query reads every row it can see.
+    const OWN_IDENTITY =
+      /\b(user\??\.id|data\??\.user\??\.id|session\??\.user\??\.id|user_id|uid|userId|existingUserId|currentUserId|authUserId)\b/;
+    const FOREIGN_REFERENCE =
+      /\b\w*(reviewer|landlord|customer|provider|payer|sender|recipient|tenant|owner|blocked|blocker)_id\b/;
+
+    const offenders: string[] = [];
+
+    for (const file of sourceFiles("src")) {
+      if (file.includes("__tests__")) continue;
+      const code = stripTsComments(read(file));
+      const lines = code.split("\n");
+
+      for (const [i, line] of lines.entries()) {
+        const m = /([A-Za-z_$][\w$]*)\s*$/.exec(
+          lines
+            .slice(Math.max(0, i - 1), i + 1)
+            .join(" ")
+            .replace(/\.from\([^)]*\)[\s\S]*$/, ""),
+        );
+        if (!/\.from\(\s*["']profiles["']\s*\)/.test(line)) continue;
+
+        // resolve the receiver: this line or the one above it
+        const receiverSrc = (lines[i - 1] ?? "") + " " + line;
+        const recv =
+          /([A-Za-z_$][\w$]*)\s*\.?\s*$|await\s+([A-Za-z_$][\w$]*)/.exec(
+            receiverSrc.split(".from(")[0],
+          );
+        const receiver = (recv?.[1] || recv?.[2] || m?.[1] || "").trim();
+        if (/admin/i.test(receiver) || /admin/i.test(receiverSrc)) continue;
+
+        const window = lines.slice(i, i + 10).join("\n");
+
+        // Writes are a different bug class (an ungranted column in the payload)
+        // and are covered by client_write_surface_test.sql. An insert has no id
+        // filter by nature, so leaving them in here only produces noise.
+        if (/\.(insert|update|upsert|delete)\(/.test(window)) continue;
+
+        const idFilter = /\.(eq|in)\(\s*["']id["']\s*,\s*([^)]+)\)/.exec(
+          window,
+        );
+
+        if (!idFilter) {
+          offenders.push(
+            `${file}:${i + 1} RLS read of profiles with no id filter`,
+          );
+        } else if (
+          FOREIGN_REFERENCE.test(idFilter[2]) ||
+          !OWN_IDENTITY.test(idFilter[2])
+        ) {
+          offenders.push(
+            `${file}:${i + 1} RLS read of profiles filtered by ${idFilter[2].trim()} (not the caller)`,
+          );
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("no PostgREST embed of profiles reaches an RLS-bound client", () => {
+    // An embed is the dangerous shape: RLS filters it to null instead of
+    // raising, so the page renders blank and nothing is logged. That is exactly
+    // how the landlord card broke.
+    //
+    // The first version of this check matched `alias:profiles` and `profiles!`
+    // but NOT `profiles:landlord_id(...)` -- the colon comes AFTER the table
+    // name in that form. Restoring the real defect left the suite green, so the
+    // guard was decorative. Mutation testing is the only reason that was found.
+    //
+    // It now scans INSIDE `.select()` arguments, which is where an embed can
+    // actually live. That also stops a TypeScript field called `profiles` from
+    // reading as an embed.
+    const selectArg = /\.select\(\s*(`[^`]*`|"[^"]*"|'[^']*')/g;
+    // profiles( | profiles!fk( | profiles:column( | alias:profiles(
+    const profilesEmbed = /\bprofiles\b\s*(?:!\s*\w+)?\s*(?::\s*\w+\s*)?\(/;
+
+    const offenders: string[] = [];
+
+    for (const file of sourceFiles("src")) {
+      if (file.includes("__tests__")) continue;
+      const code = stripTsComments(read(file));
+
+      for (const m of code.matchAll(selectArg)) {
+        const arg = m[1];
+        if (!profilesEmbed.test(arg)) continue;
+
+        // Allowed only where the module's sole Supabase client is the admin
+        // one, because service_role bypasses RLS and the embed resolves.
+        const usesRls = /@\/lib\/supabase\/(server|client)/.test(code);
+        const usesAdmin = /@\/lib\/supabase\/admin/.test(code);
+        if (usesRls || !usesAdmin) {
+          offenders.push(
+            `${file}: embeds profiles in a .select() while importing ${
+              usesRls ? "an RLS client" : "no admin client"
+            }`,
+          );
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
   });
 });
 
 describe("the view's column list is respected", () => {
-  const PROJECTED = new Set(["id", "full_name", "avatar_url"]);
+  const PROJECTED = new Set(["id", "full_name", "avatar_url", "is_verified"]);
 
   function sourceFiles(dir: string, acc: string[] = []): string[] {
     for (const entry of fs.readdirSync(path.join(root, dir), {
@@ -216,9 +310,19 @@ describe("the view's column list is respected", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("the SQL view really does project exactly those three columns", () => {
-    const files = migrationFiles();
-    const fix = files.find((f) => f.includes("scope_profile_reads")) as string;
+  it("the SQL view projects exactly the columns the app selects", () => {
+    // The LAST migration that defines the view wins, not a migration matched by
+    // name. This assertion used to read 20260335000000 specifically, so it kept
+    // checking the original three-column projection and could never see a
+    // later redefinition -- the same enumerate-the-known-cases mistake that let
+    // the landlord read ship broken.
+    const defining = migrationFiles().filter((f) =>
+      /create\s+(?:or\s+replace\s+)?view\s+public\.profiles_public/i.test(
+        stripSqlComments(read(path.join(MIGRATIONS_DIR, f))),
+      ),
+    );
+    expect(defining.length).toBeGreaterThan(0);
+    const fix = defining[defining.length - 1];
     const sql = stripSqlComments(read(path.join(MIGRATIONS_DIR, fix)));
 
     const body = sql.slice(sql.toLowerCase().indexOf("create or replace view"));
@@ -238,7 +342,6 @@ describe("the view's column list is respected", () => {
       "email",
       "phone",
       "metadata",
-      "is_verified",
       "verification_level",
     ]) {
       expect(select.toLowerCase()).not.toContain(forbidden);

@@ -27,7 +27,10 @@ import {
 } from "@/lib/payments/result-codes";
 import { getCachedUser, getCachedProviderId } from "@/lib/cache/queries";
 import { initiateStkPush, queryStkPushStatus } from "@/lib/payments/mpesa";
-import { calculateCommission, loadCommissionConfig } from "@/lib/payments/commission";
+import {
+  calculateCommission,
+  loadCommissionConfig,
+} from "@/lib/payments/commission";
 import {
   notifyProviderPaymentReceived,
   notifyCustomerPaymentConfirmed,
@@ -50,13 +53,11 @@ import type { BookingStatus } from "@/types/bookings";
 // AUDIT CONTEXT
 // =============================================================================
 
-
-
 async function setAuditContext(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
   userId: string,
-  role: "provider" | "customer" | "admin"
+  role: "provider" | "customer" | "admin",
 ): Promise<void> {
   await Promise.all([
     admin
@@ -92,7 +93,7 @@ async function setAuditContext(
 export async function initiatePayment(
   bookingId: string,
   phoneNumber: string,
-  paymentMethod: PaymentMethodType = "mpesa"
+  paymentMethod: PaymentMethodType = "mpesa",
 ): Promise<InitiatePaymentResult> {
   try {
     // 1. Authenticate
@@ -107,7 +108,7 @@ export async function initiatePayment(
     const { data: booking, error: bookingError } = await admin
       .from("bookings")
       .select(
-        "id, customer_id, provider_id, status, agreed_price, currency, service_id"
+        "id, customer_id, provider_id, status, agreed_price, currency, service_id",
       )
       .eq("id", bookingId)
       .single();
@@ -166,11 +167,14 @@ export async function initiatePayment(
     if (commissionUsedFallback) {
       console.error(
         "[Payments] commission_config unavailable; priced with the compiled-in fallback:",
-        commissionFallbackReason
+        commissionFallbackReason,
       );
     }
 
-    const commission = calculateCommission(booking.agreed_price, commissionConfig);
+    const commission = calculateCommission(
+      booking.agreed_price,
+      commissionConfig,
+    );
 
     // 5. Duplicate prevention.
     //
@@ -190,10 +194,13 @@ export async function initiatePayment(
     // First, retire anything abandoned. STK prompts expire in about a minute,
     // so a row still open well past that is dead — and because of the unique
     // index, leaving it would make this booking unpayable forever.
-    const { error: expireError } = await admin.rpc("expire_stale_booking_payments", {
-      p_older_than: "15 minutes",
-      p_booking_id: bookingId,
-    });
+    const { error: expireError } = await admin.rpc(
+      "expire_stale_booking_payments",
+      {
+        p_older_than: "15 minutes",
+        p_booking_id: bookingId,
+      },
+    );
     if (expireError) {
       // Not fatal: the insert below will simply report an open payment if one
       // genuinely remains. But it must be visible, not swallowed.
@@ -305,10 +312,52 @@ export async function initiatePayment(
         transactionDesc: "MitaSafi Pay",
       });
 
+      // "We don't know" is NOT "it failed".
+      //
+      // initiateStkPush sets `indeterminate` when the request reached Safaricom
+      // but no verdict came back: an abort at the 6s timeout, a dropped
+      // connection, a 5xx, a malformed body after a 200. In every one of those
+      // cases the prompt may already be on the customer's handset and the money
+      // may already be gone.
+      //
+      // Calling fail_booking_payment here was a double-charge path. It sets the
+      // payment `failed` and the booking `payment_failed`, which is in
+      // `allowedStatuses` above, so the UI invites a retry; and `failed` does
+      // not hold booking_payments_one_open_per_booking, so the retry is allowed
+      // to charge again. The first charge could never be reconciled, because
+      // mpesa_checkout_request_id is only written after a successful push.
+      //
+      // Leaving the row `pending` is what makes this safe: that unique index
+      // then BLOCKS a second charge for this booking, and
+      // expire_stale_booking_payments sets
+      //   needs_reconciliation = (mpesa_checkout_request_id IS NULL)
+      // (verified in the live function body), so the row surfaces to an
+      // operator as an orphan rather than silently becoming a second charge.
+      if (!stkResult.success && stkResult.indeterminate) {
+        console.error(
+          "[Payments] STK push outcome UNKNOWN; leaving payment pending for reconciliation",
+          { paymentId: payment.id, bookingId, reason: stkResult.error },
+        );
+
+        return {
+          success: false,
+          paymentId: payment.id,
+          error:
+            "We could not confirm the request with M-Pesa. If a payment prompt " +
+            "reaches your phone, complete it — do not pay twice. If no prompt " +
+            "arrives, this attempt is cancelled automatically and you can try again.",
+        };
+      }
+
       if (!stkResult.success) {
-        // STK Push failed. Record it through the same guarded path the callback
-        // uses, so the payment row and the booking move together in one
-        // transaction and a late success callback cannot be overwritten by this.
+        // A definite refusal: Safaricom understood the request and declined it
+        // (ResponseCode != 0 or a 4xx), or we never sent it at all (bad amount,
+        // config or OAuth failure). Nothing was charged, so recording the
+        // failure is safe.
+        //
+        // Record it through the same guarded path the callback uses, so the
+        // payment row and the booking move together in one transaction and a
+        // late success callback cannot be overwritten by this.
         //
         // WHAT WAS WRONG: this was two fire-and-forget updates whose errors
         // were both discarded, and it reverted the booking unconditionally.
@@ -376,11 +425,9 @@ export async function initiatePayment(
 // 2. PROCESS PAYMENT CALLBACK (called from API route)
 // =============================================================================
 
-
 // processPaymentCallback moved to ./payments-internal.ts so it is reachable
 // only through the M-Pesa callback route, which performs the IP and config
 // checks, rather than directly as a Server Action.
-
 
 // =============================================================================
 // 3. CHECK PAYMENT STATUS
@@ -393,7 +440,7 @@ export async function initiatePayment(
  * is still pending and has a CheckoutRequestID.
  */
 export async function getPaymentStatus(
-  paymentId: string
+  paymentId: string,
 ): Promise<PaymentStatusResult> {
   try {
     const { user, error: authError } = await getCachedUser();
@@ -431,7 +478,8 @@ export async function getPaymentStatus(
     console.error("[Payments] getPaymentStatus error:", err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Failed to get payment status.",
+      error:
+        err instanceof Error ? err.message : "Failed to get payment status.",
     };
   }
 }
@@ -441,7 +489,7 @@ export async function getPaymentStatus(
  * Used when the callback hasn't arrived yet.
  */
 export async function pollPaymentStatus(
-  paymentId: string
+  paymentId: string,
 ): Promise<PaymentStatusResult> {
   try {
     const { user, error: authError } = await getCachedUser();
@@ -481,7 +529,7 @@ export async function pollPaymentStatus(
     // handle it"), which left genuinely-paid bookings stuck at 'pending' with
     // no path to resolution, since no cron or admin surface could settle them.
     const queryResult = await queryStkPushStatus(
-      payment.mpesa_checkout_request_id
+      payment.mpesa_checkout_request_id,
     );
 
     // NOTE: the old condition here was `queryResult.success &&
@@ -502,9 +550,10 @@ export async function pollPaymentStatus(
             // an amount, and settle_booking_payment coalesces so an absent
             // receipt cannot erase one a callback already recorded.
             p_result_code: polledCode,
-            p_result_desc: queryResult.resultDesc ?? "Confirmed by status query",
+            p_result_desc:
+              queryResult.resultDesc ?? "Confirmed by status query",
             p_verified_by: "authoritative_query",
-          }
+          },
         );
 
         if (settleError) {
@@ -542,7 +591,10 @@ export async function pollPaymentStatus(
       .eq("id", paymentId)
       .single();
 
-    return { success: true, payment: (freshPayment || payment) as unknown as Payment };
+    return {
+      success: true,
+      payment: (freshPayment || payment) as unknown as Payment,
+    };
   } catch (err) {
     console.error("[Payments] pollPaymentStatus error:", err);
     return {
@@ -587,8 +639,16 @@ export async function getProviderEarnings(): Promise<{
 
     const admin = createAdminClient();
     const now = new Date();
-    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+    const thisMonthStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).toISOString();
+    const lastMonthStart = new Date(
+      now.getFullYear(),
+      now.getMonth() - 1,
+      1,
+    ).toISOString();
 
     const [
       walletResult,
@@ -652,7 +712,10 @@ export async function getProviderEarnings(): Promise<{
         .eq("status", "completed"),
     ]);
 
-    const sumField = (rows: Array<Record<string, number>> | null, field: string): number =>
+    const sumField = (
+      rows: Array<Record<string, number>> | null,
+      field: string,
+    ): number =>
       (rows || []).reduce((sum: number, r) => sum + (r[field] || 0), 0);
 
     return {
@@ -697,7 +760,11 @@ export async function getProviderTransactions(params?: {
 
     const { providerId, error: providerError } = await getCachedProviderId();
     if (providerError || !providerId) {
-      return { transactions: [], total: 0, error: "Provider profile not found." };
+      return {
+        transactions: [],
+        total: 0,
+        error: "Provider profile not found.",
+      };
     }
 
     const page = params?.page ?? 1;
@@ -714,7 +781,7 @@ export async function getProviderTransactions(params?: {
         .from("booking_payments")
         .select(
           "id, provider_amount, status, mpesa_receipt_number, booking_id, created_at, payment_method",
-          { count: "exact" }
+          { count: "exact" },
         )
         .eq("provider_id", providerId)
         .eq("status", "completed")
@@ -743,7 +810,7 @@ export async function getProviderTransactions(params?: {
         .from("provider_payouts")
         .select(
           "id, amount, status, mpesa_receipt_number, reference, created_at, payout_method",
-          { count: "exact" }
+          { count: "exact" },
         )
         .eq("provider_id", providerId)
         .order("created_at", { ascending: false })
@@ -768,10 +835,15 @@ export async function getProviderTransactions(params?: {
 
     // Sort merged transactions by date
     transactions.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
-    return { transactions: transactions.slice(0, pageSize), total, error: null };
+    return {
+      transactions: transactions.slice(0, pageSize),
+      total,
+      error: null,
+    };
   } catch (err) {
     console.error("[Payments] getProviderTransactions error:", err);
     return {
@@ -797,7 +869,7 @@ export async function getProviderTransactions(params?: {
 export async function requestPayout(
   amount: number,
   payoutMethod: PaymentMethodType = "mpesa",
-  mpesaPhone?: string
+  mpesaPhone?: string,
 ): Promise<PayoutRequestResult> {
   try {
     const { user, error: authError } = await getCachedUser();
@@ -892,7 +964,7 @@ export async function requestPayout(
         p_payout_method: payoutMethod,
         p_mpesa_phone: payoutPhone,
         p_reference: reference,
-      }
+      },
     );
 
     if (payoutError) {
@@ -903,7 +975,11 @@ export async function requestPayout(
       };
     }
 
-    const result = payoutResult as { outcome?: string; payout_id?: string; available?: number } | null;
+    const result = payoutResult as {
+      outcome?: string;
+      payout_id?: string;
+      available?: number;
+    } | null;
 
     if (result?.outcome === "insufficient_balance") {
       return {
@@ -944,7 +1020,6 @@ export async function requestPayout(
 // processPayoutCompletion moved to ./payments-internal.ts — it had no
 // authentication and this module's "use server" made it a public endpoint.
 
-
 // =============================================================================
 // 6. CUSTOMER PAYMENT HISTORY
 // =============================================================================
@@ -952,9 +1027,7 @@ export async function requestPayout(
 /**
  * Get payment details for a specific booking (customer view).
  */
-export async function getBookingPayments(
-  bookingId: string
-): Promise<{
+export async function getBookingPayments(bookingId: string): Promise<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payments: any[];
   error: string | null;

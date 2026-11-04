@@ -6354,6 +6354,7 @@ export type Database = {
           avatar_url: string | null;
           full_name: string | null;
           id: string | null;
+          is_verified: boolean | null;
         };
         Relationships: [];
       };
