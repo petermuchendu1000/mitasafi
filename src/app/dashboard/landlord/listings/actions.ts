@@ -1,6 +1,6 @@
 /**
  * Listing Server Actions
- * 
+ *
  * Server-side actions for managing listings:
  * - Pause/Resume listings
  * - Delete listings
@@ -16,7 +16,13 @@ import { revalidatePath } from "next/cache";
 // TYPES
 // =============================================================================
 
-export type ListingStatus = "draft" | "active" | "paused" | "rented" | "expired" | "archived";
+export type ListingStatus =
+  | "draft"
+  | "active"
+  | "paused"
+  | "rented"
+  | "expired"
+  | "archived";
 
 interface ActionResult {
   success: boolean;
@@ -42,10 +48,15 @@ interface ListingWithPhotos extends ListingBasic {
 export async function pauseListing(listingId: string): Promise<ActionResult> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
-      return { success: false, error: "You must be logged in to pause a listing" };
+      return {
+        success: false,
+        error: "You must be logged in to pause a listing",
+      };
     }
 
     // Verify ownership and get current status
@@ -62,7 +73,10 @@ export async function pauseListing(listingId: string): Promise<ActionResult> {
     }
 
     if (listing.landlord_id !== user.id) {
-      return { success: false, error: "You don't have permission to pause this listing" };
+      return {
+        success: false,
+        error: "You don't have permission to pause this listing",
+      };
     }
 
     if (listing.status !== "active") {
@@ -73,9 +87,9 @@ export async function pauseListing(listingId: string): Promise<ActionResult> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase as any)
       .from("listings")
-      .update({ 
+      .update({
         status: "paused",
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq("id", listingId);
 
@@ -101,10 +115,15 @@ export async function pauseListing(listingId: string): Promise<ActionResult> {
 export async function resumeListing(listingId: string): Promise<ActionResult> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
-      return { success: false, error: "You must be logged in to resume a listing" };
+      return {
+        success: false,
+        error: "You must be logged in to resume a listing",
+      };
     }
 
     // Verify ownership and get current status
@@ -121,7 +140,10 @@ export async function resumeListing(listingId: string): Promise<ActionResult> {
     }
 
     if (listing.landlord_id !== user.id) {
-      return { success: false, error: "You don't have permission to resume this listing" };
+      return {
+        success: false,
+        error: "You don't have permission to resume this listing",
+      };
     }
 
     if (listing.status !== "paused") {
@@ -132,9 +154,9 @@ export async function resumeListing(listingId: string): Promise<ActionResult> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase as any)
       .from("listings")
-      .update({ 
+      .update({
         status: "active",
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq("id", listingId);
 
@@ -160,10 +182,15 @@ export async function resumeListing(listingId: string): Promise<ActionResult> {
 export async function deleteListing(listingId: string): Promise<ActionResult> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
-      return { success: false, error: "You must be logged in to delete a listing" };
+      return {
+        success: false,
+        error: "You must be logged in to delete a listing",
+      };
     }
 
     // Verify ownership
@@ -180,11 +207,18 @@ export async function deleteListing(listingId: string): Promise<ActionResult> {
     }
 
     if (listing.landlord_id !== user.id) {
-      return { success: false, error: "You don't have permission to delete this listing" };
+      return {
+        success: false,
+        error: "You don't have permission to delete this listing",
+      };
     }
 
     // Delete associated photos from storage
-    if (listing.photos && Array.isArray(listing.photos) && listing.photos.length > 0) {
+    if (
+      listing.photos &&
+      Array.isArray(listing.photos) &&
+      listing.photos.length > 0
+    ) {
       const photoPaths = listing.photos
         .map((photo) => {
           if (!photo.url) return null;
@@ -195,8 +229,7 @@ export async function deleteListing(listingId: string): Promise<ActionResult> {
         .filter(Boolean) as string[];
 
       if (photoPaths.length > 0) {
-        const { error: storageError } = await supabase
-          .storage
+        const { error: storageError } = await supabase.storage
           .from("listings")
           .remove(photoPaths);
 
@@ -235,7 +268,9 @@ export async function deleteListing(listingId: string): Promise<ActionResult> {
 export async function markAsRented(listingId: string): Promise<ActionResult> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return { success: false, error: "You must be logged in" };
@@ -255,16 +290,19 @@ export async function markAsRented(listingId: string): Promise<ActionResult> {
     }
 
     if (listing.landlord_id !== user.id) {
-      return { success: false, error: "You don't have permission to update this listing" };
+      return {
+        success: false,
+        error: "You don't have permission to update this listing",
+      };
     }
 
     // Update status to rented
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase as any)
       .from("listings")
-      .update({ 
+      .update({
         status: "rented",
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq("id", listingId);
 
@@ -286,18 +324,28 @@ export async function markAsRented(listingId: string): Promise<ActionResult> {
 // DUPLICATE LISTING
 // =============================================================================
 
-export async function duplicateListing(listingId: string): Promise<ActionResult & { newListingId?: string }> {
+export async function duplicateListing(
+  listingId: string,
+): Promise<ActionResult & { newListingId?: string }> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return { success: false, error: "You must be logged in" };
     }
 
     // Fetch the original listing
+    // listings_public: the raw location columns are not granted to client
+    // roles any more (20260340000000). This read is the source of the spread
+    // at the insert below, and the view mirrors listings column-for-column --
+    // a migration guard enforces that -- so the copy stays complete. The
+    // ownership check below still decides whether the copy may happen at all;
+    // a non-owner would be handed a masked row and rejected anyway.
     const { data: original, error: fetchError } = await supabase
-      .from("listings")
+      .from("listings_public")
       .select("*")
       .eq("id", listingId)
       .single();
@@ -310,19 +358,22 @@ export async function duplicateListing(listingId: string): Promise<ActionResult 
     const listing = original as Record<string, unknown>;
 
     if (listing.landlord_id !== user.id) {
-      return { success: false, error: "You don't have permission to duplicate this listing" };
+      return {
+        success: false,
+        error: "You don't have permission to duplicate this listing",
+      };
     }
 
     // Create a copy with modified fields - exclude auto-generated fields
-    const { 
-      id, 
-      created_at, 
-      updated_at, 
-      published_at, 
-      views_count, 
+    const {
+      id,
+      created_at,
+      updated_at,
+      published_at,
+      views_count,
       inquiries_count,
       applications_count,
-      ...listingData 
+      ...listingData
     } = listing;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

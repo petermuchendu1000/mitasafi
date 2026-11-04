@@ -156,7 +156,14 @@ export async function getListingById(
     // fails at request time, as PGRST200, in production.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase as any)
-      .from("listings")
+      // Reads listings_public, not listings: 20260340000000 revoked the client
+      // SELECT privilege on address, building_name, latitude and longitude,
+      // because hide_exact_address was enforced nowhere and PostgREST serves
+      // the table directly to anyone holding the public anon key. The view
+      // masks those four per that flag -- and returns them in full to the
+      // landlord -- so select("*") here is still complete for the viewer it
+      // is allowed to be complete for.
+      .from("listings_public")
       .select("*")
       .eq("id", listingId);
 

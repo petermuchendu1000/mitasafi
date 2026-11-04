@@ -134,3 +134,85 @@ active, widen it to admit draft, add a blanket `USING (true)` on listings, widen
 `profiles_public` to paused/rented, or revoke `anon`'s SELECT on
 `service_types` — 6 mutants generated, 6 killed, 0 survived, with the
 unmutated migration passing as the control.
+
+## location_privacy_test.sql
+
+Verifies `20260340000000_enforce_hide_exact_address.sql`. 21 assertions.
+
+`listings.hide_exact_address` promised, in the product's own words, that a
+landlord's exact location was withheld — `ListingMap.tsx:209-214` renders an
+"Approximate" badge and `:281-286` renders "Exact address shared after
+inquiry". It was enforced at **no layer at all**:
+
+- **No database enforcement.** No view, no policy and no non-trigger function
+  in `public` referenced the column, while `anon` _and_ `authenticated` both
+  held column-level SELECT on `address`, `latitude` and `longitude`. RLS is
+  row-level and cannot restrict columns.
+- **PostgREST is public by construction.** `src/lib/supabase/client.ts:17-18`
+  uses `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, which
+  Next inlines into the browser bundle, so
+  `GET /rest/v1/listings?select=address,latitude,longitude` answered for a
+  signed-out stranger with no application code in the path. No server-component
+  masking could have helped.
+- **The client never withheld it either.**
+  `ListingDetailClient.tsx:372-379` passes all four fields as props to a
+  `"use client"` component, so they were serialised into the RSC payload for
+  every viewer whatever the flag said. `ListingMap.tsx:222` merely declined to
+  _render_ the address string.
+- **The "approximate" map was centred on the exact point.**
+  `ListingMap.tsx:86` centres at `[longitude, latitude]`, `:112` gives the
+  circle those same exact coordinates, and `"circle-radius": 80` is **pixels**.
+  Privacy mode was a zoom level — 13 instead of 15 — and a screen-space ring
+  around the true location.
+- **`ListingMap.tsx:243-252` rendered a Directions link unconditionally**,
+  outside the privacy branch, with the exact coordinates in the Google Maps
+  URL — beside the sentence promising the address was not shared yet.
+
+`public.listings_public` now projects all 100 columns of `listings`, so
+`select("*")` against it is a drop-in, and masks four: `address` and
+`building_name` to NULL, `latitude` and `longitude` snapped to a 0.005° grid —
+but only for viewers who are not the landlord, which is what keeps the
+dashboard and the edit form working. The client SELECT privilege on those four
+columns is revoked from the table, since the view is useless while the table
+still answers.
+
+`building_name` is masked too: in Nairobi a building name _is_ the address, and
+`ListingMap.tsx:244` feeds it to Google Maps as a geocodable destination, so
+leaving it would be a one-field bypass.
+
+**Why a grid rather than NULL or random jitter.** NULL kills the map —
+`ListingMap.tsx:229` falls through to "Map not available" — so every
+privacy-respecting listing would lose its map. Random jitter per request is
+worse than useless: repeated reads average out and recover the true point.
+Grid snapping is deterministic, so it reveals only a cell. Measured: a
+Nairobi listing at `-1.29210000, 36.82190000` publishes as `-1.290, 36.820`,
+**315 m** from the truth, inside the ~1528 m circle the UI draws (80 px at
+zoom 13). L5 and L6 bound that offset from both sides — too far and the map
+would exclude the real address, too close and it protects nobody.
+
+Run:
+
+    psql "$DATABASE_URL" -f supabase/tests/location_privacy_test.sql
+
+A healthy run ends with
+
+    LOCATION_PRIVACY_RESULT pass=21 fail=0
+
+**Proven to bite.** The original vulnerability was reconstructed — the view
+installed with its reveal predicate replaced by `true`, and the four columns
+re-granted on the table — and the suite reported `pass=11 fail=10`, naming it:
+`FAIL L1 hidden listing published its address: House 4, Mandera Rd` and
+`FAIL L16 one free signup still reads every exact address`.
+
+The migration's guards were mutation-tested: 10 mutants, 10 killed, 0 survived,
+control passing. **Two of those guards were blind on the first attempt and the
+mutation run is what found them** — guard (c) required "table SELECT held _and_
+no column grants", a conjunction this migration can never produce, so it was
+unfirable; and guard (h) asked only whether `hide_exact_address` appeared in
+the view definition, which is always true because the column is one of the 100
+the view projects. Both now assert counted, structural facts.
+
+The code-layer companion is `src/__tests__/location-privacy-scope.test.ts`
+(5 tests), which sweeps for the defect's shape — any `.from("listings")` chain
+whose `.select()` names one of the four columns, or uses `*` — rather than for
+the fix's shape. 4 mutants, 4 killed.

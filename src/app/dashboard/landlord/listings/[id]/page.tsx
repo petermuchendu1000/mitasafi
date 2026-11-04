@@ -1,6 +1,6 @@
 /**
  * Landlord Listing Detail Page
- * 
+ *
  * Shows a landlord's listing with analytics and management actions.
  * Provides a preview of how tenants see the listing.
  */
@@ -9,11 +9,11 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { 
-  ArrowLeft, 
-  Pencil, 
-  Eye, 
-  MessageSquare, 
+import {
+  ArrowLeft,
+  Pencil,
+  Eye,
+  MessageSquare,
   Calendar,
   ExternalLink,
   Pause,
@@ -75,29 +75,35 @@ interface ListingDetail {
 
 async function getListing(id: string): Promise<ListingDetail | null> {
   const supabase = await createClient();
-  
+
   // Get current user
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
-  
+
   // Fetch listing owned by this user
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // listings_public rather than listings: the raw location columns are no
+  // longer granted to client roles (20260340000000). The landlord branch of
+  // the view returns their own address and coordinates unmasked, so this page
+  // is unchanged in what it shows.
   const { data, error } = await (supabase as any)
-    .from("listings")
+    .from("listings_public")
     .select("*")
     .eq("id", id)
     .eq("landlord_id", user.id)
     .single();
-  
+
   if (error || !data) return null;
-  
+
   // Cast to record for property access
   const listing = data as Record<string, unknown>;
-  
+
   // Parse photos - handle various formats (array, JSON string, etc.)
   let photos: { id: string; url: string; category: string }[] = [];
   let photosData = listing.photos;
-  
+
   // If photos is a string, try to parse it as JSON
   if (typeof photosData === "string") {
     try {
@@ -106,18 +112,20 @@ async function getListing(id: string): Promise<ListingDetail | null> {
       photosData = [];
     }
   }
-  
+
   if (photosData && Array.isArray(photosData)) {
-    photos = (photosData as unknown[]).map((p, i) => {
-      const photo = p as Record<string, unknown>;
-      return {
-        id: String(photo.id || i),
-        url: String(photo.url || ""),
-        category: String(photo.category || "extra"),
-      };
-    }).filter(p => p.url && p.url.trim() !== "");
+    photos = (photosData as unknown[])
+      .map((p, i) => {
+        const photo = p as Record<string, unknown>;
+        return {
+          id: String(photo.id || i),
+          url: String(photo.url || ""),
+          category: String(photo.category || "extra"),
+        };
+      })
+      .filter((p) => p.url && p.url.trim() !== "");
   }
-  
+
   return {
     id: String(listing.id),
     title: String(listing.title || ""),
@@ -143,7 +151,10 @@ async function getListing(id: string): Promise<ListingDetail | null> {
     published_at: listing.published_at as string | null,
     created_at: String(listing.created_at || ""),
     updated_at: String(listing.updated_at || ""),
-    listing_category: listing.listing_category as "residential" | "commercial" | null,
+    listing_category: listing.listing_category as
+      | "residential"
+      | "commercial"
+      | null,
     commercial_type: listing.commercial_type as string | null,
     size_sqm: listing.size_sqm as number | null,
   };
@@ -173,12 +184,42 @@ function formatDate(dateString: string | null): string {
 
 function getStatusConfig(status: ListingDetail["status"]) {
   const configs = {
-    draft: { bg: "bg-gray-100", text: "text-gray-700", label: "Draft", icon: Clock },
-    active: { bg: "bg-teal-100", text: "text-teal-700", label: "Active", icon: CheckCircle },
-    paused: { bg: "bg-amber-100", text: "text-amber-700", label: "Paused", icon: Pause },
-    rented: { bg: "bg-blue-100", text: "text-blue-700", label: "Rented", icon: Home },
-    expired: { bg: "bg-red-100", text: "text-red-700", label: "Expired", icon: Clock },
-    archived: { bg: "bg-gray-100", text: "text-gray-500", label: "Archived", icon: Clock },
+    draft: {
+      bg: "bg-gray-100",
+      text: "text-gray-700",
+      label: "Draft",
+      icon: Clock,
+    },
+    active: {
+      bg: "bg-teal-100",
+      text: "text-teal-700",
+      label: "Active",
+      icon: CheckCircle,
+    },
+    paused: {
+      bg: "bg-amber-100",
+      text: "text-amber-700",
+      label: "Paused",
+      icon: Pause,
+    },
+    rented: {
+      bg: "bg-blue-100",
+      text: "text-blue-700",
+      label: "Rented",
+      icon: Home,
+    },
+    expired: {
+      bg: "bg-red-100",
+      text: "text-red-700",
+      label: "Expired",
+      icon: Clock,
+    },
+    archived: {
+      bg: "bg-gray-100",
+      text: "text-gray-500",
+      label: "Archived",
+      icon: Clock,
+    },
   };
   return configs[status] || configs.draft;
 }
@@ -209,15 +250,15 @@ interface PageProps {
 export default async function LandlordListingDetailPage({ params }: PageProps) {
   const { id } = await params;
   const listing = await getListing(id);
-  
+
   if (!listing) {
     notFound();
   }
-  
+
   const statusConfig = getStatusConfig(listing.status);
   const StatusIcon = statusConfig.icon;
   const isCommercial = listing.listing_category === "commercial";
-  
+
   // Check for valid cover image - prioritize cover_photo, fallback to first photo with "cover" category, then first photo
   const getValidCoverImage = (): string | null => {
     // Check cover_photo field
@@ -225,7 +266,9 @@ export default async function LandlordListingDetailPage({ params }: PageProps) {
       return listing.cover_photo;
     }
     // Check for photo with "cover" category
-    const coverCategoryPhoto = listing.photos.find(p => p.category === "cover");
+    const coverCategoryPhoto = listing.photos.find(
+      (p) => p.category === "cover",
+    );
     if (coverCategoryPhoto?.url) {
       return coverCategoryPhoto.url;
     }
@@ -236,7 +279,7 @@ export default async function LandlordListingDetailPage({ params }: PageProps) {
     return null;
   };
   const coverImage = getValidCoverImage();
-  
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -249,20 +292,34 @@ export default async function LandlordListingDetailPage({ params }: PageProps) {
             <ArrowLeft className="w-5 h-5 text-gray-500" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{listing.title}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {listing.title}
+            </h1>
             <div className="flex items-center gap-3 mt-1">
-              <span className={cn(
-                "inline-flex items-center gap-1 text-sm font-medium",
-                listing.status === "active" ? "text-green-600" :
-                listing.status === "paused" ? "text-amber-600" :
-                listing.status === "rented" ? "text-blue-600" : "text-gray-500"
-              )}>
-                <span className={cn(
-                  "w-2 h-2 rounded-full",
-                  listing.status === "active" ? "bg-green-500" :
-                  listing.status === "paused" ? "bg-amber-500" :
-                  listing.status === "rented" ? "bg-blue-500" : "bg-gray-400"
-                )} />
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 text-sm font-medium",
+                  listing.status === "active"
+                    ? "text-green-600"
+                    : listing.status === "paused"
+                      ? "text-amber-600"
+                      : listing.status === "rented"
+                        ? "text-blue-600"
+                        : "text-gray-500",
+                )}
+              >
+                <span
+                  className={cn(
+                    "w-2 h-2 rounded-full",
+                    listing.status === "active"
+                      ? "bg-green-500"
+                      : listing.status === "paused"
+                        ? "bg-amber-500"
+                        : listing.status === "rented"
+                          ? "bg-blue-500"
+                          : "bg-gray-400",
+                  )}
+                />
                 {statusConfig.label}
               </span>
               {listing.is_verified && (
@@ -274,7 +331,7 @@ export default async function LandlordListingDetailPage({ params }: PageProps) {
             </div>
           </div>
         </div>
-        
+
         {/* Actions */}
         <div className="flex items-center gap-2">
           {listing.status !== "draft" && (
@@ -296,7 +353,7 @@ export default async function LandlordListingDetailPage({ params }: PageProps) {
           </Link>
         </div>
       </div>
-      
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard
@@ -317,13 +374,14 @@ export default async function LandlordListingDetailPage({ params }: PageProps) {
         <StatCard
           icon={<TrendingUp className="w-5 h-5" />}
           label="Conversion"
-          value={listing.views_count > 0 
-            ? `${((listing.inquiries_count / listing.views_count) * 100).toFixed(1)}%`
-            : "0%"
+          value={
+            listing.views_count > 0
+              ? `${((listing.inquiries_count / listing.views_count) * 100).toFixed(1)}%`
+              : "0%"
           }
         />
       </div>
-      
+
       {/* Main Content */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left: Preview */}
@@ -346,7 +404,7 @@ export default async function LandlordListingDetailPage({ params }: PageProps) {
                 </div>
               )}
             </div>
-            
+
             {/* Photo thumbnails */}
             {listing.photos.length > 1 && (
               <div className="p-3 border-t border-gray-100">
@@ -374,70 +432,111 @@ export default async function LandlordListingDetailPage({ params }: PageProps) {
               </div>
             )}
           </div>
-          
+
           {/* Description */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Description</h2>
+            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
+              Description
+            </h2>
             <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
               {listing.description || "No description provided."}
             </p>
           </div>
         </div>
-        
+
         {/* Right: Details & Actions */}
         <div className="space-y-6">
           {/* Price Card */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Monthly Rent</p>
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">
+              Monthly Rent
+            </p>
             <div className="text-3xl font-bold text-gray-900">
               {formatCurrency(listing.rent_amount, listing.currency)}
             </div>
-            
+
             {(listing.deposit_amount || listing.service_charge) && (
               <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
                 {listing.deposit_amount && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Deposit</span>
-                    <span className="font-semibold text-gray-900">{formatCurrency(listing.deposit_amount, listing.currency)}</span>
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrency(listing.deposit_amount, listing.currency)}
+                    </span>
                   </div>
                 )}
                 {listing.service_charge && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Service Charge</span>
-                    <span className="font-semibold text-gray-900">{formatCurrency(listing.service_charge, listing.currency)}</span>
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrency(listing.service_charge, listing.currency)}
+                    </span>
                   </div>
                 )}
               </div>
             )}
           </div>
-          
+
           {/* Property Details */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">Property Details</h3>
-            
+            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">
+              Property Details
+            </h3>
+
             <div className="space-y-1">
-              <DetailRow icon={<MapPin className="w-4 h-4" />} label="Location" value={`${listing.area}, ${listing.city}`} />
-              <DetailRow icon={<Home className="w-4 h-4" />} label="Type" value={PROPERTY_TYPE_LABELS[listing.property_type] || listing.property_type} />
-              
+              <DetailRow
+                icon={<MapPin className="w-4 h-4" />}
+                label="Location"
+                value={`${listing.area}, ${listing.city}`}
+              />
+              <DetailRow
+                icon={<Home className="w-4 h-4" />}
+                label="Type"
+                value={
+                  PROPERTY_TYPE_LABELS[listing.property_type] ||
+                  listing.property_type
+                }
+              />
+
               {!isCommercial ? (
                 <>
-                  <DetailRow icon={<Bed className="w-4 h-4" />} label="Bedrooms" value={listing.bedrooms.toString()} />
-                  <DetailRow icon={<Bath className="w-4 h-4" />} label="Bathrooms" value={listing.bathrooms.toString()} />
+                  <DetailRow
+                    icon={<Bed className="w-4 h-4" />}
+                    label="Bedrooms"
+                    value={listing.bedrooms.toString()}
+                  />
+                  <DetailRow
+                    icon={<Bath className="w-4 h-4" />}
+                    label="Bathrooms"
+                    value={listing.bathrooms.toString()}
+                  />
                   {listing.size_sqft && (
-                    <DetailRow icon={<Maximize2 className="w-4 h-4" />} label="Size" value={`${listing.size_sqft.toLocaleString()} sqft`} />
+                    <DetailRow
+                      icon={<Maximize2 className="w-4 h-4" />}
+                      label="Size"
+                      value={`${listing.size_sqft.toLocaleString()} sqft`}
+                    />
                   )}
                 </>
               ) : (
                 <>
                   {listing.size_sqm && (
-                    <DetailRow icon={<Maximize2 className="w-4 h-4" />} label="Size" value={`${listing.size_sqm.toLocaleString()} sqm`} />
+                    <DetailRow
+                      icon={<Maximize2 className="w-4 h-4" />}
+                      label="Size"
+                      value={`${listing.size_sqm.toLocaleString()} sqm`}
+                    />
                   )}
-                  <DetailRow icon={<Building2 className="w-4 h-4" />} label="Category" value="Commercial" />
+                  <DetailRow
+                    icon={<Building2 className="w-4 h-4" />}
+                    label="Category"
+                    value="Commercial"
+                  />
                 </>
               )}
             </div>
           </div>
-          
+
           {/* Quick Actions */}
           <ListingActions listing={listing} />
         </div>
@@ -450,33 +549,35 @@ export default async function LandlordListingDetailPage({ params }: PageProps) {
 // SUB-COMPONENTS
 // =============================================================================
 
-function StatCard({ 
-  icon, 
-  label, 
-  value, 
-}: { 
-  icon: React.ReactNode; 
-  label: string; 
+function StatCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
   value: string;
 }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
       <div className="flex items-center gap-2 text-gray-400 mb-2">
         {icon}
-        <span className="text-sm font-medium uppercase tracking-wide">{label}</span>
+        <span className="text-sm font-medium uppercase tracking-wide">
+          {label}
+        </span>
       </div>
       <p className="text-2xl font-bold text-gray-900">{value}</p>
     </div>
   );
 }
 
-function DetailRow({ 
-  icon, 
-  label, 
-  value 
-}: { 
-  icon: React.ReactNode; 
-  label: string; 
+function DetailRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
   value: string;
 }) {
   return (

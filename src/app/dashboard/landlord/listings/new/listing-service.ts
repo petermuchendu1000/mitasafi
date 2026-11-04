@@ -1,6 +1,6 @@
 /**
  * Listing Service
- * 
+ *
  * Functions for creating, updating, and managing vacancy listings.
  * Uses Supabase client for database operations.
  */
@@ -86,11 +86,12 @@ export interface PublishResult {
 function transformFormDataToInsert(
   formData: PropertyFormData,
   userId: string,
-  status: "draft" | "active"
+  status: "draft" | "active",
 ): ListingInsertData {
   const photos = (formData.photos || [])
-    .filter((p): p is PropertyPhoto & { url: string; path: string } => 
-      !!p.url && !!p.path && !p.isUploading
+    .filter(
+      (p): p is PropertyPhoto & { url: string; path: string } =>
+        !!p.url && !!p.path && !p.isUploading,
     )
     .map((photo, index) => ({
       id: photo.id,
@@ -101,9 +102,8 @@ function transformFormDataToInsert(
     }));
 
   // Find cover photo
-  const coverPhoto = photos.find(p => p.category === "cover")?.url 
-    || photos[0]?.url 
-    || null;
+  const coverPhoto =
+    photos.find((p) => p.category === "cover")?.url || photos[0]?.url || null;
 
   return {
     landlord_id: userId,
@@ -173,13 +173,15 @@ function transformFormDataToInsert(
  */
 export async function saveDraft(
   formData: PropertyFormData,
-  existingDraftId?: string | null
+  existingDraftId?: string | null,
 ): Promise<PublishResult> {
   const supabase = createClient();
 
   try {
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       return { success: false, error: "You must be logged in to save a draft" };
     }
@@ -213,9 +215,9 @@ export async function saveDraft(
     }
   } catch (error) {
     console.error("Error saving draft:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to save draft" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save draft",
     };
   }
 }
@@ -225,13 +227,15 @@ export async function saveDraft(
  */
 export async function publishListing(
   formData: PropertyFormData,
-  existingDraftId?: string | null
+  existingDraftId?: string | null,
 ): Promise<PublishResult> {
   const supabase = createClient();
 
   try {
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       return { success: false, error: "You must be logged in to publish" };
     }
@@ -241,23 +245,32 @@ export async function publishListing(
       return { success: false, error: "Title must be at least 10 characters" };
     }
     if (!formData.description || formData.description.trim().length < 50) {
-      return { success: false, error: "Description must be at least 50 characters" };
+      return {
+        success: false,
+        error: "Description must be at least 50 characters",
+      };
     }
-    
+
     // Validate pricing based on listing category
     const isCommercial = formData.listingCategory === "commercial";
     if (isCommercial) {
       // Commercial pricing validation
       const commercial = formData.commercial;
       const pricingModel = commercial?.pricingModel || "fixed";
-      
+
       if (pricingModel === "per_sqm") {
         if (!commercial?.rentPerSqm || commercial.rentPerSqm <= 0) {
           return { success: false, error: "Please enter a valid rent per sqm" };
         }
       } else if (pricingModel === "revenue_share") {
-        if (!commercial?.revenueSharePercent || commercial.revenueSharePercent <= 0) {
-          return { success: false, error: "Please enter a valid revenue share percentage" };
+        if (
+          !commercial?.revenueSharePercent ||
+          commercial.revenueSharePercent <= 0
+        ) {
+          return {
+            success: false,
+            error: "Please enter a valid revenue share percentage",
+          };
         }
       } else {
         // Fixed or per_unit pricing - check rentAmount
@@ -271,7 +284,7 @@ export async function publishListing(
         return { success: false, error: "Please enter a valid rent amount" };
       }
     }
-    
+
     if (!formData.area) {
       return { success: false, error: "Please select a location/area" };
     }
@@ -305,9 +318,10 @@ export async function publishListing(
     }
   } catch (error) {
     console.error("Error publishing listing:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to publish listing" 
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to publish listing",
     };
   }
 }
@@ -318,8 +332,10 @@ export async function publishListing(
 export async function getListing(listingId: string) {
   const supabase = createClient();
 
+  // listings_public: see 20260340000000. The owner branch returns the real
+  // address and coordinates, which the edit form needs.
   const { data, error } = await supabase
-    .from("listings")
+    .from("listings_public")
     .select("*")
     .eq("id", listingId)
     .single();
@@ -334,11 +350,15 @@ export async function getListing(listingId: string) {
 export async function getMyListings() {
   const supabase = createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return [];
 
+  // listings_public: see 20260340000000. Scoped to the caller, so every row
+  // comes back through the owner branch, unmasked.
   const { data, error } = await supabase
-    .from("listings")
+    .from("listings_public")
     .select("*")
     .eq("landlord_id", user.id)
     .order("created_at", { ascending: false });
