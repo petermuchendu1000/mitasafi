@@ -258,8 +258,10 @@ BEGIN
     fail:=fail+1; rep:=rep||'FAIL P20 landlord identity missing -> the listing card goes blank'||E'\n';
   END IF;
 
-  -- ...and only where the listing is already public. A draft must not publish
-  -- its landlord: the predicate mirrors `Public can view active listings`.
+  -- ...and only where the listing is ACTIVE. A draft must not publish its
+  -- landlord. Note this is narrower than listings_public_read, which since
+  -- 20260339000000 also admits paused and rented: the listing is readable,
+  -- the owner's name is not. V17 of public_visibility_test.sql pins that down.
   SELECT count(*) INTO n FROM profiles_public WHERE id = v_ll2;
   IF n = 0 THEN
     pass:=pass+1; rep:=rep||'PASS P21 a draft-only landlord is NOT exposed'||E'\n';

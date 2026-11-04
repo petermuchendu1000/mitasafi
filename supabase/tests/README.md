@@ -58,7 +58,7 @@ and metadata were all readable from a second account.
 
 A healthy run ends with:
 
-    PROFILE_READ_RESULT pass=19 fail=0
+    PROFILE_READ_RESULT pass=21 fail=0
 
 | Test     | What it holds down                                                                                                                                           |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -77,3 +77,60 @@ A healthy run ends with:
 
 Mutation-tested: reinstating `profiles_public_read USING (true)` on the test
 database fails P1, P2, P3 and P16, and the CI runner exits 1.
+
+## public_visibility_test.sql
+
+Verifies `20260339000000_public_listing_visibility.sql`. 17 assertions.
+
+Two tables had RLS enabled, the SELECT privilege granted to the client roles,
+and no policy that let those roles read anything. PostgREST does not error in
+that state — a filtered `.select()` returns `[]` and a filtered embed returns
+`null` — so both defects were silent.
+
+**`service_types`.** `20260312000000_rls_complete_coverage.sql` gave each
+catalogue table a `<t>_public_read` / `<t>_service_role_all` pair.
+`service_types` got only the `service_role` half. Measured as owner: 12 rows; as
+`authenticated`: 0; as `anon`: 0 — on the live project and again in a clean-room
+build from the migration files alone, which rules out production drift. The
+booking page reads the type through an embed and falls back on absence
+(`src/app/services/provider/[id]/request/page.tsx:125,156`,
+`booking_flow ?? "standard"`), and only 4 of the 12 seeded types are
+`standard`. The other 8 — emergency, delivery, project, personal — were every
+one of them booked in the `standard` shape, with no error and no log.
+
+**`listings`.** `Public can view active listings USING (status = 'active')` hid
+paused and rented properties from everyone but the landlord, while six call
+sites read one expecting a row. `src/app/api/listing-waitlist/route.ts:71-74`
+therefore answered 404 for exactly the listings the waitlist exists for, and its
+`status === "active"` branch at `:83` is evidence no non-active row ever came
+back. `src/app/api/saved-listings/route.ts:29-45` embeds `listings` on
+`saved_listings`, so a saved card lost its title, rent and photo the moment the
+landlord marked the property rented.
+
+`listings_public_read` now admits `active`, `paused`, `rented`. Draft, expired
+and archived stay landlord-only, and because `status` is nullable and its CHECK
+passes on NULL, V11 pins down that `= ANY (...)` fails closed on a null status.
+
+**The asymmetry V16/V17 exist for.** `profiles_public` still admits a landlord's
+identity only on `status = 'active'`. A property becoming viewable is not a
+reason to publish its owner's name, and none of the repaired reads wants one, so
+the two predicates deliberately differ. V17 and a guard in the migration both
+fail if someone aligns them.
+
+Run:
+
+    psql "$DATABASE_URL" -f supabase/tests/public_visibility_test.sql
+
+A healthy run ends with
+
+    PUBLIC_VISIBILITY_RESULT pass=17 fail=0
+
+Proven to bite: against the pre-migration schema the suite reports
+`pass=9 fail=8`, failing exactly V1-V4, V6, V7, V14 and V15 — and the pre-state
+reproduces the defect's own words, `embed gave NULL -> every emergency booking
+is created as standard`. The migration's six guards were mutation-tested the
+same way: omit the `service_types` policy, narrow the listing predicate to
+active, widen it to admit draft, add a blanket `USING (true)` on listings, widen
+`profiles_public` to paused/rented, or revoke `anon`'s SELECT on
+`service_types` — 6 mutants generated, 6 killed, 0 survived, with the
+unmutated migration passing as the control.

@@ -138,9 +138,17 @@ export async function getListingById(
     //
     // The landlord now comes from public.profiles_public, which 20260338000000
     // extended with `is_verified` and with a branch admitting the landlord of
-    // any listing whose status is 'active' -- the same predicate as the
-    // `Public can view active listings` policy, so no row becomes visible that
-    // was not already public.
+    // any listing whose status is 'active'.
+    //
+    // That branch is DELIBERATELY NARROWER than the public read policy on
+    // listings. 20260339000000 widened `listings_public_read` to admit paused
+    // and rented as well, because the waitlist and saved-listings reads need
+    // them -- but it did not widen this view. A property being viewable is not
+    // a reason to publish its owner's name, and none of those reads wants one.
+    // So for a paused or rented listing this lookup returns no row and the
+    // landlord card is intentionally absent. Do not "align" the two
+    // predicates; a guard in 20260339000000 and V17 of
+    // supabase/tests/public_visibility_test.sql both fail if you do.
     //
     // Kept as a separate `.eq()` rather than an embed on the view: PostgREST
     // can sometimes infer a relationship through a view, but that inference is
