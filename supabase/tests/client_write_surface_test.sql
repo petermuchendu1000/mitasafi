@@ -61,6 +61,31 @@ BEGIN
     pass := pass + 1; rep := rep || 'PASS  booking status write refused' || E'\n';
   END;
 
+  -- The account-deletion request writes metadata + updated_at together
+  -- (src/app/dashboard/settings/actions.ts:209). Asserted separately because it
+  -- is a different column pair and was equally dead.
+  BEGIN
+    SET LOCAL ROLE authenticated;
+    UPDATE profiles SET metadata = '{}'::jsonb, updated_at = now() WHERE false;
+    RESET ROLE;
+    pass := pass + 1; rep := rep || 'PASS  the deletion-request payload is writable' || E'\n';
+  EXCEPTION WHEN insufficient_privilege THEN
+    RESET ROLE;
+    fail := fail + 1; rep := rep || 'FAIL  deletion requests are silently discarded (42501)' || E'\n';
+  END;
+
+  -- ...and the trust columns must STILL be refused. Restoring updated_at must
+  -- not have widened the grant.
+  BEGIN
+    SET LOCAL ROLE authenticated;
+    UPDATE profiles SET verification_level = 'full' WHERE false;
+    RESET ROLE;
+    fail := fail + 1; rep := rep || 'FAIL  a user can set their own verification_level' || E'\n';
+  EXCEPTION WHEN insufficient_privilege THEN
+    RESET ROLE;
+    pass := pass + 1; rep := rep || 'PASS  verification_level still refused' || E'\n';
+  END;
+
   -- ===== money tables ========================================================
   BEGIN
     SET LOCAL ROLE authenticated;
@@ -183,11 +208,21 @@ BEGIN
     fail := fail + 1; rep := rep || 'FAIL  SIGNUP IS BROKEN: ' || SQLERRM || E'\n';
   END;
 
+  -- The payload the APPLICATION sends, not the columns the migration granted.
+  --
+  -- This assertion used to be `SET full_name, phone, avatar_url` -- exactly the
+  -- three columns 20260329000000 granted. It was derived from the migration
+  -- instead of from the caller, so it passed while
+  -- src/app/dashboard/profile/actions.ts:137 was failing on every single call:
+  -- that code sets `updates.updated_at` unconditionally, and updated_at had
+  -- been left out of the grant list. A check shaped to the fix cannot detect
+  -- the fix being wrong. Restored by 20260337000000.
   BEGIN
     SET LOCAL ROLE authenticated;
-    UPDATE profiles SET full_name = 'x', phone = 'y', avatar_url = 'z' WHERE false;
+    UPDATE profiles SET full_name = 'x', phone = 'y', avatar_url = 'z',
+                        updated_at = now() WHERE false;
     RESET ROLE;
-    pass := pass + 1; rep := rep || 'PASS  a user can still edit their own profile' || E'\n';
+    pass := pass + 1; rep := rep || 'PASS  a user can still edit their own profile (incl. updated_at)' || E'\n';
   EXCEPTION WHEN OTHERS THEN
     RESET ROLE;
     fail := fail + 1; rep := rep || 'FAIL  SELF-SERVICE IS BROKEN: ' || SQLERRM || E'\n';
