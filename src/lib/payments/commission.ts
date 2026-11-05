@@ -38,7 +38,12 @@
 //   KES 80,000 -> fee = KES 5,000 (hits maximum)
 // =============================================================================
 
-import type { CommissionConfig, CommissionConfigRow } from "@/types/payments";
+import type {
+  CommissionBand,
+  CommissionBandRow,
+  CommissionConfig,
+  CommissionConfigRow,
+} from "@/types/payments";
 
 // =============================================================================
 // FALLBACK COMMISSION CONFIG
@@ -56,7 +61,7 @@ export const FALLBACK_COMMISSION_CONFIG: CommissionConfig = {
   /** No DB row backs the fallback. */
   id: null,
   /** Config version of the seeded row this fallback mirrors. */
-  version: 2,
+  version: 3,
   /** Scope key this config applies to. */
   scope: "global",
   /** 1000 bps = 10.00% platform commission. */
@@ -72,8 +77,15 @@ export const FALLBACK_COMMISSION_CONFIG: CommissionConfig = {
    * reaches the provider, and the advertised "10%" is true at every price.
    */
   minimumFeeCents: 0,
-  /** Maximum fee of KES 5,000.00 per transaction, in cents. null = no cap. */
-  maximumFeeCents: 500000,
+  /**
+   * NO CAP.
+   *
+   * This was KES 5,000. With declining bands the cap is not merely redundant
+   * but harmful: it begins biting inside the 7% band at KES 71,429 and makes
+   * the 5% band unreachable, so a KES 1,000,000 job would pay 0.5%. The 5%
+   * band is the large-job protection now. Owner decision, 2026-11-05.
+   */
+  maximumFeeCents: null,
   /**
    * NO minimum job value: a KES 20 job is welcome.
    *
@@ -91,11 +103,52 @@ export const FALLBACK_COMMISSION_CONFIG: CommissionConfig = {
   minJobAmountCents: 0,
   /** Currency. */
   currency: "KES",
+  /**
+   * Owner-approved declining schedule, flat-by-band. Mirrors the five rows
+   * seeded against v3 in
+   * supabase/migrations/20260341000000_commission_bands.sql; a test parses
+   * that migration and fails if the two drift.
+   *
+   * Bounds are in CENTS and contiguous, so KES 999.99 is still 15% and
+   * KES 1,000.00 is the first value at 12%.
+   */
+  bands: [
+    { minJobCents: 0, maxJobCents: 99_999, rateBps: 1500 },
+    { minJobCents: 100_000, maxJobCents: 499_999, rateBps: 1200 },
+    { minJobCents: 500_000, maxJobCents: 1_999_999, rateBps: 1000 },
+    { minJobCents: 2_000_000, maxJobCents: 9_999_999, rateBps: 700 },
+    { minJobCents: 10_000_000, maxJobCents: null, rateBps: 500 },
+  ],
 };
+
+/**
+ * The rate that applies to a job, in basis points.
+ *
+ * Mirrors the band lookup in public.commission_breakdown() exactly, including
+ * its COALESCE: a config with no bands, or a value that falls in no band,
+ * uses the config's own flat rate rather than returning nothing. A gap can
+ * therefore never price a job at zero. The seeded schedule is asserted
+ * contiguous by the migration and by a test, so the fallback is unreachable
+ * in practice.
+ */
+export function resolveBandRateBps(
+  totalCents: number,
+  config: CommissionConfig,
+): number {
+  for (const b of config.bands ?? []) {
+    if (
+      totalCents >= b.minJobCents &&
+      (b.maxJobCents === null || totalCents <= b.maxJobCents)
+    ) {
+      return b.rateBps;
+    }
+  }
+  return config.rateBps;
+}
 
 /** The minimum job value in major units (KES), for validation and display. */
 export function minimumJobAmount(
-  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG
+  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG,
 ): number {
   return config.minJobAmountCents / 100;
 }
@@ -108,7 +161,7 @@ export function minimumJobAmount(
  */
 export function isJobValueAllowed(
   totalAmount: number,
-  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG
+  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG,
 ): boolean {
   if (!Number.isFinite(totalAmount) || totalAmount <= 0) return false;
   return toCents(totalAmount) >= config.minJobAmountCents;
@@ -134,7 +187,9 @@ const MAX_MAJOR_UNITS = 9e13;
  */
 export function toCents(amount: number): number {
   if (!Number.isFinite(amount)) {
-    throw new RangeError(`commission: amount is not a finite number: ${amount}`);
+    throw new RangeError(
+      `commission: amount is not a finite number: ${amount}`,
+    );
   }
   const negative = amount < 0;
   const abs = Math.abs(amount);
@@ -160,7 +215,9 @@ export function toCents(amount: number): number {
   if (fracPadded.charCodeAt(2) >= 53 /* '5' */) cents += 1;
 
   if (!Number.isSafeInteger(cents)) {
-    throw new RangeError(`commission: amount not representable in cents: ${amount}`);
+    throw new RangeError(
+      `commission: amount not representable in cents: ${amount}`,
+    );
   }
   return negative ? -cents : cents;
 }
@@ -179,10 +236,14 @@ export function fromCents(cents: number): number {
  */
 export function divRoundHalfUp(numerator: number, denominator: number): number {
   if (!Number.isSafeInteger(numerator) || !Number.isSafeInteger(denominator)) {
-    throw new RangeError(`commission: non-integer division (${numerator}/${denominator})`);
+    throw new RangeError(
+      `commission: non-integer division (${numerator}/${denominator})`,
+    );
   }
   if (denominator <= 0) {
-    throw new RangeError(`commission: non-positive denominator (${denominator})`);
+    throw new RangeError(
+      `commission: non-positive denominator (${denominator})`,
+    );
   }
   let q = Math.floor(numerator / denominator);
   let r = numerator - q * denominator;
@@ -243,10 +304,12 @@ export interface CommissionBreakdown {
  */
 export function commissionFeeCents(
   totalCents: number,
-  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG
+  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG,
 ): number {
   if (!Number.isSafeInteger(totalCents)) {
-    throw new RangeError(`commission: totalCents must be an integer (${totalCents})`);
+    throw new RangeError(
+      `commission: totalCents must be an integer (${totalCents})`,
+    );
   }
   if (totalCents <= 0) return 0;
 
@@ -262,7 +325,7 @@ export function commissionFeeCents(
   const feeNumerator = totalCents * config.rateBps;
   if (!Number.isSafeInteger(feeNumerator)) {
     throw new RangeError(
-      `commission: ${totalCents} cents at ${config.rateBps} bps exceeds exact integer arithmetic`
+      `commission: ${totalCents} cents at ${config.rateBps} bps exceeds exact integer arithmetic`,
     );
   }
 
@@ -297,17 +360,25 @@ export function commissionFeeCents(
  */
 export function calculateCommission(
   totalAmount: number,
-  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG
+  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG,
 ): CommissionBreakdown {
+  const totalCents = totalAmount > 0 ? toCents(totalAmount) : 0;
+
+  // The band is resolved BEFORE the snapshot, because
+  // src/lib/services/payments.ts:241 writes snapshot.rateBps into
+  // booking_payments.commission_rate_bps as the forensic record of what was
+  // actually charged. Recording the config's fallback rate there instead of
+  // the band that priced the job would make every historical fee
+  // irreproducible.
+  const effectiveRateBps = resolveBandRateBps(totalCents, config);
+
   const snapshot = {
     configId: config.id,
-    rateBps: config.rateBps,
+    rateBps: effectiveRateBps,
     minimumFeeCents: config.minimumFeeCents,
     maximumFeeCents: config.maximumFeeCents,
     minJobAmountCents: config.minJobAmountCents,
   };
-
-  const totalCents = totalAmount > 0 ? toCents(totalAmount) : 0;
 
   if (totalCents <= 0) {
     return {
@@ -323,7 +394,11 @@ export function calculateCommission(
     };
   }
 
-  const platformFeeCents = commissionFeeCents(totalCents, config);
+  // The arithmetic is untouched; only the rate handed to it changes.
+  const platformFeeCents = commissionFeeCents(totalCents, {
+    ...config,
+    rateBps: effectiveRateBps,
+  });
   // Subtraction, not a second rounding: the parts cannot drift from the total.
   const providerAmountCents = totalCents - platformFeeCents;
 
@@ -331,7 +406,8 @@ export function calculateCommission(
     totalAmount: fromCents(totalCents),
     platformFee: fromCents(platformFeeCents),
     providerAmount: fromCents(providerAmountCents),
-    effectiveRate: divRoundHalfUp(platformFeeCents * 10_000, totalCents) / 10_000,
+    effectiveRate:
+      divRoundHalfUp(platformFeeCents * 10_000, totalCents) / 10_000,
     currency: config.currency,
     totalCents,
     platformFeeCents,
@@ -357,11 +433,16 @@ export function getCommissionConfig(): CommissionConfig {
 }
 
 /** Map a `commission_config` row (snake_case, from PostgREST/RPC) to the app type. */
-export function commissionConfigFromRow(row: CommissionConfigRow): CommissionConfig {
+export function commissionConfigFromRow(
+  row: CommissionConfigRow,
+  bandRows: CommissionBandRow[] = [],
+): CommissionConfig {
   const requireInt = (value: unknown, field: string): number => {
     const n = typeof value === "string" ? Number(value) : value;
     if (typeof n !== "number" || !Number.isInteger(n)) {
-      throw new TypeError(`commission_config.${field} is not an integer: ${String(value)}`);
+      throw new TypeError(
+        `commission_config.${field} is not an integer: ${String(value)}`,
+      );
     }
     return n;
   };
@@ -378,16 +459,34 @@ export function commissionConfigFromRow(row: CommissionConfigRow): CommissionCon
     rateBps: requireInt(row.rate_bps, "rate_bps"),
     minimumFeeCents: requireInt(row.min_fee_cents, "min_fee_cents"),
     maximumFeeCents: maxFee,
-    minJobAmountCents: requireInt(row.min_job_amount_cents, "min_job_amount_cents"),
+    minJobAmountCents: requireInt(
+      row.min_job_amount_cents,
+      "min_job_amount_cents",
+    ),
     currency: row.currency,
+    bands: bandRows
+      .map(
+        (b): CommissionBand => ({
+          minJobCents: requireInt(b.min_job_cents, "min_job_cents"),
+          maxJobCents:
+            b.max_job_cents === null || b.max_job_cents === undefined
+              ? null
+              : requireInt(b.max_job_cents, "max_job_cents"),
+          rateBps: requireInt(b.rate_bps, "rate_bps"),
+        }),
+      )
+      .sort((x, y) => x.minJobCents - y.minJobCents),
   };
 }
+
+/** RPC that returns the bands of the active config. */
+export const COMMISSION_BANDS_RPC = "commission_bands_active";
 
 /** Minimal structural shape of a Supabase client; avoids importing server-only code here. */
 export interface CommissionConfigSource {
   rpc(
     fn: string,
-    args?: Record<string, unknown>
+    args?: Record<string, unknown>,
   ): PromiseLike<{ data: unknown; error: unknown }>;
 }
 
@@ -410,7 +509,7 @@ export interface LoadedCommissionConfig {
  */
 export async function loadCommissionConfig(
   source: CommissionConfigSource,
-  options: { scope?: string; currency?: string; at?: Date } = {}
+  options: { scope?: string; currency?: string; at?: Date } = {},
 ): Promise<LoadedCommissionConfig> {
   const fallback = getCommissionConfig();
   try {
@@ -424,12 +523,50 @@ export async function loadCommissionConfig(
       return { config: fallback, usedFallback: true, reason: String(error) };
     }
 
-    const row = (Array.isArray(data) ? data[0] : data) as CommissionConfigRow | null | undefined;
+    const row = (Array.isArray(data) ? data[0] : data) as
+      | CommissionConfigRow
+      | null
+      | undefined;
     if (!row || typeof row !== "object" || row.id === undefined) {
-      return { config: fallback, usedFallback: true, reason: "no active commission_config row" };
+      return {
+        config: fallback,
+        usedFallback: true,
+        reason: "no active commission_config row",
+      };
     }
 
-    return { config: commissionConfigFromRow(row), usedFallback: false };
+    // The bands are not optional decoration: without them every job prices at
+    // the config's flat rate, which for a KES 300 job is 10% instead of 15%.
+    // So a bands failure is treated exactly like a config failure -- fall back
+    // WHOLE, rather than combining a real config id with the wrong schedule
+    // and recording that pairing on a payment row.
+    const bandsResult = await source.rpc(COMMISSION_BANDS_RPC, {
+      p_scope: options.scope ?? fallback.scope,
+      p_currency: options.currency ?? fallback.currency,
+      p_at: (options.at ?? new Date()).toISOString(),
+    });
+
+    if (bandsResult.error) {
+      return {
+        config: fallback,
+        usedFallback: true,
+        reason: `commission_bands_active failed: ${String(bandsResult.error)}`,
+      };
+    }
+
+    const bandRows = (bandsResult.data ?? []) as CommissionBandRow[];
+    if (!Array.isArray(bandRows) || bandRows.length === 0) {
+      return {
+        config: fallback,
+        usedFallback: true,
+        reason: "active commission_config has no bands",
+      };
+    }
+
+    return {
+      config: commissionConfigFromRow(row, bandRows),
+      usedFallback: false,
+    };
   } catch (err) {
     return {
       config: fallback,
@@ -450,12 +587,33 @@ export async function loadCommissionConfig(
  * trimmed so the common whole-percent case renders exactly as before.
  */
 export function formatCommissionRate(
-  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG
+  config: CommissionConfig = FALLBACK_COMMISSION_CONFIG,
 ): string {
-  const whole = Math.trunc(config.rateBps / 100);
-  const hundredths = config.rateBps % 100;
+  // With a banded schedule a single number is a misrepresentation: the
+  // earnings page renders this as "Platform commission: X on each completed
+  // job", and config.rateBps is only the fallback, not what anyone is
+  // charged. Show the range the bands actually span.
+  const bands = config.bands ?? [];
+  if (bands.length > 0) {
+    const rates = bands.map((b) => b.rateBps);
+    const lo = Math.min(...rates);
+    const hi = Math.max(...rates);
+    return lo === hi
+      ? formatBps(lo)
+      : `${formatBps(lo).replace("%", "")}–${formatBps(hi)}`;
+  }
+  return formatBps(config.rateBps);
+}
+
+/** One rate in basis points as a percentage string, trailing zeros trimmed. */
+function formatBps(bps: number): string {
+  const whole = Math.trunc(bps / 100);
+  const hundredths = bps % 100;
   if (hundredths === 0) return `${whole}%`;
-  const decimals = hundredths % 10 === 0 ? String(hundredths / 10) : String(hundredths).padStart(2, "0");
+  const decimals =
+    hundredths % 10 === 0
+      ? String(hundredths / 10)
+      : String(hundredths).padStart(2, "0");
   return `${whole}.${decimals}%`;
 }
 

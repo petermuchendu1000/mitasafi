@@ -87,17 +87,40 @@ export default function TermsPage() {
           fee, and no listing on MitaSafi may charge you one.
         </p>
         <p>
-          Service providers pay a commission of{" "}
-          <strong>{COMMISSION.ratePercent}% of the job value</strong>, capped at{" "}
-          <strong>KES {COMMISSION.capKes.toLocaleString()} per job</strong>.
-          {!COMMISSION.hasMinimumFee && (
-            <>
-              {" "}
-              There is no minimum fee, so the {COMMISSION.ratePercent}% is the
-              true rate at every price — a small job is charged the same
-              percentage as a large one.
-            </>
-          )}
+          Service providers pay a commission only on a completed job. The rate
+          falls as the job gets bigger:
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200 text-left">
+                <th className="py-2 pr-4 font-semibold text-gray-900">
+                  Job value
+                </th>
+                <th className="py-2 pr-4 font-semibold text-gray-900">
+                  Commission
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {COMMISSION.bands.map((b) => (
+                <tr key={b.fromKes} className="border-b border-gray-100">
+                  <td className="py-2 pr-4">
+                    {b.toKes === null
+                      ? `KES ${b.fromKes.toLocaleString()} and above`
+                      : `KES ${b.fromKes.toLocaleString()} – ${b.toKes.toLocaleString()}`}
+                  </td>
+                  <td className="py-2 pr-4 font-medium">{b.ratePercent}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>
+          The rate applies to the whole job, not in slices: a KES 5,000 job is
+          charged 10% of 5,000, not 15% of the first 999 and so on.
+          {!COMMISSION.hasMinimumFee && <> There is no minimum fee.</>}
+          {!COMMISSION.hasCap && <> There is no maximum fee.</>}
           {!COMMISSION.hasMinimumJobValue && (
             <> There is no minimum job value.</>
           )}

@@ -30,18 +30,21 @@ export const LEGAL_LAST_UPDATED = "5 November 2026";
 
 /**
  * Commission charged to service providers, read from public.commission_config
- * version 2, scope "global", effective 2026-11-03:
- *   rate_bps 1000, min_fee_cents 0, max_fee_cents 500000, min_job_amount_cents 0
- * Expressed here in the units a reader understands.
+ * version 3 and public.commission_bands, scope "global", effective 2026-11-05.
+ * Flat-by-band: a job inside a band is charged that band's rate on its whole
+ * value. No fee floor, NO CAP, no minimum job value.
  */
 export const COMMISSION = {
-  /** rate_bps 1000 = 10% */
-  ratePercent: 10,
-  /** max_fee_cents 500000, in KES */
-  capKes: 5_000,
-  /** min_fee_cents 0 — there is no floor, so 10% is accurate at every price */
+  /** Bands as advertised, in whole KES. Mirrors commission_bands on v3. */
+  bands: [
+    { fromKes: 0, toKes: 999, ratePercent: 15 },
+    { fromKes: 1_000, toKes: 4_999, ratePercent: 12 },
+    { fromKes: 5_000, toKes: 19_999, ratePercent: 10 },
+    { fromKes: 20_000, toKes: 99_999, ratePercent: 7 },
+    { fromKes: 100_000, toKes: null, ratePercent: 5 },
+  ],
   hasMinimumFee: false,
-  /** min_job_amount_cents 0 — no minimum job value */
+  hasCap: false,
   hasMinimumJobValue: false,
 } as const;
 

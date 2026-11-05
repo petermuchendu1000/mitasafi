@@ -76,7 +76,7 @@ const FAQ_DATA: readonly FAQItem[] = [
   {
     question: "Is there a fee to join as a provider?",
     answer:
-      "Joining is completely free. We charge a small service fee (10–15%) only when you successfully complete a job and receive payment.",
+      "Joining is completely free. We charge a service fee only when you successfully complete a job and receive payment. The rate falls as the job gets bigger: 15% on jobs under KES 1,000, down to 5% on jobs over KES 100,000.",
   },
 ] as const;
 
@@ -132,7 +132,7 @@ function AccordionItem({
           <span
             className={cn(
               "shrink-0 text-xl font-light text-gray-400 transition-transform duration-200",
-              isOpen && "text-cta-600"
+              isOpen && "text-cta-600",
             )}
             aria-hidden="true"
           >
@@ -148,7 +148,7 @@ function AccordionItem({
         aria-labelledby={buttonId}
         className={cn(
           "grid transition-[grid-template-rows] duration-200 ease-in-out",
-          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
         )}
       >
         <div className="overflow-hidden">
@@ -189,10 +189,7 @@ export function ServicesFAQ() {
       />
 
       <Container size="default">
-        <SectionHeader
-          eyebrow="FAQ"
-          title="Frequently Asked Questions"
-        />
+        <SectionHeader eyebrow="FAQ" title="Frequently Asked Questions" />
 
         {/* Accordion */}
         <div className="mx-auto mt-12 max-w-3xl">

@@ -30,8 +30,13 @@ BEGIN
       UPDATE bookings SET status='customer_confirmed' WHERE id=b;
       UPDATE bookings SET status='payment_pending' WHERE id=b;
 
-      fee  := round(price * 0.10, 2);
-      prov := price - fee;
+      -- Priced through the LIVE schedule, not a rate this test invents.
+      -- This line used to be `round(price * 0.10, 2)`, which meant the suite
+      -- passed unchanged when the schedule moved to declining bands -- it was
+      -- asserting its own arithmetic, never the platform's.
+      SELECT bd.platform_fee_cents / 100.0, bd.provider_amount_cents / 100.0
+        INTO fee, prov
+        FROM public.commission_breakdown(price::numeric, 'global', 'KES', now()) bd;
       INSERT INTO booking_payments (booking_id,payer_id,provider_id,amount,platform_fee,provider_amount,
           status,payment_method,idempotency_key)
         VALUES (b,v_cust,v_prov,price,fee,prov,'pending','mpesa','micro-'||price) RETURNING id INTO p;
@@ -50,10 +55,11 @@ BEGIN
 
   -- N4: the provider actually accumulated the money
   SELECT wallet_balance INTO v_bal FROM service_providers WHERE id=v_prov;
-  IF v_bal = 18.00 + 45.00 + 135.00 THEN
-    pass:=pass+1; rep:=rep||'PASS N4 wallet holds 198.00 from three micro-jobs (18+45+135)'||E'\n';
+  -- 15% bottom band: 20 -> 17.00, 50 -> 42.50, 150 -> 127.50.
+  IF v_bal = 17.00 + 42.50 + 127.50 THEN
+    pass:=pass+1; rep:=rep||'PASS N4 wallet holds 187.00 from three micro-jobs (17+42.50+127.50)'||E'\n';
   ELSE
-    fail:=fail+1; rep:=rep||'FAIL N4 wallet is '||v_bal||', expected 198.00'||E'\n';
+    fail:=fail+1; rep:=rep||'FAIL N4 wallet is '||v_bal||', expected 187.00'||E'\n';
   END IF;
 
   -- N5: the invariant that decides adoption — no price pays the provider zero

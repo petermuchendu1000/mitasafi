@@ -31,11 +31,7 @@ export type PayoutStatus =
   | "cancelled";
 
 /** Maps to `payment_method_type` PostgreSQL enum. */
-export type PaymentMethodType =
-  | "mpesa"
-  | "card"
-  | "cash"
-  | "bank_transfer";
+export type PaymentMethodType = "mpesa" | "card" | "cash" | "bank_transfer";
 
 // =============================================================================
 // ROW TYPES
@@ -182,8 +178,8 @@ export interface MpesaStkPushRequest {
   Timestamp: string;
   TransactionType: "CustomerPayBillOnline" | "CustomerBuyGoodsOnline";
   Amount: number;
-  PartyA: string;  // Customer phone (254...)
-  PartyB: string;  // Business shortcode
+  PartyA: string; // Customer phone (254...)
+  PartyB: string; // Business shortcode
   PhoneNumber: string; // Same as PartyA
   CallBackURL: string;
   AccountReference: string;
@@ -194,7 +190,7 @@ export interface MpesaStkPushRequest {
 export interface MpesaStkPushResponse {
   MerchantRequestID: string;
   CheckoutRequestID: string;
-  ResponseCode: string;  // "0" = success
+  ResponseCode: string; // "0" = success
   ResponseDescription: string;
   CustomerMessage: string;
 }
@@ -205,7 +201,7 @@ export interface MpesaStkCallback {
     stkCallback: {
       MerchantRequestID: string;
       CheckoutRequestID: string;
-      ResultCode: number;  // 0 = success, other = failure
+      ResultCode: number; // 0 = success, other = failure
       ResultDesc: string;
       CallbackMetadata?: {
         Item: Array<{
@@ -245,7 +241,7 @@ export interface MpesaStkQueryResponse {
   ResponseDescription: string;
   MerchantRequestID: string;
   CheckoutRequestID: string;
-  ResultCode: string;  // "0" = success
+  ResultCode: string; // "0" = success
   ResultDesc: string;
 }
 
@@ -256,7 +252,7 @@ export interface MpesaStkQueryResponse {
 /** Data shape for initiating a payment from the client. */
 export interface InitiatePaymentRequest {
   bookingId: string;
-  phoneNumber: string;  // M-Pesa phone (07XX or 254XX)
+  phoneNumber: string; // M-Pesa phone (07XX or 254XX)
   paymentMethod: PaymentMethodType;
 }
 
@@ -331,6 +327,26 @@ export interface PayoutRequestFormData {
  * `maximumFee > 0` as "cap enabled" — which made a genuine zero cap
  * unexpressible. "No cap" is now `maximumFeeCents: null`.
  */
+/**
+ * One rate band of a commission schedule.
+ *
+ * Flat-by-band, NOT marginal: a job inside a band is charged that band's rate
+ * on its whole value. Bounds are inclusive and in integer cents;
+ * `maxJobCents: null` is the open-ended top band.
+ */
+export interface CommissionBand {
+  minJobCents: number;
+  maxJobCents: number | null;
+  rateBps: number;
+}
+
+/** Raw `commission_bands` row as returned by commission_bands_active(). */
+export interface CommissionBandRow {
+  min_job_cents: number | string;
+  max_job_cents: number | string | null;
+  rate_bps: number | string;
+}
+
 export interface CommissionConfig {
   /** `commission_config.id`, or null when the compiled-in fallback is in use. */
   id: string | null;
@@ -348,6 +364,11 @@ export interface CommissionConfig {
   minJobAmountCents: number;
   /** Currency code. */
   currency: string;
+  /**
+   * Declining rate bands by job value. Empty means the flat `rateBps` applies
+   * at every value, which is how v1 and v2 stay reproducible.
+   */
+  bands: CommissionBand[];
 }
 
 /** Raw `commission_config` row as returned by PostgREST / the active-config RPC. */
