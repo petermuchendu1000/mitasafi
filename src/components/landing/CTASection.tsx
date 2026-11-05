@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import { LandlordDropdown } from "@/components/landing/LandlordDropdown";
+import { landingImage } from "@/lib/storage/landing-images";
 
 export function CTASection() {
   return (
@@ -35,19 +36,19 @@ export function CTASection() {
                 href="/properties"
                 className={cn(
                   buttonVariants({ variant: "white", size: "lg" }),
-                  "group"
+                  "group",
                 )}
               >
                 Browse Verified Homes
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              
+
               {/* Landlord Dropdown — client island for click-toggle + a11y */}
               <LandlordDropdown
                 direction="up"
                 triggerClassName={cn(
                   buttonVariants({ variant: "outline", size: "lg" }),
-                  "w-full sm:w-auto border-white/30 text-white hover:bg-white/10"
+                  "w-full sm:w-auto border-white/30 text-white hover:bg-white/10",
                 )}
               />
             </div>
@@ -64,7 +65,7 @@ export function CTASection() {
           <div className="hidden lg:block relative">
             <div className="relative aspect-square max-w-md mx-auto">
               <Image
-                src="https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/people/family-photo-1.jpg"
+                src={landingImage("people/family-photo-1.jpg")}
                 alt="Happy family in their new Nairobi home"
                 fill
                 className="object-cover rounded-2xl shadow-2xl"
@@ -75,7 +76,9 @@ export function CTASection() {
                 <p className="text-sm font-semibold text-gray-900">
                   &ldquo;Found our dream apartment in just 5 days!&rdquo;
                 </p>
-                <p className="text-xs text-gray-500 mt-1">— New MitaSafi User</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  — New MitaSafi User
+                </p>
               </div>
             </div>
           </div>

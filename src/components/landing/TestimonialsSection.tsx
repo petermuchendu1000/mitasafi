@@ -1,9 +1,15 @@
 "use client";
 
-import { Section, SectionHeader, Container, TestimonialCard } from "@/components/ui";
+import {
+  Section,
+  SectionHeader,
+  Container,
+  TestimonialCard,
+} from "@/components/ui";
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { landingImage } from "@/lib/storage/landing-images";
 
 const testimonials = [
   {
@@ -12,7 +18,7 @@ const testimonials = [
     author: "Wanjiku Mwangi",
     role: "Marketing Manager",
     location: "Kilimani",
-    image: "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/people/testimonial-woman-1.jpg",
+    image: landingImage("people/testimonial-woman-1.jpg"),
     rating: 5,
   },
   {
@@ -21,7 +27,7 @@ const testimonials = [
     author: "James Ochieng",
     role: "Property Owner",
     location: "Westlands",
-    image: "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/people/testimonial-man-1.jpg",
+    image: landingImage("people/testimonial-man-1.jpg"),
     rating: 5,
   },
   {
@@ -30,7 +36,7 @@ const testimonials = [
     author: "Grace Akinyi",
     role: "Software Developer",
     location: "South B",
-    image: "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/people/testimonial-woman-2.jpg",
+    image: landingImage("people/testimonial-woman-2.jpg"),
     rating: 5,
   },
   {
@@ -39,7 +45,7 @@ const testimonials = [
     author: "Peter Mutua",
     role: "Licensed Plumber",
     location: "Nairobi",
-    image: "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/people/testimonial-man-2.jpg",
+    image: landingImage("people/testimonial-man-2.jpg"),
     rating: 5,
   },
   {
@@ -48,7 +54,7 @@ const testimonials = [
     author: "Amina Hassan",
     role: "Nurse",
     location: "Langata",
-    image: "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/people/testimonial-woman-3.jpg",
+    image: landingImage("people/testimonial-woman-3.jpg"),
     rating: 5,
   },
   {
@@ -57,7 +63,7 @@ const testimonials = [
     author: "Daniel Kamau",
     role: "Property Manager",
     location: "Karen",
-    image: "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/people/testimonial-man-3.jpg",
+    image: landingImage("people/testimonial-man-3.jpg"),
     rating: 5,
   },
 ];
@@ -72,7 +78,8 @@ export function TestimonialsSection() {
     if (container) {
       setCanScrollLeft(container.scrollLeft > 0);
       setCanScrollRight(
-        container.scrollLeft < container.scrollWidth - container.clientWidth - 10
+        container.scrollLeft <
+          container.scrollWidth - container.clientWidth - 10,
       );
     }
   };
@@ -115,7 +122,7 @@ export function TestimonialsSection() {
                 "p-3 rounded-full border border-gray-200 transition-all duration-200",
                 canScrollLeft
                   ? "hover:bg-brand-50 hover:border-brand-200 text-gray-700"
-                  : "opacity-40 cursor-not-allowed text-gray-400"
+                  : "opacity-40 cursor-not-allowed text-gray-400",
               )}
               aria-label="Previous testimonials"
             >
@@ -128,7 +135,7 @@ export function TestimonialsSection() {
                 "p-3 rounded-full border border-gray-200 transition-all duration-200",
                 canScrollRight
                   ? "hover:bg-brand-50 hover:border-brand-200 text-gray-700"
-                  : "opacity-40 cursor-not-allowed text-gray-400"
+                  : "opacity-40 cursor-not-allowed text-gray-400",
               )}
               aria-label="Next testimonials"
             >

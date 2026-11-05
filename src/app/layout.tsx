@@ -2,10 +2,12 @@ import type { Metadata, Viewport } from "next";
 import { ToastProvider } from "@/components/ui/Toast";
 import { PageViewTracker } from "@/lib/analytics/use-analytics";
 import "./globals.css";
+import { landingImage } from "@/lib/storage/landing-images";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://mitasafi.co.ke"),
-  title: "MitaSafi — Find Verified Rental Homes in Nairobi | Houses & Apartments for Rent",
+  title:
+    "MitaSafi — Find Verified Rental Homes in Nairobi | Houses & Apartments for Rent",
   description:
     "Discover verified rental homes in Nairobi. Browse apartments, bedsitters, and houses with real photos, honest prices, and direct landlord contact. No brokers. No hidden fees. Find your home today.",
   keywords: [
@@ -34,7 +36,7 @@ export const metadata: Metadata = {
       "Renting shouldn't feel like gambling. Find verified homes with honest prices and direct landlord contact.",
     images: [
       {
-        url: "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/logo/og-image.svg",
+        url: landingImage("logo/og-image.png"),
         width: 1200,
         height: 630,
         alt: "MitaSafi - Modern Rental Management for Nairobi",
@@ -46,12 +48,16 @@ export const metadata: Metadata = {
     title: "MitaSafi — Find Verified Rental Homes in Nairobi",
     description:
       "Renting shouldn't feel like gambling. Find verified homes with honest prices and direct landlord contact.",
-    images: ["https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/logo/og-image.svg"],
+    images: [landingImage("logo/og-image.png")],
   },
   icons: {
     icon: [
       { url: "/logo/favicon.svg", type: "image/svg+xml" },
-      { url: "/logo/app-icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
+      {
+        url: "/logo/app-icon-192.svg",
+        sizes: "192x192",
+        type: "image/svg+xml",
+      },
     ],
     apple: "/logo/app-icon-192.svg",
     shortcut: "/logo/favicon.svg",
@@ -75,9 +81,16 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
       </head>
-      <body className="min-h-screen bg-gray-50 antialiased" suppressHydrationWarning>
+      <body
+        className="min-h-screen bg-gray-50 antialiased"
+        suppressHydrationWarning
+      >
         <ToastProvider>
           <PageViewTracker />
           {children}

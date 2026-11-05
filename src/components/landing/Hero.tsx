@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { Search, CheckCircle, Wrench } from "lucide-react";
 import { LandlordDropdown } from "@/components/landing/LandlordDropdown";
+import { landingImage } from "@/lib/storage/landing-images";
 
 export function Hero() {
   return (
@@ -12,7 +13,7 @@ export function Hero() {
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/hero/nairobi-skyline-1.jpg"
+          src={landingImage("hero/nairobi-skyline-1.jpg")}
           alt="Nairobi skyline with modern apartments"
           fill
           className="object-cover"
@@ -47,19 +48,19 @@ export function Hero() {
                 href="/properties"
                 className={cn(
                   buttonVariants({ variant: "primary", size: "lg" }),
-                  "shadow-strong"
+                  "shadow-strong",
                 )}
               >
                 <Search className="w-5 h-5" />
                 Browse Verified Homes
               </Link>
-              
+
               {/* Landlord Dropdown — client island for click-toggle + a11y */}
               <LandlordDropdown
                 direction="down"
                 triggerClassName={cn(
                   buttonVariants({ variant: "outline", size: "lg" }),
-                  "w-full sm:w-auto"
+                  "w-full sm:w-auto",
                 )}
               />
             </div>
@@ -88,7 +89,9 @@ export function Hero() {
               >
                 <Wrench className="w-4 h-4" />
                 Are you a service provider?
-                <span className="text-brand-400 font-medium">Join our network →</span>
+                <span className="text-brand-400 font-medium">
+                  Join our network →
+                </span>
               </Link>
             </div>
           </div>
@@ -99,7 +102,7 @@ export function Hero() {
               {/* Main Image */}
               <div className="relative rounded-2xl overflow-hidden shadow-2xl">
                 <Image
-                  src="https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/people/family-home-2.jpg"
+                  src={landingImage("people/family-home-2.jpg")}
                   alt="Happy family enjoying their new home"
                   width={600}
                   height={500}
