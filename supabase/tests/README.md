@@ -216,3 +216,32 @@ The code-layer companion is `src/__tests__/location-privacy-scope.test.ts`
 (5 tests), which sweeps for the defect's shape — any `.from("listings")` chain
 whose `.select()` names one of the four columns, or uses `*` — rather than for
 the fix's shape. 4 mutants, 4 killed.
+
+### The client side of the same fix
+
+The database change left two client-side residuals, and both are now closed.
+
+`ListingMap.tsx` rendered the **Directions** link unconditionally, outside the
+privacy branch, feeding coordinates to a Google Maps destination. After the
+migration those are the snapped coordinates, so it no longer leaks the address
+— but it would route a viewer up to ~393 m away and call that "Directions".
+There is no honest route to a deliberately approximate point, so the control is
+withheld when `hideExactAddress` is set.
+
+The grid size and the drawn circle were related only by a comment: the SQL
+carried a bare `0.005`, the component carried a bare `80` and `13`. Both now
+come from `src/lib/listings/location-privacy.ts`, and
+`src/__tests__/location-privacy-invariant.test.ts` (11 tests) parses the grid
+literal out of the migration's **executable** lines, asserts it equals
+`PRIVACY_GRID_DEG`, and evaluates the invariant
+
+    gridHalfDiagonalMetres(lat) < approximateCircleRadiusMetres(lat)
+
+at four Kenyan latitudes, requiring better than a 2x margin so the test fails
+while there is still room to think. Measured at Nairobi: 19.104 m/px at zoom
+13, a 393.5 m half-diagonal against a 1528.4 m drawn radius.
+
+7 mutants, 7 killed: coarsening the SQL grid to 0.05, shrinking the circle to
+8 px, zooming to 17, putting a bare literal back in the paint object, removing
+the Directions guard, dropping the longitude snap, and making the divisor
+differ from the multiplier.

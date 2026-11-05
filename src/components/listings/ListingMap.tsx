@@ -1,9 +1,9 @@
 /**
  * Listing Map Component
- * 
+ *
  * Interactive map using Mapbox GL JS.
  * Respects hide_exact_address setting for privacy.
- * 
+ *
  * Features:
  * - Interactive map with zoom/pan
  * - Exact pin or approximate circle based on privacy
@@ -16,14 +16,14 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { 
-  MapPin, 
-  Navigation, 
-  ExternalLink,
-  Eye,
-  EyeOff
-} from "lucide-react";
+import { MapPin, Navigation, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  APPROX_CENTRE_DOT_PX,
+  APPROX_CIRCLE_RADIUS_PX,
+  APPROX_ZOOM,
+  EXACT_ZOOM,
+} from "@/lib/listings/location-privacy";
 
 // Set Mapbox token
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -61,12 +61,15 @@ export function ListingMap({
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState(false);
-  
+
   const hasCoordinates = latitude !== null && longitude !== null;
 
   // Parse landmarks string into array
-  const landmarksList = landmarks 
-    ? landmarks.split(",").map(l => l.trim()).filter(Boolean)
+  const landmarksList = landmarks
+    ? landmarks
+        .split(",")
+        .map((l) => l.trim())
+        .filter(Boolean)
     : [];
 
   // Initialize map
@@ -78,8 +81,8 @@ export function ListingMap({
     }
 
     try {
-      const zoom = hideExactAddress ? 13 : 15;
-      
+      const zoom = hideExactAddress ? APPROX_ZOOM : EXACT_ZOOM;
+
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: "mapbox://styles/mapbox/light-v11",
@@ -92,7 +95,7 @@ export function ListingMap({
       // Add navigation controls
       map.current.addControl(
         new mapboxgl.NavigationControl({ showCompass: false }),
-        "bottom-right"
+        "bottom-right",
       );
 
       map.current.on("load", () => {
@@ -120,7 +123,7 @@ export function ListingMap({
             type: "circle",
             source: "approximate-area",
             paint: {
-              "circle-radius": 80,
+              "circle-radius": APPROX_CIRCLE_RADIUS_PX,
               "circle-color": "#0d9488",
               "circle-opacity": 0.1,
             },
@@ -132,7 +135,7 @@ export function ListingMap({
             type: "circle",
             source: "approximate-area",
             paint: {
-              "circle-radius": 80,
+              "circle-radius": APPROX_CIRCLE_RADIUS_PX,
               "circle-color": "transparent",
               "circle-stroke-width": 2,
               "circle-stroke-color": "#0d9488",
@@ -146,7 +149,7 @@ export function ListingMap({
             type: "circle",
             source: "approximate-area",
             paint: {
-              "circle-radius": 6,
+              "circle-radius": APPROX_CENTRE_DOT_PX,
               "circle-color": "#0d9488",
             },
           });
@@ -219,37 +222,51 @@ export function ListingMap({
         {buildingName && (
           <span className="font-medium text-gray-900">{buildingName} • </span>
         )}
-        {!hideExactAddress && address && (
-          <span>{address}, </span>
-        )}
-        <span>{area}, {city}</span>
+        {!hideExactAddress && address && <span>{address}, </span>}
+        <span>
+          {area}, {city}
+        </span>
       </div>
 
       {/* Map */}
       {hasCoordinates && !mapError ? (
         <div className="relative rounded-lg overflow-hidden border border-gray-200">
-          <div 
-            ref={mapContainer} 
-            className="h-48 lg:h-56 bg-gray-100"
-          />
-          
+          <div ref={mapContainer} className="h-48 lg:h-56 bg-gray-100" />
+
           {!mapLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
               <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
             </div>
           )}
 
-          {/* Get Directions Button */}
-          <a
-            href={getDirectionsUrl(latitude, longitude, buildingName || area)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute bottom-2 left-2 bg-white shadow-sm rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition-colors border border-gray-200"
-          >
-            <Navigation className="w-3.5 h-3.5" />
-            Directions
-            <ExternalLink className="w-3 h-3 text-gray-400" />
-          </a>
+          {/* Get Directions — ONLY when the exact position may be shown.
+           *
+           * This link used to render unconditionally, outside the privacy
+           * branch, with getDirectionsUrl() putting the coordinates into a
+           * Google Maps destination. It sat directly beside the notice that
+           * says "Exact address shared after inquiry", so a viewer did not
+           * need dev tools to defeat the flag -- the button did it for them.
+           *
+           * Since 20260340000000 the server snaps a hidden listing's
+           * coordinates to a ~556 m grid, so the link can no longer leak the
+           * real address. But it would now navigate the viewer to a point up
+           * to ~393 m from the property and call that "Directions", which is
+           * a different kind of wrong. There is no honest turn-by-turn route
+           * to a deliberately approximate point, so the control is withheld
+           * and the "Approximate" badge plus the privacy notice stand on
+           * their own. */}
+          {!hideExactAddress && (
+            <a
+              href={getDirectionsUrl(latitude, longitude, buildingName || area)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute bottom-2 left-2 bg-white shadow-sm rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition-colors border border-gray-200"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+              Directions
+              <ExternalLink className="w-3 h-3 text-gray-400" />
+            </a>
+          )}
         </div>
       ) : (
         <div className="h-48 lg:h-56 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-200">
