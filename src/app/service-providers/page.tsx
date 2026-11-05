@@ -350,7 +350,7 @@ export default function ServiceProvidersPage() {
               <div className="col-span-2 relative group rounded-3xl overflow-hidden shadow-lg">
                 <div className="relative aspect-[2/1]">
                   <Image
-                    src={landingImage("people/movers-services.png")}
+                    src={landingImage("people/movers-services.jpg")}
                     alt="Professional moving team"
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -567,7 +567,7 @@ export default function ServiceProvidersPage() {
             <div className="mt-16 relative rounded-2xl overflow-hidden shadow-xl">
               <div className="relative h-64 md:h-80">
                 <Image
-                  src={landingImage("people/movers-services.png")}
+                  src={landingImage("people/movers-services.jpg")}
                   alt="Professional moving team at work"
                   fill
                   className="object-cover"
