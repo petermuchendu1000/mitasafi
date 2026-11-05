@@ -19,9 +19,11 @@
  * two images that live outside the `services/` prefix.
  *
  * Usage:
- *   KLING_ACCESS_KEY=… KLING_SECRET_KEY=… \
+ *   KLING_API_KEY=… \
  *   NEXT_PUBLIC_SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… \
  *   node scripts/generate-missing-people-images.mjs
+ *
+ *   (or KLING_ACCESS_KEY + KLING_SECRET_KEY instead of KLING_API_KEY)
  *
  * Cost: 4 units per image, 8 in total, measured from the
  * `final_unit_deduction` field on this account's 194 historical tasks.
@@ -39,13 +41,34 @@ const POLL_INTERVAL_MS = 5_000;
 const POLL_TIMEOUT_MS = 180_000;
 const BUCKET = "landing-images";
 
-const { KLING_ACCESS_KEY, KLING_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY } =
-  process.env;
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-for (const [k, v] of Object.entries({
+const {
+  KLING_API_KEY,
   KLING_ACCESS_KEY,
   KLING_SECRET_KEY,
+  SUPABASE_SERVICE_ROLE_KEY,
+} = process.env;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+// Kling accepts either shape, and this project has used both:
+//
+//   KLING_API_KEY                        a single opaque key, sent as the
+//                                        bearer token directly. Preferred.
+//   KLING_ACCESS_KEY + KLING_SECRET_KEY  the older pair, from which a
+//                                        30-minute HS256 JWT is minted per
+//                                        request, per KLING_AI_REFERENCE §3.
+//
+// Both were verified against GET /v1/images/generations: each returns HTTP 200
+// with code 0, and they resolve to DIFFERENT accounts -- the pair's task
+// history holds 194 entries, the single key's is empty.
+const hasApiKey = Boolean(KLING_API_KEY);
+
+if (!hasApiKey && !(KLING_ACCESS_KEY && KLING_SECRET_KEY)) {
+  console.error(
+    "Missing Kling credentials: set KLING_API_KEY, or both KLING_ACCESS_KEY and KLING_SECRET_KEY",
+  );
+  process.exit(2);
+}
+for (const [k, v] of Object.entries({
   NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY,
 })) {
@@ -95,6 +118,9 @@ const SPECS = [
 ];
 
 function klingToken() {
+  // A single API key IS the bearer token; there is nothing to sign.
+  if (hasApiKey) return KLING_API_KEY;
+
   const now = Math.floor(Date.now() / 1000);
   const b64 = (o) =>
     Buffer.from(JSON.stringify(o))
