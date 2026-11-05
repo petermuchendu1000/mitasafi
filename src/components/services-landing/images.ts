@@ -1,5 +1,3 @@
-import { LANDING_IMAGES_BASE } from "@/lib/storage/landing-images";
-
 /**
  * Services Landing Page — Image Constants
  *
@@ -11,14 +9,18 @@ import { LANDING_IMAGES_BASE } from "@/lib/storage/landing-images";
  * @see SERVICES_LANDING_PAGE_SPECIFICATION.md §6 for image specifications
  */
 
+import { LANDING_IMAGES_BASE } from "@/lib/storage/landing-images";
+
 // =============================================================================
 // SUPABASE STORAGE BASE
 // =============================================================================
+//
+// Derived from the configured project, never pinned to one. This file used to
+// hardcode a project ref; that project was later abandoned and every image on
+// the site broke with a 500, because the host no longer resolved and nothing
+// in the codebase pointed at the live project.
 
 const STORAGE_BASE = `${LANDING_IMAGES_BASE}/services`;
-
-/** Cache-bust: increment after every regeneration to bypass browser/CDN cache */
-const V = "?v=20260303";
 
 // =============================================================================
 // IMAGE URLS
@@ -29,44 +31,44 @@ const V = "?v=20260303";
  * Keys use camelCase versions of the image IDs from the specification.
  */
 export const SERVICES_IMAGES = {
-  servicesHeroBg: `${STORAGE_BASE}/hero-bg.jpg${V}`,
+  servicesHeroBg: `${STORAGE_BASE}/hero-bg.jpg`,
 
-  catPlumbing: `${STORAGE_BASE}/categories/plumbing.jpg${V}`,
-  catElectrical: `${STORAGE_BASE}/categories/electrical.jpg${V}`,
-  catWaterGas: `${STORAGE_BASE}/categories/water-gas-delivery.jpg${V}`,
-  catCleaning: `${STORAGE_BASE}/categories/cleaning.jpg${V}`,
-  catLaundry: `${STORAGE_BASE}/categories/laundry.jpg${V}`,
-  catPestControl: `${STORAGE_BASE}/categories/pest-control.jpg${V}`,
-  catCarpentry: `${STORAGE_BASE}/categories/carpentry.jpg${V}`,
-  catPainting: `${STORAGE_BASE}/categories/painting.jpg${V}`,
-  catMoving: `${STORAGE_BASE}/categories/moving-relocation.jpg${V}`,
-  catInternet: `${STORAGE_BASE}/categories/internet-networking.jpg${V}`,
-  catGardening: `${STORAGE_BASE}/categories/gardening-landscaping.jpg${V}`,
-  catMore: `${STORAGE_BASE}/categories/more-services.jpg${V}`,
+  catPlumbing: `${STORAGE_BASE}/categories/plumbing.jpg`,
+  catElectrical: `${STORAGE_BASE}/categories/electrical.jpg`,
+  catWaterGas: `${STORAGE_BASE}/categories/water-gas-delivery.jpg`,
+  catCleaning: `${STORAGE_BASE}/categories/cleaning.jpg`,
+  catLaundry: `${STORAGE_BASE}/categories/laundry.jpg`,
+  catPestControl: `${STORAGE_BASE}/categories/pest-control.jpg`,
+  catCarpentry: `${STORAGE_BASE}/categories/carpentry.jpg`,
+  catPainting: `${STORAGE_BASE}/categories/painting.jpg`,
+  catMoving: `${STORAGE_BASE}/categories/moving-relocation.jpg`,
+  catInternet: `${STORAGE_BASE}/categories/internet-networking.jpg`,
+  catGardening: `${STORAGE_BASE}/categories/gardening-landscaping.jpg`,
+  catMore: `${STORAGE_BASE}/categories/more-services.jpg`,
 
-  howitSearch: `${STORAGE_BASE}/how-it-works/search.jpg${V}`,
-  howitCompare: `${STORAGE_BASE}/how-it-works/compare.jpg${V}`,
-  howitBook: `${STORAGE_BASE}/how-it-works/book.jpg${V}`,
+  howitSearch: `${STORAGE_BASE}/how-it-works/search.jpg`,
+  howitCompare: `${STORAGE_BASE}/how-it-works/compare.jpg`,
+  howitBook: `${STORAGE_BASE}/how-it-works/book.jpg`,
 
-  whyVerified: `${STORAGE_BASE}/why-mitasafi/verified.jpg${V}`,
-  whyPricing: `${STORAGE_BASE}/why-mitasafi/pricing.jpg${V}`,
-  whyPayment: `${STORAGE_BASE}/why-mitasafi/payment.jpg${V}`,
-  whyReviews: `${STORAGE_BASE}/why-mitasafi/reviews.jpg${V}`,
-  whyEmergency: `${STORAGE_BASE}/why-mitasafi/emergency.jpg${V}`,
-  whyNeighborhood: `${STORAGE_BASE}/why-mitasafi/neighborhood.jpg${V}`,
+  whyVerified: `${STORAGE_BASE}/why-mitasafi/verified.jpg`,
+  whyPricing: `${STORAGE_BASE}/why-mitasafi/pricing.jpg`,
+  whyPayment: `${STORAGE_BASE}/why-mitasafi/payment.jpg`,
+  whyReviews: `${STORAGE_BASE}/why-mitasafi/reviews.jpg`,
+  whyEmergency: `${STORAGE_BASE}/why-mitasafi/emergency.jpg`,
+  whyNeighborhood: `${STORAGE_BASE}/why-mitasafi/neighborhood.jpg`,
 
-  providerCta: `${STORAGE_BASE}/provider-cta.jpg${V}`,
+  providerCta: `${STORAGE_BASE}/provider-cta.jpg`,
 
-  avatarGrace: `${STORAGE_BASE}/avatars/grace.jpg${V}`,
-  avatarDavid: `${STORAGE_BASE}/avatars/david.jpg${V}`,
-  avatarWanjiku: `${STORAGE_BASE}/avatars/wanjiku.jpg${V}`,
-  avatarJames: `${STORAGE_BASE}/avatars/james.jpg${V}`,
-  avatarAisha: `${STORAGE_BASE}/avatars/aisha.jpg${V}`,
-  avatarBrian: `${STORAGE_BASE}/avatars/brian.jpg${V}`,
-  avatarPeter: `${STORAGE_BASE}/avatars/peter.jpg${V}`,
-  avatarMary: `${STORAGE_BASE}/avatars/mary.jpg${V}`,
-  avatarSamuel: `${STORAGE_BASE}/avatars/samuel.jpg${V}`,
-  avatarHannah: `${STORAGE_BASE}/avatars/hannah.jpg${V}`,
+  avatarGrace: `${STORAGE_BASE}/avatars/grace.jpg`,
+  avatarDavid: `${STORAGE_BASE}/avatars/david.jpg`,
+  avatarWanjiku: `${STORAGE_BASE}/avatars/wanjiku.jpg`,
+  avatarJames: `${STORAGE_BASE}/avatars/james.jpg`,
+  avatarAisha: `${STORAGE_BASE}/avatars/aisha.jpg`,
+  avatarBrian: `${STORAGE_BASE}/avatars/brian.jpg`,
+  avatarPeter: `${STORAGE_BASE}/avatars/peter.jpg`,
+  avatarMary: `${STORAGE_BASE}/avatars/mary.jpg`,
+  avatarSamuel: `${STORAGE_BASE}/avatars/samuel.jpg`,
+  avatarHannah: `${STORAGE_BASE}/avatars/hannah.jpg`,
 } as const;
 
 /** Type for any valid services image key */

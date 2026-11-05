@@ -962,12 +962,18 @@ function phase6_constants(blurData) {
  * @see SERVICES_LANDING_PAGE_SPECIFICATION.md §6 for image specifications
  */
 
+import { LANDING_IMAGES_BASE } from "@/lib/storage/landing-images";
+
 // =============================================================================
 // SUPABASE STORAGE BASE
 // =============================================================================
+//
+// Derived from the configured project, never pinned to one. This file used to
+// hardcode a project ref; that project was later abandoned and every image on
+// the site broke with a 500, because the host no longer resolved and nothing
+// in the codebase pointed at the live project.
 
-const STORAGE_BASE =
-  "https://syoolvgoaqnckgmngvse.supabase.co/storage/v1/object/public/landing-images/services";
+const STORAGE_BASE = \`\${LANDING_IMAGES_BASE}/services\`;
 
 // =============================================================================
 // IMAGE URLS
