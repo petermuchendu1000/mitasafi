@@ -24,6 +24,11 @@ const supabaseHost = (() => {
 })();
 
 const nextConfig: NextConfig = {
+  // Emit .next/standalone: a self-contained server with only the node_modules
+  // it actually imports. The container copies that instead of the whole
+  // dependency tree, which is what keeps the runtime image small.
+  output: "standalone",
+
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
