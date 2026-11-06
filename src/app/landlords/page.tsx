@@ -6,6 +6,7 @@ import { Container } from "@/components/ui";
 import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { landingImage } from "@/lib/storage/landing-images";
+import { SITE_URL, siteUrl } from "@/lib/site/urls";
 import {
   Building2,
   Users,
@@ -45,7 +46,7 @@ export const metadata: Metadata = {
     description:
       "Find quality tenants, screen applicants with confidence, and collect rent on time. Free landlord tools for property owners across Kenya.",
     type: "website",
-    url: "https://mitasafi.co.ke/landlords",
+    url: siteUrl("/landlords"),
     images: [
       {
         url: landingImage("hero/modern-apartment-building.jpg"),
@@ -70,7 +71,7 @@ const structuredData = {
   name: "For Landlords | MitaSafi",
   description:
     "List properties, screen tenants, and collect rent with MitaSafi. Free for landlords with up to 3 properties.",
-  url: "https://mitasafi.co.ke/landlords",
+  url: siteUrl("/landlords"),
   breadcrumb: {
     "@type": "BreadcrumbList",
     itemListElement: [
@@ -78,13 +79,13 @@ const structuredData = {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://mitasafi.co.ke",
+        item: SITE_URL,
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "For Landlords",
-        item: "https://mitasafi.co.ke/landlords",
+        item: siteUrl("/landlords"),
       },
     ],
   },

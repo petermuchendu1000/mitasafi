@@ -12,15 +12,16 @@
 
 import { Resend } from "resend";
 import type { ChannelContext } from "@/lib/notifications/channels";
+import { MAIL_FROM, SITE_URL } from "@/lib/site/urls";
 
 // =============================================================================
 // CONSTANTS & HELPERS
 // =============================================================================
 
-const FROM_ADDRESS = "MitaSafi <notifications@mitasafi.co.ke>";
+const FROM_ADDRESS = MAIL_FROM.notifications;
 
 function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || "https://mitasafi.co.ke";
+  return SITE_URL;
 }
 
 function kes(amount: number | undefined): string {
@@ -123,12 +124,12 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     bodyHtml:
       infoBox(
         infoRow("Service", ctx.serviceName) +
-        infoRow("Customer", ctx.customerName) +
-        infoRow("Reference", refId(ctx.bookingId)),
+          infoRow("Customer", ctx.customerName) +
+          infoRow("Reference", refId(ctx.bookingId)),
       ) +
       p(
         "A new booking request has been submitted. Please review the details " +
-        "and respond promptly — customers expect a response within a few hours.",
+          "and respond promptly — customers expect a response within a few hours.",
       ),
     ctaUrl: `${appUrl()}/dashboard/provider/jobs/${ctx.bookingId}`,
     ctaText: "View & Respond",
@@ -142,14 +143,16 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     bodyHtml:
       successBox(
         `Great news! <strong>${ctx.providerName ?? "Your provider"}</strong> ` +
-        `has confirmed your booking for <strong>${ctx.serviceName ?? "your service"}</strong>.`,
+          `has confirmed your booking for <strong>${ctx.serviceName ?? "your service"}</strong>.`,
       ) +
       infoBox(
         infoRow("Provider", ctx.providerName) +
-        infoRow("Service", ctx.serviceName) +
-        infoRow("Reference", refId(ctx.bookingId)),
+          infoRow("Service", ctx.serviceName) +
+          infoRow("Reference", refId(ctx.bookingId)),
       ) +
-      p("You can now message your provider to discuss details or wait for them to send a quote."),
+      p(
+        "You can now message your provider to discuss details or wait for them to send a quote.",
+      ),
     ctaUrl: `${appUrl()}/dashboard/bookings/${ctx.bookingId}`,
     ctaText: "View Booking",
   }),
@@ -166,9 +169,11 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
       ) +
       infoBox(
         infoRow("Service", ctx.serviceName) +
-        infoRow("Reference", refId(ctx.bookingId)),
+          infoRow("Reference", refId(ctx.bookingId)),
       ) +
-      p("Don't worry — there are plenty of other qualified providers on MitaSafi. Browse our marketplace to find another match."),
+      p(
+        "Don't worry — there are plenty of other qualified providers on MitaSafi. Browse our marketplace to find another match.",
+      ),
     ctaUrl: `${appUrl()}/services/browse`,
     ctaText: "Browse Other Providers",
     secondaryCtaUrl: `${appUrl()}/dashboard/bookings/${ctx.bookingId}`,
@@ -182,12 +187,12 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     bodyHtml:
       warningBox(
         `<strong>${ctx.customerName ?? "The customer"}</strong> cancelled their booking` +
-        (ctx.reason ? `: "${ctx.reason}"` : "."),
+          (ctx.reason ? `: "${ctx.reason}"` : "."),
       ) +
       infoBox(
         infoRow("Customer", ctx.customerName) +
-        infoRow("Service", ctx.serviceName) +
-        infoRow("Reference", refId(ctx.bookingId)),
+          infoRow("Service", ctx.serviceName) +
+          infoRow("Reference", refId(ctx.bookingId)),
       ) +
       p("This time slot is now free for other bookings."),
     ctaUrl: `${appUrl()}/dashboard/provider/jobs/${ctx.bookingId}`,
@@ -206,9 +211,9 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
       bodyHtml:
         infoBox(
           infoRow("Amount", kes(ctx.quotedPrice)) +
-          infoRow("Provider", ctx.providerName) +
-          infoRow("Service", ctx.serviceName) +
-          infoRow("Reference", refId(ctx.bookingId)),
+            infoRow("Provider", ctx.providerName) +
+            infoRow("Service", ctx.serviceName) +
+            infoRow("Reference", refId(ctx.bookingId)),
         ) +
         p(
           revised
@@ -227,15 +232,17 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     bodyHtml:
       successBox(
         `<strong>${ctx.customerName ?? "The customer"}</strong> accepted your ` +
-        `quote of <strong>${kes(ctx.amount)}</strong> for ` +
-        `<strong>${ctx.serviceName ?? "the service"}</strong>.`,
+          `quote of <strong>${kes(ctx.amount)}</strong> for ` +
+          `<strong>${ctx.serviceName ?? "the service"}</strong>.`,
       ) +
       infoBox(
         infoRow("Customer", ctx.customerName) +
-        infoRow("Agreed Price", kes(ctx.amount)) +
-        infoRow("Reference", refId(ctx.bookingId)),
+          infoRow("Agreed Price", kes(ctx.amount)) +
+          infoRow("Reference", refId(ctx.bookingId)),
       ) +
-      p("You can now schedule the job and start working. The customer is expecting you to proceed promptly."),
+      p(
+        "You can now schedule the job and start working. The customer is expecting you to proceed promptly.",
+      ),
     ctaUrl: `${appUrl()}/dashboard/provider/jobs/${ctx.bookingId}`,
     ctaText: "View Job",
   }),
@@ -252,10 +259,12 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
       ) +
       infoBox(
         infoRow("Customer", ctx.customerName) +
-        infoRow("Service", ctx.serviceName) +
-        infoRow("Reference", refId(ctx.bookingId)),
+          infoRow("Service", ctx.serviceName) +
+          infoRow("Reference", refId(ctx.bookingId)),
       ) +
-      p("You can send a revised quote with updated pricing or scope to try to win this job."),
+      p(
+        "You can send a revised quote with updated pricing or scope to try to win this job.",
+      ),
     ctaUrl: `${appUrl()}/dashboard/provider/jobs/${ctx.bookingId}/quote`,
     ctaText: "Send Revised Quote",
   }),
@@ -285,11 +294,13 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
       bodyHtml:
         infoBox(
           infoRow("Provider", ctx.providerName) +
-          infoRow("Service", ctx.serviceName) +
-          infoRow("Date & Time", dateDisplay) +
-          infoRow("Reference", refId(ctx.bookingId)),
+            infoRow("Service", ctx.serviceName) +
+            infoRow("Date & Time", dateDisplay) +
+            infoRow("Reference", refId(ctx.bookingId)),
         ) +
-        p("Make sure the location is accessible at the scheduled time. You can message the provider if you need to discuss anything."),
+        p(
+          "Make sure the location is accessible at the scheduled time. You can message the provider if you need to discuss anything.",
+        ),
       ctaUrl: `${appUrl()}/dashboard/bookings/${ctx.bookingId}`,
       ctaText: "View Booking",
     };
@@ -303,16 +314,16 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     bodyHtml:
       successBox(
         `<strong>${ctx.providerName ?? "Your provider"}</strong> has marked your ` +
-        `<strong>${ctx.serviceName ?? "service"}</strong> as complete.`,
+          `<strong>${ctx.serviceName ?? "service"}</strong> as complete.`,
       ) +
       infoBox(
         infoRow("Provider", ctx.providerName) +
-        infoRow("Service", ctx.serviceName) +
-        infoRow("Reference", refId(ctx.bookingId)),
+          infoRow("Service", ctx.serviceName) +
+          infoRow("Reference", refId(ctx.bookingId)),
       ) +
       p(
         "Please review the work and confirm that everything was done to your satisfaction. " +
-        "If there are any issues, you can raise a dispute from the booking page.",
+          "If there are any issues, you can raise a dispute from the booking page.",
       ),
     ctaUrl: `${appUrl()}/dashboard/bookings/${ctx.bookingId}`,
     ctaText: "Confirm Completion",
@@ -325,14 +336,16 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     bodyHtml:
       successBox(
         `<strong>${ctx.customerName ?? "The customer"}</strong> confirmed that your ` +
-        `<strong>${ctx.serviceName ?? "service"}</strong> was completed satisfactorily. Great job!`,
+          `<strong>${ctx.serviceName ?? "service"}</strong> was completed satisfactorily. Great job!`,
       ) +
       infoBox(
         infoRow("Customer", ctx.customerName) +
-        infoRow("Service", ctx.serviceName) +
-        infoRow("Reference", refId(ctx.bookingId)),
+          infoRow("Service", ctx.serviceName) +
+          infoRow("Reference", refId(ctx.bookingId)),
       ) +
-      p("Your earnings from this job are now available in your wallet. Keep up the excellent work!"),
+      p(
+        "Your earnings from this job are now available in your wallet. Keep up the excellent work!",
+      ),
     ctaUrl: `${appUrl()}/dashboard/provider/jobs/${ctx.bookingId}`,
     ctaText: "View Job",
     secondaryCtaUrl: `${appUrl()}/dashboard/provider/earnings`,
@@ -346,15 +359,19 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     preheader: `${kes(ctx.amount)} received from ${ctx.customerName ?? "a customer"}`,
     heading: "Payment Received!",
     bodyHtml:
-      successBox(`You received a payment of <strong>${kes(ctx.amount)}</strong>.`) +
+      successBox(
+        `You received a payment of <strong>${kes(ctx.amount)}</strong>.`,
+      ) +
       infoBox(
         infoRow("Amount", kes(ctx.amount)) +
-        infoRow("From", ctx.customerName) +
-        infoRow("Service", ctx.serviceName) +
-        infoRow("M-Pesa Ref", ctx.mpesaReceipt) +
-        infoRow("Booking", refId(ctx.bookingId)),
+          infoRow("From", ctx.customerName) +
+          infoRow("Service", ctx.serviceName) +
+          infoRow("M-Pesa Ref", ctx.mpesaReceipt) +
+          infoRow("Booking", refId(ctx.bookingId)),
       ) +
-      p("The payment has been credited to your MitaSafi wallet. You can request a payout to your M-Pesa at any time."),
+      p(
+        "The payment has been credited to your MitaSafi wallet. You can request a payout to your M-Pesa at any time.",
+      ),
     ctaUrl: `${appUrl()}/dashboard/provider/earnings`,
     ctaText: "View Earnings",
   }),
@@ -364,15 +381,19 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     preheader: `Your payment of ${kes(ctx.amount)} was successful`,
     heading: "Payment Successful!",
     bodyHtml:
-      successBox(`Your payment of <strong>${kes(ctx.amount)}</strong> has been confirmed.`) +
+      successBox(
+        `Your payment of <strong>${kes(ctx.amount)}</strong> has been confirmed.`,
+      ) +
       infoBox(
         infoRow("Amount", kes(ctx.amount)) +
-        infoRow("Service", ctx.serviceName) +
-        infoRow("Provider", ctx.providerName) +
-        infoRow("M-Pesa Ref", ctx.mpesaReceipt) +
-        infoRow("Booking", refId(ctx.bookingId)),
+          infoRow("Service", ctx.serviceName) +
+          infoRow("Provider", ctx.providerName) +
+          infoRow("M-Pesa Ref", ctx.mpesaReceipt) +
+          infoRow("Booking", refId(ctx.bookingId)),
       ) +
-      p("Keep this email as your payment receipt. You can also find the full payment history on your booking page."),
+      p(
+        "Keep this email as your payment receipt. You can also find the full payment history on your booking page.",
+      ),
     ctaUrl: `${appUrl()}/dashboard/bookings/${ctx.bookingId}`,
     ctaText: "View Booking",
   }),
@@ -388,7 +409,9 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
           : "Your M-Pesa payment was not completed. This can happen if the request timed out or was cancelled on your phone.",
       ) +
       infoBox(infoRow("Booking", refId(ctx.bookingId))) +
-      p("You can retry the payment from your booking page. Make sure your M-Pesa PIN is entered promptly when the STK push arrives."),
+      p(
+        "You can retry the payment from your booking page. Make sure your M-Pesa PIN is entered promptly when the STK push arrives.",
+      ),
     ctaUrl: `${appUrl()}/dashboard/bookings/${ctx.bookingId}/payment`,
     ctaText: "Try Again",
   }),
@@ -398,12 +421,16 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     preheader: `${kes(ctx.amount)} has been sent to your M-Pesa`,
     heading: "Payout Sent!",
     bodyHtml:
-      successBox(`<strong>${kes(ctx.amount)}</strong> has been sent to your M-Pesa.`) +
+      successBox(
+        `<strong>${kes(ctx.amount)}</strong> has been sent to your M-Pesa.`,
+      ) +
       infoBox(
         infoRow("Amount", kes(ctx.amount)) +
-        infoRow("Reference", ctx.paymentRef),
+          infoRow("Reference", ctx.paymentRef),
       ) +
-      p("The funds should reflect in your M-Pesa balance shortly. If you don't receive them within 24 hours, please contact our support team."),
+      p(
+        "The funds should reflect in your M-Pesa balance shortly. If you don't receive them within 24 hours, please contact our support team.",
+      ),
     ctaUrl: `${appUrl()}/dashboard/provider/earnings`,
     ctaText: "View Earnings",
   }),
@@ -416,12 +443,19 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     heading: "New Review Received",
     bodyHtml:
       infoBox(
-        infoRow("Rating", ctx.rating != null ? `${stars(ctx.rating)} (${ctx.rating}/5)` : undefined) +
-        infoRow("Customer", ctx.customerName) +
-        infoRow("Service", ctx.serviceName) +
-        infoRow("Booking", refId(ctx.bookingId)),
+        infoRow(
+          "Rating",
+          ctx.rating != null
+            ? `${stars(ctx.rating)} (${ctx.rating}/5)`
+            : undefined,
+        ) +
+          infoRow("Customer", ctx.customerName) +
+          infoRow("Service", ctx.serviceName) +
+          infoRow("Booking", refId(ctx.bookingId)),
       ) +
-      p("Read the full review and consider leaving a response. Reviews with provider responses tend to build more trust with future customers."),
+      p(
+        "Read the full review and consider leaving a response. Reviews with provider responses tend to build more trust with future customers.",
+      ),
     ctaUrl: `${appUrl()}/dashboard/provider/reviews`,
     ctaText: "View Review",
   }),
@@ -434,12 +468,12 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     bodyHtml:
       infoBox(
         infoRow("Provider", ctx.providerName) +
-        infoRow("Service", ctx.serviceName) +
-        infoRow("Booking", refId(ctx.bookingId)),
+          infoRow("Service", ctx.serviceName) +
+          infoRow("Booking", refId(ctx.bookingId)),
       ) +
       p(
         "Your feedback helps other customers make informed decisions and " +
-        "helps providers improve their service. It only takes a minute!",
+          "helps providers improve their service. It only takes a minute!",
       ),
     ctaUrl: `${appUrl()}/dashboard/bookings/${ctx.bookingId}/review`,
     ctaText: "Leave a Review",
@@ -449,7 +483,7 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
 
   dispute_filed: (ctx) => {
     const typeLabel = ctx.disputeType
-      ? DISPUTE_LABELS[ctx.disputeType] ?? ctx.disputeType
+      ? (DISPUTE_LABELS[ctx.disputeType] ?? ctx.disputeType)
       : "a dispute";
     return {
       subject: `Dispute filed: ${ctx.serviceName ?? "a booking"}`,
@@ -458,18 +492,18 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
       bodyHtml:
         warningBox(
           `<strong>${ctx.customerName ?? "A customer"}</strong> has filed a ` +
-          `<strong>${typeLabel}</strong> on your booking for ` +
-          `<strong>${ctx.serviceName ?? "a service"}</strong>.`,
+            `<strong>${typeLabel}</strong> on your booking for ` +
+            `<strong>${ctx.serviceName ?? "a service"}</strong>.`,
         ) +
         infoBox(
           infoRow("Customer", ctx.customerName) +
-          infoRow("Service", ctx.serviceName) +
-          infoRow("Dispute Type", typeLabel) +
-          infoRow("Reference", refId(ctx.bookingId)),
+            infoRow("Service", ctx.serviceName) +
+            infoRow("Dispute Type", typeLabel) +
+            infoRow("Reference", refId(ctx.bookingId)),
         ) +
         p(
           "Our team will review the dispute and may reach out for additional information. " +
-          "In the meantime you can view the full details on your dashboard.",
+            "In the meantime you can view the full details on your dashboard.",
         ),
       ctaUrl: `${appUrl()}/dashboard/provider/jobs/${ctx.bookingId}`,
       ctaText: "View Details",
@@ -482,7 +516,10 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     heading: "Dispute Update",
     bodyHtml:
       infoBox(infoRow("Reference", refId(ctx.bookingId))) +
-      p(ctx.statusMessage ?? "Your dispute status has been updated. Check your booking page for the latest information."),
+      p(
+        ctx.statusMessage ??
+          "Your dispute status has been updated. Check your booking page for the latest information.",
+      ),
     ctaUrl: `${appUrl()}/dashboard/bookings/${ctx.bookingId}`,
     ctaText: "View Booking",
   }),
@@ -492,12 +529,16 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
     preheader: `Your refund of ${kes(ctx.amount)} has been processed`,
     heading: "Refund Processed",
     bodyHtml:
-      successBox(`Your refund of <strong>${kes(ctx.amount)}</strong> has been processed.`) +
+      successBox(
+        `Your refund of <strong>${kes(ctx.amount)}</strong> has been processed.`,
+      ) +
       infoBox(
         infoRow("Refund Amount", kes(ctx.amount)) +
-        infoRow("Booking", refId(ctx.bookingId)),
+          infoRow("Booking", refId(ctx.bookingId)),
       ) +
-      p("The refund will reflect in your M-Pesa account shortly. If you don't see it within 48 hours, please contact our support team."),
+      p(
+        "The refund will reflect in your M-Pesa account shortly. If you don't see it within 48 hours, please contact our support team.",
+      ),
     ctaUrl: `${appUrl()}/dashboard/bookings/${ctx.bookingId}`,
     ctaText: "View Booking",
   }),
@@ -507,7 +548,10 @@ const TEMPLATES: Record<string, TemplateGenerator> = {
 // SHARED HTML LAYOUT
 // =============================================================================
 
-function renderLayout(content: TemplateContent): { html: string; text: string } {
+function renderLayout(content: TemplateContent): {
+  html: string;
+  text: string;
+} {
   const url = appUrl();
 
   const subtitleBlock = content.subtitle
@@ -516,11 +560,9 @@ function renderLayout(content: TemplateContent): { html: string; text: string } 
 
   const secondaryBlock =
     content.secondaryCtaUrl && content.secondaryCtaText
-      ? (
-        `<div style="margin:12px 0 0 0;text-align:center;">` +
+      ? `<div style="margin:12px 0 0 0;text-align:center;">` +
         `<a href="${content.secondaryCtaUrl}" style="color:#0d9488;text-decoration:none;font-size:14px;">${content.secondaryCtaText} &rarr;</a>` +
         `</div>`
-      )
       : "";
 
   const html = [

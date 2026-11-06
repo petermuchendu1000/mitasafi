@@ -6,6 +6,7 @@ import { Container } from "@/components/ui";
 import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { landingImage } from "@/lib/storage/landing-images";
+import { siteUrl } from "@/lib/site/urls";
 import {
   Wrench,
   Users,
@@ -44,7 +45,7 @@ export const metadata: Metadata = {
     description:
       "Get steady jobs, secure payments, and build your reputation. Join Kenya's trusted network of plumbers, electricians, cleaners, and fundis.",
     type: "website",
-    url: "https://mitasafi.co.ke/service-providers",
+    url: siteUrl("/service-providers"),
     images: [
       {
         url: landingImage("hero/modern-apartment-building.jpg"),
@@ -63,7 +64,7 @@ const structuredData = {
   name: "For Service Providers | MitaSafi",
   description:
     "Join MitaSafi's network of trusted service providers. Get steady work, secure payments, and build your reputation.",
-  url: "https://mitasafi.co.ke/service-providers",
+  url: siteUrl("/service-providers"),
   mainEntity: {
     "@type": "FAQPage",
     mainEntity: [

@@ -32,19 +32,30 @@ import {
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { getProviderByIdCached } from "@/lib/services/providers";
-import { formatServicePrice, formatRating, getCategoryById } from "@/lib/constants";
+import {
+  formatServicePrice,
+  formatRating,
+  getCategoryById,
+} from "@/lib/constants";
 import { getResponseTimeLabel } from "@/types/service-providers";
 import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { ExpandableText } from "@/components/ui/ExpandableText";
+import { siteUrl } from "@/lib/site/urls";
 
 const ServiceImageGallery = dynamic(
-  () => import("@/components/services/ServiceImageGallery").then((m) => m.ServiceImageGallery),
-  { ssr: true }
+  () =>
+    import("@/components/services/ServiceImageGallery").then(
+      (m) => m.ServiceImageGallery,
+    ),
+  { ssr: true },
 );
 const ProviderServiceCards = dynamic(
-  () => import("@/components/services/ProviderServiceCards").then((m) => m.ProviderServiceCards),
-  { ssr: true }
+  () =>
+    import("@/components/services/ProviderServiceCards").then(
+      (m) => m.ProviderServiceCards,
+    ),
+  { ssr: true },
 );
 
 // =============================================================================
@@ -59,7 +70,9 @@ interface PageProps {
 // METADATA
 // =============================================================================
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { id, serviceId } = await params;
   const { provider } = await getProviderByIdCached(id);
 
@@ -113,7 +126,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
   // Find the specific service
   const providerService = (provider.services || []).find(
-    (ps) => ps.id === serviceId && ps.is_active
+    (ps) => ps.id === serviceId && ps.is_active,
   );
 
   if (!providerService) {
@@ -121,19 +134,25 @@ export default async function ServiceDetailPage({ params }: PageProps) {
   }
 
   // Auth check for CTA logic
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const isOwnProfile = !!(user && providerAny.user_id === user.id);
 
   // ── Extract service data ──
   const psAny = providerService as unknown as Record<string, unknown>;
   const cp = psAny.custom_pricing as Record<string, unknown> | null;
-  const imageUrls = Array.isArray(cp?.image_urls) ? (cp.image_urls as string[]) : [];
+  const imageUrls = Array.isArray(cp?.image_urls)
+    ? (cp.image_urls as string[])
+    : [];
   const serviceName = providerService.service?.name || "Service";
-  const categoryName = providerService.service?.subcategory?.category?.name || "";
+  const categoryName =
+    providerService.service?.subcategory?.category?.name || "";
   const subcategoryName = providerService.service?.subcategory?.name || "";
   const priceType = (cp?.type as string) || "fixed";
   const price = (cp?.amount as number) || null;
-  const description = (cp?.description as string) || providerService.service?.description || "";
+  const description =
+    (cp?.description as string) || providerService.service?.description || "";
   const serviceDescription = providerService.service?.description || "";
   const serviceCreatedAt = psAny.created_at as string | null;
 
@@ -143,7 +162,9 @@ export default async function ServiceDetailPage({ params }: PageProps) {
     .map((ps) => {
       const oPsAny = ps as unknown as Record<string, unknown>;
       const oCp = oPsAny.custom_pricing as Record<string, unknown> | null;
-      const oImageUrls = Array.isArray(oCp?.image_urls) ? (oCp.image_urls as string[]) : [];
+      const oImageUrls = Array.isArray(oCp?.image_urls)
+        ? (oCp.image_urls as string[])
+        : [];
       return {
         id: ps.id,
         name: ps.service?.name || "Service",
@@ -151,7 +172,8 @@ export default async function ServiceDetailPage({ params }: PageProps) {
         subcategory: ps.service?.subcategory?.name || "",
         priceType: (oCp?.type as string) || "fixed",
         price: (oCp?.amount as number) || null,
-        description: (oCp?.description as string) || ps.service?.description || "",
+        description:
+          (oCp?.description as string) || ps.service?.description || "",
         imageUrls: oImageUrls,
       };
     });
@@ -163,7 +185,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
   const whatsappNumber = (providerAny.whatsapp as string) || phone;
   const whatsappUrl = whatsappNumber
     ? `https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(
-        `Hi, I'm interested in your "${serviceName}" service on MitaSafi.`
+        `Hi, I'm interested in your "${serviceName}" service on MitaSafi.`,
       )}`
     : null;
 
@@ -177,7 +199,10 @@ export default async function ServiceDetailPage({ params }: PageProps) {
   })();
 
   const serviceSinceLabel = serviceCreatedAt
-    ? new Date(serviceCreatedAt).toLocaleDateString("en-KE", { month: "short", year: "numeric" })
+    ? new Date(serviceCreatedAt).toLocaleDateString("en-KE", {
+        month: "short",
+        year: "numeric",
+      })
     : null;
 
   const { count: activeProvidersForSameService } = await supabase
@@ -192,23 +217,36 @@ export default async function ServiceDetailPage({ params }: PageProps) {
     .eq("provider_id", provider.id)
     .eq("service_id", providerService.service_id);
 
-  const heroImageUrl = imageUrls[0] || provider.cover_photo_url || provider.profile_photo_url || null;
-  const surfaceCardClass = "rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm";
-  const sectionTitleClass = "text-base font-semibold tracking-[-0.01em] leading-6 text-slate-900 mb-4";
-  const ratingText = provider.average_rating == null ? "No ratings yet" : formatRating(provider.average_rating);
+  const heroImageUrl =
+    imageUrls[0] ||
+    provider.cover_photo_url ||
+    provider.profile_photo_url ||
+    null;
+  const surfaceCardClass =
+    "rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm";
+  const sectionTitleClass =
+    "text-base font-semibold tracking-[-0.01em] leading-6 text-slate-900 mb-4";
+  const ratingText =
+    provider.average_rating == null
+      ? "No ratings yet"
+      : formatRating(provider.average_rating);
 
   // ── JSON-LD for service-level SEO ──
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Service",
     name: serviceName,
-    description: description?.slice(0, 300) || `${serviceName} by ${provider.business_name}`,
+    description:
+      description?.slice(0, 300) ||
+      `${serviceName} by ${provider.business_name}`,
     provider: {
       "@type": "LocalBusiness",
       name: provider.business_name,
-      url: `https://mitasafi.co.ke/services/provider/${provider.id}`,
+      url: siteUrl(`/services/provider/${provider.id}`),
     },
-    ...(price ? { offers: { "@type": "Offer", price, priceCurrency: "KES" } } : {}),
+    ...(price
+      ? { offers: { "@type": "Offer", price, priceCurrency: "KES" } }
+      : {}),
     areaServed: serviceAreas.slice(0, 5).map((area) => ({
       "@type": "City",
       name: area,
@@ -234,7 +272,9 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               <span className="hidden sm:inline">{provider.business_name}</span>
             </Link>
             <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 hidden sm:block" />
-            <span className="text-gray-600 truncate hidden sm:block">{serviceName}</span>
+            <span className="text-gray-600 truncate hidden sm:block">
+              {serviceName}
+            </span>
           </div>
           <Link
             href={`/services/provider/${provider.id}`}
@@ -250,7 +290,14 @@ export default async function ServiceDetailPage({ params }: PageProps) {
       <section className="relative border-b border-slate-200">
         <div className="absolute inset-0">
           {heroImageUrl ? (
-            <Image src={heroImageUrl} alt={serviceName} fill className="object-cover" priority sizes="100vw" />
+            <Image
+              src={heroImageUrl}
+              alt={serviceName}
+              fill
+              className="object-cover"
+              priority
+              sizes="100vw"
+            />
           ) : (
             <div className="h-full w-full bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900" />
           )}
@@ -261,12 +308,18 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           {(categoryName || subcategoryName) && (
             <div className="inline-flex items-center gap-1.5 text-xs text-slate-200/90 mb-3 px-2.5 py-1 rounded-full border border-white/20 bg-white/10">
               {categoryName && <span>{categoryName}</span>}
-              {categoryName && subcategoryName && <ChevronRight className="w-3 h-3" />}
-              {subcategoryName && <span className="font-medium">{subcategoryName}</span>}
+              {categoryName && subcategoryName && (
+                <ChevronRight className="w-3 h-3" />
+              )}
+              {subcategoryName && (
+                <span className="font-medium">{subcategoryName}</span>
+              )}
             </div>
           )}
 
-          <h1 className="text-2xl sm:text-4xl font-semibold tracking-[-0.02em] leading-[1.08] text-white max-w-4xl">{serviceName}</h1>
+          <h1 className="text-2xl sm:text-4xl font-semibold tracking-[-0.02em] leading-[1.08] text-white max-w-4xl">
+            {serviceName}
+          </h1>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Link
@@ -274,7 +327,9 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-3 py-1.5 text-xs sm:text-sm text-white hover:bg-white/15 transition-colors"
             >
               <span className="font-semibold">{provider.business_name}</span>
-              {provider.is_verified && <BadgeCheck className="w-3.5 h-3.5 text-emerald-300" />}
+              {provider.is_verified && (
+                <BadgeCheck className="w-3.5 h-3.5 text-emerald-300" />
+              )}
             </Link>
 
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white text-slate-900 px-3 py-1.5 text-xs sm:text-sm font-semibold">
@@ -287,11 +342,13 @@ export default async function ServiceDetailPage({ params }: PageProps) {
             </span>
           </div>
 
-          {activeProvidersForSameService != null && activeProvidersForSameService >= 2 && (
-            <p className="mt-2 text-xs sm:text-sm text-slate-100/90">
-              Offered by {activeProvidersForSameService} provider{activeProvidersForSameService !== 1 ? "s" : ""} on MitaSafi.
-            </p>
-          )}
+          {activeProvidersForSameService != null &&
+            activeProvidersForSameService >= 2 && (
+              <p className="mt-2 text-xs sm:text-sm text-slate-100/90">
+                Offered by {activeProvidersForSameService} provider
+                {activeProvidersForSameService !== 1 ? "s" : ""} on MitaSafi.
+              </p>
+            )}
         </div>
       </section>
 
@@ -315,7 +372,8 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                 )}
                 {reviewsForThisService != null && (
                   <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs font-medium">
-                    {reviewsForThisService} service review{reviewsForThisService !== 1 ? "s" : ""}
+                    {reviewsForThisService} service review
+                    {reviewsForThisService !== 1 ? "s" : ""}
                   </span>
                 )}
               </div>
@@ -329,7 +387,9 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
               {description !== serviceDescription && serviceDescription && (
                 <div className="mt-6 pt-4 border-t border-slate-100">
-                  <p className="text-xs text-slate-400 mb-1 font-medium uppercase tracking-[0.04em]">Platform service overview</p>
+                  <p className="text-xs text-slate-400 mb-1 font-medium uppercase tracking-[0.04em]">
+                    Platform service overview
+                  </p>
                   <ExpandableText
                     text={serviceDescription}
                     maxChars={260}
@@ -346,30 +406,47 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {categoryName && (
                   <div className="space-y-1">
-                    <dt className="text-xs text-slate-400 font-medium uppercase tracking-[0.04em]">Category</dt>
+                    <dt className="text-xs text-slate-400 font-medium uppercase tracking-[0.04em]">
+                      Category
+                    </dt>
                     <dd className="text-sm text-slate-900">{categoryName}</dd>
                   </div>
                 )}
                 <div className="space-y-1">
-                  <dt className="text-xs text-slate-400 font-medium uppercase tracking-[0.04em]">Pricing model</dt>
-                  <dd className="text-sm text-slate-900 font-medium capitalize">{priceType.replace("_", " ")}</dd>
+                  <dt className="text-xs text-slate-400 font-medium uppercase tracking-[0.04em]">
+                    Pricing model
+                  </dt>
+                  <dd className="text-sm text-slate-900 font-medium capitalize">
+                    {priceType.replace("_", " ")}
+                  </dd>
                 </div>
                 <div className="space-y-1">
-                  <dt className="text-xs text-slate-400 font-medium uppercase tracking-[0.04em]">Displayed price</dt>
-                  <dd className="text-sm text-slate-900 font-medium">{priceDisplay}</dd>
+                  <dt className="text-xs text-slate-400 font-medium uppercase tracking-[0.04em]">
+                    Displayed price
+                  </dt>
+                  <dd className="text-sm text-slate-900 font-medium">
+                    {priceDisplay}
+                  </dd>
                 </div>
                 {provider.response_time_minutes != null && (
                   <div className="space-y-1">
-                    <dt className="text-xs text-slate-400 font-medium uppercase tracking-[0.04em]">Provider response</dt>
-                    <dd className="text-sm text-slate-900">{getResponseTimeLabel(provider.response_time_minutes)}</dd>
+                    <dt className="text-xs text-slate-400 font-medium uppercase tracking-[0.04em]">
+                      Provider response
+                    </dt>
+                    <dd className="text-sm text-slate-900">
+                      {getResponseTimeLabel(provider.response_time_minutes)}
+                    </dd>
                   </div>
                 )}
                 {serviceAreas.length > 0 && (
                   <div className="space-y-1 col-span-2 sm:col-span-1">
-                    <dt className="text-xs text-slate-400 font-medium uppercase tracking-[0.04em]">Coverage</dt>
+                    <dt className="text-xs text-slate-400 font-medium uppercase tracking-[0.04em]">
+                      Coverage
+                    </dt>
                     <dd className="text-sm text-slate-900">
                       {serviceAreas.slice(0, 3).join(", ")}
-                      {serviceAreas.length > 3 && ` +${serviceAreas.length - 3} more`}
+                      {serviceAreas.length > 3 &&
+                        ` +${serviceAreas.length - 3} more`}
                     </dd>
                   </div>
                 )}
@@ -378,7 +455,10 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
             <section className={`scroll-mt-24 ${surfaceCardClass}`}>
               <h2 className={sectionTitleClass}>Provider snapshot</h2>
-              <Link href={`/services/provider/${provider.id}`} className="inline-flex items-center gap-3 group mb-4">
+              <Link
+                href={`/services/provider/${provider.id}`}
+                className="inline-flex items-center gap-3 group mb-4"
+              >
                 <div className="w-11 h-11 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0">
                   {provider.profile_photo_url ? (
                     <Image
@@ -399,10 +479,14 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                     <span className="text-sm font-semibold text-slate-900 group-hover:text-teal-700 transition-colors">
                       {provider.business_name}
                     </span>
-                    {provider.is_verified && <CheckCircle className="w-4 h-4 text-emerald-600" />}
+                    {provider.is_verified && (
+                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    )}
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
-                    {provider.total_jobs_completed?.toLocaleString() || 0} completed jobs · {provider.total_reviews?.toLocaleString() || 0} reviews
+                    {provider.total_jobs_completed?.toLocaleString() || 0}{" "}
+                    completed jobs ·{" "}
+                    {provider.total_reviews?.toLocaleString() || 0} reviews
                   </div>
                 </div>
               </Link>
@@ -410,18 +494,27 @@ export default async function ServiceDetailPage({ params }: PageProps) {
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs text-slate-500">Provider rating</p>
-                  <p className="text-sm sm:text-base font-semibold text-slate-900">{ratingText}</p>
+                  <p className="text-sm sm:text-base font-semibold text-slate-900">
+                    {ratingText}
+                  </p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs text-slate-500">Active services</p>
-                  <p className="text-base font-semibold text-slate-900">{(provider.services || []).filter((s) => s.is_active).length}</p>
+                  <p className="text-base font-semibold text-slate-900">
+                    {
+                      (provider.services || []).filter((s) => s.is_active)
+                        .length
+                    }
+                  </p>
                 </div>
               </div>
             </section>
 
             {otherServices.length > 0 && (
               <section className={`scroll-mt-24 ${surfaceCardClass}`}>
-                <h2 className={sectionTitleClass}>More services by {provider.business_name}</h2>
+                <h2 className={sectionTitleClass}>
+                  More services by {provider.business_name}
+                </h2>
                 <ProviderServiceCards
                   services={otherServices}
                   providerId={provider.id}
@@ -435,10 +528,18 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
           <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
             <section className={surfaceCardClass}>
-              <p className="text-xs uppercase tracking-[0.04em] text-slate-500 mb-1">Service price</p>
+              <p className="text-xs uppercase tracking-[0.04em] text-slate-500 mb-1">
+                Service price
+              </p>
               <p className="text-3xl font-semibold text-slate-900 mb-4">
-                {priceType === "quote" ? "Custom Quote" : formatServicePrice(price)}
-                {priceType === "hourly" && <span className="text-sm font-medium text-slate-400 ml-1">/hr</span>}
+                {priceType === "quote"
+                  ? "Custom Quote"
+                  : formatServicePrice(price)}
+                {priceType === "hourly" && (
+                  <span className="text-sm font-medium text-slate-400 ml-1">
+                    /hr
+                  </span>
+                )}
               </p>
 
               {!isOwnProfile && (
@@ -473,23 +574,35 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                 )}
               </div>
 
-              <p className="text-xs text-slate-400 text-center mt-3">Free to contact · No obligation</p>
+              <p className="text-xs text-slate-400 text-center mt-3">
+                Free to contact · No obligation
+              </p>
             </section>
 
-            {(provider.response_time_minutes != null || serviceAreas.length > 0) && (
+            {(provider.response_time_minutes != null ||
+              serviceAreas.length > 0) && (
               <section className={surfaceCardClass}>
-                <h3 className="text-sm font-semibold text-slate-900 mb-4">Why this listing is trustworthy</h3>
+                <h3 className="text-sm font-semibold text-slate-900 mb-4">
+                  Why this listing is trustworthy
+                </h3>
                 <ul className="space-y-2.5 text-sm text-slate-600">
                   {provider.response_time_minutes != null && (
                     <li className="flex items-start gap-2">
                       <Clock className="w-4 h-4 text-slate-500 mt-0.5" />
-                      <span>Typical response: {getResponseTimeLabel(provider.response_time_minutes)}.</span>
+                      <span>
+                        Typical response:{" "}
+                        {getResponseTimeLabel(provider.response_time_minutes)}.
+                      </span>
                     </li>
                   )}
                   {serviceAreas.length > 0 && (
                     <li className="flex items-start gap-2">
                       <MapPin className="w-4 h-4 text-slate-500 mt-0.5" />
-                      <span>Serves {serviceAreas.length} area{serviceAreas.length !== 1 ? "s" : ""} around {serviceAreas[0]}.</span>
+                      <span>
+                        Serves {serviceAreas.length} area
+                        {serviceAreas.length !== 1 ? "s" : ""} around{" "}
+                        {serviceAreas[0]}.
+                      </span>
                     </li>
                   )}
                 </ul>

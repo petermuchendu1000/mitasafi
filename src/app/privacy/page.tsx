@@ -5,6 +5,7 @@ import {
   LegalLink,
 } from "@/components/legal/LegalPage";
 import { LEGAL_CONTACT_EMAIL, SUBPROCESSORS } from "@/lib/site/legal";
+import { SITE_DOMAIN } from "@/lib/site/urls";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | MitaSafi",
@@ -20,7 +21,7 @@ export default function PrivacyPage() {
     >
       <LegalSection heading="1. Scope">
         <p>
-          This policy covers mitasafi.com and the MitaSafi platform. It is
+          This policy covers {SITE_DOMAIN} and the MitaSafi platform. It is
           written against Kenya&apos;s Data Protection Act, 2019.
         </p>
       </LegalSection>

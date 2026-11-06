@@ -27,6 +27,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useToast } from "@/components/ui";
+import { SUPPORT_EMAIL } from "@/lib/site/urls";
 import {
   updateCustomerNotificationPreferences,
   requestAccountDeletion,
@@ -80,7 +81,7 @@ export function CustomerSettingsClient({
         }
       });
     },
-    [preferences, showSuccess, showError]
+    [preferences, showSuccess, showError],
   );
 
   // ── Request Account Deletion ──────────────────────────────────────────────
@@ -97,7 +98,7 @@ export function CustomerSettingsClient({
       } else {
         showSuccess(
           "Deletion requested",
-          "Our team will process your request within 48 hours"
+          "Our team will process your request within 48 hours",
         );
         setShowDeleteModal(false);
         setConfirmText("");
@@ -213,10 +214,10 @@ export function CustomerSettingsClient({
         <p className="text-xs text-gray-400 mt-3 px-1">
           Need help? Contact{" "}
           <a
-            href="mailto:support@mitasafi.co.ke"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="text-brand-600 hover:underline"
           >
-            support@mitasafi.co.ke
+            {SUPPORT_EMAIL}
           </a>
         </p>
       </section>
@@ -264,8 +265,8 @@ export function CustomerSettingsClient({
                 </li>
               </ul>
               <p className="text-sm text-gray-600">
-                Our team will process the deletion within 48 hours.
-                This cannot be reversed.
+                Our team will process the deletion within 48 hours. This cannot
+                be reversed.
               </p>
             </div>
 
@@ -274,8 +275,7 @@ export function CustomerSettingsClient({
                 htmlFor="delete-confirm"
                 className="block text-sm font-medium text-gray-700 mb-1.5"
               >
-                Type{" "}
-                <span className="font-mono text-red-600">DELETE</span> to
+                Type <span className="font-mono text-red-600">DELETE</span> to
                 confirm
               </label>
               <input
@@ -305,9 +305,7 @@ export function CustomerSettingsClient({
                 disabled={confirmText !== "DELETE" || isDeleting}
                 className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {isDeleting && (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                )}
+                {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
                 Request Deletion
               </button>
             </div>

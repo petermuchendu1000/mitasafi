@@ -3,9 +3,10 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { PageViewTracker } from "@/lib/analytics/use-analytics";
 import "./globals.css";
 import { landingImage } from "@/lib/storage/landing-images";
+import { SITE_URL } from "@/lib/site/urls";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mitasafi.co.ke"),
+  metadataBase: new URL(SITE_URL),
   title:
     "MitaSafi — Find Verified Rental Homes in Nairobi | Houses & Apartments for Rent",
   description:
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_KE",
-    url: "https://mitasafi.co.ke",
+    url: SITE_URL,
     siteName: "MitaSafi",
     title: "MitaSafi — Find Verified Rental Homes in Nairobi",
     description:

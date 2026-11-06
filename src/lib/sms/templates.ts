@@ -12,13 +12,14 @@
 // =============================================================================
 
 import type { ChannelContext } from "@/lib/notifications/channels";
+import { SITE_URL } from "@/lib/site/urls";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || "https://mitasafi.co.ke";
+  return SITE_URL;
 }
 
 function kes(amount: number | undefined): string {

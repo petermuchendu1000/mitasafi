@@ -1,9 +1,9 @@
 /**
  * Browse Verified Homes Page
- * 
+ *
  * Main listings search and browse page for tenants.
  * Features search filters, grid display, and pagination.
- * 
+ *
  * Design: 70% teal, 30% orange accents
  */
 
@@ -15,6 +15,7 @@ import { SearchFilters, ListingsGrid } from "@/components/browse";
 import { searchListings, type SearchParams } from "@/lib/listings/search";
 import { createClient } from "@/lib/supabase/server";
 import { Search, Shield, MapPin, Bell } from "lucide-react";
+import { siteUrl } from "@/lib/site/urls";
 
 // Disable caching - always fetch fresh listing data
 export const dynamic = "force-dynamic";
@@ -22,12 +23,14 @@ export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Browse Verified Homes | MitaSafi",
-  description: "Find your perfect rental home in Nairobi. All listings are verified, no broker fees, and secure payments.",
+  description:
+    "Find your perfect rental home in Nairobi. All listings are verified, no broker fees, and secure payments.",
   openGraph: {
     title: "Browse Verified Homes | MitaSafi",
-    description: "Find your perfect rental home in Nairobi. All listings are verified, no broker fees, and secure payments.",
+    description:
+      "Find your perfect rental home in Nairobi. All listings are verified, no broker fees, and secure payments.",
     type: "website",
-    url: "https://mitasafi.co.ke/properties",
+    url: siteUrl("/properties"),
   },
 };
 
@@ -35,7 +38,9 @@ interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function BrowsePropertiesPage({ searchParams }: PageProps) {
+export default async function BrowsePropertiesPage({
+  searchParams,
+}: PageProps) {
   // Await searchParams (Next.js 15+)
   const params = await searchParams;
 
@@ -43,29 +48,40 @@ export default async function BrowsePropertiesPage({ searchParams }: PageProps) 
   const parsedParams: SearchParams = {
     area: typeof params.area === "string" ? params.area : undefined,
     propertyType: typeof params.type === "string" ? params.type : undefined,
-    minBedrooms: typeof params.beds === "string" ? parseInt(params.beds) || undefined : undefined,
-    minPrice: typeof params.minPrice === "string" ? parseInt(params.minPrice) || undefined : undefined,
-    maxPrice: typeof params.maxPrice === "string" ? parseInt(params.maxPrice) || undefined : undefined,
+    minBedrooms:
+      typeof params.beds === "string"
+        ? parseInt(params.beds) || undefined
+        : undefined,
+    minPrice:
+      typeof params.minPrice === "string"
+        ? parseInt(params.minPrice) || undefined
+        : undefined,
+    maxPrice:
+      typeof params.maxPrice === "string"
+        ? parseInt(params.maxPrice) || undefined
+        : undefined,
     verified: params.verified === "true",
     availableNow: params.available === "true",
     query: typeof params.q === "string" ? params.q : undefined,
-    sortBy: (typeof params.sort === "string" ? params.sort : "newest") as SearchParams["sortBy"],
+    sortBy: (typeof params.sort === "string"
+      ? params.sort
+      : "newest") as SearchParams["sortBy"],
     page: typeof params.page === "string" ? parseInt(params.page) || 1 : 1,
     limit: 12,
   };
 
   // PERFORMANCE: Parallelize all async operations
   const supabase = await createClient();
-  
+
   // Start all requests in parallel
   const [userResult, listingsResult] = await Promise.all([
     supabase.auth.getUser(),
     searchListings(parsedParams),
   ]);
-  
+
   const user = userResult.data.user;
   const { listings, total, page, totalPages } = listingsResult;
-  
+
   // Only fetch profile if user is authenticated (can't parallelize this one)
   let userPhone: string | undefined;
   if (user) {
@@ -74,7 +90,7 @@ export default async function BrowsePropertiesPage({ searchParams }: PageProps) 
       .select("phone")
       .eq("id", user.id)
       .single();
-    
+
     const profileData = profileResult.data as { phone: string | null } | null;
     userPhone = profileData?.phone ?? undefined;
   }
@@ -98,11 +114,16 @@ export default async function BrowsePropertiesPage({ searchParams }: PageProps) 
                 Find Your Perfect Home
               </h1>
               <p className="text-sm text-brand-100 mb-4">
-                Verified rentals across Nairobi. No fake listings. No broker fees.
+                Verified rentals across Nairobi. No fake listings. No broker
+                fees.
               </p>
 
               {/* Search Bar */}
-              <form action="/properties" method="GET" className="max-w-2xl mx-auto">
+              <form
+                action="/properties"
+                method="GET"
+                className="max-w-2xl mx-auto"
+              >
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -159,17 +180,16 @@ export default async function BrowsePropertiesPage({ searchParams }: PageProps) 
                 Every listing on MitaSafi goes through our verification process
               </p>
             </div>
-            
+
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {TRUST_FEATURES.map((feature, index) => (
-                <div
-                  key={index}
-                  className="text-center p-6"
-                >
+                <div key={index} className="text-center p-6">
                   <div className="flex items-center justify-center mx-auto mb-4">
                     <feature.icon className="w-7 h-7 text-brand-500" />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-1">{feature.title}</h3>
+                  <h3 className="font-semibold text-gray-900 mb-1">
+                    {feature.title}
+                  </h3>
                   <p className="text-sm text-gray-500">{feature.description}</p>
                 </div>
               ))}
@@ -187,7 +207,8 @@ const TRUST_FEATURES = [
   {
     icon: Search,
     title: "Smart Filters",
-    description: "Find exactly what you need with area, price, and amenity filters",
+    description:
+      "Find exactly what you need with area, price, and amenity filters",
   },
   {
     icon: Shield,
@@ -211,7 +232,10 @@ function FiltersSkeleton() {
   return (
     <div className="py-4 flex items-center gap-3">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="h-10 w-28 bg-gray-100 rounded-lg animate-pulse" />
+        <div
+          key={i}
+          className="h-10 w-28 bg-gray-100 rounded-lg animate-pulse"
+        />
       ))}
     </div>
   );

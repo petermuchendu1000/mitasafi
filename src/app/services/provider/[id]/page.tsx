@@ -31,26 +31,39 @@ import {
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import Link from "next/link";
-import { getProviderByIdCached, getSimilarProviders } from "@/lib/services/providers";
+import {
+  getProviderByIdCached,
+  getSimilarProviders,
+} from "@/lib/services/providers";
 import dynamic from "next/dynamic";
 import { getProviderReviewsWithVotes } from "@/lib/services/reviews";
 import { formatRating, getCategoryById } from "@/lib/constants";
-import { getResponseTimeLabel, type WorkingHoursEntry } from "@/types/service-providers";
+import {
+  getResponseTimeLabel,
+  type WorkingHoursEntry,
+} from "@/types/service-providers";
 import type { ReviewWithReviewer } from "@/types/reviews";
 import { ProviderCard } from "@/components/services/ProviderCard";
 import { SocialLinksSection } from "@/components/services/SocialLinksSection";
 import { ShareButton } from "@/components/services/ShareButton";
 import { createClient } from "@/lib/supabase/server";
 import { ExpandableText } from "@/components/ui/ExpandableText";
+import { siteUrl } from "@/lib/site/urls";
 
 // Below-fold client components — lazy loaded to reduce initial JS bundle
 const ProviderServiceCards = dynamic(
-  () => import("@/components/services/ProviderServiceCards").then((m) => m.ProviderServiceCards),
-  { ssr: true }
+  () =>
+    import("@/components/services/ProviderServiceCards").then(
+      (m) => m.ProviderServiceCards,
+    ),
+  { ssr: true },
 );
 const ProviderReviewsList = dynamic(
-  () => import("@/components/services/ProviderReviewsList").then((m) => m.ProviderReviewsList),
-  { ssr: true }
+  () =>
+    import("@/components/services/ProviderReviewsList").then(
+      (m) => m.ProviderReviewsList,
+    ),
+  { ssr: true },
 );
 
 // =============================================================================
@@ -58,7 +71,15 @@ const ProviderReviewsList = dynamic(
 // =============================================================================
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAY_LABELS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 function formatTime(time: string | null): string {
   if (!time) return "";
@@ -91,16 +112,31 @@ function getCurrentNairobiDayAndMinutes() {
   const parts = formatter.formatToParts(now);
   const weekday = parts.find((p) => p.type === "weekday")?.value || "Sun";
   const hour = parseInt(parts.find((p) => p.type === "hour")?.value || "0", 10);
-  const minute = parseInt(parts.find((p) => p.type === "minute")?.value || "0", 10);
+  const minute = parseInt(
+    parts.find((p) => p.type === "minute")?.value || "0",
+    10,
+  );
 
-  const weekdayIndex = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(weekday);
+  const weekdayIndex = [
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+  ].indexOf(weekday);
   return {
     dayOfWeek: weekdayIndex >= 0 ? weekdayIndex : 0,
-    minutes: (Number.isNaN(hour) ? 0 : hour) * 60 + (Number.isNaN(minute) ? 0 : minute),
+    minutes:
+      (Number.isNaN(hour) ? 0 : hour) * 60 +
+      (Number.isNaN(minute) ? 0 : minute),
   };
 }
 
-function getYearsLabel(years: string | number | null | undefined): string | null {
+function getYearsLabel(
+  years: string | number | null | undefined,
+): string | null {
   if (!years) return null;
   const num = typeof years === "string" ? parseInt(years, 10) : years;
   if (isNaN(num) || num <= 0) return null;
@@ -140,7 +176,9 @@ interface PageProps {
 // METADATA
 // =============================================================================
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { id } = await params;
   const { provider, error } = await getProviderByIdCached(id);
 
@@ -152,7 +190,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const firstCategoryId = provider.categories?.[0];
-  const firstCategory = firstCategoryId ? getCategoryById(firstCategoryId) : null;
+  const firstCategory = firstCategoryId
+    ? getCategoryById(firstCategoryId)
+    : null;
 
   const title = `${provider.business_name} | ${firstCategory?.name || "Service Provider"} | MitaSafi`;
   const description =
@@ -178,12 +218,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ProviderProfilePage({ params }: PageProps) {
   const { id } = await params;
 
-  const [providerResult, reviewsResult, similarProviders, supabase] = await Promise.all([
-    getProviderByIdCached(id),
-    getProviderReviewsWithVotes({ providerId: id, page: 1, pageSize: 6 }),
-    getSimilarProviders(id, 4),
-    createClient(),
-  ]);
+  const [providerResult, reviewsResult, similarProviders, supabase] =
+    await Promise.all([
+      getProviderByIdCached(id),
+      getProviderReviewsWithVotes({ providerId: id, page: 1, pageSize: 6 }),
+      getSimilarProviders(id, 4),
+      createClient(),
+    ]);
 
   if (providerResult.error || !providerResult.provider) {
     notFound();
@@ -194,7 +235,9 @@ export default async function ProviderProfilePage({ params }: PageProps) {
   const totalReviews = reviewsResult.pagination.total || 0;
 
   // Check if current user is the provider (for contextual navigation)
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const providerAny = provider as unknown as Record<string, unknown>;
   const isOwnProfile = !!(user && providerAny.user_id === user.id);
 
@@ -204,7 +247,9 @@ export default async function ProviderProfilePage({ params }: PageProps) {
     .map((ps) => {
       const psAny = ps as unknown as Record<string, unknown>;
       const cp = psAny.custom_pricing as Record<string, unknown> | null;
-      const imageUrls = Array.isArray(cp?.image_urls) ? (cp.image_urls as string[]) : [];
+      const imageUrls = Array.isArray(cp?.image_urls)
+        ? (cp.image_urls as string[])
+        : [];
       return {
         id: ps.id,
         name: ps.service?.name || "Service",
@@ -212,12 +257,11 @@ export default async function ProviderProfilePage({ params }: PageProps) {
         subcategory: ps.service?.subcategory?.name || "",
         priceType: (cp?.type as string) || "fixed",
         price: (cp?.amount as number) || null,
-        description: (cp?.description as string) || ps.service?.description || "",
+        description:
+          (cp?.description as string) || ps.service?.description || "",
         imageUrls,
       };
     });
-
-
 
   // Working hours
   const workingHours = (provider.working_hours || []) as WorkingHoursEntry[];
@@ -233,7 +277,8 @@ export default async function ProviderProfilePage({ params }: PageProps) {
     );
   });
 
-  const { dayOfWeek: currentDayOfWeek, minutes: currentMinutes } = getCurrentNairobiDayAndMinutes();
+  const { dayOfWeek: currentDayOfWeek, minutes: currentMinutes } =
+    getCurrentNairobiDayAndMinutes();
   const todaySchedule = normalizedWorkingHours[currentDayOfWeek];
   const todayStart = timeToMinutes(todaySchedule.start_time);
   const todayEnd = timeToMinutes(todaySchedule.end_time);
@@ -275,9 +320,14 @@ export default async function ProviderProfilePage({ params }: PageProps) {
     : nextAvailabilityLabel;
 
   // Trust signals
-  const yearsLabel = getYearsLabel(providerAny.years_experience as string | number | null || providerAny.years_in_business as number | null);
+  const yearsLabel = getYearsLabel(
+    (providerAny.years_experience as string | number | null) ||
+      (providerAny.years_in_business as number | null),
+  );
   const memberSince = memberSinceLabel(provider.created_at);
-  const lastActive = lastActiveLabel(providerAny.last_active_at as string | null);
+  const lastActive = lastActiveLabel(
+    providerAny.last_active_at as string | null,
+  );
   const isOnline = lastActive === "Online now";
 
   // Format phone for WhatsApp
@@ -296,19 +346,33 @@ export default async function ProviderProfilePage({ params }: PageProps) {
   const rawServices = provider.services || [];
   const activeServices = rawServices.filter((ps) => ps.is_active);
   const verifiedServices = activeServices.filter(
-    (ps) => (ps as unknown as Record<string, unknown>).verification_status === "verified"
+    (ps) =>
+      (ps as unknown as Record<string, unknown>).verification_status ===
+      "verified",
   );
   const verifiedServiceLevels = new Set(
     verifiedServices
-      .map((ps) => (ps.service as unknown as Record<string, unknown>)?.min_verification_level as string)
-      .filter(Boolean)
+      .map(
+        (ps) =>
+          (ps.service as unknown as Record<string, unknown>)
+            ?.min_verification_level as string,
+      )
+      .filter(Boolean),
   );
-  const isIdentityVerified = verifiedServiceLevels.has("basic") || verifiedServiceLevels.has("standard") || verifiedServiceLevels.has("certified") || verifiedServiceLevels.has("background_checked");
+  const isIdentityVerified =
+    verifiedServiceLevels.has("basic") ||
+    verifiedServiceLevels.has("standard") ||
+    verifiedServiceLevels.has("certified") ||
+    verifiedServiceLevels.has("background_checked");
   const isBackgroundChecked = verifiedServiceLevels.has("background_checked");
 
   const trustItems = [
     { key: "identity", show: isIdentityVerified, label: "Identity verified" },
-    { key: "background", show: isBackgroundChecked, label: "Background checked" },
+    {
+      key: "background",
+      show: isBackgroundChecked,
+      label: "Background checked",
+    },
     { key: "registration", show: hasBusinessReg, label: "Registered business" },
     { key: "tax", show: hasTaxId, label: "KRA registered" },
   ].filter((item) => item.show);
@@ -317,16 +381,26 @@ export default async function ProviderProfilePage({ params }: PageProps) {
   const teamSize = providerAny.team_size as number | undefined;
   const languages = providerAny.languages as string[] | undefined;
   const heroImageUrl =
-    provider.cover_photo_url || servicesWithPricing.find((s) => s.imageUrls.length > 0)?.imageUrls[0] || null;
+    provider.cover_photo_url ||
+    servicesWithPricing.find((s) => s.imageUrls.length > 0)?.imageUrls[0] ||
+    null;
   const hasAbout = !!provider.bio;
   const hasServices = servicesWithPricing.length > 0;
   const hasReviews = (provider.total_reviews ?? 0) > 0;
-  const surfaceCardClass = "rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm";
-  const sectionTitleClass = "text-base font-semibold tracking-[-0.01em] leading-6 text-slate-900 mb-4";
-  const ratingText = provider.average_rating == null ? "No ratings yet" : formatRating(provider.average_rating);
+  const surfaceCardClass =
+    "rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm";
+  const sectionTitleClass =
+    "text-base font-semibold tracking-[-0.01em] leading-6 text-slate-900 mb-4";
+  const ratingText =
+    provider.average_rating == null
+      ? "No ratings yet"
+      : formatRating(provider.average_rating);
 
   // Social links
-  const socialLinks = (providerAny.social_links || {}) as Record<string, string>;
+  const socialLinks = (providerAny.social_links || {}) as Record<
+    string,
+    string
+  >;
   const SOCIAL_LABEL_MAP: Record<string, string> = {
     website: "Website",
     facebook: "Facebook",
@@ -336,19 +410,27 @@ export default async function ProviderProfilePage({ params }: PageProps) {
     linkedin: "LinkedIn",
     youtube: "YouTube",
   };
-  const socialEntries = Object.entries(socialLinks).filter(([, v]) => !!v?.trim());
+  const socialEntries = Object.entries(socialLinks).filter(
+    ([, v]) => !!v?.trim(),
+  );
 
   // ── JSON-LD Structured Data ──
   const firstCategoryId = provider.categories?.[0];
-  const firstCategory = firstCategoryId ? getCategoryById(firstCategoryId) : null;
+  const firstCategory = firstCategoryId
+    ? getCategoryById(firstCategoryId)
+    : null;
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: provider.business_name,
-    description: provider.bio?.slice(0, 300) || `${provider.business_name} — verified service provider on MitaSafi`,
-    url: `https://mitasafi.co.ke/services/provider/${provider.id}`,
-    ...(provider.profile_photo_url ? { image: provider.profile_photo_url } : {}),
+    description:
+      provider.bio?.slice(0, 300) ||
+      `${provider.business_name} — verified service provider on MitaSafi`,
+    url: siteUrl(`/services/provider/${provider.id}`),
+    ...(provider.profile_photo_url
+      ? { image: provider.profile_photo_url }
+      : {}),
     ...(phone ? { telephone: phone } : {}),
     address: {
       "@type": "PostalAddress",
@@ -409,7 +491,10 @@ export default async function ProviderProfilePage({ params }: PageProps) {
                 </Link>
                 <span className="text-gray-200 hidden sm:inline">|</span>
                 <div className="hidden sm:flex items-center gap-1.5 text-sm text-gray-400">
-                  <Link href="/dashboard/provider" className="hover:text-gray-600 transition-colors">
+                  <Link
+                    href="/dashboard/provider"
+                    className="hover:text-gray-600 transition-colors"
+                  >
                     Dashboard
                   </Link>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -427,11 +512,16 @@ export default async function ProviderProfilePage({ params }: PageProps) {
                 </Link>
                 <span className="text-gray-200 hidden sm:inline">|</span>
                 <div className="hidden sm:flex items-center gap-1.5 text-sm text-gray-400">
-                  <Link href="/services/browse" className="hover:text-gray-600 transition-colors">
+                  <Link
+                    href="/services/browse"
+                    className="hover:text-gray-600 transition-colors"
+                  >
                     Services
                   </Link>
                   <ChevronRight className="w-3.5 h-3.5" />
-                  <span className="text-gray-600">{provider.business_name}</span>
+                  <span className="text-gray-600">
+                    {provider.business_name}
+                  </span>
                 </div>
               </>
             )}
@@ -450,7 +540,7 @@ export default async function ProviderProfilePage({ params }: PageProps) {
               <ShareButton
                 title={provider.business_name}
                 text={`Check out ${provider.business_name} on MitaSafi`}
-                url={`https://mitasafi.co.ke/services/provider/${provider.id}`}
+                url={siteUrl(`/services/provider/${provider.id}`)}
               />
             </div>
           </div>
@@ -461,7 +551,14 @@ export default async function ProviderProfilePage({ params }: PageProps) {
       <section className="relative border-b border-slate-200">
         <div className="absolute inset-0">
           {heroImageUrl ? (
-            <Image src={heroImageUrl} alt={provider.business_name} fill className="object-cover" priority sizes="100vw" />
+            <Image
+              src={heroImageUrl}
+              alt={provider.business_name}
+              fill
+              className="object-cover"
+              priority
+              sizes="100vw"
+            />
           ) : (
             <div className="h-full w-full bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900" />
           )}
@@ -484,12 +581,16 @@ export default async function ProviderProfilePage({ params }: PageProps) {
                   {provider.business_name.charAt(0)}
                 </div>
               )}
-              {isOnline && <div className="absolute right-1.5 bottom-1.5 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-slate-900" />}
+              {isOnline && (
+                <div className="absolute right-1.5 bottom-1.5 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
+              )}
             </div>
 
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h1 className="text-2xl sm:text-4xl font-semibold tracking-[-0.02em] leading-[1.08] text-white">{provider.business_name}</h1>
+                <h1 className="text-2xl sm:text-4xl font-semibold tracking-[-0.02em] leading-[1.08] text-white">
+                  {provider.business_name}
+                </h1>
                 {provider.is_verified && (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200 border border-emerald-400/40">
                     <BadgeCheck className="w-3.5 h-3.5" />
@@ -504,9 +605,11 @@ export default async function ProviderProfilePage({ params }: PageProps) {
                 )}
               </div>
 
-              {((providerAny.headline as string) || (providerAny.tagline as string)) && (
+              {((providerAny.headline as string) ||
+                (providerAny.tagline as string)) && (
                 <p className="text-sm sm:text-base leading-7 text-slate-100/90 max-w-3xl">
-                  {(providerAny.headline as string) || (providerAny.tagline as string)}
+                  {(providerAny.headline as string) ||
+                    (providerAny.tagline as string)}
                 </p>
               )}
 
@@ -527,7 +630,8 @@ export default async function ProviderProfilePage({ params }: PageProps) {
                 <p className="mt-2 text-xs sm:text-sm text-slate-100/90 inline-flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5" />
                   {serviceAreas[0]}
-                  {serviceAreas.length > 1 && ` +${serviceAreas.length - 1} more areas`}
+                  {serviceAreas.length > 1 &&
+                    ` +${serviceAreas.length - 1} more areas`}
                 </p>
               )}
             </div>
@@ -569,7 +673,10 @@ export default async function ProviderProfilePage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-8">
           <main className="space-y-5 min-w-0">
             {provider.bio && (
-              <section id="about-section" className={`scroll-mt-24 ${surfaceCardClass}`}>
+              <section
+                id="about-section"
+                className={`scroll-mt-24 ${surfaceCardClass}`}
+              >
                 <h2 className={sectionTitleClass}>About this provider</h2>
                 <ExpandableText
                   text={provider.bio}
@@ -580,9 +687,14 @@ export default async function ProviderProfilePage({ params }: PageProps) {
             )}
 
             {servicesWithPricing.length > 0 && (
-              <section id="services-section" className={`scroll-mt-24 ${surfaceCardClass}`}>
+              <section
+                id="services-section"
+                className={`scroll-mt-24 ${surfaceCardClass}`}
+              >
                 <h2 className={sectionTitleClass}>
-                  {servicesWithPricing.length === 1 ? "Service offered" : "Services by this provider"}
+                  {servicesWithPricing.length === 1
+                    ? "Service offered"
+                    : "Services by this provider"}
                 </h2>
                 <ProviderServiceCards
                   services={servicesWithPricing}
@@ -594,12 +706,17 @@ export default async function ProviderProfilePage({ params }: PageProps) {
               </section>
             )}
 
-            {((serviceAreas && serviceAreas.length > 0) || (languages && languages.length > 0)) && (
+            {((serviceAreas && serviceAreas.length > 0) ||
+              (languages && languages.length > 0)) && (
               <section className={surfaceCardClass}>
-                <h2 className={sectionTitleClass}>Coverage and communication</h2>
+                <h2 className={sectionTitleClass}>
+                  Coverage and communication
+                </h2>
                 {serviceAreas && serviceAreas.length > 0 && (
                   <div className="mb-5">
-                    <p className="text-xs uppercase tracking-[0.04em] text-slate-500 mb-2">Service areas</p>
+                    <p className="text-xs uppercase tracking-[0.04em] text-slate-500 mb-2">
+                      Service areas
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {serviceAreas.slice(0, 16).map((area) => (
                         <span
@@ -614,8 +731,12 @@ export default async function ProviderProfilePage({ params }: PageProps) {
                 )}
                 {languages && languages.length > 0 && (
                   <div>
-                    <p className="text-xs uppercase tracking-[0.04em] text-slate-500 mb-2">Languages</p>
-                    <p className="text-sm text-slate-700">{languages.join(", ")}</p>
+                    <p className="text-xs uppercase tracking-[0.04em] text-slate-500 mb-2">
+                      Languages
+                    </p>
+                    <p className="text-sm text-slate-700">
+                      {languages.join(", ")}
+                    </p>
                   </div>
                 )}
               </section>
@@ -626,7 +747,10 @@ export default async function ProviderProfilePage({ params }: PageProps) {
                 <h2 className={sectionTitleClass}>Trust and verification</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {trustItems.map((item) => (
-                    <div key={item.key} className="rounded-xl border border-slate-200 p-3 text-sm text-slate-800 flex items-center gap-2">
+                    <div
+                      key={item.key}
+                      className="rounded-xl border border-slate-200 p-3 text-sm text-slate-800 flex items-center gap-2"
+                    >
                       <CheckCircle className="w-4 h-4 text-emerald-600" />
                       {item.label}
                     </div>
@@ -635,15 +759,24 @@ export default async function ProviderProfilePage({ params }: PageProps) {
               </section>
             )}
 
-            <section id="reviews-section" className={`scroll-mt-24 ${surfaceCardClass}`}>
+            <section
+              id="reviews-section"
+              className={`scroll-mt-24 ${surfaceCardClass}`}
+            >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-base font-semibold text-slate-900">Reviews</h2>
-                <div className="text-sm text-slate-600">{totalReviews} review{totalReviews !== 1 ? "s" : ""}</div>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Reviews
+                </h2>
+                <div className="text-sm text-slate-600">
+                  {totalReviews} review{totalReviews !== 1 ? "s" : ""}
+                </div>
               </div>
 
               {totalReviews === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
-                  This provider is new on MitaSafi and has no public reviews yet. You can still evaluate service quality from pricing clarity, service details, and response behavior.
+                  This provider is new on MitaSafi and has no public reviews
+                  yet. You can still evaluate service quality from pricing
+                  clarity, service details, and response behavior.
                 </div>
               ) : (
                 <ProviderReviewsList
@@ -657,7 +790,9 @@ export default async function ProviderProfilePage({ params }: PageProps) {
 
             {similarProviders.length > 0 && (
               <section className={surfaceCardClass}>
-                <h2 className="text-base font-semibold text-slate-900 mb-5">Similar providers</h2>
+                <h2 className="text-base font-semibold text-slate-900 mb-5">
+                  Similar providers
+                </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {similarProviders.map((p) => (
                     <ProviderCard key={p.id} provider={p} />
@@ -669,11 +804,12 @@ export default async function ProviderProfilePage({ params }: PageProps) {
 
           <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
             <div className={surfaceCardClass}>
-
               {provider.response_time_minutes != null && (
                 <div className="mt-4">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[11px] uppercase tracking-[0.04em] text-slate-500">Response</p>
+                    <p className="text-[11px] uppercase tracking-[0.04em] text-slate-500">
+                      Response
+                    </p>
                     <p className="text-xs font-semibold text-slate-900 mt-1">
                       {getResponseTimeLabel(provider.response_time_minutes)}
                     </p>
@@ -691,7 +827,9 @@ export default async function ProviderProfilePage({ params }: PageProps) {
                   </Link>
                 )}
                 {(whatsappUrl || phoneUrl) && (
-                  <div className={`grid gap-2 ${whatsappUrl && phoneUrl ? "grid-cols-2" : "grid-cols-1"}`}>
+                  <div
+                    className={`grid gap-2 ${whatsappUrl && phoneUrl ? "grid-cols-2" : "grid-cols-1"}`}
+                  >
                     {whatsappUrl && (
                       <a
                         href={whatsappUrl}
@@ -715,7 +853,9 @@ export default async function ProviderProfilePage({ params }: PageProps) {
                   </div>
                 )}
                 {isOwnProfile && !whatsappUrl && !phoneUrl && (
-                  <p className="text-sm text-slate-400 text-center py-2">Add contact info in your profile settings</p>
+                  <p className="text-sm text-slate-400 text-center py-2">
+                    Add contact info in your profile settings
+                  </p>
                 )}
               </div>
 
@@ -726,30 +866,43 @@ export default async function ProviderProfilePage({ params }: PageProps) {
             </div>
 
             <div className={surfaceCardClass}>
-              <h3 className="text-sm font-semibold text-slate-900 mb-4">Business facts</h3>
+              <h3 className="text-sm font-semibold text-slate-900 mb-4">
+                Business facts
+              </h3>
               <dl className="space-y-3 text-sm">
                 {yearsLabel && (
                   <div className="flex justify-between gap-4">
                     <dt className="text-slate-500">Experience</dt>
-                    <dd className="text-slate-900 font-medium text-right">{yearsLabel}</dd>
+                    <dd className="text-slate-900 font-medium text-right">
+                      {yearsLabel}
+                    </dd>
                   </div>
                 )}
                 {teamSize && (
                   <div className="flex justify-between gap-4">
-                    <dt className="text-slate-500 inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />Team size</dt>
-                    <dd className="text-slate-900 font-medium text-right">{teamSize === 1 ? "Solo" : `${teamSize} people`}</dd>
+                    <dt className="text-slate-500 inline-flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5" />
+                      Team size
+                    </dt>
+                    <dd className="text-slate-900 font-medium text-right">
+                      {teamSize === 1 ? "Solo" : `${teamSize} people`}
+                    </dd>
                   </div>
                 )}
                 {memberSince && (
                   <div className="flex justify-between gap-4">
                     <dt className="text-slate-500">Member since</dt>
-                    <dd className="text-slate-900 font-medium text-right">{memberSince}</dd>
+                    <dd className="text-slate-900 font-medium text-right">
+                      {memberSince}
+                    </dd>
                   </div>
                 )}
                 {lastActive && (
                   <div className="flex justify-between gap-4">
                     <dt className="text-slate-500">Last active</dt>
-                    <dd className="text-slate-900 font-medium text-right">{lastActive}</dd>
+                    <dd className="text-slate-900 font-medium text-right">
+                      {lastActive}
+                    </dd>
                   </div>
                 )}
               </dl>
@@ -758,13 +911,19 @@ export default async function ProviderProfilePage({ params }: PageProps) {
             {workingHours.length > 0 && (
               <div className={surfaceCardClass}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold tracking-[-0.01em] text-slate-900">Availability</h3>
-                  <span className="text-[11px] font-medium text-slate-500">EAT</span>
+                  <h3 className="text-sm font-semibold tracking-[-0.01em] text-slate-900">
+                    Availability
+                  </h3>
+                  <span className="text-[11px] font-medium text-slate-500">
+                    EAT
+                  </span>
                 </div>
 
                 {availabilityStatusLabel && (
                   <div className="mb-4 rounded-lg border border-slate-200 px-3 py-2">
-                    <p className="text-xs text-slate-700">{availabilityStatusLabel}</p>
+                    <p className="text-xs text-slate-700">
+                      {availabilityStatusLabel}
+                    </p>
                   </div>
                 )}
 
@@ -776,13 +935,12 @@ export default async function ProviderProfilePage({ params }: PageProps) {
                       : "Closed all day";
 
                     return (
-                      <div
-                        key={h.day_of_week}
-                        className="px-3 py-2.5"
-                      >
+                      <div key={h.day_of_week} className="px-3 py-2.5">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-sm font-medium text-slate-700">{DAY_NAMES[h.day_of_week]}</span>
+                            <span className="text-sm font-medium text-slate-700">
+                              {DAY_NAMES[h.day_of_week]}
+                            </span>
                             {isToday && (
                               <span className="text-[11px] text-slate-500 whitespace-nowrap">
                                 (Today)
@@ -790,12 +948,16 @@ export default async function ProviderProfilePage({ params }: PageProps) {
                             )}
                           </div>
 
-                          <span className={`text-xs whitespace-nowrap ${h.is_available ? "text-slate-700" : "text-slate-500"}`}>
+                          <span
+                            className={`text-xs whitespace-nowrap ${h.is_available ? "text-slate-700" : "text-slate-500"}`}
+                          >
                             {h.is_available ? "Open" : "Closed"}
                           </span>
                         </div>
 
-                        <p className={`mt-1 text-sm leading-5 ${h.is_available ? "text-slate-900" : "text-slate-500"}`}>
+                        <p
+                          className={`mt-1 text-sm leading-5 ${h.is_available ? "text-slate-900" : "text-slate-500"}`}
+                        >
                           {timeRange}
                         </p>
                       </div>
@@ -806,7 +968,11 @@ export default async function ProviderProfilePage({ params }: PageProps) {
             )}
 
             {socialEntries.length > 0 && (
-              <SocialLinksSection providerId={provider.id} socialEntries={socialEntries} labelMap={SOCIAL_LABEL_MAP} />
+              <SocialLinksSection
+                providerId={provider.id}
+                socialEntries={socialEntries}
+                labelMap={SOCIAL_LABEL_MAP}
+              />
             )}
           </aside>
         </div>
@@ -816,8 +982,13 @@ export default async function ProviderProfilePage({ params }: PageProps) {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 z-40">
         <div className="flex items-center gap-2.5">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900 truncate">{provider.business_name}</p>
-            <p className="text-xs text-slate-500 truncate">{servicesWithPricing.length} service{servicesWithPricing.length !== 1 ? "s" : ""} available</p>
+            <p className="text-sm font-semibold text-slate-900 truncate">
+              {provider.business_name}
+            </p>
+            <p className="text-xs text-slate-500 truncate">
+              {servicesWithPricing.length} service
+              {servicesWithPricing.length !== 1 ? "s" : ""} available
+            </p>
           </div>
           {!isOwnProfile && (
             <Link

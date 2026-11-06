@@ -31,6 +31,7 @@ import {
   ServicesFAQ,
 } from "@/components/services-landing";
 import { Suspense } from "react";
+import { SITE_URL, siteUrl } from "@/lib/site/urls";
 
 // =============================================================================
 // SEO METADATA (§5 of SERVICES_LANDING_PAGE_SPECIFICATION)
@@ -62,7 +63,7 @@ export const metadata: Metadata = {
       "Find verified plumbers, electricians, cleaners, and 700+ service providers in Nairobi. Compare quotes, read reviews, book instantly.",
     type: "website",
     locale: "en_KE",
-    url: "https://mitasafi.co.ke/services",
+    url: siteUrl("/services"),
     siteName: "MitaSafi",
     // OG image auto-resolved from opengraph-image.tsx
   },
@@ -75,7 +76,7 @@ export const metadata: Metadata = {
     site: "@mitasafi",
   },
   alternates: {
-    canonical: "https://mitasafi.co.ke/services",
+    canonical: siteUrl("/services"),
   },
   robots: {
     index: true,
@@ -91,12 +92,12 @@ const webPageJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebPage",
   name: "Home Services in Nairobi | MitaSafi",
-  url: "https://mitasafi.co.ke/services",
+  url: siteUrl("/services"),
   description:
     "Find verified plumbers, electricians, cleaners, movers, and 700+ service providers in Nairobi. Compare quotes, read reviews, book instantly. Trusted by thousands.",
   potentialAction: {
     "@type": "SearchAction",
-    target: "https://mitasafi.co.ke/services/browse?q={search_term}",
+    target: siteUrl("/services/browse?q={search_term}"),
     "query-input": "required name=search_term",
   },
 };
@@ -105,7 +106,7 @@ const professionalServiceJsonLd = {
   "@context": "https://schema.org",
   "@type": "ProfessionalService",
   name: "MitaSafi",
-  url: "https://mitasafi.co.ke",
+  url: SITE_URL,
   description:
     "Kenya's trusted marketplace for verified home service providers.",
   areaServed: {
@@ -171,7 +172,10 @@ export default function ServicesLandingPage() {
         {/* SLP-7: Featured Providers — async server fetch with fallback */}
         <Suspense
           fallback={
-            <section className="bg-gray-50 py-16 sm:py-20 lg:py-24" aria-label="Loading featured providers">
+            <section
+              className="bg-gray-50 py-16 sm:py-20 lg:py-24"
+              aria-label="Loading featured providers"
+            >
               <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div className="animate-pulse space-y-8">
                   <div className="mx-auto h-8 w-64 rounded bg-gray-200" />

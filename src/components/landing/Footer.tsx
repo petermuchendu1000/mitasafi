@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { Container, Logo } from "@/components/ui";
-import { Facebook, Twitter, Instagram, Linkedin, Mail, MapPin } from "lucide-react";
+import {
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin,
+  Mail,
+  MapPin,
+} from "lucide-react";
+import { CONTACT_EMAIL } from "@/lib/site/urls";
 
 const footerLinks = {
   product: {
@@ -46,10 +54,26 @@ const footerLinks = {
 };
 
 const socialLinks = [
-  { icon: <Facebook className="w-5 h-5" />, href: "https://facebook.com/mitasafi", label: "Facebook" },
-  { icon: <Twitter className="w-5 h-5" />, href: "https://twitter.com/mitasafi", label: "Twitter" },
-  { icon: <Instagram className="w-5 h-5" />, href: "https://instagram.com/mitasafi", label: "Instagram" },
-  { icon: <Linkedin className="w-5 h-5" />, href: "https://linkedin.com/company/mitasafi", label: "LinkedIn" },
+  {
+    icon: <Facebook className="w-5 h-5" />,
+    href: "https://facebook.com/mitasafi",
+    label: "Facebook",
+  },
+  {
+    icon: <Twitter className="w-5 h-5" />,
+    href: "https://twitter.com/mitasafi",
+    label: "Twitter",
+  },
+  {
+    icon: <Instagram className="w-5 h-5" />,
+    href: "https://instagram.com/mitasafi",
+    label: "Instagram",
+  },
+  {
+    icon: <Linkedin className="w-5 h-5" />,
+    href: "https://linkedin.com/company/mitasafi",
+    label: "LinkedIn",
+  },
 ];
 
 export function Footer() {
@@ -62,18 +86,18 @@ export function Footer() {
           <div className="col-span-2 md:col-span-3 lg:col-span-2">
             <Logo variant="full" color="white" size="sm" />
             <p className="mt-4 text-gray-400 leading-relaxed max-w-xs">
-              Kenya&apos;s trusted rental platform connecting tenants with verified
-              homes and honest landlords.
+              Kenya&apos;s trusted rental platform connecting tenants with
+              verified homes and honest landlords.
             </p>
 
             {/* Contact Info */}
             <div className="mt-6 space-y-3">
               <a
-                href="mailto:hello@mitasafi.co.ke"
+                href={`mailto:${CONTACT_EMAIL}`}
                 className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
               >
                 <Mail className="w-4 h-4" />
-                hello@mitasafi.co.ke
+                {CONTACT_EMAIL}
               </a>
               <p className="flex items-center gap-2 text-gray-400">
                 <MapPin className="w-4 h-4" />

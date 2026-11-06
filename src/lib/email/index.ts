@@ -1,9 +1,9 @@
 /**
  * Email Service
- * 
+ *
  * Handles all transactional emails for MitaSafi.
  * Uses Resend for reliable email delivery.
- * 
+ *
  * To set up:
  * 1. Create account at resend.com
  * 2. Add RESEND_API_KEY to .env.local
@@ -11,6 +11,7 @@
  */
 
 import { Resend } from "resend";
+import { MAIL_FROM, SITE_URL } from "@/lib/site/urls";
 
 // Email templates
 export interface InquiryEmailData {
@@ -55,7 +56,9 @@ export function isEmailConfigured(): boolean {
 }
 
 // Send inquiry notification to landlord
-export async function sendInquiryNotification(data: InquiryEmailData): Promise<{ success: boolean; error?: string }> {
+export async function sendInquiryNotification(
+  data: InquiryEmailData,
+): Promise<{ success: boolean; error?: string }> {
   if (!isEmailConfigured()) {
     console.log("[Email] Resend not configured, skipping email");
     return { success: true }; // Soft fail - don't block inquiries
@@ -64,7 +67,7 @@ export async function sendInquiryNotification(data: InquiryEmailData): Promise<{
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://mitasafi.co.ke";
+    const baseUrl = SITE_URL;
     const listingUrl = `${baseUrl}/listings/${data.listingId}`;
     const dashboardUrl = `${baseUrl}/dashboard/inquiries`;
 
@@ -72,7 +75,9 @@ export async function sendInquiryNotification(data: InquiryEmailData): Promise<{
     const contactInfo = [
       data.inquirerEmail ? `📧 ${data.inquirerEmail}` : null,
       data.inquirerPhone ? `📱 +254 ${data.inquirerPhone}` : null,
-    ].filter(Boolean).join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     // Viewing request section
     const viewingSection = data.requestViewing
@@ -116,29 +121,41 @@ export async function sendInquiryNotification(data: InquiryEmailData): Promise<{
               <p style="margin: 0 0 20px 0; color: #6b7280; white-space: pre-line;">${contactInfo}</p>
               
               <!-- Message -->
-              ${data.message ? `
+              ${
+                data.message
+                  ? `
               <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
                 <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280; text-transform: uppercase;">Message</h3>
                 <p style="margin: 0; color: #1f2937; white-space: pre-wrap;">${data.message}</p>
               </div>
-              ` : ""}
+              `
+                  : ""
+              }
               
               ${viewingSection}
               
               <!-- CTA Buttons -->
               <div style="margin-top: 24px; text-align: center;">
-                ${data.inquirerEmail ? `
+                ${
+                  data.inquirerEmail
+                    ? `
                 <a href="mailto:${data.inquirerEmail}?subject=Re: ${encodeURIComponent(data.listingTitle)}" 
                    style="display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500; margin: 8px;">
                   Reply via Email
                 </a>
-                ` : ""}
-                ${data.inquirerPhone ? `
+                `
+                    : ""
+                }
+                ${
+                  data.inquirerPhone
+                    ? `
                 <a href="https://wa.me/254${data.inquirerPhone.replace(/\s/g, "")}?text=${encodeURIComponent(`Hi ${data.inquirerName}, thank you for your interest in ${data.listingTitle}!`)}" 
                    style="display: inline-block; background: #25d366; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500; margin: 8px;">
                   WhatsApp
                 </a>
-                ` : ""}
+                `
+                    : ""
+                }
               </div>
               
               <div style="margin-top: 24px; text-align: center;">
@@ -161,7 +178,7 @@ export async function sendInquiryNotification(data: InquiryEmailData): Promise<{
     `;
 
     const { error } = await resend.emails.send({
-      from: "MitaSafi <notifications@mitasafi.co.ke>",
+      from: MAIL_FROM.notifications,
       to: data.landlordEmail,
       subject: `🏠 New inquiry for ${data.listingTitle}`,
       html,
@@ -193,7 +210,9 @@ View listing: ${listingUrl}
 }
 
 // Send search alert notification
-export async function sendSearchAlertNotification(data: SearchAlertEmailData): Promise<{ success: boolean; error?: string }> {
+export async function sendSearchAlertNotification(
+  data: SearchAlertEmailData,
+): Promise<{ success: boolean; error?: string }> {
   if (!isEmailConfigured()) {
     console.log("[Email] Resend not configured, skipping email");
     return { success: true };
@@ -206,17 +225,23 @@ export async function sendSearchAlertNotification(data: SearchAlertEmailData): P
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://mitasafi.co.ke";
-    
-    const listingsHtml = data.listings.map(listing => `
+    const baseUrl = SITE_URL;
+
+    const listingsHtml = data.listings
+      .map(
+        (listing) => `
       <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin-bottom: 16px;">
-        ${listing.cover_photo ? `
+        ${
+          listing.cover_photo
+            ? `
         <img src="${listing.cover_photo}" alt="${listing.title}" style="width: 100%; height: 150px; object-fit: cover;">
-        ` : `
+        `
+            : `
         <div style="width: 100%; height: 150px; background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); display: flex; align-items: center; justify-content: center;">
           <span style="color: white; font-size: 24px;">🏠</span>
         </div>
-        `}
+        `
+        }
         <div style="padding: 16px;">
           <h3 style="margin: 0 0 4px 0; font-size: 16px; color: #1f2937;">${listing.title}</h3>
           <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px;">📍 ${listing.area} • ${listing.bedrooms} bed</p>
@@ -226,7 +251,9 @@ export async function sendSearchAlertNotification(data: SearchAlertEmailData): P
           </a>
         </div>
       </div>
-    `).join("");
+    `,
+      )
+      .join("");
 
     const html = `
       <!DOCTYPE html>
@@ -271,7 +298,7 @@ export async function sendSearchAlertNotification(data: SearchAlertEmailData): P
     `;
 
     const { error } = await resend.emails.send({
-      from: "MitaSafi <alerts@mitasafi.co.ke>",
+      from: MAIL_FROM.alerts,
       to: data.recipientEmail,
       subject: `🏠 ${data.listings.length} new ${data.listings.length === 1 ? "listing matches" : "listings match"} your search`,
       html,
@@ -291,7 +318,9 @@ export async function sendSearchAlertNotification(data: SearchAlertEmailData): P
 }
 
 // Send verification email
-export async function sendVerificationEmail(data: VerificationEmailData): Promise<{ success: boolean; error?: string }> {
+export async function sendVerificationEmail(
+  data: VerificationEmailData,
+): Promise<{ success: boolean; error?: string }> {
   if (!isEmailConfigured()) {
     console.log("[Email] Resend not configured, skipping verification email");
     return { success: true };
@@ -300,7 +329,7 @@ export async function sendVerificationEmail(data: VerificationEmailData): Promis
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://mitasafi.co.ke";
+    const baseUrl = SITE_URL;
     const verifyUrl = `${baseUrl}/api/verify?token=${data.verificationToken}&type=${data.type}`;
 
     const html = `
@@ -347,7 +376,7 @@ export async function sendVerificationEmail(data: VerificationEmailData): Promis
     `;
 
     const { error } = await resend.emails.send({
-      from: "MitaSafi <noreply@mitasafi.co.ke>",
+      from: MAIL_FROM.noreply,
       to: data.email,
       subject: "Verify your email - MitaSafi",
       html,

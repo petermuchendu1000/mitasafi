@@ -13,17 +13,21 @@
  *   plausible-looking text. They must be added before launch.
  */
 
+import { CONTACT_EMAIL, SITE_DOMAIN } from "@/lib/site/urls";
+
 /**
  * Contact address for legal and privacy enquiries.
  *
- * WARNING, measured 2026-11-05: neither mitasafi.com nor mitasafi.co.ke has an
- * MX record, so NO address on either domain can receive mail today. The rest
- * of the app still points at hello@mitasafi.co.ke, whose domain does not even
- * resolve. This constant uses the domain that is actually registered, verified
- * in Resend and now serving the site; the mailbox still has to be created and
- * MX records added, or enquiries required by law will silently bounce.
+ * Status, measured 2026-11-06: mitasafi.com now has the three Cloudflare Email
+ * Routing MX records (route1/2/3.mx.cloudflare.net), an SPF TXT record and a
+ * DKIM key, all confirmed resolving from two independent public resolvers.
+ * Mail will not be delivered onward until the forwarding destination is
+ * confirmed by its owner, which is a one-click action outside this codebase.
+ *
+ * The domain is the single source of truth in @/lib/site/urls — the earlier
+ * app-wide hardcoding of the unregistered mitasafi.co.ke is gone.
  */
-export const LEGAL_CONTACT_EMAIL = "hello@mitasafi.com";
+export const LEGAL_CONTACT_EMAIL = CONTACT_EMAIL;
 
 /** Date these documents last changed. Update when the text changes. */
 export const LEGAL_LAST_UPDATED = "5 November 2026";
@@ -71,8 +75,8 @@ export const SUBPROCESSORS = [
   },
   {
     name: "Cloudflare",
-    purpose: "DNS for mitasafi.com.",
-    note: "",
+    purpose: `DNS for ${SITE_DOMAIN}, and email routing for addresses on it.`,
+    note: "Email routing receives and forwards the full content of any message sent to an address on this domain, including the sender's address.",
   },
   {
     name: "Resend",

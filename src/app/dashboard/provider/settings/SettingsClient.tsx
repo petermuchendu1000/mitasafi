@@ -28,6 +28,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useToast } from "@/components/ui";
+import { SUPPORT_EMAIL } from "@/lib/site/urls";
 import {
   updateNotificationPreferences,
   deactivateProviderAccount,
@@ -81,7 +82,7 @@ export function SettingsClient({
         }
       });
     },
-    [preferences, showSuccess, showError]
+    [preferences, showSuccess, showError],
   );
 
   // ── Deactivate account ────────────────────────────────────────────────────
@@ -96,7 +97,10 @@ export function SettingsClient({
       if (!result.success) {
         showError("Deactivation failed", result.error || "Please try again");
       } else {
-        showSuccess("Account deactivated", "Your profile is now hidden from clients");
+        showSuccess(
+          "Account deactivated",
+          "Your profile is now hidden from clients",
+        );
         setShowDeactivateModal(false);
         setConfirmText("");
         // Re-fetch server component tree so layout picks up is_active=false
@@ -212,10 +216,10 @@ export function SettingsClient({
           <p className="text-xs text-gray-400 mt-3 px-1">
             To permanently delete your account and all data, please contact{" "}
             <a
-              href="mailto:support@mitasafi.co.ke"
+              href={`mailto:${SUPPORT_EMAIL}`}
               className="text-teal-600 hover:underline"
             >
-              support@mitasafi.co.ke
+              {SUPPORT_EMAIL}
             </a>
           </p>
         </section>
@@ -247,9 +251,7 @@ export function SettingsClient({
             </div>
 
             <div className="space-y-3 mb-6">
-              <p className="text-sm text-gray-600">
-                This will immediately:
-              </p>
+              <p className="text-sm text-gray-600">This will immediately:</p>
               <ul className="text-sm text-gray-600 space-y-1.5 ml-4">
                 <li className="flex items-start gap-2">
                   <span className="text-red-400 mt-0.5">•</span>
@@ -275,9 +277,8 @@ export function SettingsClient({
                 htmlFor="deactivate-confirm"
                 className="block text-sm font-medium text-gray-700 mb-1.5"
               >
-                Type{" "}
-                <span className="font-mono text-red-600">DEACTIVATE</span> to
-                confirm
+                Type <span className="font-mono text-red-600">DEACTIVATE</span>{" "}
+                to confirm
               </label>
               <input
                 id="deactivate-confirm"
@@ -306,9 +307,7 @@ export function SettingsClient({
                 disabled={confirmText !== "DEACTIVATE" || isDeactivating}
                 className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {isDeactivating && (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                )}
+                {isDeactivating && <Loader2 className="w-4 h-4 animate-spin" />}
                 Deactivate
               </button>
             </div>

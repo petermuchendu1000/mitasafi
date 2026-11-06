@@ -19,6 +19,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCachedUser } from "@/lib/cache/queries";
 import { revalidatePath } from "next/cache";
+import { SUPPORT_EMAIL } from "@/lib/site/urls";
 
 // =============================================================================
 // TYPES
@@ -89,7 +90,10 @@ export async function getCustomerNotificationPreferences(): Promise<
       push_notifications: data.push_notifications ?? true,
     };
   } catch (err) {
-    console.error("[CustomerSettings] Unexpected error fetching preferences:", err);
+    console.error(
+      "[CustomerSettings] Unexpected error fetching preferences:",
+      err,
+    );
     return {
       ...defaults,
       error: err instanceof Error ? err.message : "Unknown error",
@@ -107,7 +111,7 @@ export async function getCustomerNotificationPreferences(): Promise<
  * Input is validated: only known boolean keys are persisted.
  */
 export async function updateCustomerNotificationPreferences(
-  preferences: Partial<NotificationPreferences>
+  preferences: Partial<NotificationPreferences>,
 ): Promise<ActionResult> {
   try {
     const { user, error: authError } = await getCachedUser();
@@ -134,10 +138,7 @@ export async function updateCustomerNotificationPreferences(
 
     const { error } = await supabase
       .from("user_preferences")
-      .upsert(
-        { user_id: user.id, ...sanitized },
-        { onConflict: "user_id" }
-      );
+      .upsert({ user_id: user.id, ...sanitized }, { onConflict: "user_id" });
 
     if (error) {
       console.error("[CustomerSettings] Failed to update preferences:", error);
@@ -147,7 +148,10 @@ export async function updateCustomerNotificationPreferences(
     revalidatePath("/dashboard/settings");
     return { success: true };
   } catch (err) {
-    console.error("[CustomerSettings] Unexpected error updating preferences:", err);
+    console.error(
+      "[CustomerSettings] Unexpected error updating preferences:",
+      err,
+    );
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error",
@@ -184,7 +188,10 @@ export async function requestAccountDeletion(): Promise<ActionResult> {
       .single();
 
     if (fetchError) {
-      console.error("[CustomerSettings] Fetch profile for deletion:", fetchError);
+      console.error(
+        "[CustomerSettings] Fetch profile for deletion:",
+        fetchError,
+      );
       return { success: false, error: "Failed to process request" };
     }
 
@@ -194,7 +201,7 @@ export async function requestAccountDeletion(): Promise<ActionResult> {
     if (existingMeta.deletion_requested_at) {
       return {
         success: false,
-        error: "Deletion already requested. Contact support@mitasafi.co.ke for status.",
+        error: `Deletion already requested. Contact ${SUPPORT_EMAIL} for status.`,
       };
     }
 
@@ -218,7 +225,10 @@ export async function requestAccountDeletion(): Promise<ActionResult> {
     revalidatePath("/dashboard/settings");
     return { success: true };
   } catch (err) {
-    console.error("[CustomerSettings] Unexpected error in deletion request:", err);
+    console.error(
+      "[CustomerSettings] Unexpected error in deletion request:",
+      err,
+    );
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error",

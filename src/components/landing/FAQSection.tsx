@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Section, SectionHeader, Container } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
+import { SUPPORT_EMAIL } from "@/lib/site/urls";
 
 const faqs = [
   {
@@ -77,14 +78,14 @@ export function FAQSection() {
                 <ChevronDown
                   className={cn(
                     "w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200",
-                    openIndex === index && "rotate-180"
+                    openIndex === index && "rotate-180",
                   )}
                 />
               </button>
               <div
                 className={cn(
                   "overflow-hidden transition-all duration-300",
-                  openIndex === index ? "max-h-96" : "max-h-0"
+                  openIndex === index ? "max-h-96" : "max-h-0",
                 )}
               >
                 <p className="px-6 pb-6 text-gray-600 leading-relaxed">
@@ -99,7 +100,7 @@ export function FAQSection() {
         <div className="mt-12 text-center">
           <p className="text-gray-600 mb-2">Still have questions?</p>
           <a
-            href="mailto:support@mitasafi.co.ke"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="text-brand-600 font-semibold hover:text-brand-700 transition-colors"
           >
             Contact our support team →

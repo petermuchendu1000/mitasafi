@@ -23,6 +23,7 @@ import { useCallback, useState } from "react";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { Container } from "@/components/ui/Container";
 import { cn } from "@/lib/utils";
+import { SITE_DOMAIN } from "@/lib/site/urls";
 
 // =============================================================================
 // TYPES
@@ -70,8 +71,7 @@ const FAQ_DATA: readonly FAQItem[] = [
   },
   {
     question: "How do I become a service provider?",
-    answer:
-      "Sign up for free at mitasafi.co.ke/signup. Complete your profile, verify your identity, add your services, and start receiving job requests.",
+    answer: `Sign up for free at ${SITE_DOMAIN}/signup. Complete your profile, verify your identity, add your services, and start receiving job requests.`,
   },
   {
     question: "Is there a fee to join as a provider?",
