@@ -11,7 +11,7 @@
  */
 
 import { Resend } from "resend";
-import { MAIL_FROM, SITE_URL } from "@/lib/site/urls";
+import { MAIL_FROM, SITE_URL, SUPPORT_EMAIL } from "@/lib/site/urls";
 
 // Email templates
 export interface InquiryEmailData {
@@ -179,6 +179,7 @@ export async function sendInquiryNotification(
 
     const { error } = await resend.emails.send({
       from: MAIL_FROM.notifications,
+      replyTo: SUPPORT_EMAIL,
       to: data.landlordEmail,
       subject: `🏠 New inquiry for ${data.listingTitle}`,
       html,
@@ -299,6 +300,7 @@ export async function sendSearchAlertNotification(
 
     const { error } = await resend.emails.send({
       from: MAIL_FROM.alerts,
+      replyTo: SUPPORT_EMAIL,
       to: data.recipientEmail,
       subject: `🏠 ${data.listings.length} new ${data.listings.length === 1 ? "listing matches" : "listings match"} your search`,
       html,
@@ -377,6 +379,7 @@ export async function sendVerificationEmail(
 
     const { error } = await resend.emails.send({
       from: MAIL_FROM.noreply,
+      replyTo: SUPPORT_EMAIL,
       to: data.email,
       subject: "Verify your email - MitaSafi",
       html,

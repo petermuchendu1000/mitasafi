@@ -12,7 +12,7 @@
 
 import { Resend } from "resend";
 import type { ChannelContext } from "@/lib/notifications/channels";
-import { MAIL_FROM, SITE_URL } from "@/lib/site/urls";
+import { MAIL_FROM, SITE_URL, SUPPORT_EMAIL } from "@/lib/site/urls";
 
 // =============================================================================
 // CONSTANTS & HELPERS
@@ -683,6 +683,7 @@ export async function sendBookingEmail(
 
     const { error } = await resend.emails.send({
       from: FROM_ADDRESS,
+      replyTo: SUPPORT_EMAIL,
       to,
       subject: content.subject,
       html,
