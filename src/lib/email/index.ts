@@ -43,13 +43,6 @@ export interface SearchAlertEmailData {
   }[];
 }
 
-export interface VerificationEmailData {
-  email: string;
-  name: string | null;
-  verificationToken: string;
-  type: "search_alert" | "email_change";
-}
-
 // Check if email is configured
 export function isEmailConfigured(): boolean {
   return !!process.env.RESEND_API_KEY;
@@ -315,85 +308,6 @@ export async function sendSearchAlertNotification(
     return { success: true };
   } catch (error) {
     console.error("[Email] Error sending search alert:", error);
-    return { success: false, error: String(error) };
-  }
-}
-
-// Send verification email
-export async function sendVerificationEmail(
-  data: VerificationEmailData,
-): Promise<{ success: boolean; error?: string }> {
-  if (!isEmailConfigured()) {
-    console.log("[Email] Resend not configured, skipping verification email");
-    return { success: true };
-  }
-
-  try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
-    const baseUrl = SITE_URL;
-    const verifyUrl = `${baseUrl}/api/verify?token=${data.verificationToken}&type=${data.type}`;
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background: #f3f4f6;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <!-- Header -->
-            <div style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 24px; text-align: center;">
-              <h1 style="margin: 0; color: white; font-size: 24px;">Verify Your Email ✉️</h1>
-            </div>
-            
-            <!-- Content -->
-            <div style="padding: 24px; text-align: center;">
-              <p style="margin: 0 0 24px 0; color: #6b7280;">
-                ${data.name ? `Hi ${data.name},` : "Hi there,"}<br/><br/>
-                Please verify your email to ${data.type === "search_alert" ? "activate your search alert" : "confirm your email change"}.
-              </p>
-              
-              <a href="${verifyUrl}" style="display: inline-block; background: #f97316; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 500; font-size: 16px;">
-                Verify Email
-              </a>
-              
-              <p style="margin: 24px 0 0 0; color: #9ca3af; font-size: 14px;">
-                This link expires in 24 hours
-              </p>
-            </div>
-            
-            <!-- Footer -->
-            <div style="background: #f9fafb; padding: 16px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                If you didn't request this, you can ignore this email.
-              </p>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const { error } = await resend.emails.send({
-      from: MAIL_FROM.noreply,
-      replyTo: SUPPORT_EMAIL,
-      to: data.email,
-      subject: "Verify your email - MitaSafi",
-      html,
-    });
-
-    if (error) {
-      console.error("[Email] Failed to send verification email:", error);
-      return { success: false, error: error.message };
-    }
-
-    console.log("[Email] Verification email sent to:", data.email);
-    return { success: true };
-  } catch (error) {
-    console.error("[Email] Error sending verification email:", error);
     return { success: false, error: String(error) };
   }
 }

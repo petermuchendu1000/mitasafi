@@ -176,9 +176,30 @@ describe("transactional email is replyable", () => {
     for (const payload of sendPayloads(src)) sites.push({ file: f, payload });
   }
 
-  it("finds the send sites", () => {
-    // If this drops to 0 the rest of the suite would pass vacuously.
-    expect(sites.length).toBeGreaterThanOrEqual(4);
+  /**
+   * The exact census of send sites, as (file, from-expression) pairs.
+   *
+   * This was originally `expect(sites.length).toBeGreaterThanOrEqual(4)`.
+   * Deleting the dead sendVerificationEmail took the count to 3 and the
+   * assertion failed — correctly. But a threshold that gets relaxed whenever
+   * it fails is not a check, so it was replaced with the full set: adding a
+   * send site, removing one, or changing which mailbox one sends as all fail
+   * here and have to be acknowledged deliberately.
+   */
+  const EXPECTED_SITES = [
+    ["src/lib/email/booking-emails.ts", "FROM_ADDRESS"],
+    ["src/lib/email/index.ts", "MAIL_FROM.alerts"],
+    ["src/lib/email/index.ts", "MAIL_FROM.notifications"],
+  ];
+
+  it("the set of send sites is exactly the expected one", () => {
+    const actual = sites
+      .map((s) => {
+        const m = s.payload.match(/\bfrom\s*:\s*([A-Za-z_$][\w$.]*)/);
+        return [s.file, m ? m[1] : "<unresolved>"];
+      })
+      .sort((a, b) => a.join().localeCompare(b.join()));
+    expect(actual).toEqual(EXPECTED_SITES);
   });
 
   it("every send site sets a Reply-To", () => {
