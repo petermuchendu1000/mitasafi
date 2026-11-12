@@ -7,7 +7,8 @@ others, and what makes each one efficient.
 from a migration file. Live schema at the time of writing: **78 tables, 7 views, 1
 materialized view, 277 functions (34 `SECURITY DEFINER`), 101 user triggers, RLS enabled on
 78 of 78 tables, 182 policies.** Where something is unverified it says so. Companion
-documents: `SPEC_VS_SCHEMA_CENSUS.md` (what is specified vs what exists) and
+documents: `SPEC_VS_SCHEMA_CENSUS.md` (what is specified vs what exists),
+`MONEY_SCHEMA.md` (the fee and settlement engine) and
 `SUBSYSTEM_UNIFICATION_PLAN.md` (the configuration layer).
 
 ---
@@ -154,11 +155,14 @@ verified:
   `commission_bands`, `provider_wallet_ledger`, `provider_payouts`, `reviews`, `bookings`
   have **no** write grant for `authenticated` at all. Belt and braces on money and trust.
 
-**One exception, flagged not resolved.** `payments` — the legacy money table, 0 rows and 0
-inserts ever — still has two permissive policies with `roles={public}`: _"Landlords can
-insert payments for own leases"_ and the update equivalent. It is the only money table still
-client-writable. Whether that is exploitable depends on the policies' `WITH CHECK` clauses,
-**which have not been read.** Treat as a cleanup candidate pending that read.
+**One exception, now resolved.** `payments` — the legacy landlord rent ledger, 0 rows and 0
+inserts ever — is the only money table still client-writable. Its policies have since been
+read in full and are **correctly scoped**: every one requires
+`EXISTS (SELECT 1 FROM leases WHERE leases.id = payments.lease_id AND leases.landlord_id =
+auth.uid())`. `roles={public}` is Postgres's default "all roles" and is not a hole, because an
+`anon` caller has `auth.uid()` = NULL and the `EXISTS` can never match. **Not a
+vulnerability** — but a trap: a client-writable money-shaped table with no code path
+whatsoever is what a future feature gets built on by accident. See `MONEY_SCHEMA.md` §6.
 
 ### 4.4 The authority declaration
 
@@ -293,8 +297,8 @@ purpose or remove the record.
 
 ## 7. What this document does not establish
 
-- The `payments` policies' `WITH CHECK` clauses were **not read**; the exposure in §4.3 is
-  unquantified.
+- ~~The `payments` policies were not read~~ — **done**, see §4.3 and `MONEY_SCHEMA.md` §6.
+  They are correctly scoped; the table is an orphan, not an exposure.
 - None of the 182 policies or 277 functions were individually reviewed. The counts are
   measured; the correctness is not assessed.
 - The subsystem boundaries are **inferred** from foreign keys and names. No document states
