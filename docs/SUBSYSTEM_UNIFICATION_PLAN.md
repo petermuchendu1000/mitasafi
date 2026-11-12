@@ -246,13 +246,13 @@ which affects OAuth **and** email confirmation and password-reset links. Fix bot
 enable the provider with the verified credentials (EV-020), add the production callback to
 `uri_allow_list`, and add the Supabase callback URL to the Google console.
 
-### P1-3 — `/listings` returns 404 in production
+### P1-3 — WITHDRAWN: `/listings` 404 is correct behaviour, not a defect
 
-`GET https://mitasafi.com/listings` → **404**, 14,409 bytes, while `/services` and
-`/service-providers` return 200 and `src/app/listings/` exists at this SHA (EV-032). I have
-**not** diagnosed this. Candidate causes not yet discriminated: route-group/segment config, a
-redirect, or a build-time difference between this SHA and the deployed image. Reproduce
-locally first, then compare against the deployed image.
+An earlier revision of this document listed the production `/listings` 404 as a defect. It is
+not one. There is no `page.tsx` at `src/app/listings` — only `[slug]/page.tsx` — so `/listings`
+was never a route. A production build's own emitted route table confirms it: the manifest
+contains `ƒ /listings/[slug]` and no `/listings` entry. Nothing to fix. The item is kept here
+rather than deleted so the correction is on the record.
 
 ### P1-4 — Move rate limiting to the Upstash database that already exists
 
@@ -363,9 +363,18 @@ Stated as prominently as the findings, because the gaps change what you should t
 6. **Client bundle scan was partial** — 16 homepage chunks, 904KB (EV-033). It cannot support
    any claim that a `NEXT_PUBLIC_*` value is absent, and EV-032 falsifies that reading for the
    anon key.
-7. **Deployed image not mapped to a commit.** Production runs `v8-a00c09c`; whether it equals
-   `b293c3c` is unknown, so sandbox code evidence is not automatically evidence about
-   production (L10).
+7. **RESOLVED, and it mattered.** The deployed image `v8-a00c09c` maps to commit
+   `a00c09c4f91bcde79d55e9043c70ef937019c22e`, the head of branch
+   `claude/laughing-albattani-1funro`. It is **not** an ancestor of this branch: the two
+   diverged at `main`. The deployed branch carries three commits that were missing here — an
+   MX-records/unregistered-domain fix, a transactional-mail Reply-To fix, and an email
+   refactor. A deploy from this branch's earlier tip would have applied 1,501 deletions and
+   reverted all of it. The fix was to rebase onto the deployed commit so the release is purely
+   additive. **The underlying process defect is that `main` was three commits behind
+   production** — live work had never been merged back. That is this document's thesis showing
+   up in the git history rather than in the configuration, and it is the most dangerous
+   instance of it found so far, because the divergence is invisible unless you diff against
+   what is actually deployed rather than against `main`.
 8. **GitHub Actions status for this SHA not queried** (EV-039).
 9. **Fly token write capability never tested** — deliberately, since testing it means mutating.
 10. **Only one repository was in scope.** `petermuchendu1000/mitasafi` was already cloned;
