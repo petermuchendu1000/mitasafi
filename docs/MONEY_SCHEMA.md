@@ -294,10 +294,8 @@ drop it. Do not leave it half-present.
 
 ## 8. What this document does not establish
 
-- The **bodies** of `settle_booking_payment`, `fail_booking_payment`,
-  `request_provider_payout`, `credit_provider_wallet`, `debit_provider_wallet` and
-  `fn_wallet_ledger_append_only` were **not read**. Their signatures and the constraints
-  around them are documented; their internal logic is not reviewed here.
+- ~~The bodies of the six functions were not read~~ — **done, see §9.** Their internal
+  logic is now reviewed. Three findings are recorded there; none is client-reachable.
 - No money has ever moved through this system: `commission_payment_audit` returns 0 rows,
   `booking_payments` and `provider_wallet_ledger` hold 0 rows, and M-Pesa is `configured:
 false` in production with every credential missing. So none of the above has been
@@ -308,3 +306,162 @@ false` in production with every credential missing. So none of the above has bee
   known tension is on the record: PayHero charges the merchant KES 6 per transaction for
   totals of 50–499, so a KES 50 job earns KES 7.50 against a KES 6 cost. `commission.ts`
   has no term for the processing cost.
+
+---
+
+## 9. Review of the `SECURITY DEFINER` function bodies
+
+All six bodies were read from the live database via `pg_get_functiondef`. **No function was
+executed** — they mutate money state.
+
+### 9.1 The perimeter holds
+
+`EXECUTE` on all seven money functions is granted to **`postgres` and `service_role` only**.
+The PUBLIC default was revoked; `anon` and `authenticated` cannot call any of them. So the
+application, holding the service-role key server-side, is the gatekeeper — and the functions
+correctly assume an already-authorised caller.
+
+`search_path TO 'public', 'pg_temp'` is set on six of seven (the exception is §9.5).
+
+### 9.2 `settle_booking_payment` — the strongest function in the codebase
+
+Verified behaviours:
+
+- `SELECT ... FOR UPDATE` on the payment row, so concurrent settlement serialises.
+- **Idempotency is checked FIRST and applies to every route.** `status IN ('completed','refunded')`
+  returns `not_settleable`. A payment is never settled twice, by anyone, for any reason.
+- The `authoritative_query` route accepts only `pending`/`processing`. Its own comment names
+  the attack this blocks: _"forge a failure, then forge a success, and mint wallet balance on
+  repeat."_ Recovery is a separate route rather than a relaxation of this guard.
+- The `manual_reconciliation` route requires `p_operator_id`, **verifies the operator exists
+  in `profiles`**, excludes `cancelled` deliberately (a cancellation is not a payment that may
+  silently have succeeded), and writes the operator id into both the ledger note and the
+  payment metadata. Every recovered shilling is attributable to a named human.
+- A receipt is only ever added, never cleared: `coalesce(p_receipt_number, existing)`.
+- `amount_mismatch` is set when the claimed amount differs from the stored amount.
+- If the booking fails to transition, the settlement is **kept** and the payment is marked
+  `needs_reconciliation` with the error text — money is not lost to a downstream trigger
+  failure.
+
+**The second line of defence it claims does exist.** Verified in `pg_indexes`:
+
+```sql
+wallet_ledger_one_credit_per_payment
+  UNIQUE INDEX ON provider_wallet_ledger (payment_id) WHERE entry_type = 'credit_payment'
+wallet_ledger_one_debit_per_payout
+  UNIQUE INDEX ON provider_wallet_ledger (payout_id)  WHERE entry_type = 'debit_payout'
+wallet_ledger_one_reversal_per_payout
+  UNIQUE INDEX ON provider_wallet_ledger (payout_id)  WHERE entry_type = 'reversal_payout'
+```
+
+One credit per payment, enforced by a partial unique index — not by application logic.
+
+### 9.3 `fn_wallet_ledger_append_only` — and the TRUNCATE question
+
+```sql
+CREATE TRIGGER trg_wallet_ledger_append_only
+  BEFORE DELETE OR UPDATE ON provider_wallet_ledger
+  FOR EACH ROW EXECUTE FUNCTION fn_wallet_ledger_append_only()
+```
+
+The function body is one unconditional `RAISE EXCEPTION`. Both UPDATE and DELETE are covered.
+
+A row-level trigger does **not** fire on `TRUNCATE`, so that was checked separately:
+`anon` and `authenticated` hold **no TRUNCATE grant on any money table**. The append-only
+guarantee cannot be bypassed statement-level. (See §9.7 for the non-money tables, where this
+is not true.)
+
+### 9.4 `request_provider_payout` and `fail_booking_payment`
+
+`request_provider_payout`: amount validated, `FOR UPDATE` lock, balance checked, **one open
+payout enforced** (`status IN ('pending','processing')` → `payout_already_open`), ledger row
+written as `debit_payout` with a negative amount. `total_earnings` is deliberately **not**
+decremented, and the comment explains why — a payout moves money out, it does not un-earn it.
+
+`fail_booking_payment`: `FOR UPDATE` lock, and the guard that matters — **a completed payment
+is never downgraded by a late or forged failure** (`status NOT IN ('pending','processing')` →
+`not_settleable`).
+
+### 9.5 FINDING 1 — unused, ledger-bypassing wallet mutators _(integrity, medium)_
+
+`credit_provider_wallet(p_provider_id, p_amount)` and
+`debit_provider_wallet(p_provider_id, p_amount)` both mutate
+`service_providers.wallet_balance` and write **no `provider_wallet_ledger` row at all**.
+`credit_provider_wallet` additionally increments `total_earnings`.
+
+They are **dead code**: called by no database function and no application code. The only
+references in `src/` are a comment and the generated types.
+
+The harm is already on the record in this repo, in `request_provider_payout`'s own comment:
+
+> _"The old rollback path called `credit_provider_wallet`, which bumped `total_earnings` and
+> inflated lifetime earnings permanently on every failed request."_
+
+Every other money path writes the ledger. These two do not, so any future caller silently
+breaks reconciliation between `provider_wallet_ledger` and `service_providers.wallet_balance`
+— and `balance_after` on the next real ledger row would jump without explanation.
+
+**Recommendation: `DROP` both.** They are a loaded gun pointed at the one invariant the
+ledger exists to provide. If a bare wallet adjustment is ever needed, the ledger already has
+an `adjustment` entry type that requires a note.
+
+### 9.6 FINDING 2 — a failure that cannot be observed _(observability, low)_
+
+`fail_booking_payment` wraps its booking transition in `EXCEPTION WHEN OTHERS THEN NULL` — a
+silent swallow. The intent is documented and defensible (_"a stale booking status must not
+block recording the failure"_), but it is **asymmetric with `settle_booking_payment`**, which
+in the same situation records `needs_reconciliation` and the error text.
+
+So a payment that fails, and whose booking then does not move to `payment_failed`, leaves no
+trace of the discrepancy anywhere.
+
+**Recommendation:** mirror settle — set `needs_reconciliation = true` with the `SQLERRM` in
+`reconciliation_note`, rather than discarding it.
+
+### 9.7 FINDING 3 — `get_unit_payment_history`, and TRUNCATE on non-money tables _(defence in depth, low)_
+
+`get_unit_payment_history` is the one function with **no `SET search_path`** — the classic
+`SECURITY DEFINER` escalation vector. Two mitigations apply: it schema-qualifies its tables
+(`public.leases`, `public.payments`), so a hostile search_path cannot redirect those lookups,
+and `EXECUTE` requires `service_role` already. The residual exposure is unqualified function
+calls (`date_trunc`, `to_char`, `generate_series`), which an attacker holding service_role
+could shadow — by which point they need no help.
+
+It also performs **no ownership check**. It is `SECURITY DEFINER`, so it bypasses RLS, and it
+returns the rent history of whatever `p_unit_id` it is handed. It is currently called from
+nowhere, so there is no route to audit — but it becomes an IDOR the moment someone wires it
+up without an ownership check.
+
+**Recommendation:** add `SET search_path TO 'public','pg_temp'`, and either add an ownership
+predicate or drop it together with `public.payments` (§6).
+
+Separately, and outside the money path: **`TRUNCATE` is granted to `anon` and `authenticated`
+on roughly 69 relations**, including `audit_log`, `blocked_users`, `api_keys`,
+`analytics_events` and the `booking_*` detail tables. **RLS does not apply to `TRUNCATE`**, so
+those policies do not protect them. It is a Supabase default-grant artefact.
+
+Not reachable today: PostgREST exposes no TRUNCATE verb, and no client-executable function
+performs dynamic SQL or TRUNCATE — the only two functions whose source matched a dynamic-SQL
+search were `prevent_booking_deletion_with_commitments` and its service equivalent, which use
+`format()` on a **constant string** with the parameter passed via `USING`, and are not
+`SECURITY DEFINER`. No injection surface.
+
+Still worth closing, as a one-line hardening with no downside:
+
+```sql
+REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+```
+
+`blocked_users` is the one to note: truncating it would unblock everyone.
+
+### 9.8 What §9 does not establish
+
+- No function was executed, so every behaviour above is read from its definition, not
+  observed at runtime. The guards are present in the source; they have not been exercised
+  against a live transaction, and nothing ever has — `booking_payments` holds 0 rows.
+- The booking state-machine triggers that `settle_booking_payment` and `fail_booking_payment`
+  fire into were **not** read. Both functions set `app.current_user_id` and
+  `app.current_user_role` before updating `bookings`, which means a trigger consumes those
+  GUCs; that mechanism is not reviewed here.
+- `expire_stale_booking_payments` was listed in the write surface but its body was **not**
+  read — it was outside the six.
