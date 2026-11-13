@@ -1,14 +1,14 @@
 /**
  * Phone Verification Server Actions
- * 
+ *
  * Handles sending and verifying OTP codes.
- * 
+ *
  * Security considerations:
  * - Rate limiting (max 3 attempts per 15 minutes)
  * - OTP expiration (5 minutes)
  * - Secure OTP storage (hashed)
  * - Audit logging
- * 
+ *
  * SMS delivery is handled by the centralised @/lib/sms module which
  * supports dev mode (console log) and production (Africa's Talking).
  */
@@ -82,7 +82,7 @@ function cleanPhoneNumber(phone: string): string {
 
 /**
  * Send OTP to phone number
- * 
+ *
  * Flow:
  * 1. Validate phone number
  * 2. Check rate limit
@@ -91,11 +91,14 @@ function cleanPhoneNumber(phone: string): string {
  * 5. Send SMS
  * 6. Return success
  */
-export async function sendPhoneOTP(phone: string, userId: string): Promise<OTPResult> {
+export async function sendPhoneOTP(
+  phone: string,
+  userId: string,
+): Promise<OTPResult> {
   try {
     const supabase = await createClient();
     const admin = createAdminClient();
-    
+
     // Validate inputs
     const cleanPhone = cleanPhoneNumber(phone);
     if (cleanPhone.length !== 12 || !cleanPhone.startsWith("254")) {
@@ -103,15 +106,19 @@ export async function sendPhoneOTP(phone: string, userId: string): Promise<OTPRe
     }
 
     // Verify user exists and matches the session
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user || user.id !== userId) {
       return { success: false, error: "Authentication error" };
     }
 
     // Check rate limit - count recent OTPs sent
     const windowStart = new Date();
-    windowStart.setMinutes(windowStart.getMinutes() - RATE_LIMIT_WINDOW_MINUTES);
-    
+    windowStart.setMinutes(
+      windowStart.getMinutes() - RATE_LIMIT_WINDOW_MINUTES,
+    );
+
     const { count: recentSends } = await admin
       .from("phone_verifications")
       .select("*", { count: "exact", head: true })
@@ -119,18 +126,18 @@ export async function sendPhoneOTP(phone: string, userId: string): Promise<OTPRe
       .gte("created_at", windowStart.toISOString());
 
     if ((recentSends || 0) >= MAX_SENDS_PER_WINDOW) {
-      const waitMinutes = RATE_LIMIT_WINDOW_MINUTES - Math.floor(
-        (Date.now() - windowStart.getTime()) / 60000
-      );
-      return { 
-        success: false, 
-        error: `Too many attempts. Please try again in ${waitMinutes} minutes.` 
+      const waitMinutes =
+        RATE_LIMIT_WINDOW_MINUTES -
+        Math.floor((Date.now() - windowStart.getTime()) / 60000);
+      return {
+        success: false,
+        error: `Too many attempts. Please try again in ${waitMinutes} minutes.`,
       };
     }
 
     // Generate OTP
     const otp = generateOTP();
-    
+
     // Calculate expiry
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + OTP_EXPIRY_MINUTES);
@@ -169,18 +176,17 @@ export async function sendPhoneOTP(phone: string, userId: string): Promise<OTPRe
     // When SMS gateway is disabled (dev mode), return OTP for testing
     const smsEnabled = process.env.SMS_ENABLED === "true";
     if (!smsEnabled) {
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: "DEV MODE: Use the code shown below",
-        devOtp: otp
+        devOtp: otp,
       };
     }
 
-    return { 
-      success: true, 
-      message: "Verification code sent to your phone" 
+    return {
+      success: true,
+      message: "Verification code sent to your phone",
     };
-
   } catch (error) {
     console.error("Error in sendPhoneOTP:", error);
     return { success: false, error: "An unexpected error occurred" };
@@ -189,7 +195,7 @@ export async function sendPhoneOTP(phone: string, userId: string): Promise<OTPRe
 
 /**
  * Verify OTP code
- * 
+ *
  * Flow:
  * 1. Validate inputs
  * 2. Find pending OTP record
@@ -201,14 +207,14 @@ export async function sendPhoneOTP(phone: string, userId: string): Promise<OTPRe
  * 8. Return success
  */
 export async function verifyPhoneOTP(
-  code: string, 
-  phone: string, 
-  userId: string
+  code: string,
+  phone: string,
+  userId: string,
 ): Promise<OTPResult> {
   try {
     const supabase = await createClient();
     const admin = createAdminClient();
-    
+
     // Validate inputs
     if (!code || code.length !== OTP_LENGTH) {
       return { success: false, error: "Invalid verification code" };
@@ -217,7 +223,9 @@ export async function verifyPhoneOTP(
     const cleanPhone = cleanPhoneNumber(phone);
 
     // Verify session
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user || user.id !== userId) {
       return { success: false, error: "Authentication error" };
     }
@@ -236,7 +244,10 @@ export async function verifyPhoneOTP(
     const otpRecord = otpData as OTPRecord | null;
 
     if (fetchError || !otpRecord) {
-      return { success: false, error: "No pending verification found. Please request a new code." };
+      return {
+        success: false,
+        error: "No pending verification found. Please request a new code.",
+      };
     }
 
     // Check expiry
@@ -246,8 +257,11 @@ export async function verifyPhoneOTP(
         .from("phone_verifications")
         .update({ status: "expired" })
         .eq("id", otpRecord.id);
-      
-      return { success: false, error: "Verification code has expired. Please request a new one." };
+
+      return {
+        success: false,
+        error: "Verification code has expired. Please request a new one.",
+      };
     }
 
     // Check attempts
@@ -256,8 +270,11 @@ export async function verifyPhoneOTP(
         .from("phone_verifications")
         .update({ status: "blocked" })
         .eq("id", otpRecord.id);
-      
-      return { success: false, error: "Too many incorrect attempts. Please request a new code." };
+
+      return {
+        success: false,
+        error: "Too many incorrect attempts. Please request a new code.",
+      };
     }
 
     // Verify code
@@ -267,32 +284,32 @@ export async function verifyPhoneOTP(
         .from("phone_verifications")
         .update({ attempts: otpRecord.attempts + 1 })
         .eq("id", otpRecord.id);
-      
+
       const remaining = MAX_ATTEMPTS - otpRecord.attempts - 1;
-      return { 
-        success: false, 
-        error: `Invalid code. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.` 
+      return {
+        success: false,
+        error: `Invalid code. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.`,
       };
     }
 
     // Code is correct! Update verification status
-    
+
     // 1. Mark OTP as verified
     await admin
       .from("phone_verifications")
-      .update({ 
+      .update({
         status: "verified",
-        verified_at: new Date().toISOString()
+        verified_at: new Date().toISOString(),
       })
       .eq("id", otpRecord.id);
 
     // 2. Update profile with phone and verification level
     const { error: profileError } = await admin
       .from("profiles")
-      .update({ 
+      .update({
         phone: cleanPhone,
         verification_level: "phone",
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       } as never)
       .eq("id", userId);
 
@@ -303,10 +320,10 @@ export async function verifyPhoneOTP(
     // 3. Update service_providers with phone and verified status
     const { error: providerError } = await admin
       .from("service_providers")
-      .update({ 
+      .update({
         phone: `+${cleanPhone}`,
         account_status: "pending", // Still pending until ID verification
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       } as never)
       .eq("user_id", userId);
 
@@ -318,11 +335,10 @@ export async function verifyPhoneOTP(
     revalidatePath("/dashboard/provider");
     revalidatePath("/dashboard/verify-provider");
 
-    return { 
-      success: true, 
-      message: "Phone verified successfully!" 
+    return {
+      success: true,
+      message: "Phone verified successfully!",
     };
-
   } catch (error) {
     console.error("Error in verifyPhoneOTP:", error);
     return { success: false, error: "Verification failed. Please try again." };
@@ -344,14 +360,16 @@ export interface ProviderTypeResult {
 export async function setProviderType(
   providerId: string,
   providerType: "individual" | "company",
-  userId: string
+  userId: string,
 ): Promise<ProviderTypeResult> {
   try {
     const supabase = await createClient();
     const admin = createAdminClient();
 
     // Verify user matches session
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user || user.id !== userId) {
       return { success: false, error: "Authentication error" };
     }
@@ -364,9 +382,9 @@ export async function setProviderType(
     // Update provider (admin client bypasses RLS)
     const { error } = await admin
       .from("service_providers")
-      .update({ 
+      .update({
         business_type: providerType,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq("id", providerId)
       .eq("user_id", userId);
@@ -380,7 +398,6 @@ export async function setProviderType(
     revalidatePath("/dashboard/provider");
 
     return { success: true };
-
   } catch (error) {
     console.error("Error in setProviderType:", error);
     return { success: false, error: "An unexpected error occurred" };
@@ -409,14 +426,16 @@ export async function uploadVerificationDocument(
   providerId: string,
   documentType: string,
   file: File,
-  userId: string
+  userId: string,
 ): Promise<DocumentUploadResult> {
   try {
     const supabase = await createClient();
     const admin = createAdminClient();
 
     // Verify user matches session
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user || user.id !== userId) {
       return { success: false, error: "Authentication error" };
     }
@@ -427,7 +446,7 @@ export async function uploadVerificationDocument(
       "selfie_with_id",
       "business_registration",
       "kra_certificate",
-      "professional_license"
+      "professional_license",
     ];
     if (!validTypes.includes(documentType)) {
       return { success: false, error: "Invalid document type" };
@@ -448,9 +467,9 @@ export async function uploadVerificationDocument(
     if (uploadError) {
       console.error("Upload error:", uploadError);
       if (uploadError.message.includes("Bucket not found")) {
-        return { 
-          success: false, 
-          error: "Storage not configured. Please contact support." 
+        return {
+          success: false,
+          error: "Storage not configured. Please contact support.",
         };
       }
       return { success: false, error: "Failed to upload file" };
@@ -461,7 +480,10 @@ export async function uploadVerificationDocument(
     // getPublicUrl() here: it would 404, and flipping the bucket public to
     // "fix" that would expose every identity document in it.
     const documentPath = data.path;
-    const previewUrl = await createSignedUrl("provider-documents", documentPath);
+    const previewUrl = await createSignedUrl(
+      "provider-documents",
+      documentPath,
+    );
 
     // Record in provider_documents table (non-blocking — table may not exist yet)
     const { error: docInsertError } = await admin
@@ -475,11 +497,13 @@ export async function uploadVerificationDocument(
 
     if (docInsertError) {
       // Table may not exist yet — log but don't fail the upload
-      console.warn("provider_documents insert skipped:", docInsertError.message);
+      console.warn(
+        "provider_documents insert skipped:",
+        docInsertError.message,
+      );
     }
 
     return { success: true, url: previewUrl ?? undefined };
-
   } catch (error) {
     console.error("Error in uploadVerificationDocument:", error);
     return { success: false, error: "Upload failed. Please try again." };
@@ -493,14 +517,16 @@ export async function completeIdentityVerification(
   providerId: string,
   providerType: "individual" | "company",
   documentUrls: Record<string, string>,
-  userId: string
+  userId: string,
 ): Promise<VerificationResult> {
   try {
     const supabase = await createClient();
     const admin = createAdminClient();
 
     // Verify user matches session
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user || user.id !== userId) {
       return { success: false, error: "Authentication error" };
     }
@@ -508,11 +534,20 @@ export async function completeIdentityVerification(
     // Validate required documents based on provider type
     if (providerType === "individual") {
       if (!documentUrls.national_id || !documentUrls.selfie_with_id) {
-        return { success: false, error: "Please upload all required documents" };
+        return {
+          success: false,
+          error: "Please upload all required documents",
+        };
       }
     } else {
-      if (!documentUrls.business_registration || !documentUrls.kra_certificate) {
-        return { success: false, error: "Please upload all required documents" };
+      if (
+        !documentUrls.business_registration ||
+        !documentUrls.kra_certificate
+      ) {
+        return {
+          success: false,
+          error: "Please upload all required documents",
+        };
       }
     }
 
@@ -558,12 +593,17 @@ export async function completeIdentityVerification(
 
     // Update profile verification level to "id" (documents submitted, awaiting review)
     // "full" is only set when admin approves.
+    //
+    // is_verified is no longer written: it is generated from verification_level
+    // as (verification_level = 'full'), so 'id' yields false automatically.
+    // This pairing is where the derivation came from -- the code already
+    // treated 'id' as not-yet-verified, so a naive (verification_level <>
+    // 'none') would have flipped the badge on for documents merely submitted.
     const { error: profileError } = await admin
       .from("profiles")
-      .update({ 
+      .update({
         verification_level: "id",
-        is_verified: false,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       } as never)
       .eq("id", userId);
 
@@ -582,11 +622,10 @@ export async function completeIdentityVerification(
       providerId,
       providerType,
     }).catch((err) =>
-      console.error("Admin verification notification failed:", err)
+      console.error("Admin verification notification failed:", err),
     );
 
     return { success: true };
-
   } catch (error) {
     console.error("Error in completeIdentityVerification:", error);
     return { success: false, error: "Verification failed. Please try again." };

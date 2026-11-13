@@ -91,17 +91,33 @@ export default async function ProviderVerifyPage() {
   const isRejected = provider?.account_status === "rejected";
   const hasIdentityDocs = !!provider?.is_verified || isPendingVerification;
 
-  // Auto-sync: if provider is verified but profile.verification_level is behind, fix it
+  // Auto-sync: if provider is verified but profile.verification_level is behind, fix it.
+  //
+  // is_verified is no longer written: it is generated from verification_level.
+  //
+  // NOTE, not fixed here: this is a WRITE DURING A PAGE RENDER, and it grants
+  // 'full' identity verification. provider-activation-privilege.test.ts was
+  // written because an earlier version of this same block granted
+  // verification_level 'phone' on render; that assertion matches the literal
+  // 'phone' and so does not cover this one. It is left in place because
+  // removing it changes behaviour beyond the scope of this change -- but a page
+  // load should not grant a verification level, and this belongs in the admin
+  // approval path that already sets 'full'.
   if (hasIdentityDocs && verificationLevel !== "full") {
     const admin = createAdminClient();
-    await admin
+    const { error: syncError } = await admin
       .from("profiles")
       .update({
         verification_level: "full",
-        is_verified: true,
         updated_at: new Date().toISOString(),
       })
       .eq("id", user.id);
+    if (syncError) {
+      console.error(
+        "[VerifyProvider] verification_level sync failed:",
+        syncError,
+      );
+    }
     verificationLevel = "full";
   }
 
