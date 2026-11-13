@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type {
-  ProfileUpsert,
   UserRole,
   UserRoleInsert,
   RoleUpgradeWarning,
@@ -430,25 +429,34 @@ function SignupPageContent() {
           .single();
 
         if (!existingProfile) {
-          // Create profile for new user (no primary_role needed for basic users)
-          const profileData: ProfileUpsert = {
-            id: data.user.id,
-            email: data.user.email || "",
-            phone: fullPhone,
-            primary_role: userRole || undefined,
-          };
+          // Profile and role in ONE transactional, idempotent call.
+          //
+          // This was a bare insert whose result was discarded entirely. Every
+          // foreign key in the identity graph points at profiles.id -- 39 of
+          // them now -- so a silent failure here left a signed-in user that no
+          // booking, listing, payment or role row could reference, and the flow
+          // carried on to redirect them into a dashboard anyway.
+          //
+          // The role is passed here too, so a new user's profile and first role
+          // are created together or not at all. The role branching below still
+          // runs; addRoleToUser is an upsert, so its call is a no-op when
+          // provisioning already created the row.
+          const { error: provisionError } = await supabase.rpc(
+            "provision_identity",
+            {
+              // undefined, not null: the generated Args type marks the
+              // defaulted parameters optional, and omitting a key from the
+              // PostgREST body is what makes Postgres apply the SQL default.
+              p_email: data.user.email || "",
+              p_phone: fullPhone,
+              p_full_name: undefined,
+              p_avatar_url: undefined,
+              p_role: userRole ?? undefined,
+            },
+          );
 
-          // The result of this insert used to be discarded entirely. Every
-          // foreign key in the identity graph points at profiles.id, so a
-          // silent failure here leaves a signed-in user that no booking,
-          // listing or role row can reference -- and the flow carried on to
-          // redirect them into a dashboard regardless.
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .insert(profileData as never);
-
-          if (profileError) {
-            console.error("Error creating profile:", profileError);
+          if (provisionError) {
+            console.error("Error provisioning identity:", provisionError);
             setError(
               "We could not finish creating your account. Please try again.",
             );
@@ -606,6 +614,15 @@ function SignupPageContent() {
   };
 
   // Helper function to add a role to user
+  // An UPSERT, not an insert. provision_identity may already have created this
+  // exact row moments earlier for a new user, and user_roles carries
+  // UNIQUE (user_id, role), so a plain insert would fail 23505 on the happy
+  // path and log an error that is not one. onConflict makes the whole signup
+  // flow safely re-runnable.
+  //
+  // is_verified stays false and is NOT updated on conflict: role approval is an
+  // admin action, and a trigger on user_roles refuses a client that tries to
+  // raise it.
   const addRoleToUser = async (userId: string, role: UserRole) => {
     const roleInsert: UserRoleInsert = {
       user_id: userId,
@@ -616,7 +633,10 @@ function SignupPageContent() {
 
     const { error: roleError } = await supabase
       .from("user_roles")
-      .insert(roleInsert as never);
+      .upsert(roleInsert as never, {
+        onConflict: "user_id,role",
+        ignoreDuplicates: true,
+      });
 
     if (roleError) {
       console.error("Role creation error:", roleError);

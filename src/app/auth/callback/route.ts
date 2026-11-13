@@ -13,11 +13,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import type {
-  ProfileUpsert,
-  UserRole,
-  UserRoleInsert,
-} from "@/types/db-helpers";
+import type { UserRole, UserRoleInsert } from "@/types/db-helpers";
 import {
   needsRoleUpgradeWarning,
   getPrimaryRoleByHierarchy,
@@ -130,54 +126,62 @@ export async function GET(request: Request) {
         : undefined;
 
       if (!profile) {
-        // New user - create profile and add role
-        const newProfile: ProfileUpsert = {
-          id: user.id,
-          email: user.email || "",
-          full_name:
-            user.user_metadata?.full_name || user.user_metadata?.name || null,
-          avatar_url:
-            user.user_metadata?.avatar_url ||
-            user.user_metadata?.picture ||
-            null,
-          phone: user.phone || null,
-          primary_role: userRole,
-        };
+        // New user: the profile and the role in ONE transactional, idempotent
+        // call.
+        //
+        // These used to be two sequential writes, each logged-and-continued. A
+        // failure on the first made the second fail by foreign key, and the
+        // user was then redirected into a dashboard with no profile at all --
+        // which 39 foreign keys now reference. provision_identity does both or
+        // neither.
+        //
+        // It is also why the error below REDIRECTS instead of carrying on.
+        // Continuing was the actual defect: a signed-in user with no profile
+        // cannot be booked, cannot be paid, cannot hold a role and cannot
+        // appear in profiles_public, and nothing told them or us.
+        //
+        // Because this callback runs on EVERY OAuth login and the function is
+        // idempotent, a signup that fails here self-heals on the next login
+        // rather than leaving the account permanently broken.
+        const { error: provisionError } = await supabase.rpc(
+          "provision_identity",
+          {
+            // undefined, not null: the generated Args type marks the defaulted
+            // parameters optional, and omitting a key from the PostgREST body
+            // is what makes Postgres apply the SQL default.
+            p_email: user.email || "",
+            p_phone: user.phone || undefined,
+            p_full_name:
+              user.user_metadata?.full_name ||
+              user.user_metadata?.name ||
+              undefined,
+            p_avatar_url:
+              user.user_metadata?.avatar_url ||
+              user.user_metadata?.picture ||
+              undefined,
+            p_role: userRole ?? undefined,
+          },
+        );
 
-        const { error: insertError } = await supabase
-          .from("profiles")
-          .insert(newProfile as never);
-
-        if (insertError) {
-          console.error("Error creating profile:", insertError);
+        if (provisionError) {
+          console.error("Error provisioning identity:", provisionError);
+          const response = NextResponse.redirect(
+            `${origin}/login?error=provisioning_failed`,
+          );
+          response.cookies.delete("pendingRole");
+          response.cookies.delete("pendingRedirect");
+          return response;
         }
 
-        // Add role to user_roles table if pendingRole was set
-        if (userRole) {
-          const roleInsert: UserRoleInsert = {
-            user_id: user.id,
-            role: userRole,
-            is_active: true,
-            is_verified: false,
-          };
-
-          const { error: roleError } = await supabase
-            .from("user_roles")
-            .insert(roleInsert as never);
-
-          if (roleError) {
-            console.error("Error creating user role:", roleError);
-          }
-
-          // NOTE: the service_providers row is deliberately NOT created here.
-          // isNewProvider below redirects every new provider to
-          // /onboarding/provider-type, and setProviderType() creates the row
-          // there -- with the service-role client, 23505 race handling, and a
-          // real business_type. Creating it here as well was premature, and it
-          // fabricated a phone number: an OAuth user has no user.phone, so the
-          // fallback wrote the company's own support line into a published
-          // marketplace contact field. See src/lib/identity/provider-profile.ts.
-        }
+        // NOTE: the service_providers row is deliberately NOT created here, and
+        // provision_identity does not create it either. isNewProvider below
+        // redirects every new provider to /onboarding/provider-type, and
+        // setProviderType() creates the row there -- with the service-role
+        // client, 23505 race handling, a real business_type and a real phone.
+        // Creating it here was premature, and it fabricated a phone number: an
+        // OAuth user has no user.phone, so the fallback wrote the company's own
+        // support line into a published marketplace contact field. See
+        // src/lib/identity/provider-profile.ts.
 
         // Clear cookies and redirect based on intent
         // If no role was set, this is a basic user - redirect to properties or their original page
