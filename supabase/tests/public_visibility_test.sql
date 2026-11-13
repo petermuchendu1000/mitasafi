@@ -69,10 +69,13 @@ BEGIN
 
   INSERT INTO auth.users (id,email) VALUES
     (v_ll,'vll@t.invalid'),(v_llp,'vllp@t.invalid'),(v_other,'voth@t.invalid');
-  INSERT INTO profiles (id,email,phone,full_name,is_verified) VALUES
-    (v_ll ,'vll@t.invalid' ,'+254700000201','Visible Victor',true),
-    (v_llp,'vllp@t.invalid','+254700000202','Paused Patrick',true),
-    (v_other,'voth@t.invalid','+254700000203','Other Otieno',false);
+  -- verification_level, not is_verified: the latter is now a generated column
+  -- derived as (verification_level = 'full'), so writing it raises 428C9.
+  -- 'full' derives true, 'none' derives false.
+  INSERT INTO profiles (id,email,phone,full_name,verification_level) VALUES
+    (v_ll ,'vll@t.invalid' ,'+254700000201','Visible Victor','full'),
+    (v_llp,'vllp@t.invalid','+254700000202','Paused Patrick','full'),
+    (v_other,'voth@t.invalid','+254700000203','Other Otieno','none');
 
   -- one listing per status, same landlord, so status is the only variable
   INSERT INTO listings (landlord_id,title,description,property_type,address,area,rent_amount,status)

@@ -53,6 +53,18 @@ jobs:
       - name: Idempotency checker self-test
         run: node scripts/ci/check-migration-idempotency.mjs --self-test
 
+      # Proves the harness can report SURVIVED. A mutation harness that can
+      # only ever report KILLED proves nothing, and is the easy one to write.
+      - name: Mutation harness self-test
+        run: node scripts/ci/mutate-identity-guards.mjs --self-test
+
+      # Reintroduces each identity defect one at a time and requires the suite
+      # that owns it to fail. Fails the build on a survivor AND on a mutant
+      # whose anchor no longer matches, because a defect that was never
+      # reintroduced proves nothing about the guard that did not catch it.
+      - name: Identity guards are not decorative
+        run: node scripts/ci/mutate-identity-guards.mjs
+
   database:
     name: Migrations and SQL suites
     runs-on: ubuntu-latest

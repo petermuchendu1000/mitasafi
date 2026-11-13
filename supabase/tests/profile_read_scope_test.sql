@@ -77,9 +77,13 @@ BEGIN
   -- Landlord fixtures for the fifth branch added by 20260338000000.
   -- v_ll1 has a PUBLIC listing (status='active'); v_ll2 has only a draft.
   INSERT INTO auth.users (id,email) VALUES (v_ll1,'ll1@t.invalid'),(v_ll2,'ll2@t.invalid');
-  INSERT INTO profiles (id,email,phone,full_name,is_verified) VALUES
-    (v_ll1,'ll1@t.invalid','+254700000106','Landlord Lucy',true),
-    (v_ll2,'ll2@t.invalid','+254700000107','Draft Dennis',true);
+  -- verification_level, not is_verified: 20260344000000 made
+  -- profiles.is_verified a STORED generated column, (verification_level =
+  -- 'full'), so writing it raises 428C9. 'full' is the level that derives
+  -- is_verified = true, which is what P20 below asserts on.
+  INSERT INTO profiles (id,email,phone,full_name,verification_level) VALUES
+    (v_ll1,'ll1@t.invalid','+254700000106','Landlord Lucy','full'),
+    (v_ll2,'ll2@t.invalid','+254700000107','Draft Dennis','full');
   INSERT INTO listings (landlord_id,title,description,property_type,address,area,rent_amount,status)
     VALUES (v_ll1,'Active flat','desc','apartment','1 Rd','Kilimani',50000,'active');
   INSERT INTO listings (landlord_id,title,description,property_type,address,area,rent_amount,status)

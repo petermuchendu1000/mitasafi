@@ -9,7 +9,14 @@
 -- Run:  psql "$DATABASE_URL" -f supabase/tests/client_write_surface_test.sql
 --
 -- A healthy run prints PASS on every line and ends with
---   RESULT pass=20 fail=0
+--   RESULT pass=22 fail=0
+--
+-- Was 20. The self-verification block became two assertions in
+-- 20260344000000: profiles.is_verified is now a generated column, so it is
+-- refused as 428C9 rather than 42501, and the write that could still
+-- escalate -- setting verification_level, the derivation's input -- is
+-- asserted separately. The declared count was also one short of what the
+-- suite actually produced before that change.
 --
 -- NOTE on one assertion: create_booking_with_capacity_check takes EIGHT
 -- arguments, so calling it with a single uuid is refused for a signature
@@ -118,14 +125,43 @@ BEGIN
   END;
 
   -- ===== self-verification escalation =======================================
+  -- The REFUSAL MECHANISM changed, and strengthened, in 20260344000000:
+  -- profiles.is_verified used to be an ordinary column withheld from
+  -- `authenticated` by a column grant, so the refusal was 42501
+  -- (insufficient_privilege). It is now a STORED GENERATED column derived from
+  -- verification_level, so the refusal is 428C9 -- not a privilege decision at
+  -- all, but a statement that the column cannot be assigned by anyone,
+  -- service_role included.
+  --
+  -- Both are accepted here. Narrowing this to 428C9 alone would make the
+  -- assertion depend on the mechanism rather than on the property, and the
+  -- property is what matters: a client cannot verify itself. Writing the
+  -- DERIVATION'S INPUT is asserted separately below, because that is the write
+  -- that would actually escalate now.
   BEGIN
     SET LOCAL ROLE authenticated;
     UPDATE profiles SET is_verified = true WHERE false;
     RESET ROLE;
     fail := fail + 1; rep := rep || 'FAIL  a user can still verify themselves' || E'\n';
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      RESET ROLE;
+      pass := pass + 1; rep := rep || 'PASS  self-verification refused (42501)' || E'\n';
+    WHEN generated_always THEN
+      RESET ROLE;
+      pass := pass + 1; rep := rep || 'PASS  self-verification refused (428C9, generated)' || E'\n';
+  END;
+
+  -- is_verified is unwritable by construction now, so the escalation that
+  -- remains possible is writing verification_level, its input.
+  BEGIN
+    SET LOCAL ROLE authenticated;
+    UPDATE profiles SET verification_level = 'full' WHERE false;
+    RESET ROLE;
+    fail := fail + 1; rep := rep || 'FAIL  a user can set its own verification_level' || E'\n';
   EXCEPTION WHEN insufficient_privilege THEN
     RESET ROLE;
-    pass := pass + 1; rep := rep || 'PASS  self-verification refused' || E'\n';
+    pass := pass + 1; rep := rep || 'PASS  self-set of verification_level refused (42501)' || E'\n';
   END;
 
   BEGIN

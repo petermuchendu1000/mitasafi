@@ -76,8 +76,25 @@ BEGIN
   END IF;
 
   -- Signup inserts into this table from the browser; INSERT must survive.
-  IF NOT has_table_privilege('authenticated', 'public.service_providers', 'INSERT') THEN
-    RAISE EXCEPTION 'C-0 OVERREACH: authenticated lost INSERT (breaks provider signup)';
+  --
+  -- Asserted per COLUMN, not with has_table_privilege, since
+  -- 20260343000000_service_providers_insert_allowlist.sql. That migration
+  -- dropped table-level INSERT and re-granted 42 of the 50 columns by name --
+  -- the mirror of the UPDATE allowlist this file established -- because
+  -- table-level INSERT made the eight withheld trust and money columns
+  -- insertable at creation time, including wallet_balance. A table-level test
+  -- is therefore no longer a test of whether signup works: it reads false
+  -- while signup works fine.
+  --
+  -- These four columns are what buildProviderProfile() actually emits
+  -- (src/lib/identity/provider-profile.ts), so this assertion is derived from
+  -- the payload rather than from the grant -- the distinction
+  -- 20260337000000_grant_profiles_updated_at.sql exists to record.
+  IF NOT (has_column_privilege('authenticated', 'public.service_providers', 'user_id', 'INSERT')
+      AND has_column_privilege('authenticated', 'public.service_providers', 'business_name', 'INSERT')
+      AND has_column_privilege('authenticated', 'public.service_providers', 'phone', 'INSERT')
+      AND has_column_privilege('authenticated', 'public.service_providers', 'business_type', 'INSERT')) THEN
+    RAISE EXCEPTION 'C-0 OVERREACH: authenticated lost a column needed for provider signup';
   END IF;
 
   -- The SECURITY DEFINER wallet path must be intact.

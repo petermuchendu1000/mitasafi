@@ -211,15 +211,25 @@ function runSuite(suite) {
   return r.status;
 }
 
-function assertCleanTree() {
-  const r = spawnSync("git", ["status", "--porcelain"], { encoding: "utf8" });
-  const dirty = (r.stdout || "")
-    .split("\n")
-    .filter((l) => l.trim() && !l.includes("node_modules"));
+/**
+ * Refuse only if a file this harness will EDIT has uncommitted changes.
+ *
+ * Scoped to the target files rather than to the whole tree. The harness
+ * restores from the contents it read first, so unrelated dirty files are
+ * irrelevant, and refusing on them only stops the harness being run during
+ * ordinary work — which is when it is most useful. What must not happen is
+ * mutating a file whose uncommitted state could then be lost if the process
+ * dies between write and restore.
+ */
+function assertTargetsClean(targets) {
+  const r = spawnSync("git", ["status", "--porcelain", "--", ...targets], {
+    encoding: "utf8",
+  });
+  const dirty = (r.stdout || "").split("\n").filter((l) => l.trim());
   if (dirty.length) {
     console.error(
-      "refusing to run on a dirty tree -- this harness edits files in place, and an\n" +
-        "interrupted run must never be mistaken for your own uncommitted work:\n" +
+      "refusing to run: a file this harness mutates has uncommitted changes, and an\n" +
+        "interrupted run could lose them. Commit or stash these first:\n" +
         dirty.join("\n"),
     );
     process.exit(2);
@@ -240,7 +250,7 @@ function withMutation(file, edit, suite) {
 }
 
 function selfTest() {
-  assertCleanTree();
+  assertTargetsClean([...new Set(CONTROLS.map((c) => c.file))]);
   console.log("self-test: neutral mutants must SURVIVE\n");
   let bad = 0;
   for (const c of CONTROLS) {
@@ -265,7 +275,7 @@ function selfTest() {
 }
 
 function main() {
-  assertCleanTree();
+  assertTargetsClean([...new Set(MUTANTS.map((m) => m.file))]);
   const results = [];
   for (const m of MUTANTS) {
     const original = readFileSync(m.file, "utf8");

@@ -23,7 +23,9 @@
     "test:sql": "node scripts/ci/run-sql-suites.mjs",
     "test:sql:self": "node scripts/ci/run-sql-suites.mjs --self-test",
     "test:idempotency": "node scripts/ci/check-migration-idempotency.mjs",
-    "test:idempotency:self": "node scripts/ci/check-migration-idempotency.mjs --self-test"
+    "test:idempotency:self": "node scripts/ci/check-migration-idempotency.mjs --self-test",
+    "test:mutation": "node scripts/ci/mutate-identity-guards.mjs",
+    "test:mutation:self": "node scripts/ci/mutate-identity-guards.mjs --self-test"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
