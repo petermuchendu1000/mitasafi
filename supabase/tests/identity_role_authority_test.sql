@@ -5,7 +5,7 @@
 --
 -- Run:  psql "$DATABASE_URL" -f supabase/tests/identity_role_authority_test.sql
 -- A healthy run prints PASS on every line and ends with
---   IDENTITY_RESULT pass=18 fail=0
+--   IDENTITY_RESULT pass=21 fail=0
 --
 -- WHY A NEW SUITE RATHER THAN ADDITIONS TO THE EXISTING THREE
 --
@@ -316,6 +316,69 @@ BEGIN
     pass:=pass+1; rep:=rep||'PASS I18 both provider read predicates require account_status'||E'\n';
   ELSE
     fail:=fail+1; rep:=rep||'FAIL I18 only '||n||' of 2 provider read predicates check account_status'||E'\n';
+  END IF;
+
+  -- ===== I19: the service_providers INSERT and UPDATE allowlists agree ======
+  -- 20260329 dropped table-level UPDATE and re-granted 42 of 50 columns by
+  -- name, withholding the trust/money/derived-stat columns. It never did the
+  -- same for INSERT, and a column REVOKE is inert while the table privilege is
+  -- held, so all 50 were insertable: the eight columns a provider must never
+  -- write were writable exactly once, at creation. 20260343 derives the INSERT
+  -- allowlist FROM the UPDATE allowlist so the two cannot drift again. This
+  -- asserts they have not.
+  SELECT string_agg(attname, ', ' ORDER BY attname) INTO bad
+    FROM pg_attribute
+   WHERE attrelid = 'public.service_providers'::regclass
+     AND attnum > 0 AND NOT attisdropped
+     AND has_column_privilege('authenticated','public.service_providers',attname,'INSERT')
+      <> has_column_privilege('authenticated','public.service_providers',attname,'UPDATE');
+  IF bad IS NULL THEN
+    pass:=pass+1; rep:=rep||'PASS I19 service_providers INSERT and UPDATE allowlists agree'||E'\n';
+  ELSE
+    fail:=fail+1; rep:=rep||'FAIL I19 allowlists disagree on: '||bad||E'\n';
+  END IF;
+
+  -- ===== I20: the money and trust columns are not client-insertable =========
+  -- wallet_balance is the one that mattered: request_provider_payout validates
+  -- a payout amount against it and cannot validate how it arose, so a
+  -- self-inserted balance was payable. is_verified and verification_badge
+  -- would have published a fake verified provider.
+  SELECT string_agg(c, ', ' ORDER BY c) INTO bad
+    FROM unnest(ARRAY['account_status','average_rating','is_verified',
+                      'total_earnings','total_jobs_completed','total_reviews',
+                      'verification_badge','wallet_balance']) AS c
+   WHERE has_column_privilege('authenticated','public.service_providers',c,'INSERT')
+      OR has_column_privilege('anon','public.service_providers',c,'INSERT');
+  IF bad IS NULL THEN
+    pass:=pass+1; rep:=rep||'PASS I20 no client can insert a trust or money column'||E'\n';
+  ELSE
+    fail:=fail+1; rep:=rep||'FAIL I20 client-insertable trust/money columns: '||bad||E'\n';
+  END IF;
+
+  -- ===== I21: table-level INSERT stays dropped, and creation still works ====
+  -- Two halves of one property. Without the first, I19 and I20 are decorative;
+  -- without the second, this suite would be green while provider signup was
+  -- dead. The second is derived from the payload buildProviderProfile() emits.
+  SELECT string_agg(x.lbl, ', ') INTO bad
+    FROM (VALUES
+      ('tbl INSERT held by authenticated',
+        has_table_privilege('authenticated','public.service_providers','INSERT')),
+      ('tbl INSERT held by anon',
+        has_table_privilege('anon','public.service_providers','INSERT')),
+      ('user_id NOT insertable',
+        NOT has_column_privilege('authenticated','public.service_providers','user_id','INSERT')),
+      ('business_name NOT insertable',
+        NOT has_column_privilege('authenticated','public.service_providers','business_name','INSERT')),
+      ('phone NOT insertable',
+        NOT has_column_privilege('authenticated','public.service_providers','phone','INSERT')),
+      ('business_type NOT insertable',
+        NOT has_column_privilege('authenticated','public.service_providers','business_type','INSERT'))
+    ) AS x(lbl, wrong)
+   WHERE x.wrong;
+  IF bad IS NULL THEN
+    pass:=pass+1; rep:=rep||'PASS I21 table INSERT dropped, provider creation intact'||E'\n';
+  ELSE
+    fail:=fail+1; rep:=rep||'FAIL I21 '||bad||E'\n';
   END IF;
 
   RAISE EXCEPTION E'IDENTITY_RESULT pass=% fail=%\n%', pass, fail, rep;

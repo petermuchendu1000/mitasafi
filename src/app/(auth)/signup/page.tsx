@@ -31,6 +31,7 @@ import {
   needsRoleUpgradeWarning,
   getPrimaryRoleByHierarchy,
 } from "@/types/db-helpers";
+import { buildProviderProfile } from "@/lib/identity/provider-profile";
 import { landingImage } from "@/lib/storage/landing-images";
 
 // SECURITY: URL sanitizer for client-side redirect validation
@@ -437,7 +438,22 @@ function SignupPageContent() {
             primary_role: userRole || undefined,
           };
 
-          await supabase.from("profiles").insert(profileData as never);
+          // The result of this insert used to be discarded entirely. Every
+          // foreign key in the identity graph points at profiles.id, so a
+          // silent failure here leaves a signed-in user that no booking,
+          // listing or role row can reference -- and the flow carried on to
+          // redirect them into a dashboard regardless.
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .insert(profileData as never);
+
+          if (profileError) {
+            console.error("Error creating profile:", profileError);
+            setError(
+              "We could not finish creating your account. Please try again.",
+            );
+            return;
+          }
         }
 
         // Handle role assignment
@@ -475,24 +491,39 @@ function SignupPageContent() {
                     .eq("id", data.user.id)
                     .single();
 
-                  const providerProfile = {
-                    user_id: data.user.id,
-                    business_name:
+                  // This payload previously carried a `status` key set to
+                  // "pending" and no phone, so it failed on every call for two
+                  // independent reasons and the error was only logged. There is
+                  // no status column on service_providers; it is account_status.
+                  // fullPhone is the number OTP-verified moments ago in this
+                  // same handler, so it is the strongest candidate there is.
+                  const built = buildProviderProfile({
+                    userId: data.user.id,
+                    businessName:
                       (profile as { full_name?: string } | null)?.full_name ||
                       data.user.user_metadata?.full_name ||
                       "My Business",
-                    status: "pending",
-                  };
+                    phoneCandidates: [fullPhone, data.user.phone],
+                  });
+
+                  if (!built.ok) {
+                    setError(built.message);
+                    return;
+                  }
 
                   const { error: providerError } = await supabase
                     .from("service_providers")
-                    .insert(providerProfile as never);
+                    .insert(built.record as never);
 
                   if (providerError) {
                     console.error(
                       "Error creating service provider profile for existing user:",
                       providerError,
                     );
+                    setError(
+                      "We could not finish setting up your provider profile. Please try again.",
+                    );
+                    return;
                   }
                 }
               }
@@ -505,33 +536,46 @@ function SignupPageContent() {
             await addRoleToUser(data.user.id, userRole);
 
             // Update primary_role on profile
-            await supabase
+            const { error: primaryRoleError } = await supabase
               .from("profiles")
               .update({ primary_role: userRole } as never)
               .eq("id", data.user.id);
 
+            if (primaryRoleError) {
+              console.error("Error setting primary_role:", primaryRoleError);
+            }
+
             // For service providers, create the service_providers business profile
             // This is required before redirecting to provider onboarding
             if (userRole === "service_provider") {
-              const providerProfile = {
-                user_id: data.user.id,
-                business_name:
+              const built = buildProviderProfile({
+                userId: data.user.id,
+                businessName:
                   data.user.user_metadata?.full_name ||
                   data.user.user_metadata?.name ||
                   data.user.email?.split("@")[0] ||
                   "My Business",
-                phone: data.user.phone || "+254700000000", // Required field
-              };
+                phoneCandidates: [fullPhone, data.user.phone],
+              });
+
+              if (!built.ok) {
+                setError(built.message);
+                return;
+              }
 
               const { error: providerError } = await supabase
                 .from("service_providers")
-                .insert(providerProfile as never);
+                .insert(built.record as never);
 
               if (providerError) {
                 console.error(
                   "Error creating service provider profile during phone signup:",
                   providerError,
                 );
+                setError(
+                  "We could not finish setting up your provider profile. Please try again.",
+                );
+                return;
               }
             }
 
@@ -610,29 +654,54 @@ function SignupPageContent() {
           .maybeSingle();
 
         if (!existingProvider) {
+          // `phone` is selected as well as full_name now. The previous payload
+          // passed a hardcoded number UNCONDITIONALLY, with a comment saying it
+          // "will be updated in onboarding" -- nothing updates it, and the
+          // number is the company's own support line, so the provider was
+          // published with Mitasafi's phone as their contact.
           const { data: profile } = await supabase
             .from("profiles")
-            .select("full_name")
+            .select("full_name, phone")
             .eq("id", existingUserId)
             .single();
 
-          const providerProfile = {
-            user_id: existingUserId,
-            business_name:
-              (profile as { full_name?: string } | null)?.full_name ||
-              "My Business",
-            phone: "+254700000000", // Required field, will be updated in onboarding
-          };
+          const storedProfile = profile as {
+            full_name?: string | null;
+            phone?: string | null;
+          } | null;
+
+          // fullPhone is not in scope in this handler. Two candidates: the
+          // phone stored on the profile at signup, and the number typed into
+          // this page's own form -- which is populated on the phone-OTP path
+          // that reaches this modal, and empty on the Google OAuth path.
+          const typedPhone = phoneNumber
+            ? `+254${phoneNumber.replace(/\D/g, "")}`
+            : null;
+
+          const built = buildProviderProfile({
+            userId: existingUserId,
+            businessName: storedProfile?.full_name || "My Business",
+            phoneCandidates: [storedProfile?.phone, typedPhone],
+          });
+
+          if (!built.ok) {
+            setError(built.message);
+            return;
+          }
 
           const { error: providerError } = await supabase
             .from("service_providers")
-            .insert(providerProfile as never);
+            .insert(built.record as never);
 
           if (providerError) {
             console.error(
               "Error creating service provider profile during role upgrade:",
               providerError,
             );
+            setError(
+              "We could not finish setting up your provider profile. Please try again.",
+            );
+            return;
           }
         }
       }
@@ -641,10 +710,14 @@ function SignupPageContent() {
       const allRoles = [...existingRoles, targetRole];
       const newPrimaryRole = getPrimaryRoleByHierarchy(allRoles);
 
-      await supabase
+      const { error: primaryRoleError } = await supabase
         .from("profiles")
         .update({ primary_role: newPrimaryRole } as never)
         .eq("id", existingUserId);
+
+      if (primaryRoleError) {
+        console.error("Error updating primary_role:", primaryRoleError);
+      }
 
       // Clear cookies
       document.cookie = "pendingRole=; path=/; max-age=0";

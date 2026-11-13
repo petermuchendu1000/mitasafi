@@ -1,14 +1,14 @@
 /**
  * Provider Type Selection Actions
- * 
+ *
  * Server action to set the provider type (individual/company)
  * during onboarding after signup.
- * 
+ *
  * BEHAVIOR:
  * - Creates provider record if it doesn't exist (race condition fix)
  * - Sets or updates business_type during onboarding
  * - Uses admin client for reliable DB writes (bypasses RLS)
- * 
+ *
  * This prevents:
  * - RLS blocking inserts/updates during onboarding
  * - Race conditions from OAuth/phone signup flows
@@ -19,6 +19,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { buildProviderProfile } from "@/lib/identity/provider-profile";
 import { revalidatePath } from "next/cache";
 
 type ProviderType = "individual" | "company";
@@ -29,16 +30,22 @@ interface SetProviderTypeResult {
 }
 
 export async function setProviderType(
-  providerType: ProviderType
+  providerType: ProviderType,
 ): Promise<SetProviderTypeResult> {
   try {
     // 1. Verify the user is authenticated (via cookie session)
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
     if (authError || !user) {
       console.error("setProviderType: Not authenticated", authError);
-      return { success: false, error: "Not authenticated. Please log in again." };
+      return {
+        success: false,
+        error: "Not authenticated. Please log in again.",
+      };
     }
 
     // 2. Use admin client for DB operations (bypasses RLS)
@@ -53,22 +60,28 @@ export async function setProviderType(
 
     if (queryError) {
       console.error("setProviderType: Query failed", queryError);
-      return { success: false, error: "Failed to check provider status. Please try again." };
+      return {
+        success: false,
+        error: "Failed to check provider status. Please try again.",
+      };
     }
 
     // 4a. If provider exists → update
     if (existingProvider) {
       const { error: updateError } = await admin
         .from("service_providers")
-        .update({ 
+        .update({
           business_type: providerType,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq("id", existingProvider.id);
 
       if (updateError) {
         console.error("setProviderType: Update failed", updateError);
-        return { success: false, error: "Failed to update provider type. Please try again." };
+        return {
+          success: false,
+          error: "Failed to update provider type. Please try again.",
+        };
       }
 
       revalidatePath("/dashboard/provider");
@@ -76,72 +89,90 @@ export async function setProviderType(
     }
 
     // 4b. Provider doesn't exist → create
-    // Get user's full name from profile for business_name
+    // Get user's full name AND phone from profile. `phone` is selected now:
+    // this record's phone used to fall back to a hardcoded number, which is
+    // the company's own published support line, so any provider without a
+    // phone on their auth user was listed with Mitasafi's number as their
+    // contact. See src/lib/identity/provider-profile.ts.
     const { data: profileData } = await admin
       .from("profiles")
-      .select("full_name")
+      .select("full_name, phone")
       .eq("id", user.id)
       .single();
 
-    const businessName = 
-      profileData?.full_name || 
-      user.user_metadata?.full_name || 
-      user.user_metadata?.name || 
-      user.email?.split('@')[0] || 
-      'My Business';
+    const businessName =
+      profileData?.full_name ||
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      user.email?.split("@")[0] ||
+      "My Business";
 
-    // Build provider record with required fields
-    const providerRecord: {
-      user_id: string;
-      business_name: string;
-      business_type: "individual" | "company";
-      phone: string;
-    } = {
-      user_id: user.id,
-      business_name: businessName,
-      business_type: providerType,
-      phone: user.phone || '+254700000000',
-    };
+    // One builder for every provider-creation site. It refuses rather than
+    // inventing a phone, so a Google OAuth user who has never given one is
+    // told to add it instead of being published with somebody else's number.
+    const built = buildProviderProfile({
+      userId: user.id,
+      businessName,
+      phoneCandidates: [user.phone, profileData?.phone],
+      businessType: providerType,
+    });
+
+    if (!built.ok) {
+      return { success: false, error: built.message };
+    }
 
     const { error: insertError } = await admin
       .from("service_providers")
-      .insert(providerRecord);
+      .insert(built.record);
 
     if (insertError) {
       console.error("setProviderType: Insert failed", insertError);
       // Check for unique constraint violation (already exists)
-      if (insertError.code === '23505') {
+      if (insertError.code === "23505") {
         // Race condition: record was created between our check and insert
         // Try the update instead
         const { error: retryUpdate } = await admin
           .from("service_providers")
-          .update({ 
+          .update({
             business_type: providerType,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
 
         if (retryUpdate) {
-          console.error("setProviderType: Retry update also failed", retryUpdate);
-          return { success: false, error: "Failed to save provider type. Please try again." };
+          console.error(
+            "setProviderType: Retry update also failed",
+            retryUpdate,
+          );
+          return {
+            success: false,
+            error: "Failed to save provider type. Please try again.",
+          };
         }
       } else {
-        return { success: false, error: `Failed to create provider profile: ${insertError.message}` };
+        return {
+          success: false,
+          error: `Failed to create provider profile: ${insertError.message}`,
+        };
       }
     }
 
     // 5. Also ensure user_roles has service_provider role
-    const { error: roleError } = await admin
-      .from("user_roles")
-      .upsert({
+    const { error: roleError } = await admin.from("user_roles").upsert(
+      {
         user_id: user.id,
         role: "service_provider",
         is_active: true,
         is_verified: false,
-      }, { onConflict: "user_id,role" });
+      },
+      { onConflict: "user_id,role" },
+    );
 
     if (roleError) {
-      console.error("setProviderType: Role upsert failed (non-blocking)", roleError);
+      console.error(
+        "setProviderType: Role upsert failed (non-blocking)",
+        roleError,
+      );
       // Non-blocking — the provider was created successfully
     }
 
@@ -151,6 +182,9 @@ export async function setProviderType(
     return { success: true };
   } catch (error) {
     console.error("setProviderType: Unexpected error", error);
-    return { success: false, error: "An unexpected error occurred. Please try again." };
+    return {
+      success: false,
+      error: "An unexpected error occurred. Please try again.",
+    };
   }
 }
