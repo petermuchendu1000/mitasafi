@@ -25,7 +25,8 @@
     "test:idempotency": "node scripts/ci/check-migration-idempotency.mjs",
     "test:idempotency:self": "node scripts/ci/check-migration-idempotency.mjs --self-test",
     "test:mutation": "node scripts/ci/mutate-identity-guards.mjs",
-    "test:mutation:self": "node scripts/ci/mutate-identity-guards.mjs --self-test"
+    "test:mutation:self": "node scripts/ci/mutate-identity-guards.mjs --self-test",
+    "db:local": "scripts/ci/local-pg.sh"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
