@@ -30,6 +30,12 @@ import {
   needsRoleUpgradeWarning,
   getPrimaryRoleByHierarchy,
 } from "@/types/db-helpers";
+import {
+  normalizeRoleParam,
+  readActiveRoles,
+  productRoleNames,
+  type RoleQueryClient,
+} from "@/lib/identity/roles";
 import { buildProviderProfile } from "@/lib/identity/provider-profile";
 import { landingImage } from "@/lib/storage/landing-images";
 
@@ -258,18 +264,18 @@ function SignupPageContent() {
         if (!user) return;
 
         // Get existing roles
-        const { data: rolesData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .eq("is_active", true);
-
-        const currentRoles: UserRole[] =
-          rolesData?.map((r: { role: string }) => r.role as UserRole) || [];
-        const newRole: UserRole =
-          pendingRoleFromUrl === "provider"
-            ? "service_provider"
-            : (pendingRoleFromUrl as UserRole);
+        const { roles: activeRoles } = await readActiveRoles(
+          supabase as unknown as RoleQueryClient,
+          user.id,
+        );
+        const currentRoles: UserRole[] = productRoleNames(activeRoles);
+        // A fourth copy of the alias lived here, with another `as UserRole`
+        // cast on a query parameter. normalizeRoleParam returns null for an
+        // unrecognised value, so the warning is simply not shown rather than
+        // being computed from a role the type system vouched for and the
+        // database would then reject.
+        const newRole = normalizeRoleParam(pendingRoleFromUrl);
+        if (!newRole) return;
 
         // Check if warning is needed
         const warning = needsRoleUpgradeWarning(currentRoles, newRole);
@@ -406,20 +412,15 @@ function SignupPageContent() {
       if (error) {
         setError(error.message);
       } else if (data.user) {
-        // Map role to UserRole (null = no role needed)
-        const userRole: UserRole | null =
-          selectedRole === "provider" ? "service_provider" : selectedRole;
+        // null = no role needed; this user is browsing and saving listings.
+        const userRole: UserRole | null = normalizeRoleParam(selectedRole);
 
         // Check existing roles from user_roles table
-        const { data: existingRolesData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", data.user.id)
-          .eq("is_active", true);
-
-        const currentRoles: UserRole[] =
-          existingRolesData?.map((r: { role: string }) => r.role as UserRole) ||
-          [];
+        const { roles: activeRoles } = await readActiveRoles(
+          supabase as unknown as RoleQueryClient,
+          data.user.id,
+        );
+        const currentRoles: UserRole[] = productRoleNames(activeRoles);
 
         // Check if profile exists
         const { data: existingProfile } = await supabase

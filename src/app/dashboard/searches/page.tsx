@@ -1,6 +1,6 @@
 /**
  * Saved Searches Dashboard Page
- * 
+ *
  * Shows user's saved search alerts with ability to:
  * - View all saved searches
  * - Edit notification preferences
@@ -15,6 +15,8 @@ import { DashboardHeader, SavedSearchesList } from "@/components/dashboard";
 import type { UserRole } from "@/types/db-helpers";
 import { Bell, Plus } from "lucide-react";
 import Link from "next/link";
+import { getCachedRoles } from "@/lib/cache/queries";
+import { primaryRoleOf, productRoles } from "@/lib/identity/roles";
 
 export const metadata: Metadata = {
   title: "Saved Searches | MitaSafi Dashboard",
@@ -46,9 +48,11 @@ interface SearchAlertRow {
 
 export default async function SavedSearchesPage() {
   const supabase = await createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
     redirect("/login");
   }
@@ -69,21 +73,21 @@ export default async function SavedSearchesPage() {
     primary_role: string | null;
   } | null;
 
-  // Get user roles
-  const { data: rolesData } = await supabase
-    .from("user_roles")
-    .select("role, is_verified")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
-  const userRoles: { role: UserRole; is_verified: boolean }[] = 
-    rolesData?.map((r: { role: string; is_verified: boolean | null }) => ({
-      role: r.role as UserRole,
-      is_verified: r.is_verified ?? false,
-    })) || [];
+  const { roles } = await getCachedRoles();
+  // productRoles excludes 'admin', which user_roles can hold but this page's
+  // role-switcher is not a place to switch into.
+  const userRoles: { role: UserRole; is_verified: boolean }[] = productRoles(
+    roles,
+  ).map((r) => ({ role: r.role, is_verified: r.isVerified }));
 
   const userName = profile?.full_name || user.email?.split("@")[0] || "User";
-  const currentRole = (userRoles[0]?.role || "tenant") as UserRole;
+  // primaryRoleOf applies the documented hierarchy (Landlord >= Service
+  // Provider > Tenant). This read `userRoles[0]`, i.e. whichever row the
+  // database happened to return first -- an unordered query, so a user holding
+  // two roles could see a different dashboard between refreshes. The "tenant"
+  // fallback is kept for a user holding no roles at all, which is a valid
+  // state: they are browsing and saving listings.
+  const currentRole: UserRole = primaryRoleOf(roles) ?? "tenant";
 
   // Get user's saved searches
   const { data: searchesData } = await supabase
@@ -94,7 +98,8 @@ export default async function SavedSearchesPage() {
     .order("created_at", { ascending: false });
 
   // Type the searches data
-  const savedSearches: SearchAlertRow[] = (searchesData as SearchAlertRow[] | null) || [];
+  const savedSearches: SearchAlertRow[] =
+    (searchesData as SearchAlertRow[] | null) || [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -117,7 +122,7 @@ export default async function SavedSearchesPage() {
           </div>
         </div>
       </header>
-      
+
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8">
@@ -157,7 +162,8 @@ function EmptyState() {
         No saved searches yet
       </h3>
       <p className="text-gray-600 max-w-md mx-auto mb-6">
-        Save a search on the properties page to get notified when new listings match your criteria.
+        Save a search on the properties page to get notified when new listings
+        match your criteria.
       </p>
       <Link
         href="/properties"

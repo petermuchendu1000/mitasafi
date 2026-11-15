@@ -17,6 +17,11 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
+  readActiveRoles,
+  productRoleNames,
+  type RoleQueryClient,
+} from "@/lib/identity/roles";
+import {
   usePageLoadPerformance,
   useComponentPerformance,
   useMeasureAsync,
@@ -264,17 +269,15 @@ function LoginPageContent() {
         if (error) {
           setError(error.message);
         } else if (data.user) {
-          // Check if user has any active roles
-          const { data: rolesData } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", data.user.id)
-            .eq("is_active", true);
+          // One shared read. A user with no roles is a normal state -- they
+          // are browsing and saving listings -- so an empty list is not an
+          // error here.
+          const { roles } = await readActiveRoles(
+            supabase as unknown as RoleQueryClient,
+            data.user.id,
+          );
 
-          const userRoles =
-            rolesData?.map((r: { role: string }) => r.role) || [];
-
-          if (userRoles.length === 0) {
+          if (roles.length === 0) {
             // Check if profile exists
             const { data: profile } = await supabase
               .from("profiles")

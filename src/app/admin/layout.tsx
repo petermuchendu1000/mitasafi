@@ -2,7 +2,8 @@
  * Admin Layout
  *
  * Auth gate: only users with an active "admin" role in user_roles can access.
- * Uses createAdminClient() for the role check (bypasses RLS on user_roles).
+ * The gate is requireAdmin() in src/lib/identity/require-admin.ts, which uses
+ * the service-role client so an RLS change cannot silently lock out operators.
  *
  * Renders a minimal admin shell with a sidebar navigation.
  */
@@ -10,7 +11,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getCachedUser } from "@/lib/cache/queries";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/identity/require-admin";
 import { AdminShell } from "./AdminShell";
 
 export const metadata: Metadata = {
@@ -30,24 +31,16 @@ export default async function AdminLayout({
     redirect("/login?redirectTo=/admin");
   }
 
-  // 2. Verify admin role
-  const admin = createAdminClient();
-  const { data: roles, error: rolesError } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
-  if (rolesError) {
-    console.error("[Admin Layout] Role check failed:", rolesError);
-    redirect("/dashboard");
-  }
-
-  const hasAdminRole = roles?.some(
-    (r: { role: string }) => r.role === "admin"
-  );
-
-  if (!hasAdminRole) {
+  // 2. Verify admin role — one shared gate, src/lib/identity/require-admin.ts.
+  //
+  // This was a third inline copy of a check that also existed privately in
+  // admin-verification.ts and review-moderation.ts. The shared version keeps
+  // the service-role client and the distinction this one made between a failed
+  // read and a denial: the first is an outage, the second is routine, and
+  // collapsing them would hide a broken database behind a permissions message.
+  const { error: adminError } = await requireAdmin();
+  if (adminError) {
+    console.error("[Admin Layout] Denied:", adminError);
     redirect("/dashboard");
   }
 

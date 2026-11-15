@@ -18,6 +18,12 @@ import {
   needsRoleUpgradeWarning,
   getPrimaryRoleByHierarchy,
 } from "@/types/db-helpers";
+import {
+  normalizeRoleParam,
+  readActiveRoles,
+  productRoleNames,
+  type RoleQueryClient,
+} from "@/lib/identity/roles";
 import { sanitizeRedirectUrl } from "@/lib/security/url-sanitizer";
 
 // Helper function to get redirect URL based on role and intent
@@ -89,15 +95,11 @@ export async function GET(request: Request) {
       } | null;
 
       // Check existing roles from user_roles table
-      const { data: existingRolesData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("is_active", true);
-
-      const currentRoles: UserRole[] =
-        existingRolesData?.map((r: { role: string }) => r.role as UserRole) ||
-        [];
+      const { roles: activeRoles } = await readActiveRoles(
+        supabase as unknown as RoleQueryClient,
+        user.id,
+      );
+      const currentRoles: UserRole[] = productRoleNames(activeRoles);
 
       // Check for pending role from signup flow (cookie takes priority, URL param as fallback)
       const cookieStore = await cookies();
@@ -118,12 +120,15 @@ export async function GET(request: Request) {
       // Final redirect destination - prioritize pendingRedirect cookie, then URL param, then dashboard
       const finalRedirect = pendingRedirectRaw ? pendingRedirect : redirectTo;
 
-      // Map 'provider' to 'service_provider' for database
-      const userRole: UserRole | undefined = pendingRole
-        ? pendingRole === "provider"
-          ? "service_provider"
-          : (pendingRole as UserRole)
-        : undefined;
+      // pendingRole comes from a COOKIE the user can edit, and from a query
+      // parameter. The previous code cast it straight to UserRole with
+      // `as UserRole` -- a claim TypeScript cannot check and the user can
+      // falsify. normalizeRoleParam validates against the one alias map and
+      // returns null for anything else, so an edited cookie now yields "no
+      // role" instead of a value the type system vouched for and the database
+      // then had to reject.
+      const userRole: UserRole | undefined =
+        normalizeRoleParam(pendingRole) ?? undefined;
 
       if (!profile) {
         // New user: the profile and the role in ONE transactional, idempotent

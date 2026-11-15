@@ -3,18 +3,19 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { 
-  ChevronDown, 
-  Home, 
-  Building2, 
-  Wrench, 
-  Settings, 
-  LogOut, 
+import {
+  ChevronDown,
+  Home,
+  Building2,
+  Wrench,
+  Settings,
+  LogOut,
   Check,
   Sparkles,
-  ArrowRightLeft
+  ArrowRightLeft,
 } from "lucide-react";
 import type { UserRole } from "@/types/db-helpers";
+import { normalizeRoleParam } from "@/lib/identity/roles";
 
 const NEW_ROLES_STORAGE_KEY = "mitasafi_newly_added_roles";
 const NEW_ROLE_EXPIRY_DAYS = 7; // Badge shows for 7 days after role added
@@ -29,13 +30,16 @@ interface UserProfileDropdownProps {
 }
 
 // Role display configuration
-const roleConfig: Record<UserRole, { 
-  label: string; 
-  icon: typeof Home; 
-  color: string;
-  bgColor: string;
-  description: string;
-}> = {
+const roleConfig: Record<
+  UserRole,
+  {
+    label: string;
+    icon: typeof Home;
+    color: string;
+    bgColor: string;
+    description: string;
+  }
+> = {
   tenant: {
     label: "Tenant",
     icon: Home,
@@ -68,7 +72,9 @@ export function UserProfileDropdown({
   newlyAddedRole,
 }: UserProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [newRolesFromStorage, setNewRolesFromStorage] = useState<Set<UserRole>>(new Set());
+  const [newRolesFromStorage, setNewRolesFromStorage] = useState<Set<UserRole>>(
+    new Set(),
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -82,17 +88,24 @@ export function UserProfileDropdown({
     }
 
     try {
-      const parsed: Record<string, { addedAt: string }> = JSON.parse(storedData);
+      const parsed: Record<string, { addedAt: string }> =
+        JSON.parse(storedData);
       const now = new Date();
       const validNewRoles = new Set<UserRole>();
       const updatedData: Record<string, { addedAt: string }> = {};
 
       for (const [role, data] of Object.entries(parsed)) {
         const addedAt = new Date(data.addedAt);
-        const daysSinceAdded = (now.getTime() - addedAt.getTime()) / (1000 * 60 * 60 * 24);
-        
-        if (daysSinceAdded < NEW_ROLE_EXPIRY_DAYS) {
-          validNewRoles.add(role as UserRole);
+        const daysSinceAdded =
+          (now.getTime() - addedAt.getTime()) / (1000 * 60 * 60 * 24);
+
+        // These keys come from localStorage, which the user can edit, so
+        // `role as UserRole` asserted something nothing had checked.
+        // normalizeRoleParam returns null for anything unrecognised, and a
+        // junk key is then simply dropped rather than becoming a badge.
+        const validRole = normalizeRoleParam(role);
+        if (validRole && daysSinceAdded < NEW_ROLE_EXPIRY_DAYS) {
+          validNewRoles.add(validRole);
           updatedData[role] = data;
         }
       }
@@ -100,7 +113,10 @@ export function UserProfileDropdown({
       // Clean up expired entries
       if (Object.keys(updatedData).length !== Object.keys(parsed).length) {
         if (Object.keys(updatedData).length > 0) {
-          localStorage.setItem(NEW_ROLES_STORAGE_KEY, JSON.stringify(updatedData));
+          localStorage.setItem(
+            NEW_ROLES_STORAGE_KEY,
+            JSON.stringify(updatedData),
+          );
         } else {
           localStorage.removeItem(NEW_ROLES_STORAGE_KEY);
         }
@@ -115,14 +131,17 @@ export function UserProfileDropdown({
   // Also track if newlyAddedRole prop is set (from URL)
   useEffect(() => {
     if (newlyAddedRole) {
-      setNewRolesFromStorage(prev => new Set([...prev, newlyAddedRole]));
+      setNewRolesFromStorage((prev) => new Set([...prev, newlyAddedRole]));
     }
   }, [newlyAddedRole]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
@@ -149,7 +168,8 @@ export function UserProfileDropdown({
       const storedData = localStorage.getItem(NEW_ROLES_STORAGE_KEY);
       if (storedData) {
         try {
-          const parsed: Record<string, { addedAt: string }> = JSON.parse(storedData);
+          const parsed: Record<string, { addedAt: string }> =
+            JSON.parse(storedData);
           delete parsed[role];
           if (Object.keys(parsed).length > 0) {
             localStorage.setItem(NEW_ROLES_STORAGE_KEY, JSON.stringify(parsed));
@@ -160,7 +180,7 @@ export function UserProfileDropdown({
           // Ignore errors
         }
       }
-      setNewRolesFromStorage(prev => {
+      setNewRolesFromStorage((prev) => {
         const updated = new Set(prev);
         updated.delete(role);
         return updated;
@@ -195,10 +215,7 @@ export function UserProfileDropdown({
         onClick={() => setIsOpen(!isOpen)}
         className={`
           flex items-center gap-2 px-3 py-2 rounded-lg transition-all
-          ${isOpen 
-            ? "bg-gray-100 ring-2 ring-brand-200" 
-            : "hover:bg-gray-50"
-          }
+          ${isOpen ? "bg-gray-100 ring-2 ring-brand-200" : "hover:bg-gray-50"}
         `}
         aria-expanded={isOpen}
         aria-haspopup="true"
@@ -217,22 +234,32 @@ export function UserProfileDropdown({
             </div>
           )}
           {/* Role indicator dot */}
-          <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-            currentRole === "tenant" ? "bg-brand-500" :
-            currentRole === "landlord" ? "bg-cta-500" :
-            "bg-success-500"
-          }`} />
+          <div
+            className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+              currentRole === "tenant"
+                ? "bg-brand-500"
+                : currentRole === "landlord"
+                  ? "bg-cta-500"
+                  : "bg-success-500"
+            }`}
+          />
         </div>
 
         {/* Name and Role (hidden on mobile) */}
         <div className="hidden sm:block text-left">
-          <p className="text-sm font-medium text-gray-900 leading-tight">{userName}</p>
-          <p className="text-xs text-gray-500 leading-tight">{currentRoleConfig.label}</p>
+          <p className="text-sm font-medium text-gray-900 leading-tight">
+            {userName}
+          </p>
+          <p className="text-xs text-gray-500 leading-tight">
+            {currentRoleConfig.label}
+          </p>
         </div>
 
         {/* Chevron with badge for multiple roles */}
         <div className="relative">
-          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+          <ChevronDown
+            className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          />
           {hasMultipleRoles && (
             <span className="absolute -top-1 -right-1 w-2 h-2 bg-brand-500 rounded-full" />
           )}
@@ -255,7 +282,7 @@ export function UserProfileDropdown({
                 <ArrowRightLeft className="w-3 h-3" />
                 Switch Dashboard View
               </div>
-              
+
               <div className="mt-1 space-y-1">
                 {allRoles.map(({ role, is_verified }) => {
                   const config = roleConfig[role];
@@ -270,13 +297,16 @@ export function UserProfileDropdown({
                       onClick={() => handleRoleSwitch(role)}
                       className={`
                         w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
-                        ${isActive 
-                          ? `${config.bgColor} ${config.color} ring-2 ring-inset ring-current/20` 
-                          : "hover:bg-gray-50 text-gray-700"
+                        ${
+                          isActive
+                            ? `${config.bgColor} ${config.color} ring-2 ring-inset ring-current/20`
+                            : "hover:bg-gray-50 text-gray-700"
                         }
                       `}
                     >
-                      <div className={`p-2 rounded-lg ${isActive ? "bg-white/60" : config.bgColor}`}>
+                      <div
+                        className={`p-2 rounded-lg ${isActive ? "bg-white/60" : config.bgColor}`}
+                      >
                         <Icon className={`w-4 h-4 ${config.color}`} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -289,11 +319,11 @@ export function UserProfileDropdown({
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 truncate">{config.description}</p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {config.description}
+                        </p>
                       </div>
-                      {isActive && (
-                        <Check className="w-5 h-5 flex-shrink-0" />
-                      )}
+                      {isActive && <Check className="w-5 h-5 flex-shrink-0" />}
                     </button>
                   );
                 })}
@@ -306,11 +336,17 @@ export function UserProfileDropdown({
             <div className="px-4 py-3 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${currentRoleConfig.bgColor}`}>
-                  <CurrentRoleIcon className={`w-4 h-4 ${currentRoleConfig.color}`} />
+                  <CurrentRoleIcon
+                    className={`w-4 h-4 ${currentRoleConfig.color}`}
+                  />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{currentRoleConfig.label}</p>
-                  <p className="text-xs text-gray-500">{currentRoleConfig.description}</p>
+                  <p className="font-medium text-gray-900">
+                    {currentRoleConfig.label}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {currentRoleConfig.description}
+                  </p>
                 </div>
               </div>
             </div>
@@ -326,7 +362,7 @@ export function UserProfileDropdown({
               <Settings className="w-4 h-4" />
               <span>Settings</span>
             </Link>
-            
+
             <form action="/auth/signout" method="post" className="w-full">
               <button
                 type="submit"

@@ -1,26 +1,32 @@
 /**
  * Next.js Proxy (formerly Middleware)
- * 
+ *
  * Next.js 16+ uses "proxy" instead of "middleware".
- * 
+ *
  * Handles:
  * - Session refresh
  * - Protected route redirection
  * - Role-based access control (multi-role support)
  * - Smart role upgrade flow (redirects to warning when adding new role)
- * 
+ *
  * PERFORMANCE: This runs on EVERY request - minimize database calls!
  */
 
-import { NextResponse, type NextRequest } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
-import type { UserRole } from '@/types/db-helpers'
-import { PerformanceLogger } from '@/lib/performance/logger'
+import { NextResponse, type NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/middleware";
+import {
+  normalizeRoleParam,
+  readActiveRoles,
+  productRoleNames,
+} from "@/lib/identity/roles";
+import type { RoleQueryClient } from "@/lib/identity/roles";
+import type { UserRole } from "@/types/db-helpers";
+import { PerformanceLogger } from "@/lib/performance/logger";
 import {
   isPublicRoute,
   isProtectedRoute,
   isAuthRoute,
-} from '@/lib/security/route-access'
+} from "@/lib/security/route-access";
 
 // =============================================================================
 // SECURITY HEADERS
@@ -46,210 +52,216 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 
   // HSTS — 1 year, include subdomains
   if (process.env.NODE_ENV === "production") {
-    h.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+    h.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload",
+    );
   }
 
   // Permissions Policy — disable unused browser features
   h.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(self), payment=(self)"
+    "camera=(), microphone=(), geolocation=(self), payment=(self)",
   );
 
   return response;
 }
 
-
-
-
-// Map URL role param to database role
-function mapRoleParam(roleParam: string): UserRole | null {
-  const roleMap: Record<string, UserRole> = {
-    'tenant': 'tenant',
-    'landlord': 'landlord',
-    'provider': 'service_provider',
-    'service_provider': 'service_provider',
-  }
-  return roleMap[roleParam] || null
-}
+// The URL-to-database role mapping lives in src/lib/identity/roles.ts. It used
+// to be written out here AND re-derived inline in signup/page.tsx and
+// auth/callback/route.ts as `x === 'provider' ? 'service_provider' : x` --
+// three copies of one mapping, three chances to drift.
 
 // Get redirect URL based on role and intent
 function getRoleBasedRedirect(role: UserRole, intent: string | null): string {
-  if (role === 'landlord') {
-    if (intent === 'list') return '/dashboard/landlord/listings/new'
-    if (intent === 'manage') return '/dashboard/landlord'
-    return '/dashboard/landlord'
+  if (role === "landlord") {
+    if (intent === "list") return "/dashboard/landlord/listings/new";
+    if (intent === "manage") return "/dashboard/landlord";
+    return "/dashboard/landlord";
   }
-  if (role === 'service_provider') {
-    return '/dashboard/provider'
+  if (role === "service_provider") {
+    return "/dashboard/provider";
   }
-  return '/dashboard'
+  return "/dashboard";
 }
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
-  
+  const { pathname } = request.nextUrl;
+
   // =========================================================================
   // ROUTE MIGRATION: /services → /services/browse (SLP-1)
   // Redirect old marketplace URLs with query params to the new /services/browse route.
   // Bare /services without query params now serves the landing page — no redirect.
   // =========================================================================
-  if (pathname === '/services' && request.nextUrl.search) {
-    const browseUrl = new URL(`/services/browse${request.nextUrl.search}`, request.url)
-    return NextResponse.redirect(browseUrl, 308)
+  if (pathname === "/services" && request.nextUrl.search) {
+    const browseUrl = new URL(
+      `/services/browse${request.nextUrl.search}`,
+      request.url,
+    );
+    return NextResponse.redirect(browseUrl, 308);
   }
 
   // 🔍 PERFORMANCE TRACKING: Start monitoring
-  const perf = new PerformanceLogger('Proxy Middleware', { 
+  const perf = new PerformanceLogger("Proxy Middleware", {
     pathname,
     method: request.method,
-  })
-  
-  perf.start('route-check')
+  });
+
+  perf.start("route-check");
   // PERFORMANCE: Skip expensive operations for truly public routes
-  const isPublic = isPublicRoute(pathname)
-  perf.end('route-check')
-  
+  const isPublic = isPublicRoute(pathname);
+  perf.end("route-check");
+
   // STRATEGY 3: For public routes, skip auth check entirely (no network calls!)
   if (isPublic) {
-    perf.start('public-route-bypass')
-    const { supabaseResponse } = await updateSession(request, true) // skipAuthCheck = true
-    perf.end('public-route-bypass')
-    
+    perf.start("public-route-bypass");
+    const { supabaseResponse } = await updateSession(request, true); // skipAuthCheck = true
+    perf.end("public-route-bypass");
+
     // Log only slow requests (>100ms)
-    perf.logSummary(100)
-    return applySecurityHeaders(supabaseResponse)
+    perf.logSummary(100);
+    return applySecurityHeaders(supabaseResponse);
   }
-  
-  perf.start('session-refresh-protected')
-  const { supabaseResponse, user, supabase } = await updateSession(request, false) // full auth check
-  perf.end('session-refresh-protected')
+
+  perf.start("session-refresh-protected");
+  const { supabaseResponse, user, supabase } = await updateSession(
+    request,
+    false,
+  ); // full auth check
+  perf.end("session-refresh-protected");
 
   // Check if route is protected
-  perf.start('route-classification')
-  const isProtected = isProtectedRoute(pathname)
-  const isAuth = isAuthRoute(pathname)
-  perf.end('route-classification')
+  perf.start("route-classification");
+  const isProtected = isProtectedRoute(pathname);
+  const isAuth = isAuthRoute(pathname);
+  perf.end("route-classification");
 
   // Unauthenticated user trying to access protected route
   if (isProtected && !user) {
-    perf.start('redirect-to-login')
-    const redirectUrl = new URL('/login', request.url)
-    redirectUrl.searchParams.set('redirectTo', pathname)
-    perf.end('redirect-to-login')
-    perf.logSummary(100)
-    return NextResponse.redirect(redirectUrl)
+    perf.start("redirect-to-login");
+    const redirectUrl = new URL("/login", request.url);
+    redirectUrl.searchParams.set("redirectTo", pathname);
+    perf.end("redirect-to-login");
+    perf.logSummary(100);
+    return NextResponse.redirect(redirectUrl);
   }
 
   // PERFORMANCE: Only fetch roles ONCE if needed for auth routes OR protected routes
-  let userRoles: UserRole[] = []
-  let rolesFetched = false
-  
+  let userRoles: UserRole[] = [];
+  let rolesFetched = false;
+
   async function getUserRoles(): Promise<UserRole[]> {
-    if (rolesFetched) return userRoles
-    if (!user) return []
-    
-    perf.start('db-fetch-user-roles')
-    const { data: rolesData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-    perf.end('db-fetch-user-roles', { 
-      rolesCount: rolesData?.length || 0,
-      userId: user.id 
-    })
-    
-    userRoles = rolesData?.map((r: { role: UserRole }) => r.role) || []
-    rolesFetched = true
-    return userRoles
+    if (rolesFetched) return userRoles;
+    if (!user) return [];
+
+    perf.start("db-fetch-user-roles");
+    // The shared read. This middleware keeps its OWN memoization (rolesFetched)
+    // rather than using getCachedRoles: React cache() is per-request in the
+    // server runtime and has no meaning here.
+    const { roles } = await readActiveRoles(
+      supabase as unknown as RoleQueryClient,
+      user.id,
+    );
+    perf.end("db-fetch-user-roles", {
+      rolesCount: roles.length,
+      userId: user.id,
+    });
+
+    userRoles = productRoleNames(roles);
+    rolesFetched = true;
+    return userRoles;
   }
 
   // Authenticated user trying to access auth routes (login/signup)
   if (isAuth && user) {
-    perf.start('auth-route-logic')
+    perf.start("auth-route-logic");
     // Check if user has any active roles
-    const roles = await getUserRoles()
-    const hasRoles = roles.length > 0
+    const roles = await getUserRoles();
+    const hasRoles = roles.length > 0;
 
     // Get URL params
-    const showWarning = request.nextUrl.searchParams.get('showWarning') === 'true'
-    const roleParam = request.nextUrl.searchParams.get('role')
-    const intentParam = request.nextUrl.searchParams.get('intent')
-    const redirectToParam = request.nextUrl.searchParams.get('redirectTo')
-    
+    const showWarning =
+      request.nextUrl.searchParams.get("showWarning") === "true";
+    const roleParam = request.nextUrl.searchParams.get("role");
+    const intentParam = request.nextUrl.searchParams.get("intent");
+    const redirectToParam = request.nextUrl.searchParams.get("redirectTo");
+
     // Allow access to signup if showWarning=true (role upgrade flow)
-    if (pathname.startsWith('/signup') && showWarning) {
-      perf.end('auth-route-logic', { action: 'allow-signup-warning' })
-      perf.logSummary(100)
+    if (pathname.startsWith("/signup") && showWarning) {
+      perf.end("auth-route-logic", { action: "allow-signup-warning" });
+      perf.logSummary(100);
       // Let them through to see the role upgrade warning
-      return supabaseResponse
+      return supabaseResponse;
     }
 
     // Handle signup with role param - user wants to add/switch role
-    if (pathname.startsWith('/signup') && roleParam && hasRoles) {
-      const targetRole = mapRoleParam(roleParam)
-      
+    if (pathname.startsWith("/signup") && roleParam && hasRoles) {
+      const targetRole = normalizeRoleParam(roleParam);
+
       if (targetRole) {
         // Check if user already has this role
-        const alreadyHasRole = roles.includes(targetRole)
-        
+        const alreadyHasRole = roles.includes(targetRole);
+
         if (alreadyHasRole) {
-          perf.end('auth-route-logic', { action: 'redirect-has-role' })
+          perf.end("auth-route-logic", { action: "redirect-has-role" });
           // User already has this role - redirect to role-specific dashboard
-          const redirectUrl = new URL(getRoleBasedRedirect(targetRole, intentParam), request.url)
-          perf.logSummary(100)
-          return NextResponse.redirect(redirectUrl)
+          const redirectUrl = new URL(
+            getRoleBasedRedirect(targetRole, intentParam),
+            request.url,
+          );
+          perf.logSummary(100);
+          return NextResponse.redirect(redirectUrl);
         } else {
-          perf.end('auth-route-logic', { action: 'redirect-upgrade-warning' })
+          perf.end("auth-route-logic", { action: "redirect-upgrade-warning" });
           // User doesn't have this role - redirect to signup with showWarning=true
           // This will trigger the role upgrade warning UI
-          const upgradeUrl = new URL('/signup', request.url)
-          upgradeUrl.searchParams.set('role', roleParam)
-          upgradeUrl.searchParams.set('showWarning', 'true')
+          const upgradeUrl = new URL("/signup", request.url);
+          upgradeUrl.searchParams.set("role", roleParam);
+          upgradeUrl.searchParams.set("showWarning", "true");
           if (intentParam) {
-            upgradeUrl.searchParams.set('intent', intentParam)
+            upgradeUrl.searchParams.set("intent", intentParam);
           }
           if (redirectToParam) {
-            upgradeUrl.searchParams.set('redirectTo', redirectToParam)
+            upgradeUrl.searchParams.set("redirectTo", redirectToParam);
           }
-          perf.logSummary(100)
-          return NextResponse.redirect(upgradeUrl)
+          perf.logSummary(100);
+          return NextResponse.redirect(upgradeUrl);
         }
       }
     }
 
-    perf.end('auth-route-logic', { action: 'default-redirect' })
+    perf.end("auth-route-logic", { action: "default-redirect" });
     // Default: If user has roles, go to dashboard; if no roles, let them access signup
     if (hasRoles) {
-      perf.logSummary(100)
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      perf.logSummary(100);
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
-    
+
     // User without roles can access signup to select one, but not login
-    if (pathname.startsWith('/login')) {
-      perf.logSummary(100)
-      return NextResponse.redirect(new URL('/signup', request.url))
+    if (pathname.startsWith("/login")) {
+      perf.logSummary(100);
+      return NextResponse.redirect(new URL("/signup", request.url));
     }
   }
 
   // Check role status for authenticated users on protected routes
   if (isProtected && user) {
-    perf.start('protected-route-role-check')
+    perf.start("protected-route-role-check");
     // PERFORMANCE: Reuse cached roles if already fetched, otherwise fetch
-    const roles = await getUserRoles()
+    const roles = await getUserRoles();
 
     // If no roles, redirect to signup to select role
     if (roles.length === 0) {
-      perf.end('protected-route-role-check', { action: 'no-roles-redirect' })
-      perf.logSummary(100)
-      return NextResponse.redirect(new URL('/signup', request.url))
+      perf.end("protected-route-role-check", { action: "no-roles-redirect" });
+      perf.logSummary(100);
+      return NextResponse.redirect(new URL("/signup", request.url));
     }
-    perf.end('protected-route-role-check', { rolesCount: roles.length })
+    perf.end("protected-route-role-check", { rolesCount: roles.length });
   }
 
   // Log performance for all requests that take >100ms
-  perf.logSummary(100)
-  return applySecurityHeaders(supabaseResponse)
+  perf.logSummary(100);
+  return applySecurityHeaders(supabaseResponse);
 }
 
 export const config = {
@@ -262,6 +274,6 @@ export const config = {
      * - public folder
      * - API routes (they handle their own auth)
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)',
+    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)",
   ],
-}
+};

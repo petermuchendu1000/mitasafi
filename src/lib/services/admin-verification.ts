@@ -14,6 +14,7 @@
 // =============================================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/identity/require-admin";
 import { createSignedUrl } from "@/lib/storage/signed-url";
 import { getCachedUser } from "@/lib/cache/queries";
 import { revalidatePath } from "next/cache";
@@ -92,34 +93,10 @@ export interface VerificationDetail {
 // =============================================================================
 
 /** Verify the current user has admin role. Returns user ID or error. */
-async function requireAdmin(): Promise<
-  { userId: string; error: null } | { userId: null; error: string }
-> {
-  const { user, error: authError } = await getCachedUser();
-  if (authError || !user) {
-    return { userId: null, error: "Authentication required." };
-  }
-
-  const admin = createAdminClient();
-  const { data: roles, error: rolesError } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
-  if (rolesError) {
-    console.error("[Admin] Role check error:", rolesError);
-    return { userId: null, error: "Failed to verify permissions." };
-  }
-
-  const hasAdminRole = roles?.some((r: { role: string }) => r.role === "admin");
-
-  if (!hasAdminRole) {
-    return { userId: null, error: "Admin access required." };
-  }
-
-  return { userId: user.id, error: null };
-}
+// requireAdmin now lives in src/lib/identity/require-admin.ts. It was defined
+// privately here AND privately in the sibling service with a byte-identical
+// signature, plus a third time inline in src/app/admin/layout.tsx -- three
+// copies of the only check between a signed-in user and the admin surface.
 
 // =============================================================================
 // GET VERIFICATION QUEUE

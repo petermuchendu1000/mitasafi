@@ -37,6 +37,34 @@
 -- derived from the grant cannot fail for an over-broad revoke -- which is
 -- exactly the defect 20260337000000_grant_profiles_updated_at.sql exists to
 -- record.
+-- WHY NO RLS POLICY CONSULTS current_user_has_role, AND WHY THAT IS CORRECT
+--
+-- 20260342000000 made the predicate available and deliberately adopted it
+-- nowhere, leaving adoption as a reviewed decision per table. That review has
+-- now been done against all 174 policies, and the answer is that no table
+-- wants it. Recorded here so it is not re-litigated:
+--
+--   * ~35 policies are {service_role} with predicate `true`. service_role
+--     BYPASSES RLS, so a predicate on those policies is unreachable code.
+--   * The public catalogue reads -- services, service_types, service_categories,
+--     neighborhoods, listings (status-filtered), service_providers (active),
+--     reviews (not hidden) -- are deliberately anonymous. A role check there
+--     would break the marketplace for every visitor who is not signed in.
+--   * The anonymous write surfaces -- inquiries, listing_inquiries,
+--     listing_waitlist, search_queries, search_alerts, analytics_events -- are
+--     deliberately open so a visitor can enquire without an account.
+--   * Everything else is keyed on auth.uid(). OWNERSHIP IS A STRONGER CHECK
+--     THAN ROLE: if you own the listing you may read it whatever roles you
+--     hold, and adding `AND current_user_has_role(...)` would only add a
+--     subquery per row while removing access from legitimate owners.
+--
+-- Every admin-only table is already {service_role}-only, meaning no client has
+-- any policy on it at all, and admin work runs server-side through
+-- createAdminClient(). So the admin boundary is the service-role key plus
+-- requireAdmin() in src/lib/identity/require-admin.ts -- not RLS. The
+-- predicate's value is that application code and any FUTURE policy share one
+-- expression; it is not a gap waiting to be filled.
+--
 -- =============================================================================
 
 DO $I$
