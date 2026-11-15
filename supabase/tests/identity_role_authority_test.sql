@@ -65,6 +65,13 @@
 -- predicate's value is that application code and any FUTURE policy share one
 -- expression; it is not a gap waiting to be filled.
 --
+-- I13 asserts a client cannot REACH the admin role. What grants it is
+-- public.grant_admin_role, added later in 20260350000000_admin_grant_path.sql
+-- and covered by admin_grant_path_test.sql; at the time this suite was written
+-- nothing granted it at all, so the admin surface was unreachable rather than
+-- protected. I13 is unaffected either way -- the grant function is executable
+-- by service_role only, so it does not widen what a client can do.
+--
 -- =============================================================================
 
 DO $I$

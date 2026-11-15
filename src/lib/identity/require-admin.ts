@@ -16,20 +16,31 @@
  * function is therefore the whole of the authorization decision for the admin
  * surface, which is why it should exist once rather than three times.
  *
- * MEASURED, AND IMPORTANT: NO USER CAN HOLD THIS ROLE TODAY.
+ * HOW THE ROLE IS GRANTED
  *
- *   - user_roles_role_check permits the value 'admin'
- *   - but the INSERT policy forbids a client writing it
- *     (WITH CHECK ... AND role <> 'admin')
- *   - and a BEFORE UPDATE trigger refuses a client raising an existing row to
- *     it
- *   - and no function, migration or seed grants it
+ * No client can write it, by three independent mechanisms:
  *
- * So admin provisioning is undefined, and this function currently denies
- * everyone. That is the safe direction to fail, but it means the admin surface
- * is unreachable rather than protected, and the gap is real: granting the first
- * admin needs a direct service_role write that nothing in the repository
- * performs.
+ *   - user_roles_role_check permits the value 'admin', but the INSERT policy
+ *     forbids a client writing it (WITH CHECK ... AND role <> 'admin')
+ *   - a BEFORE UPDATE trigger refuses a client raising an existing row to it
+ *   - and client EXECUTE is revoked on the functions that could
+ *
+ * It is granted only by public.grant_admin_role(p_user_id, p_reason), added in
+ * 20260350000000_admin_grant_path.sql: SECURITY DEFINER, EXECUTE granted to
+ * service_role and to nothing else, idempotent, refusing a blank reason, and
+ * writing an audit_log row on every call. public.revoke_admin_role takes it
+ * away by setting is_active = false, which this function's read honours,
+ * leaving the history intact.
+ *
+ * Until that migration there was NO grant path of any kind, so this function
+ * denied every caller and src/app/admin could not be entered by anyone. Worth
+ * recording, because an unreachable admin surface reads exactly like a
+ * protected one from the code, and the code around it assumes an admin exists.
+ *
+ * There is still no admin who can grant admin, and there cannot be: the first
+ * grant has to come from outside the role system, so the authority is
+ * possession of the service-role key. See the migration's header for the
+ * bootstrapping call and how to audit it.
  *
  * WHY THE SERVICE-ROLE CLIENT FOR A SELF-READ
  *

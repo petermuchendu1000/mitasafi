@@ -332,12 +332,50 @@ describe("the admin gate exists once", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("documents that no user can hold the role yet", () => {
-    // RLS forbids a client writing role='admin', a trigger blocks raising it,
-    // and nothing grants it — so this gate currently denies everyone. A reader
-    // must not mistake "denies everyone" for "is protecting something".
+  it("documents the one grant path", () => {
+    // This assertion used to require the opposite text — that NO USER CAN HOLD
+    // THIS ROLE TODAY — which was true and worth stating: RLS forbade a client
+    // writing role='admin', a trigger blocked raising it, and nothing granted
+    // it, so the gate denied everyone and the admin surface was unreachable
+    // rather than protected.
+    //
+    // 20260350000000_admin_grant_path.sql closed that, so the old text is now
+    // false and the assertion has to move with it. What a reader needs from
+    // this module is no longer "nobody can be an admin" but "here is the only
+    // way anyone becomes one".
     const doc = read(ADMIN_MODULE);
-    expect(doc).toMatch(/NO USER CAN HOLD THIS ROLE TODAY/i);
+    expect(doc).toMatch(/grant_admin_role/);
+    expect(doc).toMatch(/revoke_admin_role/);
+    expect(doc).toMatch(/service_role/);
+    // and it must not still carry the superseded claim
+    expect(doc).not.toMatch(/NO USER CAN HOLD THIS ROLE TODAY/i);
+  });
+
+  it("the grant path is reachable only by service_role", () => {
+    // A source-level mirror of the migration's own guard. The SQL guard is the
+    // authority, but it only runs where a database does; this catches the
+    // REVOKE being dropped from the file in review, which is the mistake
+    // ALTER DEFAULT PRIVILEGES on schema public makes easy: every new function
+    // is granted EXECUTE to anon and authenticated DIRECTLY, so REVOKE ... FROM
+    // PUBLIC is not enough and both roles must be named.
+    const mig = read("supabase/migrations/20260350000000_admin_grant_path.sql");
+    for (const fn of ["grant_admin_role", "revoke_admin_role"]) {
+      expect(mig).toMatch(
+        new RegExp(
+          `REVOKE ALL ON FUNCTION public\\.${fn}\\(uuid, text\\)\\s+FROM PUBLIC, anon, authenticated;`,
+        ),
+      );
+      expect(mig).toMatch(
+        new RegExp(
+          `GRANT EXECUTE ON FUNCTION public\\.${fn}\\(uuid, text\\)\\s+TO service_role;`,
+        ),
+      );
+    }
+    // no GRANT to a client role anywhere in the file
+    expect(mig).not.toMatch(/GRANT EXECUTE ON FUNCTION[^;]*TO[^;]*\banon\b/);
+    expect(mig).not.toMatch(
+      /GRANT EXECUTE ON FUNCTION[^;]*TO[^;]*\bauthenticated\b/,
+    );
   });
 });
 
