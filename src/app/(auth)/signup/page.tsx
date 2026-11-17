@@ -544,15 +544,12 @@ function SignupPageContent() {
             // New user with role request - add it
             await addRoleToUser(data.user.id, userRole);
 
-            // Update primary_role on profile
-            const { error: primaryRoleError } = await supabase
-              .from("profiles")
-              .update({ primary_role: userRole } as never)
-              .eq("id", data.user.id);
-
-            if (primaryRoleError) {
-              console.error("Error setting primary_role:", primaryRoleError);
-            }
+            // primary_role is derived from user_roles by trigger
+            // (20260352000000_primary_role_derived.sql), so addRoleToUser above
+            // has already set it. The write that used to be here did not even
+            // consult the user's existing roles -- it assigned whichever role
+            // was just chosen, so signing up as a provider could lower the
+            // primary_role of someone who was already a landlord.
 
             // For service providers, create the service_providers business profile
             // This is required before redirecting to provider onboarding
@@ -727,18 +724,9 @@ function SignupPageContent() {
         }
       }
 
-      // Update primary_role based on hierarchy: Landlord >= Service Provider > Tenant
-      const allRoles = [...existingRoles, targetRole];
-      const newPrimaryRole = getPrimaryRoleByHierarchy(allRoles);
-
-      const { error: primaryRoleError } = await supabase
-        .from("profiles")
-        .update({ primary_role: newPrimaryRole } as never)
-        .eq("id", existingUserId);
-
-      if (primaryRoleError) {
-        console.error("Error updating primary_role:", primaryRoleError);
-      }
+      // As above: primary_role follows user_roles by trigger, so adding the
+      // role is what updates it. Recomputing the hierarchy here and writing it
+      // back was the third of three places doing so.
 
       // Clear cookies
       document.cookie = "pendingRole=; path=/; max-age=0";

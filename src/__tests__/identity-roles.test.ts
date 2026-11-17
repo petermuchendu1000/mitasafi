@@ -379,6 +379,71 @@ describe("the admin gate exists once", () => {
   });
 });
 
+describe("primary_role is never written by application code", () => {
+  // C-2. profiles.primary_role was maintained from the browser in three places
+  // — signup/page.tsx twice and auth/callback/route.ts once — each a separate
+  // chance to disagree with user_roles, and each logged-and-continued so a
+  // failure left the two permanently inconsistent with nothing raised. One of
+  // them did not even consult the user's existing roles: it assigned whichever
+  // role was just chosen, so signing up as a provider could lower the
+  // primary_role of someone already a landlord.
+  //
+  // 20260352000000_primary_role_derived.sql derives the column from user_roles
+  // by trigger. Reading it is fine and five call sites do; WRITING it is now
+  // meaningless, and meaningless code that looks load-bearing is what this
+  // guards against coming back.
+  it("no .insert()/.update() payload carries primary_role", () => {
+    const offenders: string[] = [];
+    for (const f of sourceFiles("src")) {
+      const code = stripTs(read(f));
+      // Scan a window after each write call rather than matching the whole
+      // payload: a Supabase payload spans lines and nests, so a single regex
+      // over it is the kind of assertion that silently stops matching when the
+      // formatter moves a brace (see C-10).
+      for (const m of code.matchAll(/\.(insert|update|upsert)\s*\(/g)) {
+        const window = code.slice(m.index!, m.index! + 400);
+        if (/\bprimary_role\b/.test(window)) {
+          offenders.push(`${f} (${m[1]})`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("the trigger pair and the derivation exist in the migration", () => {
+    const mig = read(
+      "supabase/migrations/20260352000000_primary_role_derived.sql",
+    );
+    expect(mig).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.derive_primary_role\(p_user_id uuid\)/,
+    );
+    expect(mig).toMatch(/CREATE TRIGGER trg_profiles_derive_primary_role/);
+    expect(mig).toMatch(/CREATE TRIGGER trg_user_roles_sync_primary_role/);
+    // SECURITY DEFINER and not returning trigger, so it is inside the sweep
+    // that 20260336000000_relock_definer_surface.sql enforces. The first apply
+    // of this migration left it client-executable; naming anon and
+    // authenticated is what fixes it, because ALTER DEFAULT PRIVILEGES grants
+    // them EXECUTE directly and REVOKE ... FROM PUBLIC does not reach that.
+    expect(mig).toMatch(
+      /REVOKE ALL ON FUNCTION public\.derive_primary_role\(uuid\) FROM PUBLIC, anon, authenticated;/,
+    );
+  });
+
+  it("the database mirrors primaryRoleOf, not the db-helpers fallback", () => {
+    // primaryRoleOf returns null for an empty set; getPrimaryRoleByHierarchy
+    // falls back to `roles[0] || 'landlord'`. The SQL derivation must match the
+    // former — R12 in primary_role_derived_test.sql asserts it against a real
+    // database, and this pins the TypeScript side of the same claim so the two
+    // cannot drift apart silently.
+    expect(primaryRoleOf([])).toBeNull();
+    expect(primaryRoleOf([r("admin")])).toBeNull();
+    expect(primaryRoleOf([r("tenant"), r("landlord")])).toBe("landlord");
+    expect(primaryRoleOf([r("tenant"), r("service_provider")])).toBe(
+      "service_provider",
+    );
+  });
+});
+
 describe("no file defines a second UserRole", () => {
   it("only db-helpers declares the type", () => {
     const definers = sourceFiles("src").filter((f) =>

@@ -14,10 +14,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole, UserRoleInsert } from "@/types/db-helpers";
-import {
-  needsRoleUpgradeWarning,
-  getPrimaryRoleByHierarchy,
-} from "@/types/db-helpers";
+import { needsRoleUpgradeWarning } from "@/types/db-helpers";
 import {
   normalizeRoleParam,
   readActiveRoles,
@@ -251,18 +248,16 @@ export async function GET(request: Request) {
           console.error("Error adding user role:", roleError);
         }
 
-        // Update primary_role based on hierarchy: Landlord >= Service Provider > Tenant
-        const allRoles = [...currentRoles, userRole];
-        const newPrimaryRole = getPrimaryRoleByHierarchy(allRoles);
-
-        const { error: primaryRoleError } = await supabase
-          .from("profiles")
-          .update({ primary_role: newPrimaryRole } as never)
-          .eq("id", user.id);
-
-        if (primaryRoleError) {
-          console.error("Error updating primary_role:", primaryRoleError);
-        }
+        // NOTE: primary_role is NOT maintained here any more. It is derived
+        // from user_roles by trigger -- see
+        // 20260352000000_primary_role_derived.sql. The insert above is what
+        // changes it, and the trigger has already run by the time this returns.
+        //
+        // What used to be here recomputed the hierarchy in the browser-facing
+        // layer and wrote it back, logging-and-continuing on failure. That made
+        // profiles.primary_role a second, independently-maintained copy of
+        // user_roles that could disagree with it silently -- and it was one of
+        // three such writes, the other two in signup/page.tsx.
 
         // NOTE: as above, the service_providers row is created by
         // setProviderType() at /onboarding/provider-type, which isNewProvider
