@@ -354,8 +354,15 @@ BEGIN
   v_retained := v_retained || jsonb_build_object('booking_payments', n);
   SELECT count(*) INTO n FROM public.payments WHERE confirmed_by = p_user_id;
   v_retained := v_retained || jsonb_build_object('payments_confirmed_by', n);
+  SELECT count(*) INTO n FROM public.provider_payouts WHERE approved_by = p_user_id;
+  v_retained := v_retained || jsonb_build_object('provider_payouts_approved_by', n);
   SELECT count(*) INTO n FROM public.reviews WHERE reviewer_id = p_user_id;
   v_retained := v_retained || jsonb_build_object('reviews', n);
+  -- payments.confirmed_by and provider_payouts.approved_by are ACTOR columns:
+  -- they record that this person approved someone else's money movement, not
+  -- that it was theirs. They are reported because they are references to this
+  -- person that survive erasure, which is what a data-subject request asks
+  -- about -- but they are not this person's transactions.
   SELECT count(*) INTO n FROM public.bookings WHERE customer_id = p_user_id;
   v_retained := v_retained || jsonb_build_object('bookings', n);
   SELECT count(*) INTO n FROM public.booking_disputes WHERE reported_by = p_user_id;

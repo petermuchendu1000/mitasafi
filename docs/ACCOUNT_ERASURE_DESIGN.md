@@ -182,12 +182,12 @@ searching the row for the fixture's real name and email.
 
 ## 7. What is still missing
 
-1. **Nothing calls it.** The request flow writes `deletion_requested_at`; this
-   function can discharge it; no operator path connects the two. The next step
-   is a `scripts/ops/erase-account.mjs` in the shape of
-   `scripts/ops/grant-admin.mjs` — list pending requests, show what will go and
-   what will be kept, `--dry-run`, then execute.
-2. **The 48-hour promise is still unmet** until (1) exists and someone runs it.
+1. ~~Nothing calls it.~~ **Done** — `scripts/ops/erase-account.mjs`. See §9.
+2. **Nobody is watching the queue.** The promise is 48 hours and the only thing
+   that surfaces a late request is an operator choosing to run `--list`. There
+   is no alert, no dashboard and no scheduled check. The tool exists; the
+   _process_ does not, and that is now the binding constraint rather than the
+   code.
 3. **No data export.** The DPA gives a right of access alongside erasure;
    `SERVICE_PROVIDER_MODULE_MILESTONES.md:601` lists "data export" next to
    account deletion. Not in scope here.
@@ -196,7 +196,50 @@ searching the row for the fixture's real name and email.
    does, and §2 is why it cannot be. The milestone text should be corrected to
    say anonymise-and-retain.
 
-## 8. Running it
+## 8. Running it — the operator path
+
+`scripts/ops/erase-account.mjs`. It needs `NEXT_PUBLIC_SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY` in the environment or `.env.local`; the key is never
+printed. Credential handling lives in `scripts/ops/_lib.mjs`, shared with
+`grant-admin.mjs`.
+
+```bash
+node scripts/ops/erase-account.mjs --list
+```
+
+```bash
+node scripts/ops/erase-account.mjs --email someone@example.com --reason "DSR-014"
+```
+
+```bash
+node scripts/ops/erase-account.mjs --email someone@example.com --reason "DSR-014" --execute
+```
+
+```bash
+node scripts/ops/erase-account.mjs --audit
+```
+
+**Previewing is the default.** There is no `--dry-run` to forget: a run without
+`--execute` resolves the account, counts the real rows, prints what will be
+destroyed, scrubbed and retained, and writes nothing. `--execute` is the only
+thing that erases.
+
+`--list` shows pending requests with their age and marks anything past the
+48-hour promise. The script **refuses with exit 3** if the account carries no
+`metadata.deletion_requested_at`, because erasing a stranger whose email was
+mistyped is not recoverable; `--no-request-required` overrides that for a lawful
+erasure from another basis and records the override in the stored reason.
+
+After a real run the script prints `erase_account`'s **own** returned counts
+beside its projection, so a divergence between the two shows up immediately.
+`src/__tests__/ops-erase-account.test.ts` additionally pins the script's table
+lists against the migration's text, and `--execute`, the exit-3 refusal and the
+no-key-printing rules against the source.
+
+Exit codes: `0` ok · `1` runtime failure · `2` bad arguments · `3` refused,
+no erasure request on file.
+
+### Straight SQL, if the script is not to hand
 
 ```sql
 -- as service_role, e.g. the Supabase SQL editor

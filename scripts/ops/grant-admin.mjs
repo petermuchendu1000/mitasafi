@@ -19,11 +19,12 @@
  *
  * SECRETS
  *
- * The key is read from the environment, or from .env.local if the environment
- * does not carry it. It is never printed, never logged, never included in an
- * error message, and never passed as a command-line argument (argv is visible
- * to every process on the machine). The only thing echoed about it is whether
- * one was found.
+ * Handled in scripts/ops/_lib.mjs, which erase-account.mjs also uses: the key
+ * is read from the environment or .env.local, and is never printed, logged,
+ * included in an error message or passed in argv. The credential handling and
+ * the email-resolution refusal were extracted there when the second operator
+ * script needed them, rather than copied -- two copies of that is two places
+ * for one of its rules to be dropped.
  *
  * USAGE
  *
@@ -38,13 +39,7 @@
  * safe; the audit trail records each call with its reason.
  */
 
-import { createClient } from "@supabase/supabase-js";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO = join(HERE, "..", "..");
+import { adminClient, resolveUser } from "./_lib.mjs";
 
 // ---------------------------------------------------------------------------
 // arguments
@@ -61,30 +56,14 @@ function parseArgs(argv) {
       return v;
     };
     switch (a) {
-      case "--email":
-        out.email = next();
-        break;
-      case "--user-id":
-        out.userId = next();
-        break;
-      case "--reason":
-        out.reason = next();
-        break;
-      case "--revoke":
-        out.revoke = true;
-        break;
-      case "--dry-run":
-        out.dryRun = true;
-        break;
-      case "--list":
-        out.list = true;
-        break;
-      case "--help":
-      case "-h":
-        out.help = true;
-        break;
-      default:
-        throw new Error(`unknown argument: ${a}`);
+      case "--email": out.email = next(); break;
+      case "--user-id": out.userId = next(); break;
+      case "--reason": out.reason = next(); break;
+      case "--revoke": out.revoke = true; break;
+      case "--dry-run": out.dryRun = true; break;
+      case "--list": out.list = true; break;
+      case "--help": case "-h": out.help = true; break;
+      default: throw new Error(`unknown argument: ${a}`);
     }
   }
   return out;
@@ -105,64 +84,6 @@ grant-admin.mjs — grant or revoke the admin role through the audited path.
 Credentials come from NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in
 the environment, or from .env.local. The key is never printed.
 `.trim();
-
-// ---------------------------------------------------------------------------
-// credentials
-// ---------------------------------------------------------------------------
-/**
- * Read .env.local without printing any of it.
- *
- * Deliberately not using a dotenv package: this runs with a production
- * service-role key in scope, and a dependency that decides to log what it
- * parsed would leak it. Splitting on the FIRST '=' only matters because base64
- * keys contain '='.
- */
-function readEnvFile(path) {
-  let text;
-  try {
-    text = readFileSync(path, "utf8");
-  } catch {
-    return {};
-  }
-  const env = {};
-  for (const line of text.split("\n")) {
-    const t = line.trim();
-    if (!t || t.startsWith("#")) continue;
-    const eq = t.indexOf("=");
-    if (eq < 1) continue;
-    let v = t.slice(eq + 1).trim();
-    if (
-      (v.startsWith('"') && v.endsWith('"')) ||
-      (v.startsWith("'") && v.endsWith("'"))
-    ) {
-      v = v.slice(1, -1);
-    }
-    env[t.slice(0, eq).trim()] = v;
-  }
-  return env;
-}
-
-function credentials() {
-  const file = readEnvFile(join(REPO, ".env.local"));
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || file.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || file.SUPABASE_SERVICE_ROLE_KEY;
-
-  // Report PRESENCE, never the value, and never a prefix or length either --
-  // both narrow a key for anyone reading a shared terminal or a CI log.
-  if (!url || !key) {
-    console.error("Missing Supabase admin credentials.");
-    console.error(`  NEXT_PUBLIC_SUPABASE_URL  ${url ? "found" : "MISSING"}`);
-    console.error(`  SUPABASE_SERVICE_ROLE_KEY ${key ? "found" : "MISSING"}`);
-    console.error(
-      "\nSet them in the environment or in .env.local. This script needs the " +
-        "SERVICE ROLE key, not the anon/publishable key: EXECUTE on " +
-        "grant_admin_role is granted to service_role only.",
-    );
-    process.exit(2);
-  }
-  return { url, key };
-}
 
 // ---------------------------------------------------------------------------
 // reporting
@@ -223,44 +144,10 @@ async function listAdmins(db) {
 // ---------------------------------------------------------------------------
 // resolution
 // ---------------------------------------------------------------------------
-async function resolveUser(db, { email, userId }) {
-  if (userId) {
-    const { data, error } = await db
-      .from("profiles")
-      .select("id, email, full_name")
-      .eq("id", userId)
-      .maybeSingle();
-    if (error) throw new Error(`looking up ${userId}: ${error.message}`);
-    if (!data) {
-      throw new Error(
-        `no profile with id ${userId}. The user must have signed up first — ` +
-          `user_roles.user_id references profiles(id).`,
-      );
-    }
-    return data;
-  }
-
-  const { data, error } = await db
-    .from("profiles")
-    .select("id, email, full_name")
-    .eq("email", email);
-  if (error) throw new Error(`looking up ${email}: ${error.message}`);
-  if (!data || data.length === 0) {
-    throw new Error(
-      `no profile with email ${email}. The user must have signed up first.`,
-    );
-  }
-  // profiles.email carries no unique constraint, so more than one row is
-  // possible. Picking one would be a guess about which human to make an admin.
-  if (data.length > 1) {
-    throw new Error(
-      `${data.length} profiles share the email ${email}:\n` +
-        data.map((p) => `  ${p.id}`).join("\n") +
-        `\nRe-run with --user-id to say which.`,
-    );
-  }
-  return data[0];
-}
+// resolveUser now comes from ./_lib.mjs, shared with erase-account.mjs. Its
+// refusal to guess between two profiles sharing an email matters more there
+// than here -- erasure is irreversible -- but the rule is the same and so is
+// the code.
 
 async function currentlyAdmin(db, userId) {
   const { data, error } = await db
@@ -291,10 +178,7 @@ async function main() {
     process.exit(args.help ? 0 : 2);
   }
 
-  const { url, key } = credentials();
-  const db = createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const db = adminClient();
 
   if (args.list) {
     await listAdmins(db);
