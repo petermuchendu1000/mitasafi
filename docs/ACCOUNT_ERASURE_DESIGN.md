@@ -182,19 +182,19 @@ searching the row for the fixture's real name and email.
 
 ## 7. What is still missing
 
-1. ~~Nothing calls it.~~ **Done** — `scripts/ops/erase-account.mjs`. See §9.
-2. **Nobody is watching the queue.** The promise is 48 hours and the only thing
-   that surfaces a late request is an operator choosing to run `--list`. There
-   is no alert, no dashboard and no scheduled check. The tool exists; the
-   _process_ does not, and that is now the binding constraint rather than the
-   code.
-3. **No data export.** The DPA gives a right of access alongside erasure;
+1. ~~Nothing calls it.~~ **Done** — `scripts/ops/erase-account.mjs`. See §8.
+2. ~~Nobody is watching the queue.~~ **Done** — see §9.
+3. **Two GitHub secrets must be added, or the watchdog does not run.**
+   `SITE_URL` and `CRON_SECRET`, under Settings → Secrets and variables →
+   Actions. `CRON_SECRET` must match the value set on the Fly app. The workflow
+   fails loudly with a named error if either is missing, so a misconfigured
+   watchdog shows as a red run rather than as silence — but **until they are
+   set, nothing is watching.**
+4. **No data export.** The DPA gives a right of access alongside erasure;
    `SERVICE_PROVIDER_MODULE_MILESTONES.md:601` lists "data export" next to
    account deletion. Not in scope here.
-4. **`docs/SERVICE_PROVIDER_MODULE_MILESTONES.md:601` is now wrong.** It
-   describes the deletion flow as "cascade all data". That is not what this
-   does, and §2 is why it cannot be. The milestone text should be corrected to
-   say anonymise-and-retain.
+5. **The other three crons still do not run.** See §9 — this was found while
+   building the watchdog and is a separate, live defect.
 
 ## 8. Running it — the operator path
 
@@ -266,4 +266,75 @@ SELECT created_at, entity_id, details->>'reason' AS reason,
   FROM audit_log
  WHERE action = 'account_erased'
  ORDER BY created_at DESC;
+```
+
+---
+
+## 9. Watching the queue
+
+`.github/workflows/erasure-queue-alert.yml` calls
+`GET /api/cron/erasure-queue` hourly at `:17`, and on demand via
+`workflow_dispatch`.
+
+### The trap this had to avoid
+
+`vercel.json` declares three cron entries for `/api/cron/search-alerts`.
+**They do not run.** This app deploys to Fly (`fly.toml`, `app = "mitasafi-web"`),
+Fly does not read `vercel.json`, there is no GitHub Actions schedule for them,
+and `pg_cron` is available on the Supabase project but not installed.
+
+So the existing search-alert emails have never been sent on a schedule. That is
+a separate live defect, recorded here because it was found while building this
+and because it is the reason the watchdog is **not** a fourth entry in
+`vercel.json` — that would have produced a watchdog that never barks, which is
+the exact failure mode it exists to prevent.
+
+Fly scales to zero here (`min_machines_running = 0`). The scheduled request
+wakes a machine; the cold start costs a few seconds, which is why the curl
+allows 60s and retries a refused connection.
+
+### What it does
+
+Buckets every pending request by age against two thresholds — warn at
+**24h**, breach at the promised **48h** — and emails the operators only when
+something needs attention. Thresholds and bucketing live in
+`src/lib/erasure/queue.ts` as pure functions over an explicit `now`, so the
+boundaries are unit-tested at 47/48/49 hours: an off-by-one here reports a
+broken promise an hour after it broke.
+
+A request whose `deletion_requested_at` cannot be parsed is **surfaced, not
+dropped**. `metadata` is client-writable, so the value is whatever was stored;
+a request with a broken timestamp is still a request, and silently binning it
+is how one gets missed indefinitely.
+
+### The alert carries no personal data
+
+IDs and ages only — never a name or an email address. It would copy a data
+subject's identity into a mailbox, which is the one place nobody will remember
+to erase it from; and these are specifically people who asked to be forgotten,
+so mailing their name around to prompt the forgetting is the wrong shape. It is
+the same decision the audit row makes.
+
+The handler enforces this structurally rather than by filtering: it selects
+only `id, metadata` from `profiles`, so there is no name in scope to leak.
+`src/__tests__/erasure-queue.test.ts` pins that select string.
+
+### Silence is not a status
+
+Mail is sent only when something is overdue, so a quiet inbox must not be the
+only evidence the watchdog is alive. The route always returns a JSON summary,
+returns **500** if the alert could not be delivered, and the workflow fails the
+job on any non-200 and writes the queue state into the run summary. A dead
+watchdog is a red workflow run, not silence.
+
+A breached request does **not** fail the job — only a failed _check_ does.
+Failing on a backlog would make the workflow permanently red, and a permanently
+red workflow is one nobody looks at.
+
+### Checking on demand
+
+Actions → "Erasure queue watchdog" → Run workflow. Or locally:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://<site>/api/cron/erasure-queue
 ```

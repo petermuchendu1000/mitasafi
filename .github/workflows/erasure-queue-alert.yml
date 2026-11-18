@@ -1,0 +1,96 @@
+name: Erasure queue watchdog
+
+# WHY THIS IS A GITHUB ACTION AND NOT A vercel.json CRON
+#
+# vercel.json already declares three cron entries for /api/cron/search-alerts.
+# They do not run. This app deploys to Fly (fly.toml, app = "mitasafi-web") and
+# Fly does not read vercel.json; there is no Vercel deployment behind them, and
+# pg_cron is available on the Supabase project but not installed. Adding a
+# fourth entry there would have produced a watchdog that never barks — which is
+# precisely the failure this watchdog exists to prevent.
+#
+# GitHub's scheduler is not punctual; runs can be delayed by several minutes
+# under load. That is irrelevant at a 24-hour threshold and is the reason this
+# runs hourly rather than once a day: a missed slot costs an hour, not a day.
+#
+# Fly's machines here scale to zero (min_machines_running = 0). The request
+# wakes one; the cold start costs a few seconds.
+
+on:
+  schedule:
+    # Hourly, at :17. Deliberately off the hour: everyone's cron fires at :00
+    # and GitHub's shared scheduler is at its most delayed there.
+    - cron: "17 * * * *"
+  workflow_dispatch: # so an operator can ask "is the queue clear?" on demand
+
+concurrency:
+  group: erasure-queue-alert
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the erasure queue
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+
+          # Fail LOUDLY on missing configuration rather than silently passing.
+          # A watchdog that is quiet because it was never configured is worse
+          # than no watchdog: it looks like good news.
+          if [ -z "${SITE_URL:-}" ]; then
+            echo "::error::SITE_URL secret is not set. Add it in Settings → Secrets → Actions."
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET secret is not set. It must match CRON_SECRET on the Fly app."
+            exit 1
+          fi
+
+          # --max-time covers the Fly cold start. --retry handles a machine that
+          # is still waking; it does NOT retry a 4xx, so a bad secret fails fast
+          # instead of being hammered.
+          code=$(curl -sS -o response.json -w '%{http_code}' \
+                   --max-time 60 --retry 2 --retry-connrefused \
+                   -H "Authorization: Bearer ${CRON_SECRET}" \
+                   "${SITE_URL%/}/api/cron/erasure-queue")
+
+          echo "HTTP $code"
+          cat response.json; echo
+
+          if [ "$code" = "401" ]; then
+            echo "::error::Unauthorized. CRON_SECRET here does not match the one on the Fly app."
+            exit 1
+          fi
+          if [ "$code" != "200" ]; then
+            echo "::error::Watchdog endpoint returned HTTP $code — the queue was NOT checked."
+            exit 1
+          fi
+
+          # Surface the state in the run summary, so the history of this
+          # workflow is a readable record of the queue over time.
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          with open("response.json") as fh:
+              d = json.load(fh)
+          breached = d.get("breached", 0)
+          warning  = d.get("warning", 0)
+          print("## Erasure queue\n")
+          print(f"- breached (past {d.get('slaHours','?')}h): **{breached}**")
+          print(f"- warning (past {d.get('warnHours','?')}h): **{warning}**")
+          print(f"- pending, inside the window: {d.get('fresh', 0)}")
+          print(f"- unreadable request date: {d.get('unparseable', 0)}")
+          print(f"- alert email sent: {d.get('alerted', False)}")
+          if breached:
+              print(f"\n> A promise to {breached} person(s) is already broken.")
+          PY
+
+          # A breached request does not fail the job. The alert email is the
+          # signal to a human; failing here too would turn a backlog into a
+          # permanently red workflow, and a permanently red workflow is one
+          # nobody looks at. The job fails only when the CHECK itself failed.
+          echo "done"
