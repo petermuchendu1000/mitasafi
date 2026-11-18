@@ -111,11 +111,18 @@ describe("there is exactly one scheduler", () => {
     );
   });
 
-  it("the route documents the window defect rather than hiding it", () => {
-    // The handler is enabled but not fixed. A reader must not discover the
-    // gap/duplicate behaviour by having it happen to real users.
-    expect(route).toMatch(/KNOWN DEFECT/);
+  it("the route documents how windowing actually works", () => {
+    // SUPERSEDED, not weakened. This assertion used to require the header to
+    // carry a "KNOWN DEFECT" note, because the handler was scheduled before the
+    // fixed-window defect was fixed and a reader had to be warned. The defect
+    // is now gone (per-alert watermarks, src/lib/search-alerts/window.ts), so
+    // demanding that the file still describe it would be demanding a lie.
+    //
+    // The replacement is stronger: it pins the model the code now relies on,
+    // and fails if the header reverts to describing an unfixed handler.
+    expect(route).toMatch(/HIGH-WATER MARK/);
     expect(route).toMatch(/last_notified_at/);
+    expect(route).not.toMatch(/KNOWN DEFECT/);
   });
 });
 
