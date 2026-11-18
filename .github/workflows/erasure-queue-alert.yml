@@ -2,12 +2,15 @@ name: Erasure queue watchdog
 
 # WHY THIS IS A GITHUB ACTION AND NOT A vercel.json CRON
 #
-# vercel.json already declares three cron entries for /api/cron/search-alerts.
-# They do not run. This app deploys to Fly (fly.toml, app = "mitasafi-web") and
+# vercel.json used to declare three cron entries for /api/cron/search-alerts.
+# They never ran. This app deploys to Fly (fly.toml, app = "mitasafi-web") and
 # Fly does not read vercel.json; there is no Vercel deployment behind them, and
 # pg_cron is available on the Supabase project but not installed. Adding a
 # fourth entry there would have produced a watchdog that never barks — which is
 # precisely the failure this watchdog exists to prevent.
+#
+# Those entries have since been removed and replaced by
+# .github/workflows/search-alerts.yml, which follows this file's pattern.
 #
 # GitHub's scheduler is not punctual; runs can be delayed by several minutes
 # under load. That is irrelevant at a 24-hour threshold and is the reason this

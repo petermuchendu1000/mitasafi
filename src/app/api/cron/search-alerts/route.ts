@@ -1,26 +1,38 @@
 /**
  * Search Alert Notification Cron Job
  *
- * This endpoint is called by a cron job (e.g., Vercel Cron) to:
- * 1. Find new listings since last notification
- * 2. Match them to active search alerts
- * 3. Send email notifications
+ * 1. Find listings published inside the frequency's window
+ * 2. Match them to active, verified search alerts of that frequency
+ * 3. Send one digest email per matching alert
  *
- * Schedule: Every hour for "instant" alerts, daily for "daily", weekly for "weekly"
+ * SCHEDULED BY .github/workflows/search-alerts.yml — NOT by vercel.json.
  *
- * Vercel Cron: Add to vercel.json:
- * {
- *   "crons": [{
- *     "path": "/api/cron/search-alerts?frequency=instant",
- *     "schedule": "0 * * * *"
- *   }, {
- *     "path": "/api/cron/search-alerts?frequency=daily",
- *     "schedule": "0 8 * * *"
- *   }, {
- *     "path": "/api/cron/search-alerts?frequency=weekly",
- *     "schedule": "0 8 * * 1"
- *   }]
- * }
+ * This header used to carry instructions for adding Vercel cron entries, and
+ * those entries existed in vercel.json. They never fired: production is served
+ * by Fly (verified from response headers on mitasafi.com — server: Fly/...,
+ * fly-request-id, via: fly.io, and no x-vercel-id) and Fly does not read
+ * vercel.json. The entries have been removed, because two declared schedulers
+ * for one endpoint is a latent duplicate-send. Do not add them back; add a
+ * `schedule:` entry to the workflow and map it in that workflow's resolver step.
+ *
+ * KNOWN DEFECT — the window is decoupled from what was last sent.
+ *
+ * sinceDate below is derived from Date.now(), never from
+ * search_alerts.last_notified_at. That column is WRITTEN at line ~200 and read
+ * nowhere. Two consequences, both inherent to that design:
+ *
+ *   - a late or skipped run silently drops every listing published in the gap
+ *     between the previous window's end and this one's start. No retry covers
+ *     it, because the next run looks back from ITS own now().
+ *   - two runs inside one window send the same listings to the same people
+ *     twice. A manual workflow_dispatch next to a scheduled run does exactly
+ *     this.
+ *
+ * The scheduler's minutes are offset from :00 to shrink the first hazard
+ * (GitHub's scheduler is most delayed on the hour). That reduces it; it does
+ * not remove it. Fixing it properly means windowing per alert from
+ * last_notified_at, which changes which emails people receive — so it is a
+ * separate, authorised change, not a drive-by.
  */
 
 import { NextRequest, NextResponse } from "next/server";
