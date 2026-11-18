@@ -175,6 +175,33 @@ export function selectDigest<L extends WindowedListing>(
     .sort((a, b) => a.t - b.t);
 
   const taken = eligible.slice(0, Math.max(0, cap));
+
+  // THE CAP MUST NOT SPLIT A MILLISECOND.
+  //
+  // The watermark is an ISO string, so it carries milliseconds; Postgres
+  // timestamps carry microseconds. Two listings published inside the same
+  // millisecond are therefore indistinguishable to the comparison below. If the
+  // cap fell between them, the watermark would advance to that millisecond and
+  // the second one would fail `t > after` on every subsequent run -- lost
+  // silently, which is precisely the failure this module exists to remove.
+  //
+  // Found by running the real handler against seeded data and then reproducing
+  // it as a unit: with a cap of 1 and two listings sharing a millisecond, the
+  // delivered set was ["a","c"] -- "b" never arrived.
+  //
+  // eligible is sorted ascending, so any ties are adjacent: extend across the
+  // whole boundary millisecond. This can exceed `cap` by the size of that tie
+  // group, which is the right trade -- a slightly larger digest against a
+  // listing nobody ever hears about.
+  if (taken.length > 0 && taken.length < eligible.length) {
+    const boundary = taken[taken.length - 1].t;
+    let i = taken.length;
+    while (i < eligible.length && eligible[i].t === boundary) {
+      taken.push(eligible[i]);
+      i += 1;
+    }
+  }
+
   if (taken.length === 0) {
     return { listings: [], nextWatermark: null, deferred: 0 };
   }

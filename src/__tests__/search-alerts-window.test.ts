@@ -202,6 +202,31 @@ describe("selectDigest", () => {
     expect(d.deferred).toBe(0);
   });
 
+  it("W17b the cap never splits a millisecond", () => {
+    // Postgres keeps microseconds; the watermark is an ISO string and keeps
+    // milliseconds. Two listings inside the same millisecond are therefore
+    // indistinguishable here, so a cap falling between them would advance the
+    // watermark past the second one and lose it on every later run.
+    //
+    // Found by running the real handler against seeded production rows and
+    // reproducing it as a unit: with cap 1 the delivered set was ["a","c"].
+    const T = Date.parse("2026-11-18T11:00:00.500Z");
+    const L = (id: string, t: number) => ({
+      id,
+      published_at: new Date(t).toISOString(),
+    });
+    const cands = [L("a", T), L("b", T), L("c", T + 1000)];
+
+    const first = selectDigest(cands, new Date(T - 1000), 1);
+    // cap is 1, but the tie group is taken whole rather than split
+    expect(first.listings.map((l) => l.id).sort()).toEqual(["a", "b"]);
+
+    const second = selectDigest(cands, new Date(first.nextWatermark!), 1);
+    const delivered = [...first.listings, ...second.listings].map((l) => l.id);
+    expect(delivered.sort()).toEqual(["a", "b", "c"]);
+    expect(new Set(delivered).size).toBe(3);
+  });
+
   it("W17 the default cap is the exported constant", () => {
     const many = Array.from({ length: MAX_LISTINGS_PER_DIGEST + 7 }, (_, i) =>
       listing(`l${i}`, at(5 * H - i * 1000)),
