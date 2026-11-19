@@ -3,6 +3,29 @@ primary_region = "jnb"
 
 [build]
 
+# Callback source-IP trust for the M-Pesa Daraja webhook.
+#
+# extractTrustedClientIp() in src/lib/payments/mpesa-config.ts has NO default
+# for this: a header is only trustworthy if the serving platform writes it AND
+# overwrites a client-supplied copy, which is a fact about the deployment, not
+# about the code. On Fly, with nothing in front of fly-proxy, that header is
+# fly-client-ip. Verified against production on 2026-11-19: a request carrying a
+# forged `fly-client-ip` had it overwritten before reaching the app.
+#
+# WITHOUT this, the code falls back to indexing x-forwarded-for from the right
+# by MPESA_TRUSTED_PROXY_HOPS (default 1). On Fly the rightmost entry is an
+# address assigned to THIS APP, not the client, so that fallback can never see a
+# Safaricom IP and every genuine callback is denied. Measured: it resolved
+# 66.241.125.38 while the request came from 160.79.106.x.
+#
+# It is declared here, and not only as a Fly secret, so a freshly created
+# environment inherits it. The same value is currently ALSO set as a secret
+# (applied without a rebuild). Keep the two identical: this file only takes
+# effect on `flyctl deploy`, and which source wins when both define the name is
+# not something this comment asserts.
+[env]
+  MPESA_TRUSTED_CLIENT_IP_HEADER = "fly-client-ip"
+
 [http_service]
   internal_port = 3000
   force_https = true
