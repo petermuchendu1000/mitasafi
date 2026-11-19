@@ -49,15 +49,21 @@ const ACK_RESPONSE = { ResultCode: 0, ResultDesc: "Accepted" };
 // contained 127.0.0. and 192.168., a bare `x-forwarded-for: 127.0.0.1` was a
 // complete authentication bypass against PRODUCTION.
 //
-// WHY THE NEW CODE IS SAFE: extractTrustedClientIp() prefers a single-value
-// header the platform itself writes (fly-client-ip on Fly.io, which is where
-// this app runs — the old comments here assumed Vercel; configurable via
-// MPESA_TRUSTED_CLIENT_IP_HEADER for Vercel-style x-real-ip), and otherwise
-// indexes x-forwarded-for from the RIGHT by an explicit, configurable
-// trusted-hop count (MPESA_TRUSTED_PROXY_HOPS, default 1 = one appending edge,
-// true for both fly-proxy and Vercel). No position a client can prepend is
-// ever read, there is no fallback to a client-settable x-real-ip, and anything
-// unresolvable yields null, which is DENIED below.
+// WHY THE NEW CODE IS SAFE: extractTrustedClientIp() uses a single-value header
+// the platform itself writes, but ONLY when an operator names it in
+// MPESA_TRUSTED_CLIENT_IP_HEADER — there is no default. This deployment sets it
+// to fly-client-ip, verified by probe to be written by fly-proxy and to
+// OVERWRITE a client-supplied copy rather than pass it through.
+//
+// The fallback, x-forwarded-for indexed from the RIGHT by
+// MPESA_TRUSTED_PROXY_HOPS, is NOT in use here and its default of 1 would be
+// wrong if it were: on Fly the rightmost entry is the app's own address, not
+// the client's. See getTrustedProxyHops in mpesa-config.ts for the measurement.
+// This comment previously asserted that default was "true for both fly-proxy
+// and Vercel"; it is true for neither as described.
+//
+// No position a client can prepend is ever read, there is no fallback to a
+// client-settable x-real-ip, and anything unresolvable yields null = DENIED.
 // =============================================================================
 
 export async function POST(request: Request) {
@@ -79,8 +85,11 @@ export async function POST(request: Request) {
     // explicit MPESA_ENVIRONMENT=sandbox plus a non-production app env), which
     // logs loudly. Rejection still answers HTTP 200, by design, so Safaricom
     // never retry-storms us and we leak nothing about the validation.
-    const { ip: clientIp, source: ipSource, reason: ipReason } =
-      extractTrustedClientIp(request.headers);
+    const {
+      ip: clientIp,
+      source: ipSource,
+      reason: ipReason,
+    } = extractTrustedClientIp(request.headers);
 
     let environment: MpesaEnvironment | null = null;
     try {
@@ -88,7 +97,7 @@ export async function POST(request: Request) {
     } catch (configErr) {
       console.error(
         `[M-Pesa Callback:${requestId}] M-Pesa config failed to validate:`,
-        configErr instanceof Error ? configErr.message : configErr
+        configErr instanceof Error ? configErr.message : configErr,
       );
     }
 
@@ -96,12 +105,12 @@ export async function POST(request: Request) {
       if (!isInsecureCallbackModeEnabled()) {
         console.error(
           `[M-Pesa Callback:${requestId}] Rejected — config unavailable, failing CLOSED (not processing):`,
-          { ip: clientIp, ipSource }
+          { ip: clientIp, ipSource },
         );
         return NextResponse.json(ACK_RESPONSE, { status: 200 });
       }
       console.warn(
-        `[M-Pesa Callback:${requestId}] Config unavailable but insecure local callback mode is explicitly enabled; continuing in sandbox mode.`
+        `[M-Pesa Callback:${requestId}] Config unavailable but insecure local callback mode is explicitly enabled; continuing in sandbox mode.`,
       );
       environment = "sandbox";
     }
@@ -109,14 +118,17 @@ export async function POST(request: Request) {
     const ipDecision = authorizeCallbackIp(clientIp, environment);
 
     if (!ipDecision.allowed) {
-      console.warn(`[M-Pesa Callback:${requestId}] Rejected — IP not whitelisted:`, {
-        ip: ipDecision.ip,
-        ipSource,
-        ipReason,
-        decision: ipDecision.reason,
-        env: environment,
-        trustedProxyHops: getTrustedProxyHops(),
-      });
+      console.warn(
+        `[M-Pesa Callback:${requestId}] Rejected — IP not whitelisted:`,
+        {
+          ip: ipDecision.ip,
+          ipSource,
+          ipReason,
+          decision: ipDecision.reason,
+          env: environment,
+          trustedProxyHops: getTrustedProxyHops(),
+        },
+      );
       // Return 200 to avoid leaking information about our validation
       return NextResponse.json(ACK_RESPONSE, { status: 200 });
     }
@@ -124,7 +136,9 @@ export async function POST(request: Request) {
     // ── Security Layer 2: Body size guard ──
     const contentLength = request.headers.get("content-length");
     if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE_BYTES) {
-      console.warn(`[M-Pesa Callback:${requestId}] Rejected — body too large: ${contentLength} bytes`);
+      console.warn(
+        `[M-Pesa Callback:${requestId}] Rejected — body too large: ${contentLength} bytes`,
+      );
       return NextResponse.json(ACK_RESPONSE, { status: 200 });
     }
 
@@ -134,7 +148,7 @@ export async function POST(request: Request) {
     if (!body?.Body?.stkCallback) {
       console.error(
         `[M-Pesa Callback:${requestId}] Invalid body structure:`,
-        JSON.stringify(body).slice(0, 500)
+        JSON.stringify(body).slice(0, 500),
       );
       return NextResponse.json(ACK_RESPONSE, { status: 200 });
     }
@@ -163,7 +177,10 @@ export async function POST(request: Request) {
     });
 
     if (!result.success) {
-      console.error(`[M-Pesa Callback:${requestId}] Processing failed:`, result.error);
+      console.error(
+        `[M-Pesa Callback:${requestId}] Processing failed:`,
+        result.error,
+      );
     } else {
       console.log(`[M-Pesa Callback:${requestId}] Processed successfully:`, {
         paymentId: result.paymentId,
