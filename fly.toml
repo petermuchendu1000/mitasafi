@@ -1,6 +1,45 @@
 app = "mitasafi-web"
 primary_region = "jnb"
 
+# DEPLOYING THIS APP REQUIRES SEVEN --build-arg VALUES. READ THIS FIRST.
+#
+# The Dockerfile declares seven NEXT_PUBLIC_* ARGs and Next INLINES them into
+# the client bundle at build time. There is deliberately no [build.args] block
+# below: the Supabase publishable key and the other values are treated as
+# rotatable credentials and are not committed to this repository.
+#
+# The consequence is a trap. `flyctl deploy` with no --build-arg flags SUCCEEDS
+# and builds every one of them as the EMPTY STRING. Measured consequences,
+# worst first:
+#   1. NEXT_PUBLIC_APP_ENV="" makes /api/payments/mpesa/health UNAUTHENTICATED.
+#      It gates on this value being exactly "production" (health/route.ts), so
+#      an empty value opens configuration probing to the internet.
+#   2. An empty Supabase URL/key breaks the browser client for every visitor.
+#   3. An empty NEXT_PUBLIC_APP_URL breaks every generated link.
+# Nothing in the build or in Fly's health checking catches any of this: there
+# are no [http_service.checks] here, so Fly releases whatever builds.
+#
+# DO NOT source .env.local for a deploy. It is a development file:
+# NEXT_PUBLIC_APP_ENV=development, NEXT_PUBLIC_APP_URL=http://localhost:3000,
+# and its NEXT_PUBLIC_SUPABASE_ANON_KEY is the 208-char LEGACY JWT, whereas
+# production is built with the 46-char sb_publishable_* key. Using it would
+# silently swap the browser's Supabase key.
+#
+# Measured against the 2026-11-21 production image: NEXT_PUBLIC_MAPBOX_TOKEN
+# and NEXT_PUBLIC_GOOGLE_CLIENT_ID were built EMPTY, so the map and the Google
+# client id are not configured in production. Reproduce them as empty unless
+# you intend to turn those on — a deploy should ship code, not new config.
+# NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is read by the source but is not an ARG at
+# all, so it can never be set by a deploy.
+#
+# Verify a deploy by digest rather than by eye: the inlined key in
+# .next/static must hash to the same value as the one in the previous image,
+# and /api/payments/mpesa/health must still answer 401.
+#
+# From a sandbox behind an HTTPS-intercepting proxy, Fly's default Depot
+# builder fails its gRPC TLS handshake ("x509: certificate signed by unknown
+# authority") even with SSL_CERT_FILE pointed at the proxy CA. Use
+# `--depot=false --remote-only`, which goes over WireGuard and works.
 [build]
 
 # Callback source-IP trust for the M-Pesa Daraja webhook.
