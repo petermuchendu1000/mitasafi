@@ -22,6 +22,7 @@ import {
   type RoleQueryClient,
 } from "@/lib/identity/roles";
 import { sanitizeRedirectUrl } from "@/lib/security/url-sanitizer";
+import { SITE_URL } from "@/lib/site/urls";
 
 // Helper function to get redirect URL based on role and intent
 function getIntentBasedRedirect(
@@ -61,7 +62,22 @@ export async function GET(request: Request) {
   );
   const roleParam = requestUrl.searchParams.get("role"); // Fallback role from URL param
   const intentParam = requestUrl.searchParams.get("intent"); // 'list' | 'manage' | null
-  const origin = requestUrl.origin;
+  // The origin every redirect below is built from.
+  //
+  // This was `requestUrl.origin`, and that is wrong wherever a proxy sits in
+  // front of the app. Next's standalone server binds to HOSTNAME=0.0.0.0
+  // PORT=3000 (set in the Dockerfile), so behind fly-proxy `request.url` is
+  // built from the CONTAINER's address, not the public one. Every redirect
+  // here became http://0.0.0.0:3000/... and a user who had just signed in
+  // with Google successfully was sent to an address no browser can resolve
+  // (ERR_ADDRESS_INVALID). Authentication worked; the user was stranded.
+  //
+  // Deliberately NOT read from x-forwarded-host: that header is supplied by
+  // the caller, and building a Location out of it hands an attacker the
+  // redirect. Where the site lives is configuration, so it comes from the one
+  // module that owns that fact. The PATHS appended below remain untrusted and
+  // are separately sanitised by sanitizeRedirectUrl.
+  const origin = SITE_URL;
 
   if (code) {
     const supabase = await createClient();
