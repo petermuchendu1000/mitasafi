@@ -13,18 +13,42 @@ primary_region = "jnb"
 # forged `fly-client-ip` had it overwritten before reaching the app.
 #
 # WITHOUT this, the code falls back to indexing x-forwarded-for from the right
-# by MPESA_TRUSTED_PROXY_HOPS (default 1). On Fly the rightmost entry is an
-# address assigned to THIS APP, not the client, so that fallback can never see a
-# Safaricom IP and every genuine callback is denied. Measured: it resolved
-# 66.241.125.38 while the request came from 160.79.106.x.
+# by MPESA_TRUSTED_PROXY_HOPS. On Fly the RIGHTMOST entry is an address assigned
+# to THIS APP, not the client, so the old default of 1 could never see a
+# Safaricom IP and every genuine callback would be denied.
 #
-# It is declared here, and not only as a Fly secret, so a freshly created
-# environment inherits it. The same value is currently ALSO set as a secret
-# (applied without a rebuild). Keep the two identical: this file only takes
-# effect on `flyctl deploy`, and which source wins when both define the name is
+# HOP COUNT, MEASURED 2026-11-21 (previously a guess, and deliberately left
+# unset until measured). Against production with the platform header cleared:
+#   - probe with no x-forwarded-for            -> hop 2 resolved the real caller
+#   - probe with 1 forged entry                -> hop 2 resolved the real caller
+#   - probe with 2 forged entries              -> hop 2 resolved the real caller
+#   - same probe via mitasafi-web.fly.dev      -> same
+#   - probe from INSIDE the jnb machine, so the request entered the jnb edge
+#     with the machine in jnb (same region)    -> same
+# The forged markers were never resolved in any of those. So fly-proxy
+# contributes exactly TWO entries, constant regardless of what the client sends,
+# and 2 is the correct hop count here.
+#
+# Do not raise it further. The trusted index is len - hops, so with a forged
+# prefix of length f the chain is f + 2 long and the forged region is read
+# exactly when hops > 2. Too LOW is fail-closed and merely useless; too HIGH is
+# fail-open.
+#
+# These are declared here, and not only as Fly secrets, so a freshly created
+# environment inherits them. The same two values are currently ALSO set as
+# secrets (applied without a rebuild). Keep them identical: this file only takes
+# effect on `flyctl deploy`, and which source wins when both define a name is
 # not something this comment asserts.
+#
+# TRUSTED_* (unprefixed) are the same two facts for the rate limiter in
+# src/lib/security/rate-limit.ts, which resolves a client the same way but under
+# its own names, so that a limiter change can never alter a payment
+# authorization. Its hop default is also 1 for the fail-open reason above.
 [env]
   MPESA_TRUSTED_CLIENT_IP_HEADER = "fly-client-ip"
+  MPESA_TRUSTED_PROXY_HOPS = "2"
+  TRUSTED_CLIENT_IP_HEADER = "fly-client-ip"
+  TRUSTED_PROXY_HOPS = "2"
 
 [http_service]
   internal_port = 3000
