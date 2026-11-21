@@ -25,10 +25,20 @@ primary_region = "jnb"
 # production is built with the 46-char sb_publishable_* key. Using it would
 # silently swap the browser's Supabase key.
 #
-# Measured against the 2026-11-21 production image: NEXT_PUBLIC_MAPBOX_TOKEN
-# and NEXT_PUBLIC_GOOGLE_CLIENT_ID were built EMPTY, so the map and the Google
-# client id are not configured in production. Reproduce them as empty unless
-# you intend to turn those on — a deploy should ship code, not new config.
+# NEXT_PUBLIC_MAPBOX_TOKEN and NEXT_PUBLIC_GOOGLE_CLIENT_ID were built EMPTY in
+# every image up to 2026-11-21, which is why the map never rendered and Google
+# sign-in could not work: the client id is half of an OAuth pair and an empty
+# half fails. Both are now supplied. The Mapbox value must be a PUBLIC pk.*
+# token — an sk.* token is a secret and must never be a build arg, because
+# build args are inlined into the browser bundle.
+#
+# GOOGLE_CLIENT_SECRET is the other half of that pair and is a Fly SECRET, never
+# a build arg: as an ARG it would both persist in image history and ship to every
+# browser. It was already set correctly — proven by re-setting it to the supplied
+# value and getting back the identical secret digest — and the supplied id/secret
+# pair was confirmed matched against Google's token endpoint, which answered
+# invalid_grant (bad code, good credentials) rather than invalid_client.
+#
 # NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is read by the source but is not an ARG at
 # all, so it can never be set by a deploy.
 #
