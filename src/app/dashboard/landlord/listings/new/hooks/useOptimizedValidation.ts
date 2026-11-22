@@ -1,12 +1,12 @@
 /**
  * useOptimizedValidation Hook
- * 
+ *
  * React hook for optimized form validation with:
  * - Debounced validation during typing
  * - Cached validation results
  * - Lazy field validation (only touched fields)
  * - Performance tracking
- * 
+ *
  * Usage:
  * ```tsx
  * const {
@@ -21,12 +21,15 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import type { CommercialFormData, CommercialType, CommercialSubtype } from "../commercial-types";
+import type {
+  CommercialFormData,
+  CommercialType,
+  CommercialSubtype,
+} from "../commercial-types";
 import {
   validateRequiredFieldsCached,
   createDebouncedValidator,
   validateTouchedFields,
-  createTouchedFieldTracker,
   clearValidationCache,
 } from "../validation-cache";
 
@@ -64,7 +67,7 @@ export function useOptimizedValidation(
   formData: CommercialFormData,
   type: CommercialType | null,
   subtype: CommercialSubtype | null,
-  options: UseOptimizedValidationOptions = {}
+  options: UseOptimizedValidationOptions = {},
 ): UseOptimizedValidationReturn {
   const {
     debounceMs = 200,
@@ -76,14 +79,25 @@ export function useOptimizedValidation(
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isValidating, setIsValidating] = useState(false);
 
-  // Touched field tracker
-  const touchedRef = useRef(createTouchedFieldTracker());
-
-  // Force re-render when touched fields change
-  const [, forceUpdate] = useState({});
+  // Touched fields.
+  //
+  // This used to be a useRef holding a mutable tracker, with forceUpdate({}) to provoke
+  // a re-render. That is what ESLint react-hooks/refs reported at the touchedErrors
+  // memo below: the set was read during render but could not be a dependency of the
+  // memo, so a re-render left the memo returning the value computed from the PREVIOUS
+  // touched set. Because validateTouchedFields returns every error while the set is
+  // empty and only touched fields' errors once it is not, the first touchField() was
+  // supposed to narrow the list and did not — lazy validation went on showing errors
+  // for fields the user had never visited. Reproduced in
+  // __tests__/useOptimizedValidation.test.ts.
+  //
+  // The touched set decides what is rendered, so it is state, not a ref.
+  const [touched, setTouched] = useState<Set<string>>(() => new Set());
 
   // Create debounced validator
-  const validatorRef = useRef<ReturnType<typeof createDebouncedValidator> | null>(null);
+  const validatorRef = useRef<ReturnType<
+    typeof createDebouncedValidator
+  > | null>(null);
 
   // Initialize debounced validator
   useEffect(() => {
@@ -111,7 +125,11 @@ export function useOptimizedValidation(
   // Validate on mount if requested
   useEffect(() => {
     if (validateOnMount && type) {
-      const initialErrors = validateRequiredFieldsCached(formData, type, subtype);
+      const initialErrors = validateRequiredFieldsCached(
+        formData,
+        type,
+        subtype,
+      );
       setErrors(initialErrors);
     }
     // Only run on mount
@@ -125,47 +143,45 @@ export function useOptimizedValidation(
 
   // Mark a field as touched
   const touchField = useCallback((field: string) => {
-    touchedRef.current.touch(field);
-    forceUpdate({});
+    setTouched((prev) => {
+      if (prev.has(field)) return prev;
+      const next = new Set(prev);
+      next.add(field);
+      return next;
+    });
   }, []);
 
   // Reset touched state
   const resetTouched = useCallback(() => {
-    touchedRef.current.reset();
-    forceUpdate({});
+    setTouched(new Set());
   }, []);
 
   // Validate all fields (e.g., on submit)
   const validateAll = useCallback(() => {
     // Flush any pending validation
     validatorRef.current?.flush();
-    
+
     // Get all required field names
     const allErrors = validateRequiredFieldsCached(formData, type, subtype);
-    
+
     // Touch all fields with errors
-    Object.keys(allErrors).forEach(field => {
-      touchedRef.current.touch(field);
+    setTouched((prev) => {
+      const next = new Set(prev);
+      Object.keys(allErrors).forEach((field) => next.add(field));
+      return next;
     });
-    
+
     setErrors(allErrors);
-    forceUpdate({});
-    
+
     return allErrors;
   }, [formData, type, subtype]);
 
   // Compute touched errors
   const touchedErrors = useMemo(() => {
     if (!lazyValidation) return errors;
-    
-    return validateTouchedFields(
-      formData,
-      type,
-      subtype,
-      touchedRef.current.getTouched(),
-      false
-    );
-  }, [formData, type, subtype, lazyValidation, errors]);
+
+    return validateTouchedFields(formData, type, subtype, touched, false);
+  }, [formData, type, subtype, lazyValidation, errors, touched]);
 
   // Check if valid
   const isValid = useMemo(() => {
@@ -173,20 +189,26 @@ export function useOptimizedValidation(
   }, [errors]);
 
   // Get error for specific field
-  const getFieldError = useCallback((field: string) => {
-    if (lazyValidation && !touchedRef.current.isTouched(field)) {
-      return undefined;
-    }
-    return errors[field];
-  }, [errors, lazyValidation]);
+  const getFieldError = useCallback(
+    (field: string) => {
+      if (lazyValidation && !touched.has(field)) {
+        return undefined;
+      }
+      return errors[field];
+    },
+    [errors, lazyValidation, touched],
+  );
 
   // Check if field has error
-  const hasFieldError = useCallback((field: string) => {
-    if (lazyValidation && !touchedRef.current.isTouched(field)) {
-      return false;
-    }
-    return !!errors[field];
-  }, [errors, lazyValidation]);
+  const hasFieldError = useCallback(
+    (field: string) => {
+      if (lazyValidation && !touched.has(field)) {
+        return false;
+      }
+      return !!errors[field];
+    },
+    [errors, lazyValidation, touched],
+  );
 
   return {
     errors,
@@ -208,7 +230,7 @@ export function useOptimizedValidation(
 export function useCachedValidation(
   formData: CommercialFormData,
   type: CommercialType | null,
-  subtype: CommercialSubtype | null
+  subtype: CommercialSubtype | null,
 ) {
   const errors = useMemo(() => {
     if (!type) return {};
@@ -219,9 +241,12 @@ export function useCachedValidation(
     return Object.keys(errors).length === 0;
   }, [errors]);
 
-  const getFieldError = useCallback((field: string) => {
-    return errors[field];
-  }, [errors]);
+  const getFieldError = useCallback(
+    (field: string) => {
+      return errors[field];
+    },
+    [errors],
+  );
 
   return {
     errors,
