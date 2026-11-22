@@ -18,6 +18,7 @@ import {
   writeSavedListings,
   type SavedListing,
 } from "@/lib/saved-listings/store";
+import { reconcileSavedListingsWithServer } from "@/lib/saved-listings/sync";
 
 const SYNC_DEBOUNCE_MS = 2000;
 
@@ -59,85 +60,24 @@ export function useSavedListings(): UseSavedListingsReturn {
     setIsLoading(false);
   }, []);
 
-  // Type for server response (since saved_listings table isn't in generated types yet)
-  interface ServerSavedListing {
-    listing_id: string;
-    created_at: string;
-    notes: string | null;
-  }
-
-  // Sync local saves with server
-  const syncWithServer = useCallback(
-    async (uid: string) => {
-      try {
-        // Get server saved listings
-        // Note: Type assertion needed until saved_listings table is in generated types
-        const { data: serverListings, error } = (await supabase
-          .from("saved_listings" as never)
-          .select("listing_id, created_at, notes")
-          .eq("user_id", uid)) as unknown as {
-          data: ServerSavedListing[] | null;
-          error: Error | null;
-        };
-
-        if (error) {
-          console.error("Failed to fetch server saved listings:", error);
-          return;
-        }
-
-        // Get local saves
-        const localSaves = getLocalSavedListings();
-
-        // Merge: union of local and server, server wins on conflict
-        const serverMap = new Map<string, SavedListing>(
-          (serverListings || []).map((s) => [
-            s.listing_id,
-            {
-              listingId: s.listing_id,
-              savedAt: s.created_at,
-              notes: s.notes || undefined,
-            },
-          ]),
-        );
-
-        // Add local saves that aren't on server
-        const toUpload: SavedListing[] = [];
-        for (const local of localSaves) {
-          if (!serverMap.has(local.listingId)) {
-            toUpload.push(local);
-            serverMap.set(local.listingId, local);
-          }
-        }
-
-        // Upload local-only saves to server
-        if (toUpload.length > 0) {
-          const inserts = toUpload.map((s) => ({
-            user_id: uid,
-            listing_id: s.listingId,
-            notes: s.notes || null,
-          }));
-
-          // Note: Type assertion needed until saved_listings table is in generated types
-          const { error: insertError } = await supabase
-            .from("saved_listings" as never)
-            .upsert(inserts as never, { onConflict: "user_id,listing_id" });
-
-          if (insertError) {
-            console.error("Failed to sync local saves to server:", insertError);
-          }
-        }
-
-        // Update state with merged list
-        const merged = Array.from(serverMap.values());
-        setSavedListings(merged);
-        setLocalSavedListings(merged);
-        setIsSynced(true);
-      } catch (error) {
-        console.error("Sync failed:", error);
-      }
-    },
-    [supabase],
-  );
+  /**
+   * Reconcile with the server.
+   *
+   * This used to run its own merge, querying Supabase directly and keeping
+   * `local ∪ server` while uploading the difference — the exact opposite of the policy
+   * ListingCard ran against /api/saved-listings, which kept `local ∩ server` and
+   * uploaded nothing. Two policies for one key, and whichever ran last won. In practice
+   * only ListingCard's ever ran, because SaveButton is this hook's sole consumer and is
+   * rendered nowhere, so the destructive one had no counterweight.
+   *
+   * Both are now @/lib/saved-listings/sync, which can tell a never-uploaded save apart
+   * from one deleted on another device. Neither policy could.
+   */
+  const syncWithServer = useCallback(async () => {
+    await reconcileSavedListingsWithServer();
+    setSavedListings([...readSavedListings()]);
+    setIsSynced(true);
+  }, []);
 
   // Check auth status and sync if logged in
   useEffect(() => {
@@ -153,7 +93,7 @@ export function useSavedListings(): UseSavedListingsReturn {
 
         // Debounce sync to avoid rapid calls during auth state changes
         syncTimeout = setTimeout(() => {
-          syncWithServer(user.id);
+          syncWithServer();
         }, SYNC_DEBOUNCE_MS);
       } else {
         setUserId(null);
@@ -170,7 +110,7 @@ export function useSavedListings(): UseSavedListingsReturn {
       if (event === "SIGNED_IN" && session?.user) {
         setUserId(session.user.id);
         syncTimeout = setTimeout(() => {
-          syncWithServer(session.user.id);
+          syncWithServer();
         }, SYNC_DEBOUNCE_MS);
       } else if (event === "SIGNED_OUT") {
         setUserId(null);

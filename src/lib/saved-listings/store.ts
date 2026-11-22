@@ -37,6 +37,19 @@ export interface SavedListing {
   savedAt: string;
   notes?: string;
   lastKnownStatus?: string;
+  /**
+   * When this entry was last known to exist on the server, if ever.
+   *
+   * Absent means "never uploaded". The distinction matters because a local entry the
+   * server does not have is ambiguous: it is either a save made while signed out and
+   * not yet uploaded, or a save that was deleted on another device. Those need opposite
+   * treatment, and without this marker the reconciler cannot tell them apart — it used
+   * to guess "deleted" and threw away every save made before signing in. See sync.ts.
+   *
+   * Entries written before this field existed have none, so they are read as
+   * never-uploaded, which keeps them.
+   */
+  syncedAt?: string;
 }
 
 /**

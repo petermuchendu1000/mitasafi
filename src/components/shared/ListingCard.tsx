@@ -34,11 +34,13 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
-  readSavedListings,
-  writeSavedListings,
   addSavedListing,
   removeSavedListing,
 } from "@/lib/saved-listings/store";
+import {
+  reconcileSavedListingsWithServer,
+  invalidateSavedListingsSync,
+} from "@/lib/saved-listings/sync";
 import { useIsListingSaved } from "@/lib/saved-listings/useIsListingSaved";
 import {
   type ListingCardData,
@@ -68,80 +70,10 @@ interface ListingCardProps {
   linkTarget?: "_self" | "_blank";
 }
 
-// The storage key used to be declared here too. Reads and writes now go through
-// @/lib/saved-listings/store, the one module that owns it.
-
-/**
- * When the server's saved listings were last reconciled into local storage, and the
- * in-flight request if there is one. Shared by every card on the page.
- *
- * This used to also cache the Set of saved ids, because each card read that Set back and
- * called setIsSaved with it. The cards no longer ask: the reconciliation writes through
- * the store, and the store tells them. Keeping the Set would have left write-only state
- * whose staleness could not be observed, so it is gone and only the timestamp remains.
- */
-let lastSyncedAt = 0;
-let fetchPromise: Promise<void> | null = null;
-
-const SYNC_TTL_MS = 30_000;
-
-/** Reconcile storage with the server's list at most once per TTL, across all cards. */
-async function fetchSavedListingsOnce(): Promise<void> {
-  if (lastSyncedAt !== 0 && Date.now() - lastSyncedAt < SYNC_TTL_MS) return;
-
-  // Already in flight for another card — join it rather than issue a second request.
-  if (fetchPromise) {
-    await fetchPromise;
-    return;
-  }
-
-  fetchPromise = (async () => {
-    try {
-      const res = await fetch("/api/saved-listings");
-      // A non-ok answer means no server truth to apply: 401 is the ordinary case for a
-      // signed-out visitor, whose saves live only in storage. Leave storage alone, and
-      // leave lastSyncedAt alone so the next card may try again.
-      if (res.ok) {
-        const data = await res.json();
-        const ids = new Set<string>(
-          (data.saved_listings || []).map(
-            (s: { listing_id: string }) => s.listing_id,
-          ),
-        );
-
-        // Sync local storage to the server's answer.
-        const localSaved = [...readSavedListings()];
-        data.saved_listings?.forEach(
-          (s: { listing_id: string; created_at: string }) => {
-            if (!localSaved.some((ls) => ls.listingId === s.listing_id)) {
-              localSaved.push({
-                listingId: s.listing_id,
-                savedAt: s.created_at,
-              });
-            }
-          },
-        );
-        const synced = localSaved.filter((ls) => ids.has(ls.listingId));
-        // This used to be a bare localStorage.setItem, so the sync could change what is
-        // stored and leave every other reader of the key — the Navbar count above all —
-        // showing the old number. writeSavedListings notifies as part of the write.
-        writeSavedListings(synced);
-        lastSyncedAt = Date.now();
-      }
-    } catch {
-      // Network error - use localStorage only
-    } finally {
-      fetchPromise = null;
-    }
-  })();
-
-  await fetchPromise;
-}
-
-// Invalidate after a successful save/unsave, so the next card reconciles afresh.
-function invalidateSavedListingsCache() {
-  lastSyncedAt = 0;
-}
+// The storage key used to be declared here too, and so did this card's own
+// local/server reconciliation. Both now live in @/lib/saved-listings: the store owns
+// the key, and sync.ts owns the one merge policy. The copy that stood here kept
+// `local ∩ server`, which deleted every save made before signing in.
 
 // =============================================================================
 // METRIC COMPONENTS
@@ -330,7 +262,7 @@ export function ListingCard({
   // also means a card no longer needs to be the one that awaited the fetch to see it.
   useEffect(() => {
     if (variant === "public") {
-      void fetchSavedListingsOnce();
+      void reconcileSavedListingsWithServer();
     }
   }, [variant]);
 
@@ -375,7 +307,7 @@ export function ListingCard({
         }
       } else {
         // Invalidate cache so next card fetch gets fresh data
-        invalidateSavedListingsCache();
+        invalidateSavedListingsSync();
       }
     } catch (err) {
       console.error("Failed to save listing:", err);

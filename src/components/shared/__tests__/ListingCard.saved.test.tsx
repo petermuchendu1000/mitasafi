@@ -36,10 +36,10 @@
  *   the button in the same place either way — if it passes pre-change, my reading of the
  *   closure is wrong.
  *
- * WHY Date.now IS MOCKED
- *   fetchSavedListingsOnce records in module scope when it last reconciled storage, and
- *   skips the request for 30 seconds afterwards. Module state outlives a test, so without
- *   an advancing clock a later test would silently skip the sync and assert nothing.
+ * WHY THE SYNC IS RESET BETWEEN TESTS
+ *   The reconciler records in module scope when it last ran and skips the request for 30
+ *   seconds afterwards. Module state outlives a test, so without resetSavedListingsSync-
+ *   ForTests a later test would silently skip the sync and assert nothing.
  */
 
 import { render, screen, act, fireEvent } from "@testing-library/react";
@@ -50,6 +50,7 @@ import {
   subscribeSavedListings,
   resetSavedListingsCacheForTests,
 } from "@/lib/saved-listings/store";
+import { resetSavedListingsSyncForTests } from "@/lib/saved-listings/sync";
 import type { ListingCardData } from "../listing-types";
 
 const SAVE = "Save property";
@@ -124,17 +125,13 @@ function mockFetch(opts: {
   return fetchMock;
 }
 
-// Module-scope cache in ListingCard.tsx lives 30s; keep stepping past that window.
-let clock = 1_700_000_000_000;
-
 describe("ListingCard saved state", () => {
   let consoleError: jest.SpyInstance;
 
   beforeEach(() => {
     localStorage.clear();
     resetSavedListingsCacheForTests();
-    clock += 120_000;
-    jest.spyOn(Date, "now").mockImplementation(() => clock);
+    resetSavedListingsSyncForTests();
     consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
   });
 
@@ -200,6 +197,55 @@ describe("ListingCard saved state", () => {
       });
 
       expect(readSavedListings().map((s) => s.listingId)).toEqual([]);
+    });
+
+    /**
+     * D6 THE SYNC DELETES SAVES THE SERVER HAS NEVER SEEN.
+     *
+     * fetchSavedListingsOnce ends with
+     *   const synced = localSaved.filter(ls => ids.has(ls.listingId))
+     * so anything stored locally that is not already on the server is dropped, and
+     * nothing is ever uploaded. The flow this breaks is the one the product is built
+     * on: save while signed out, sign up afterwards. On the first browse page after
+     * signing in the server list is empty, every local save fails the filter, and the
+     * lot is written away.
+     *
+     * The second test states the other half: the entries should go UP, not away.
+     * Both assert on observable state and can return either answer.
+     */
+    it("D6 keeps local saves the server has not seen", async () => {
+      mockFetch({ serverSaved: [] }); // signed in; nothing uploaded yet
+      writeSavedListings([
+        { listingId: listing.id, savedAt: "2026-01-01T00:00:00.000Z" },
+        { listingId: other.id, savedAt: "2026-01-02T00:00:00.000Z" },
+      ]);
+
+      await act(async () => {
+        render(<ListingCard listing={listing} variant="public" />);
+      });
+
+      expect(
+        readSavedListings()
+          .map((s) => s.listingId)
+          .sort(),
+      ).toEqual([listing.id, other.id].sort());
+    });
+
+    it("D6 uploads local saves the server has not seen", async () => {
+      const fetchMock = mockFetch({ serverSaved: [] });
+      writeSavedListings([
+        { listingId: listing.id, savedAt: "2026-01-01T00:00:00.000Z" },
+      ]);
+
+      await act(async () => {
+        render(<ListingCard listing={listing} variant="public" />);
+      });
+
+      const posted = fetchMock.mock.calls.filter(
+        ([, init]) =>
+          (init as { method?: string } | undefined)?.method === "POST",
+      );
+      expect(posted).toHaveLength(1);
     });
 
     it("D2 the database sync notifies other components", async () => {
