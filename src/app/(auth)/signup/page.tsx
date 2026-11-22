@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type {
-  ProfileUpsert,
   UserRole,
   UserRoleInsert,
   RoleUpgradeWarning,
@@ -31,6 +30,13 @@ import {
   needsRoleUpgradeWarning,
   getPrimaryRoleByHierarchy,
 } from "@/types/db-helpers";
+import {
+  normalizeRoleParam,
+  readActiveRoles,
+  productRoleNames,
+  type RoleQueryClient,
+} from "@/lib/identity/roles";
+import { buildProviderProfile } from "@/lib/identity/provider-profile";
 import { landingImage } from "@/lib/storage/landing-images";
 
 // SECURITY: URL sanitizer for client-side redirect validation
@@ -258,18 +264,18 @@ function SignupPageContent() {
         if (!user) return;
 
         // Get existing roles
-        const { data: rolesData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .eq("is_active", true);
-
-        const currentRoles: UserRole[] =
-          rolesData?.map((r: { role: string }) => r.role as UserRole) || [];
-        const newRole: UserRole =
-          pendingRoleFromUrl === "provider"
-            ? "service_provider"
-            : (pendingRoleFromUrl as UserRole);
+        const { roles: activeRoles } = await readActiveRoles(
+          supabase as unknown as RoleQueryClient,
+          user.id,
+        );
+        const currentRoles: UserRole[] = productRoleNames(activeRoles);
+        // A fourth copy of the alias lived here, with another `as UserRole`
+        // cast on a query parameter. normalizeRoleParam returns null for an
+        // unrecognised value, so the warning is simply not shown rather than
+        // being computed from a role the type system vouched for and the
+        // database would then reject.
+        const newRole = normalizeRoleParam(pendingRoleFromUrl);
+        if (!newRole) return;
 
         // Check if warning is needed
         const warning = needsRoleUpgradeWarning(currentRoles, newRole);
@@ -406,20 +412,15 @@ function SignupPageContent() {
       if (error) {
         setError(error.message);
       } else if (data.user) {
-        // Map role to UserRole (null = no role needed)
-        const userRole: UserRole | null =
-          selectedRole === "provider" ? "service_provider" : selectedRole;
+        // null = no role needed; this user is browsing and saving listings.
+        const userRole: UserRole | null = normalizeRoleParam(selectedRole);
 
         // Check existing roles from user_roles table
-        const { data: existingRolesData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", data.user.id)
-          .eq("is_active", true);
-
-        const currentRoles: UserRole[] =
-          existingRolesData?.map((r: { role: string }) => r.role as UserRole) ||
-          [];
+        const { roles: activeRoles } = await readActiveRoles(
+          supabase as unknown as RoleQueryClient,
+          data.user.id,
+        );
+        const currentRoles: UserRole[] = productRoleNames(activeRoles);
 
         // Check if profile exists
         const { data: existingProfile } = await supabase
@@ -429,15 +430,39 @@ function SignupPageContent() {
           .single();
 
         if (!existingProfile) {
-          // Create profile for new user (no primary_role needed for basic users)
-          const profileData: ProfileUpsert = {
-            id: data.user.id,
-            email: data.user.email || "",
-            phone: fullPhone,
-            primary_role: userRole || undefined,
-          };
+          // Profile and role in ONE transactional, idempotent call.
+          //
+          // This was a bare insert whose result was discarded entirely. Every
+          // foreign key in the identity graph points at profiles.id -- 39 of
+          // them now -- so a silent failure here left a signed-in user that no
+          // booking, listing, payment or role row could reference, and the flow
+          // carried on to redirect them into a dashboard anyway.
+          //
+          // The role is passed here too, so a new user's profile and first role
+          // are created together or not at all. The role branching below still
+          // runs; addRoleToUser is an upsert, so its call is a no-op when
+          // provisioning already created the row.
+          const { error: provisionError } = await supabase.rpc(
+            "provision_identity",
+            {
+              // undefined, not null: the generated Args type marks the
+              // defaulted parameters optional, and omitting a key from the
+              // PostgREST body is what makes Postgres apply the SQL default.
+              p_email: data.user.email || "",
+              p_phone: fullPhone,
+              p_full_name: undefined,
+              p_avatar_url: undefined,
+              p_role: userRole ?? undefined,
+            },
+          );
 
-          await supabase.from("profiles").insert(profileData as never);
+          if (provisionError) {
+            console.error("Error provisioning identity:", provisionError);
+            setError(
+              "We could not finish creating your account. Please try again.",
+            );
+            return;
+          }
         }
 
         // Handle role assignment
@@ -475,24 +500,39 @@ function SignupPageContent() {
                     .eq("id", data.user.id)
                     .single();
 
-                  const providerProfile = {
-                    user_id: data.user.id,
-                    business_name:
+                  // This payload previously carried a `status` key set to
+                  // "pending" and no phone, so it failed on every call for two
+                  // independent reasons and the error was only logged. There is
+                  // no status column on service_providers; it is account_status.
+                  // fullPhone is the number OTP-verified moments ago in this
+                  // same handler, so it is the strongest candidate there is.
+                  const built = buildProviderProfile({
+                    userId: data.user.id,
+                    businessName:
                       (profile as { full_name?: string } | null)?.full_name ||
                       data.user.user_metadata?.full_name ||
                       "My Business",
-                    status: "pending",
-                  };
+                    phoneCandidates: [fullPhone, data.user.phone],
+                  });
+
+                  if (!built.ok) {
+                    setError(built.message);
+                    return;
+                  }
 
                   const { error: providerError } = await supabase
                     .from("service_providers")
-                    .insert(providerProfile as never);
+                    .insert(built.record as never);
 
                   if (providerError) {
                     console.error(
                       "Error creating service provider profile for existing user:",
                       providerError,
                     );
+                    setError(
+                      "We could not finish setting up your provider profile. Please try again.",
+                    );
+                    return;
                   }
                 }
               }
@@ -504,34 +544,44 @@ function SignupPageContent() {
             // New user with role request - add it
             await addRoleToUser(data.user.id, userRole);
 
-            // Update primary_role on profile
-            await supabase
-              .from("profiles")
-              .update({ primary_role: userRole } as never)
-              .eq("id", data.user.id);
+            // primary_role is derived from user_roles by trigger
+            // (20260352000000_primary_role_derived.sql), so addRoleToUser above
+            // has already set it. The write that used to be here did not even
+            // consult the user's existing roles -- it assigned whichever role
+            // was just chosen, so signing up as a provider could lower the
+            // primary_role of someone who was already a landlord.
 
             // For service providers, create the service_providers business profile
             // This is required before redirecting to provider onboarding
             if (userRole === "service_provider") {
-              const providerProfile = {
-                user_id: data.user.id,
-                business_name:
+              const built = buildProviderProfile({
+                userId: data.user.id,
+                businessName:
                   data.user.user_metadata?.full_name ||
                   data.user.user_metadata?.name ||
                   data.user.email?.split("@")[0] ||
                   "My Business",
-                phone: data.user.phone || "+254700000000", // Required field
-              };
+                phoneCandidates: [fullPhone, data.user.phone],
+              });
+
+              if (!built.ok) {
+                setError(built.message);
+                return;
+              }
 
               const { error: providerError } = await supabase
                 .from("service_providers")
-                .insert(providerProfile as never);
+                .insert(built.record as never);
 
               if (providerError) {
                 console.error(
                   "Error creating service provider profile during phone signup:",
                   providerError,
                 );
+                setError(
+                  "We could not finish setting up your provider profile. Please try again.",
+                );
+                return;
               }
             }
 
@@ -562,6 +612,15 @@ function SignupPageContent() {
   };
 
   // Helper function to add a role to user
+  // An UPSERT, not an insert. provision_identity may already have created this
+  // exact row moments earlier for a new user, and user_roles carries
+  // UNIQUE (user_id, role), so a plain insert would fail 23505 on the happy
+  // path and log an error that is not one. onConflict makes the whole signup
+  // flow safely re-runnable.
+  //
+  // is_verified stays false and is NOT updated on conflict: role approval is an
+  // admin action, and a trigger on user_roles refuses a client that tries to
+  // raise it.
   const addRoleToUser = async (userId: string, role: UserRole) => {
     const roleInsert: UserRoleInsert = {
       user_id: userId,
@@ -572,7 +631,10 @@ function SignupPageContent() {
 
     const { error: roleError } = await supabase
       .from("user_roles")
-      .insert(roleInsert as never);
+      .upsert(roleInsert as never, {
+        onConflict: "user_id,role",
+        ignoreDuplicates: true,
+      });
 
     if (roleError) {
       console.error("Role creation error:", roleError);
@@ -610,41 +672,61 @@ function SignupPageContent() {
           .maybeSingle();
 
         if (!existingProvider) {
+          // `phone` is selected as well as full_name now. The previous payload
+          // passed a hardcoded number UNCONDITIONALLY, with a comment saying it
+          // "will be updated in onboarding" -- nothing updates it, and the
+          // number is the company's own support line, so the provider was
+          // published with Mitasafi's phone as their contact.
           const { data: profile } = await supabase
             .from("profiles")
-            .select("full_name")
+            .select("full_name, phone")
             .eq("id", existingUserId)
             .single();
 
-          const providerProfile = {
-            user_id: existingUserId,
-            business_name:
-              (profile as { full_name?: string } | null)?.full_name ||
-              "My Business",
-            phone: "+254700000000", // Required field, will be updated in onboarding
-          };
+          const storedProfile = profile as {
+            full_name?: string | null;
+            phone?: string | null;
+          } | null;
+
+          // fullPhone is not in scope in this handler. Two candidates: the
+          // phone stored on the profile at signup, and the number typed into
+          // this page's own form -- which is populated on the phone-OTP path
+          // that reaches this modal, and empty on the Google OAuth path.
+          const typedPhone = phoneNumber
+            ? `+254${phoneNumber.replace(/\D/g, "")}`
+            : null;
+
+          const built = buildProviderProfile({
+            userId: existingUserId,
+            businessName: storedProfile?.full_name || "My Business",
+            phoneCandidates: [storedProfile?.phone, typedPhone],
+          });
+
+          if (!built.ok) {
+            setError(built.message);
+            return;
+          }
 
           const { error: providerError } = await supabase
             .from("service_providers")
-            .insert(providerProfile as never);
+            .insert(built.record as never);
 
           if (providerError) {
             console.error(
               "Error creating service provider profile during role upgrade:",
               providerError,
             );
+            setError(
+              "We could not finish setting up your provider profile. Please try again.",
+            );
+            return;
           }
         }
       }
 
-      // Update primary_role based on hierarchy: Landlord >= Service Provider > Tenant
-      const allRoles = [...existingRoles, targetRole];
-      const newPrimaryRole = getPrimaryRoleByHierarchy(allRoles);
-
-      await supabase
-        .from("profiles")
-        .update({ primary_role: newPrimaryRole } as never)
-        .eq("id", existingUserId);
+      // As above: primary_role follows user_roles by trigger, so adding the
+      // role is what updates it. Recomputing the hierarchy here and writing it
+      // back was the third of three places doing so.
 
       // Clear cookies
       document.cookie = "pendingRole=; path=/; max-age=0";

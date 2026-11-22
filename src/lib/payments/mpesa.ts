@@ -43,20 +43,31 @@ let tokenExpiresAt = 0;
  * customer's handset but before our row records the checkout id, leaving a
  * payment nothing can ever match a callback to.
  *
- * These values are derived from the invocation budget, not chosen for taste:
+ * THE BUDGET THESE WERE DERIVED FROM DOES NOT EXIST ON THIS PLATFORM.
  *
- *   - No maxDuration is set in vercel.json or any route, so the budget is the
- *     Vercel platform default. Taken conservatively as 10s.
- *   - The OAuth token is cached per module instance (see getAccessToken), but
- *     serverless gives each cold start a fresh module scope, so a cold callback
- *     makes TWO Daraja calls: OAuth, then the status query.
- *   - Worst case must satisfy  T_oauth + T_call + DB work  <  budget.
- *       callback:  3 + 5 + ~1 = 9s  < 10s
- *       initiate:  3 + 6 + ~1 = 10s — tight, which is itself the finding:
- *                  the budget should be set explicitly rather than inherited.
+ * This block used to read: "No maxDuration is set in vercel.json or any route,
+ * so the budget is the Vercel platform default. Taken conservatively as 10s",
+ * and sized the three timeouts to fit inside it (callback 3+5+~1=9s;
+ * initiate 3+6+~1=10s).
  *
- * Raising these without also raising maxDuration re-opens the platform-kill
- * window they exist to close. They are a matched pair.
+ * Production is Fly.io, not Vercel — verified from response headers on
+ * mitasafi.com and from the running process (`node server.js`, a long-lived
+ * server, not a per-request invocation). Fly applies no per-invocation HTTP
+ * duration cap. Sources disagree on whether a 60s IDLE timeout still applies
+ * and no current official page settles it, so the real deadline is UNKNOWN —
+ * but it is not 10s, and 10s is far below even the most conservative reading.
+ *
+ * THE NUMBERS BELOW ARE DELIBERATELY LEFT UNCHANGED. Correct values must come
+ * from measured Daraja latency, and there is none: M-Pesa has never been
+ * configured in production (no MPESA_* variable is deployed), so not one
+ * payment has run through this code. Picking new numbers from the same kind of
+ * reasoning that produced the wrong ones would repeat the mistake.
+ *
+ * What the tightness costs, now that the catch block below distinguishes
+ * states: an abort returns `indeterminate`, NOT `failed`. So a too-short
+ * timeout strands a payment as pending and blocks the booking until an
+ * operator resolves it. That is an operational burden, not a double charge.
+ * Re-derive from real latency before changing them.
  */
 const DARAJA_OAUTH_TIMEOUT_MS = 3_000;
 const DARAJA_STK_PUSH_TIMEOUT_MS = 6_000;

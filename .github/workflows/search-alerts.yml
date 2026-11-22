@@ -1,0 +1,141 @@
+name: Search alert notifications
+
+# WHY THIS EXISTS, AND WHY IT IS NOT IN vercel.json
+#
+# vercel.json declared these three schedules. They never fired. Production is
+# served by Fly -- verified from response headers on mitasafi.com
+# (server: Fly/..., fly-request-id, via: fly.io, and no x-vercel-id) -- and Fly
+# does not read vercel.json. There was no GitHub Actions schedule, and pg_cron
+# is available on the Supabase project but not installed. So every search alert
+# a user created would have sat unprocessed.
+#
+# The vercel.json entries have been REMOVED rather than left beside this file.
+# Two declared schedulers for one endpoint is a latent duplicate-send: if the
+# app were ever also deployed to Vercel, both would fire and users would get
+# every notification twice.
+#
+# SCHEDULE MINUTES ARE DELIBERATELY OFF THE HOUR
+#
+# vercel.json used "0 * * * *" / "0 8 * * *". GitHub's shared scheduler is at
+# its most delayed at :00, and delay matters here specifically: the handler
+# looks back a FIXED window from the moment it runs (1h / 24h / 7d), so a run
+# that is late by N minutes leaves an N-minute hole that no later run covers.
+# See the KNOWN DEFECT note below -- the offset reduces that hole, it does not
+# remove it.
+#
+# Fly scales to zero here (min_machines_running = 0). The request wakes a
+# machine; the cold start is why --max-time is 90s and a refused connection is
+# retried.
+#
+# KNOWN DEFECT, NOT FIXED HERE (deliberately, needs a product decision):
+#   src/app/api/cron/search-alerts/route.ts:50-65 derives its window from
+#   Date.now(), not from search_alerts.last_notified_at. last_notified_at is
+#   written (line 200) and never read. Consequences, both verified by reading
+#   the handler end to end:
+#     - a late or skipped run silently drops every listing published in the gap
+#     - two runs inside one window email the same listings twice
+#   Fixing it changes which emails users receive, so it is raised as a separate
+#   authorised change rather than smuggled in with the scheduler.
+
+on:
+  schedule:
+    - cron: "9 * * * *" # instant  — hourly, window = 1h
+    - cron: "23 8 * * *" # daily   — 08:23 UTC (11:23 EAT), window = 24h
+    - cron: "37 8 * * 1" # weekly  — Monday 08:37 UTC, window = 7d
+  workflow_dispatch:
+    inputs:
+      frequency:
+        description: Which alert frequency to process
+        required: true
+        default: instant
+        type: choice
+        options: [instant, daily, weekly]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Per-frequency, so a slow weekly run cannot block the hourly one, and so a
+    # run that overruns its hour does not overlap itself.
+    concurrency:
+      group: search-alerts-${{ github.event.inputs.frequency || github.event.schedule }}
+      cancel-in-progress: false
+    steps:
+      - name: Resolve frequency from the schedule that fired
+        id: freq
+        run: |
+          set -euo pipefail
+          # A manual dispatch names the frequency. A scheduled run does not, so
+          # it is mapped from the cron expression that triggered it. The mapping
+          # must stay in step with the `on.schedule` list above; an unmapped
+          # expression fails loudly rather than silently defaulting to instant,
+          # because defaulting would send the wrong digest to the wrong people.
+          case "${{ github.event.inputs.frequency || github.event.schedule }}" in
+            instant|"9 * * * *")   f=instant ;;
+            daily|"23 8 * * *")    f=daily   ;;
+            weekly|"37 8 * * 1")   f=weekly  ;;
+            *)
+              echo "::error::Unrecognised trigger '${{ github.event.inputs.frequency || github.event.schedule }}'. A cron entry was added to on.schedule without being mapped here."
+              exit 1 ;;
+          esac
+          echo "frequency=$f" >> "$GITHUB_OUTPUT"
+          echo "Resolved frequency: $f"
+
+      - name: Send due search alerts
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FREQUENCY: ${{ steps.freq.outputs.frequency }}
+        run: |
+          set -euo pipefail
+
+          # Fail loudly on missing configuration. A job that is quiet because it
+          # was never configured looks exactly like a job with nothing to do.
+          if [ -z "${SITE_URL:-}" ]; then
+            echo "::error::SITE_URL secret is not set. Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET secret is not set. It must match CRON_SECRET on the Fly app."
+            exit 1
+          fi
+
+          code=$(curl -sS -o response.json -w '%{http_code}' \
+                   --max-time 90 --retry 2 --retry-connrefused \
+                   -H "Authorization: Bearer ${CRON_SECRET}" \
+                   "${SITE_URL%/}/api/cron/search-alerts?frequency=${FREQUENCY}")
+
+          echo "HTTP $code"
+          cat response.json; echo
+
+          if [ "$code" = "401" ]; then
+            echo "::error::Unauthorized. The CRON_SECRET here does not match the one deployed on the Fly app."
+            exit 1
+          fi
+          if [ "$code" = "400" ]; then
+            echo "::error::The endpoint rejected frequency='${FREQUENCY}'."
+            exit 1
+          fi
+          if [ "$code" != "200" ]; then
+            echo "::error::Endpoint returned HTTP $code — no alerts were processed."
+            exit 1
+          fi
+
+          # Put the outcome in the run summary, so this workflow's history is a
+          # readable record of what was actually sent over time. Without it the
+          # only evidence a run did anything is a green tick, and a green tick
+          # is also what "nothing happened" looks like.
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          with open("response.json") as fh:
+              d = json.load(fh)
+          print(f"## Search alerts — {os.environ['FREQUENCY']}\n")
+          if d.get("message") == "No new listings":
+              print("No listings published in the window. Nothing to send.")
+          elif d.get("message") == "No active alerts":
+              print(f"{d.get('newListings', '?')} new listing(s), but no verified active alerts at this frequency.")
+          else:
+              print(f"- new listings in window: **{d.get('newListings', 0)}**")
+              print(f"- alerts matched: **{d.get('alertsProcessed', 0)}**")
+              print(f"- emails sent: **{d.get('emailsSent', 0)}**")
+          PY

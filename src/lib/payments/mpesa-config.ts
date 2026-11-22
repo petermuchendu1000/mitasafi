@@ -27,9 +27,15 @@
 //                                     Vercel. Raise it only when you add more
 //                                     trusted appending proxies in front.
 //   MPESA_TRUSTED_CLIENT_IP_HEADER  — platform-written single-value client-IP
-//                                     header. Default "fly-client-ip"; set to
-//                                     "x-real-ip" on a platform that
-//                                     guarantees that header.
+//                                     header. NO DEFAULT: unset means "trust no
+//                                     platform header". On THIS deployment it
+//                                     is set to "fly-client-ip" (see section 3)
+//                                     because the app runs on Fly.io with no
+//                                     proxy in front of fly-proxy. This line
+//                                     previously claimed a default of
+//                                     "fly-client-ip"; the code has none, and
+//                                     that mismatch is what made the setting
+//                                     easy to get wrong.
 //   MPESA_ALLOW_INSECURE_CALLBACKS  — "true" opts in to accepting
 //                                     loopback/private-range callbacks for
 //                                     LOCAL testing. Requires an explicit
@@ -49,15 +55,9 @@ const MpesaEnvironmentSchema = z.enum(["sandbox", "production"]);
 export type MpesaEnvironment = z.infer<typeof MpesaEnvironmentSchema>;
 
 const MpesaConfigSchema = z.object({
-  consumerKey: z
-    .string()
-    .min(1, "MPESA_CONSUMER_KEY is required"),
-  consumerSecret: z
-    .string()
-    .min(1, "MPESA_CONSUMER_SECRET is required"),
-  passkey: z
-    .string()
-    .min(1, "MPESA_PASSKEY is required"),
+  consumerKey: z.string().min(1, "MPESA_CONSUMER_KEY is required"),
+  consumerSecret: z.string().min(1, "MPESA_CONSUMER_SECRET is required"),
+  passkey: z.string().min(1, "MPESA_PASSKEY is required"),
   shortcode: z
     .string()
     .min(1, "MPESA_SHORTCODE is required")
@@ -67,7 +67,7 @@ const MpesaConfigSchema = z.object({
     .url("MPESA_CALLBACK_URL must be a valid URL")
     .refine(
       (url) => url.startsWith("https://"),
-      "MPESA_CALLBACK_URL must use HTTPS (required by Safaricom)"
+      "MPESA_CALLBACK_URL must use HTTPS (required by Safaricom)",
     ),
   environment: MpesaEnvironmentSchema,
 });
@@ -140,11 +140,11 @@ const SAFARICOM_IP_RANGES: readonly string[] = [
  * the entries that used to sit, dangerously, in the production whitelist.
  */
 const DEV_ONLY_IP_RANGES: readonly string[] = [
-  "127.0.0.0/8",     // loopback
-  "10.0.0.0/8",      // RFC1918
-  "172.16.0.0/12",   // RFC1918
-  "192.168.0.0/16",  // RFC1918
-  "104.248.0.0/16",  // DigitalOcean (was mislabelled as Safaricom sandbox)
+  "127.0.0.0/8", // loopback
+  "10.0.0.0/8", // RFC1918
+  "172.16.0.0/12", // RFC1918
+  "192.168.0.0/16", // RFC1918
+  "104.248.0.0/16", // DigitalOcean (was mislabelled as Safaricom sandbox)
 ] as const;
 
 /** Non-IPv4 literals accepted only in insecure local mode. */
@@ -262,7 +262,7 @@ function ipInAnyCidr(ip: string, cidrs: readonly string[]): boolean {
  *   NEXT_PUBLIC_APP_ENV !== "production"
  */
 export function isInsecureCallbackModeEnabled(
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
 ): boolean {
   return (
     env.MPESA_ALLOW_INSECURE_CALLBACKS === "true" &&
@@ -292,14 +292,31 @@ export interface ClientIpResult {
  * How many hops at the END of x-forwarded-for were appended by infrastructure
  * we control. Configurable via MPESA_TRUSTED_PROXY_HOPS.
  *
- * DEFAULT = 1, which matches BOTH deployments this app has used:
- *   - Fly.io: fly-proxy appends the peer address it saw as the LAST entry.
- *   - Vercel: the edge appends the peer address it saw as the LAST entry.
- * Add hops only if you put additional trusted proxies (e.g. Cloudflare in
- * front of Fly) between the internet and the app, one per appending proxy.
+ * DEFAULT = 1. THIS DEFAULT IS WRONG FOR FLY.IO AND IS NOT USED HERE.
+ *
+ * Measured against production on 2026-11-19: with hops = 1 this function
+ * resolved 66.241.125.38 — an address assigned to the APP — while the request
+ * actually originated from 160.79.106.x. Fly's own documentation says so
+ * directly: "on the Fly.io platform, the last address (rightmost) in this list
+ * will be a shared or dedicated IP address assigned to your app".
+ *
+ * The consequence, had it gone unnoticed: a Safaricom IP can never appear at
+ * the trusted position, so EVERY genuine callback would have been denied —
+ * payments taken, confirmations discarded. Fail-closed, so not exploitable,
+ * but fatal.
+ *
+ * This deployment therefore does NOT use the x-forwarded-for path at all. It
+ * sets MPESA_TRUSTED_CLIENT_IP_HEADER=fly-client-ip, which Fly documents as
+ * the right header when nothing sits in front of fly-proxy, and which was
+ * verified non-spoofable: a request carrying a forged fly-client-ip had it
+ * overwritten by fly-proxy before reaching this code.
+ *
+ * If you ever unset that variable, this path becomes live again and hops MUST
+ * be raised (2 on the configuration measured above). Add hops per additional
+ * appending proxy (e.g. Cloudflare in front of Fly).
  */
 export function getTrustedProxyHops(
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
 ): number {
   const raw = env.MPESA_TRUSTED_PROXY_HOPS;
   if (raw === undefined || raw.trim() === "") return DEFAULT_TRUSTED_PROXY_HOPS;
@@ -338,27 +355,37 @@ export function getTrustedProxyHops(
  */
 export function extractTrustedClientIp(
   headers: HeaderReader,
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
 ): ClientIpResult {
   // 1. Platform-set single-value header — OPT-IN ONLY, never defaulted.
   //
   // SECURITY FIX: this previously defaulted to "fly-client-ip". A header is
   // only trustworthy if the serving platform actually writes it AND strips any
-  // client-supplied copy. This repository deploys to Vercel (vercel.json is
-  // present; there is no fly.toml), where nothing writes or strips
-  // fly-client-ip — so the default made the header attacker-controlled, and
-  // because it is preferred over x-forwarded-for a request carrying
+  // client-supplied copy. That reasoning is right; the fact it rested on was
+  // not. This comment used to read "This repository deploys to Vercel
+  // (vercel.json is present; there is no fly.toml)". fly.toml IS present and
+  // production is served by Fly — verified from response headers on
+  // mitasafi.com (server: Fly/..., fly-request-id, via: fly.io, no
+  // x-vercel-id). On a platform where the header is NOT written, the old
+  // default did make it attacker-controlled, because it is preferred over
+  // x-forwarded-for, so a request carrying
   //     fly-client-ip: 196.201.214.206
   // passed the production whitelist outright. Verified exploitable before this
   // change: authorizeCallbackIp returned { allowed: true, reason:
   // "safaricom-range" } for exactly that forged header.
   //
   // There is no safe default, because the right header is a property of the
-  // deployment and not of this code. So: unset means "do not trust any
-  // platform header", and the rightmost-x-forwarded-for path below is used
-  // instead — that path is correct on both Vercel and Fly.io, since each
-  // appends exactly one entry. Set MPESA_TRUSTED_CLIENT_IP_HEADER only to a
-  // header you have confirmed your own platform overwrites on every request.
+  // deployment and not of this code. That part stands. What did NOT stand was
+  // the claim that followed it: "the rightmost-x-forwarded-for path below is
+  // correct on both Vercel and Fly.io, since each appends exactly one entry".
+  // On Fly the rightmost entry is the APP's own address, so that path resolves
+  // nothing useful — see getTrustedProxyHops above for the measurement.
+  //
+  // On THIS deployment the variable is set to fly-client-ip, which fly-proxy
+  // writes and — verified by probe — overwrites when a client supplies its own.
+  // Set MPESA_TRUSTED_CLIENT_IP_HEADER only to a header you have confirmed your
+  // own platform overwrites on every request; "confirmed" means observed, not
+  // assumed from the platform's name.
   const platformHeader = (env.MPESA_TRUSTED_CLIENT_IP_HEADER || "")
     .trim()
     .toLowerCase();
@@ -368,7 +395,11 @@ export function extractTrustedClientIp(
     if (platformValue && !platformValue.includes(",")) {
       const ip = normalizeIp(platformValue);
       if (ip) return { ip, source: platformHeader, reason: "platform-header" };
-      return { ip: null, source: platformHeader, reason: "platform-header-unparseable" };
+      return {
+        ip: null,
+        source: platformHeader,
+        reason: "platform-header-unparseable",
+      };
     }
   }
 
@@ -380,19 +411,31 @@ export function extractTrustedClientIp(
 
   const entries = forwarded.split(",").map((e) => e.trim());
   if (entries.length > MAX_XFF_ENTRIES) {
-    return { ip: null, source: "x-forwarded-for", reason: "xff-too-many-entries" };
+    return {
+      ip: null,
+      source: "x-forwarded-for",
+      reason: "xff-too-many-entries",
+    };
   }
 
   const hops = getTrustedProxyHops(env);
   const index = entries.length - hops;
   if (index < 0) {
     // Fewer entries than trusted hops: our edge did not write this chain.
-    return { ip: null, source: "x-forwarded-for", reason: "xff-shorter-than-trusted-hops" };
+    return {
+      ip: null,
+      source: "x-forwarded-for",
+      reason: "xff-shorter-than-trusted-hops",
+    };
   }
 
   const ip = normalizeIp(entries[index]);
   if (!ip) {
-    return { ip: null, source: "x-forwarded-for", reason: "xff-entry-unparseable" };
+    return {
+      ip: null,
+      source: "x-forwarded-for",
+      reason: "xff-entry-unparseable",
+    };
   }
   return { ip, source: "x-forwarded-for", reason: "xff-trusted-hop" };
 }
@@ -421,10 +464,11 @@ export interface CallbackIpDecision {
 export function authorizeCallbackIp(
   ip: string | null,
   environment: MpesaEnvironment,
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
 ): CallbackIpDecision {
   const normalized = normalizeIp(ip);
-  const insecure = environment === "sandbox" && isInsecureCallbackModeEnabled(env);
+  const insecure =
+    environment === "sandbox" && isInsecureCallbackModeEnabled(env);
 
   if (!normalized) {
     return { allowed: false, reason: "no-usable-client-ip", ip: null };
@@ -443,12 +487,16 @@ export function authorizeCallbackIp(
       console.warn(
         "[M-Pesa] INSECURE CALLBACK MODE: accepting non-Safaricom callback from " +
           `${normalized} because MPESA_ALLOW_INSECURE_CALLBACKS=true and ` +
-          "MPESA_ENVIRONMENT=sandbox. NEVER set these in production."
+          "MPESA_ENVIRONMENT=sandbox. NEVER set these in production.",
       );
       return { allowed: true, reason: "insecure-local-mode", ip: normalized };
     }
     // Even in insecure mode an arbitrary public IP is refused.
-    return { allowed: false, reason: "not-whitelisted-insecure-mode", ip: normalized };
+    return {
+      allowed: false,
+      reason: "not-whitelisted-insecure-mode",
+      ip: normalized,
+    };
   }
 
   return { allowed: false, reason: "not-whitelisted", ip: normalized };
@@ -465,7 +513,10 @@ export function authorizeCallbackIp(
  * @param environment - Current M-Pesa environment
  * @returns true only if the IP is positively whitelisted
  */
-export function isSafaricomIp(ip: string | null, environment: MpesaEnvironment): boolean {
+export function isSafaricomIp(
+  ip: string | null,
+  environment: MpesaEnvironment,
+): boolean {
   return authorizeCallbackIp(ip, environment).allowed;
 }
 
@@ -473,7 +524,12 @@ export function isSafaricomIp(ip: string | null, environment: MpesaEnvironment):
 // 4. CONFIG LOADER
 // =============================================================================
 // Cached config: loaded once per process lifecycle.
-// In serverless (Vercel), this means once per cold start.
+// This app runs as a long-lived Node process on Fly, so "once per process"
+// means until the machine restarts — not once per request. Note the companion
+// _configError cache: a config failure is sticky for the life of the process.
+// Fly scales to zero here (min_machines_running = 0), so an idle restart does
+// clear it, but a correction to the environment is not picked up until the
+// machine restarts.
 // =============================================================================
 
 let _cachedConfig: MpesaConfig | null = null;
@@ -509,7 +565,9 @@ export function getMpesaConfig(): MpesaConfig {
   // check. The default is kept only so local dev can derive a baseUrl.
   const rawEnv =
     process.env.MPESA_ENVIRONMENT ||
-    (process.env.NEXT_PUBLIC_APP_ENV === "production" ? "production" : "sandbox");
+    (process.env.NEXT_PUBLIC_APP_ENV === "production"
+      ? "production"
+      : "sandbox");
 
   const rawConfig = {
     consumerKey: process.env.MPESA_CONSUMER_KEY ?? "",
@@ -587,12 +645,25 @@ export interface MpesaHealthStatus {
  */
 export async function checkMpesaHealth(): Promise<MpesaHealthStatus> {
   const credentialStatus = {
-    consumerKey: process.env.MPESA_CONSUMER_KEY ? "set" as const : "missing" as const,
-    consumerSecret: process.env.MPESA_CONSUMER_SECRET ? "set" as const : "missing" as const,
-    passkey: process.env.MPESA_PASSKEY ? "set" as const : "missing" as const,
-    shortcode: process.env.MPESA_SHORTCODE ? "set" as const : "missing" as const,
-    callbackUrl: process.env.MPESA_CALLBACK_URL ? "set" as const : "missing" as const,
-    environment: process.env.MPESA_ENVIRONMENT || process.env.NEXT_PUBLIC_APP_ENV || "sandbox",
+    consumerKey: process.env.MPESA_CONSUMER_KEY
+      ? ("set" as const)
+      : ("missing" as const),
+    consumerSecret: process.env.MPESA_CONSUMER_SECRET
+      ? ("set" as const)
+      : ("missing" as const),
+    passkey: process.env.MPESA_PASSKEY
+      ? ("set" as const)
+      : ("missing" as const),
+    shortcode: process.env.MPESA_SHORTCODE
+      ? ("set" as const)
+      : ("missing" as const),
+    callbackUrl: process.env.MPESA_CALLBACK_URL
+      ? ("set" as const)
+      : ("missing" as const),
+    environment:
+      process.env.MPESA_ENVIRONMENT ||
+      process.env.NEXT_PUBLIC_APP_ENV ||
+      "sandbox",
   };
 
   let config: MpesaConfig | null = null;
@@ -612,7 +683,7 @@ export async function checkMpesaHealth(): Promise<MpesaHealthStatus> {
   if (configured && config) {
     try {
       const credentials = Buffer.from(
-        `${config.consumerKey}:${config.consumerSecret}`
+        `${config.consumerKey}:${config.consumerSecret}`,
       ).toString("base64");
 
       const response = await fetch(
@@ -622,7 +693,7 @@ export async function checkMpesaHealth(): Promise<MpesaHealthStatus> {
           headers: { Authorization: `Basic ${credentials}` },
           cache: "no-store",
           signal: AbortSignal.timeout(10_000), // 10s timeout
-        }
+        },
       );
 
       if (response.ok) {

@@ -48,7 +48,22 @@ export type Database = {
           user_agent?: string | null;
           user_id?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "analytics_events_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       api_keys: {
         Row: {
@@ -144,7 +159,22 @@ export type Database = {
           user_id?: string | null;
           user_role?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "audit_log_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       blocked_users: {
         Row: {
@@ -239,6 +269,20 @@ export type Database = {
             columns: ["booking_id"];
             isOneToOne: true;
             referencedRelation: "bookings_with_legacy_busy";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_commitments_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_commitments_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
           {
@@ -456,6 +500,34 @@ export type Database = {
             referencedRelation: "bookings_with_legacy_busy";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "booking_disputes_reported_by_fkey";
+            columns: ["reported_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_disputes_reported_by_fkey";
+            columns: ["reported_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_disputes_resolved_by_fkey";
+            columns: ["resolved_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_disputes_resolved_by_fkey";
+            columns: ["resolved_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
         ];
       };
       booking_emergency_details: {
@@ -646,6 +718,20 @@ export type Database = {
             columns: ["booking_id"];
             isOneToOne: false;
             referencedRelation: "bookings_with_legacy_busy";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_media_uploaded_by_fkey";
+            columns: ["uploaded_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_media_uploaded_by_fkey";
+            columns: ["uploaded_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -847,6 +933,20 @@ export type Database = {
             columns: ["commission_config_id"];
             isOneToOne: false;
             referencedRelation: "commission_config";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_payments_payer_id_fkey";
+            columns: ["payer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_payments_payer_id_fkey";
+            columns: ["payer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
           {
@@ -1500,6 +1600,20 @@ export type Database = {
             referencedRelation: "bookings_with_legacy_busy";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "booking_status_history_changed_by_fkey";
+            columns: ["changed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "booking_status_history_changed_by_fkey";
+            columns: ["changed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
         ];
       };
       bookings: {
@@ -1638,6 +1752,13 @@ export type Database = {
             columns: ["customer_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bookings_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
           {
@@ -1816,6 +1937,13 @@ export type Database = {
             referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "buildings_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
         ];
       };
       cluster_adjacency: {
@@ -1969,6 +2097,41 @@ export type Database = {
         };
         Relationships: [];
       };
+      commission_bands: {
+        Row: {
+          config_id: string;
+          created_at: string;
+          id: string;
+          max_job_cents: number | null;
+          min_job_cents: number;
+          rate_bps: number;
+        };
+        Insert: {
+          config_id: string;
+          created_at?: string;
+          id?: string;
+          max_job_cents?: number | null;
+          min_job_cents: number;
+          rate_bps: number;
+        };
+        Update: {
+          config_id?: string;
+          created_at?: string;
+          id?: string;
+          max_job_cents?: number | null;
+          min_job_cents?: number;
+          rate_bps?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "commission_bands_config_id_fkey";
+            columns: ["config_id"];
+            isOneToOne: false;
+            referencedRelation: "commission_config";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       commission_config: {
         Row: {
           created_at: string;
@@ -2012,7 +2175,22 @@ export type Database = {
           scope?: string;
           version?: number;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "commission_config_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "commission_config_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       feature_flags: {
         Row: {
@@ -2117,6 +2295,13 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "inquiries_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "inquiries_listing_id_fkey";
             columns: ["listing_id"];
             isOneToOne: false;
@@ -2124,10 +2309,24 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "inquiries_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "listings_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "inquiries_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "inquiries_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -2253,6 +2452,13 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "leases_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "leases_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
@@ -2326,10 +2532,24 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "listing_inquiries_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "listings_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "listing_inquiries_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listing_inquiries_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -2383,10 +2603,24 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "listing_waitlist_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "listings_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "listing_waitlist_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listing_waitlist_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -2714,6 +2948,13 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "listings_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "listings_unit_id_fkey";
             columns: ["unit_id"];
             isOneToOne: false;
@@ -2725,6 +2966,13 @@ export type Database = {
             columns: ["verified_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listings_verified_by_fkey";
+            columns: ["verified_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -2787,7 +3035,22 @@ export type Database = {
           updated_at?: string | null;
           user_id?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "locations_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "locations_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       maintenance_requests: {
         Row: {
@@ -2901,6 +3164,13 @@ export type Database = {
             columns: ["landlord_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "maintenance_requests_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
           {
@@ -3046,7 +3316,36 @@ export type Database = {
           user_id?: string;
           user_role?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "notifications_provider_id_fkey";
+            columns: ["provider_id"];
+            isOneToOne: false;
+            referencedRelation: "provider_capacity_status";
+            referencedColumns: ["provider_id"];
+          },
+          {
+            foreignKeyName: "notifications_provider_id_fkey";
+            columns: ["provider_id"];
+            isOneToOne: false;
+            referencedRelation: "service_providers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       payments: {
         Row: {
@@ -3139,6 +3438,13 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "payments_confirmed_by_fkey";
+            columns: ["confirmed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "payments_lease_id_fkey";
             columns: ["lease_id"];
             isOneToOne: false;
@@ -3190,7 +3496,22 @@ export type Database = {
           user_id?: string;
           verified_at?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "phone_verifications_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "phone_verifications_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       profiles: {
         Row: {
@@ -3541,6 +3862,20 @@ export type Database = {
             referencedRelation: "service_providers";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "provider_documents_reviewed_by_fkey";
+            columns: ["reviewed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "provider_documents_reviewed_by_fkey";
+            columns: ["reviewed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
         ];
       };
       provider_driver_licenses: {
@@ -3683,6 +4018,20 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "provider_payouts_approved_by_fkey";
+            columns: ["approved_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "provider_payouts_approved_by_fkey";
+            columns: ["approved_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "provider_payouts_provider_id_fkey";
             columns: ["provider_id"];
@@ -3955,6 +4304,20 @@ export type Database = {
             referencedRelation: "services_with_categories";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "provider_services_verified_by_fkey";
+            columns: ["verified_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "provider_services_verified_by_fkey";
+            columns: ["verified_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
         ];
       };
       provider_vehicles: {
@@ -4097,6 +4460,20 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "provider_verification_documents_reviewed_by_fkey";
+            columns: ["reviewed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "provider_verification_documents_reviewed_by_fkey";
+            columns: ["reviewed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "provider_verification_documents_service_id_fkey";
             columns: ["service_id"];
             isOneToOne: false;
@@ -4212,6 +4589,20 @@ export type Database = {
             columns: ["review_id"];
             isOneToOne: false;
             referencedRelation: "reviews";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "review_helpful_votes_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "review_helpful_votes_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -4344,6 +4735,20 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "reviews_reviewer_id_fkey";
+            columns: ["reviewer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reviews_reviewer_id_fkey";
+            columns: ["reviewer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "reviews_service_id_fkey";
             columns: ["service_id"];
             isOneToOne: false;
@@ -4390,10 +4795,24 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "saved_listings_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "listings_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "saved_listings_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saved_listings_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -4440,6 +4859,13 @@ export type Database = {
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saved_providers_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -4538,10 +4964,24 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "search_alerts_source_listing_id_fkey";
+            columns: ["source_listing_id"];
+            isOneToOne: false;
+            referencedRelation: "listings_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "search_alerts_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "search_alerts_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -4587,6 +5027,20 @@ export type Database = {
             columns: ["clicked_provider_id"];
             isOneToOne: false;
             referencedRelation: "service_providers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "search_queries_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "search_queries_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -4961,7 +5415,22 @@ export type Database = {
           years_experience?: string | null;
           years_in_business?: number | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "service_providers_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "service_providers_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       service_subcategories: {
         Row: {
@@ -5575,10 +6044,24 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "tenants_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "tenants_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "tenants_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -5773,6 +6256,13 @@ export type Database = {
             referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "units_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
         ];
       };
       user_preferences: {
@@ -5821,7 +6311,22 @@ export type Database = {
           updated_at?: string | null;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "user_preferences_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "user_preferences_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       user_roles: {
         Row: {
@@ -5857,6 +6362,13 @@ export type Database = {
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
         ];
@@ -5953,6 +6465,13 @@ export type Database = {
             columns: ["customer_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bookings_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
             referencedColumns: ["id"];
           },
           {
@@ -6171,6 +6690,13 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "bookings_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "bookings_parent_booking_id_fkey";
             columns: ["parent_booking_id"];
             isOneToOne: false;
@@ -6312,43 +6838,6 @@ export type Database = {
           },
         ];
       };
-      provider_capacity_status: {
-        Row: {
-          available_for_regular: number | null;
-          business_name: string | null;
-          capacity_mode: string | null;
-          capacity_status: string | null;
-          capacity_time_window: string | null;
-          current_bookings: number | null;
-          current_emergency_bookings: number | null;
-          emergency_capacity_reserved: number | null;
-          max_capacity: number | null;
-          provider_active: boolean | null;
-          provider_id: string | null;
-          service_active: boolean | null;
-          service_id: string | null;
-          service_name: string | null;
-          service_slug: string | null;
-          slots_available: number | null;
-          utilization_percent: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "provider_services_service_id_fkey";
-            columns: ["service_id"];
-            isOneToOne: false;
-            referencedRelation: "services";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "provider_services_service_id_fkey";
-            columns: ["service_id"];
-            isOneToOne: false;
-            referencedRelation: "services_with_categories";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       listings_public: {
         Row: {
           address: string | null;
@@ -6452,7 +6941,50 @@ export type Database = {
           year_built: number | null;
           zoning_type: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "listings_building_id_fkey";
+            columns: ["building_id"];
+            isOneToOne: false;
+            referencedRelation: "buildings";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listings_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listings_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listings_unit_id_fkey";
+            columns: ["unit_id"];
+            isOneToOne: false;
+            referencedRelation: "units";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listings_verified_by_fkey";
+            columns: ["verified_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "listings_verified_by_fkey";
+            columns: ["verified_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles_public";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       profiles_public: {
         Row: {
@@ -6461,7 +6993,56 @@ export type Database = {
           id: string | null;
           is_verified: boolean | null;
         };
+        Insert: {
+          avatar_url?: string | null;
+          full_name?: string | null;
+          id?: string | null;
+          is_verified?: boolean | null;
+        };
+        Update: {
+          avatar_url?: string | null;
+          full_name?: string | null;
+          id?: string | null;
+          is_verified?: boolean | null;
+        };
         Relationships: [];
+      };
+      provider_capacity_status: {
+        Row: {
+          available_for_regular: number | null;
+          business_name: string | null;
+          capacity_mode: string | null;
+          capacity_status: string | null;
+          capacity_time_window: string | null;
+          current_bookings: number | null;
+          current_emergency_bookings: number | null;
+          emergency_capacity_reserved: number | null;
+          max_capacity: number | null;
+          provider_active: boolean | null;
+          provider_id: string | null;
+          service_active: boolean | null;
+          service_id: string | null;
+          service_name: string | null;
+          service_slug: string | null;
+          slots_available: number | null;
+          utilization_percent: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "provider_services_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "provider_services_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "services_with_categories";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       services_with_categories: {
         Row: {
@@ -6625,6 +7206,14 @@ export type Database = {
         }[];
       };
       cleanup_old_notifications: { Args: never; Returns: number };
+      commission_bands_active: {
+        Args: { p_at?: string; p_currency?: string; p_scope?: string };
+        Returns: {
+          max_job_cents: number;
+          min_job_cents: number;
+          rate_bps: number;
+        }[];
+      };
       commission_breakdown: {
         Args: {
           p_at?: string;
@@ -6706,6 +7295,11 @@ export type Database = {
         Args: { p_amount: number; p_provider_id: string };
         Returns: undefined;
       };
+      current_user_has_role: { Args: { p_role: string }; Returns: boolean };
+      current_user_has_verified_role: {
+        Args: { p_role: string };
+        Returns: boolean;
+      };
       debit_provider_wallet: {
         Args: { p_amount: number; p_provider_id: string };
         Returns: undefined;
@@ -6778,6 +7372,16 @@ export type Database = {
           email: string;
           phone: string;
         }[];
+      };
+      provision_identity: {
+        Args: {
+          p_avatar_url?: string;
+          p_email: string;
+          p_full_name?: string;
+          p_phone?: string;
+          p_role?: string;
+        };
+        Returns: Json;
       };
       release_commitment: {
         Args: { p_booking_id: string; p_reason: string };

@@ -18,6 +18,7 @@
 // =============================================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/identity/require-admin";
 import { getCachedUser } from "@/lib/cache/queries";
 import { revalidatePath } from "next/cache";
 
@@ -69,36 +70,10 @@ export interface FlaggedReviewsResult {
 // =============================================================================
 
 /** Verify the current user has admin role. Returns user ID or error. */
-async function requireAdmin(): Promise<
-  { userId: string; error: null } | { userId: null; error: string }
-> {
-  const { user, error: authError } = await getCachedUser();
-  if (authError || !user) {
-    return { userId: null, error: "Authentication required." };
-  }
-
-  const admin = createAdminClient();
-  const { data: roles, error: rolesError } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
-  if (rolesError) {
-    console.error("[Admin] Role check error:", rolesError);
-    return { userId: null, error: "Failed to verify permissions." };
-  }
-
-  const hasAdminRole = roles?.some(
-    (r: { role: string }) => r.role === "admin"
-  );
-
-  if (!hasAdminRole) {
-    return { userId: null, error: "Admin access required." };
-  }
-
-  return { userId: user.id, error: null };
-}
+// requireAdmin now lives in src/lib/identity/require-admin.ts. It was defined
+// privately here AND privately in the sibling service with a byte-identical
+// signature, plus a third time inline in src/app/admin/layout.tsx -- three
+// copies of the only check between a signed-in user and the admin surface.
 
 // =============================================================================
 // GET FLAGGED REVIEWS
@@ -112,7 +87,7 @@ async function requireAdmin(): Promise<
 export async function getFlaggedReviews(
   page = 1,
   pageSize = 20,
-  filter: "flagged" | "hidden" | "all" = "all"
+  filter: "flagged" | "hidden" | "all" = "all",
 ): Promise<FlaggedReviewsResult> {
   const emptyResult: FlaggedReviewsResult = {
     data: [],
@@ -130,9 +105,7 @@ export async function getFlaggedReviews(
     const offset = (page - 1) * pageSize;
 
     // Build query based on filter
-    let query = admin
-      .from("reviews")
-      .select("*", { count: "exact" });
+    let query = admin.from("reviews").select("*", { count: "exact" });
 
     switch (filter) {
       case "flagged":
@@ -183,7 +156,7 @@ export async function getFlaggedReviews(
       ...new Set(
         reviews
           .map((r: { service_id: string }) => r.service_id)
-          .filter(Boolean)
+          .filter(Boolean),
       ),
     ];
 
@@ -200,7 +173,7 @@ export async function getFlaggedReviews(
         serviceIds.length > 0
           ? admin.from("services").select("id, name").in("id", serviceIds)
           : Promise.resolve({ data: [] }),
-      ]
+      ],
     );
 
     // Build lookup maps
@@ -243,8 +216,7 @@ export async function getFlaggedReviews(
           title: (r.title as string | null) ?? null,
           review_text: (r.review_text as string | null) ?? null,
           review_photos: (r.review_photos as string[] | null) ?? null,
-          provider_response:
-            (r.provider_response as string | null) ?? null,
+          provider_response: (r.provider_response as string | null) ?? null,
           is_flagged: r.is_flagged as boolean,
           flag_reason: (r.flag_reason as string | null) ?? null,
           is_hidden: r.is_hidden as boolean,
@@ -255,7 +227,7 @@ export async function getFlaggedReviews(
           provider_name: providerMap.get(r.provider_id as string) ?? null,
           service_name: serviceMap.get(r.service_id as string) ?? null,
         };
-      }
+      },
     );
 
     const total = count ?? 0;
@@ -289,7 +261,7 @@ export async function getFlaggedReviews(
  */
 export async function hideReview(
   reviewId: string,
-  reason?: string
+  reason?: string,
 ): Promise<AdminModerationResult> {
   try {
     const { userId, error: authError } = await requireAdmin();
@@ -359,7 +331,7 @@ export async function hideReview(
  * Recalculates provider rating to include this review.
  */
 export async function unhideReview(
-  reviewId: string
+  reviewId: string,
 ): Promise<AdminModerationResult> {
   try {
     const { userId, error: authError } = await requireAdmin();
@@ -421,7 +393,7 @@ export async function unhideReview(
  * Clears the flag without hiding. The review remains public.
  */
 export async function dismissFlag(
-  reviewId: string
+  reviewId: string,
 ): Promise<AdminModerationResult> {
   try {
     const { userId, error: authError } = await requireAdmin();
@@ -478,7 +450,7 @@ export async function dismissFlag(
  * Only counts non-hidden reviews.
  */
 async function recalculateProviderRatingAdmin(
-  providerId: string
+  providerId: string,
 ): Promise<void> {
   try {
     const admin = createAdminClient();
@@ -490,10 +462,7 @@ async function recalculateProviderRatingAdmin(
       .eq("is_hidden", false);
 
     if (error) {
-      console.error(
-        "[Admin] Rating recalculation query error:",
-        error
-      );
+      console.error("[Admin] Rating recalculation query error:", error);
       return;
     }
 
@@ -503,7 +472,7 @@ async function recalculateProviderRatingAdmin(
     if (total > 0) {
       const sum = reviews.reduce(
         (acc: number, r: { rating: string }) => acc + parseInt(r.rating, 10),
-        0
+        0,
       );
       average = parseFloat((sum / total).toFixed(2));
     }
@@ -517,10 +486,7 @@ async function recalculateProviderRatingAdmin(
       .eq("id", providerId);
 
     if (updateError) {
-      console.error(
-        "[Admin] Provider rating update error:",
-        updateError
-      );
+      console.error("[Admin] Provider rating update error:", updateError);
     }
   } catch (err) {
     console.error("[Admin] recalculateProviderRatingAdmin error:", err);

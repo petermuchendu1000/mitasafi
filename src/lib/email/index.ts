@@ -48,6 +48,50 @@ export function isEmailConfigured(): boolean {
   return !!process.env.RESEND_API_KEY;
 }
 
+/**
+ * An email to the operators, not to a user.
+ *
+ * Added for the erasure-queue alert. Kept here rather than next to its caller
+ * so that every Resend call in the codebase stays in this module -- the
+ * isEmailConfigured() guard, MAIL_FROM and the error handling are the parts
+ * that get forgotten when a second file starts sending mail on its own.
+ *
+ * Goes to SUPPORT_EMAIL, which is the operators' inbox. Callers must not put a
+ * data subject's name or address in here: see src/lib/erasure/queue.ts.
+ */
+export async function sendOperationalAlert(data: {
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!isEmailConfigured()) {
+    // Not an error. In development and in CI there is no key, and an alert
+    // that threw would turn a missing-config into a failing cron run.
+    console.log("[Email] Resend not configured, skipping operational alert");
+    return { success: true };
+  }
+
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { error } = await resend.emails.send({
+      from: MAIL_FROM.alerts,
+      to: SUPPORT_EMAIL,
+      replyTo: SUPPORT_EMAIL,
+      subject: data.subject,
+      text: data.text,
+      html: data.html,
+    });
+    if (error) {
+      console.error("[Email] Operational alert failed:", error);
+      return { success: false, error: String(error) };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("[Email] Operational alert threw:", error);
+    return { success: false, error: String(error) };
+  }
+}
+
 // Send inquiry notification to landlord
 export async function sendInquiryNotification(
   data: InquiryEmailData,

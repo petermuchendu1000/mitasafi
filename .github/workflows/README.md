@@ -100,6 +100,50 @@ development, so "the ledger matches the directory" is not evidence that a
 clean-room apply works. If two migrations have an ordering dependency, this job
 is where it surfaces — before a new environment hits it.
 
+## Running the database checks locally
+
+`scripts/ci/local-pg.sh` builds a throwaway cluster, applies every migration
+from scratch and runs the suites against it:
+
+```
+scripts/ci/local-pg.sh up       # cluster + bootstrap + all migrations
+scripts/ci/local-pg.sh suites   # the SQL regression suites
+scripts/ci/local-pg.sh idem     # the replay check
+scripts/ci/local-pg.sh down
+```
+
+**This is not a convenience.** Until it existed, the `database` job was the
+only place the suites ever ran, so a change could be written, reviewed, applied
+to the live project and pushed before anything exercised it. That is how a
+foreign key on `booking_status_history.changed_by` reached production: it would
+have blocked every system-initiated booking status change, because
+`auto_log_booking_status_change()` writes a nil-uuid sentinel into that column
+when `app.current_user_id` is unset, which is the case for anything cron
+drives. On the live project it applied cleanly and all of its own guards
+passed — `bookings` and `profiles` are both empty there, so nothing could
+fail. Ten of thirteen suites failed the first time they ran against a schema
+built from scratch.
+
+The general form: **"idempotent against the live database" and "applies
+correctly from scratch" are different properties, and only the second one
+exercises the triggers.** An empty table cannot violate a constraint, so a
+migration validated only against an empty production schema has been validated
+against almost nothing.
+
+Two things to know before reaching for it:
+
+- It needs a Postgres **server**, not just `psql`. On Debian-family systems the
+  server binaries live in `/usr/lib/postgresql/<major>/bin` and are **not on
+  PATH**, so `which postgres` finding nothing does not mean it is missing.
+- **The major version may not match.** CI runs `postgres:17` and the live
+  project is 17.x; locally you get whatever is installed, and the script prints
+  it. A pass here is strong evidence, not identical evidence.
+
+`initdb` refuses to run as root, so when run as root the script creates an
+unprivileged account and puts the data directory in that account's home — a
+scratch path may sit under parents the new user cannot traverse, which `initdb`
+reports as "could not access directory" rather than as a permissions problem.
+
 ## Not wired, and why
 
 **Linting.** `eslint` 9 is installed with no config (`eslint.config.*` and

@@ -1,6 +1,6 @@
 /**
  * Landlord Dashboard Layout
- * 
+ *
  * Server component that wraps all landlord dashboard pages.
  * Handles:
  * - Authentication check
@@ -14,6 +14,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types/db-helpers";
 import { LandlordDashboardShell } from "./LandlordDashboardShell";
 import type { SidebarUserProfile } from "@/components/dashboard/landlord";
+import { getCachedRoles } from "@/lib/cache/queries";
+import { productRoleNames } from "@/lib/identity/roles";
 
 interface LandlordLayoutProps {
   children: React.ReactNode;
@@ -28,12 +30,16 @@ interface ProfileData {
   is_verified: boolean;
 }
 
-export default async function LandlordDashboardLayout({ children }: LandlordLayoutProps) {
+export default async function LandlordDashboardLayout({
+  children,
+}: LandlordLayoutProps) {
   const supabase = await createClient();
-  
+
   // Check authentication
-  const { data: { user } } = await supabase.auth.getUser();
-  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
     redirect("/login?redirectTo=/dashboard/landlord");
   }
@@ -47,14 +53,10 @@ export default async function LandlordDashboardLayout({ children }: LandlordLayo
 
   const typedProfileData = profileData as ProfileData | null;
 
-  // Get user roles
-  const { data: rolesData } = await supabase
-    .from("user_roles")
-    .select("role, is_verified")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
-  const userRoles: UserRole[] = rolesData?.map((r: { role: string }) => r.role as UserRole) || [];
+  // One shared read, deduped per request: this layout and the page it wraps
+  // both need the caller's roles, and React cache() makes that one round-trip.
+  const { roles } = await getCachedRoles();
+  const userRoles: UserRole[] = productRoleNames(roles);
 
   // Check if user has landlord role
   if (!userRoles.includes("landlord")) {
@@ -76,7 +78,7 @@ export default async function LandlordDashboardLayout({ children }: LandlordLayo
   const notificationCounts: Record<string, number> = {};
 
   return (
-    <LandlordDashboardShell 
+    <LandlordDashboardShell
       profile={profile}
       notificationCounts={notificationCounts}
     >

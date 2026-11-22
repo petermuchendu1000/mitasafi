@@ -14,6 +14,7 @@
 // =============================================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/identity/require-admin";
 import { createSignedUrl } from "@/lib/storage/signed-url";
 import { getCachedUser } from "@/lib/cache/queries";
 import { revalidatePath } from "next/cache";
@@ -92,36 +93,10 @@ export interface VerificationDetail {
 // =============================================================================
 
 /** Verify the current user has admin role. Returns user ID or error. */
-async function requireAdmin(): Promise<
-  { userId: string; error: null } | { userId: null; error: string }
-> {
-  const { user, error: authError } = await getCachedUser();
-  if (authError || !user) {
-    return { userId: null, error: "Authentication required." };
-  }
-
-  const admin = createAdminClient();
-  const { data: roles, error: rolesError } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
-  if (rolesError) {
-    console.error("[Admin] Role check error:", rolesError);
-    return { userId: null, error: "Failed to verify permissions." };
-  }
-
-  const hasAdminRole = roles?.some(
-    (r: { role: string }) => r.role === "admin"
-  );
-
-  if (!hasAdminRole) {
-    return { userId: null, error: "Admin access required." };
-  }
-
-  return { userId: user.id, error: null };
-}
+// requireAdmin now lives in src/lib/identity/require-admin.ts. It was defined
+// privately here AND privately in the sibling service with a byte-identical
+// signature, plus a third time inline in src/app/admin/layout.tsx -- three
+// copies of the only check between a signed-in user and the admin surface.
 
 // =============================================================================
 // GET VERIFICATION QUEUE
@@ -140,7 +115,7 @@ async function requireAdmin(): Promise<
 export async function getVerificationQueue(
   page = 1,
   pageSize = 20,
-  filter: "pending" | "rejected" | "all" = "pending"
+  filter: "pending" | "rejected" | "all" = "pending",
 ): Promise<VerificationQueueResult> {
   const emptyResult: VerificationQueueResult = {
     data: [],
@@ -184,7 +159,8 @@ export async function getVerificationQueue(
     // Fetch providers with pending/rejected verification
     const { data: providers, error: provError } = await admin
       .from("service_providers")
-      .select(`
+      .select(
+        `
         id,
         user_id,
         business_name,
@@ -198,7 +174,8 @@ export async function getVerificationQueue(
           email,
           phone
         )
-      `)
+      `,
+      )
       .in("account_status", statusFilter)
       .order("created_at", { ascending: true })
       .range(offset, offset + pageSize - 1);
@@ -209,7 +186,10 @@ export async function getVerificationQueue(
     }
 
     if (!providers?.length) {
-      return { ...emptyResult, pagination: { page, pageSize, total, totalPages, hasMore: false } };
+      return {
+        ...emptyResult,
+        pagination: { page, pageSize, total, totalPages, hasMore: false },
+      };
     }
 
     // Fetch document counts for these providers
@@ -240,11 +220,13 @@ export async function getVerificationQueue(
 
       return {
         providerId: p.id,
-        providerName: (profile as { full_name?: string })?.full_name
-          || p.business_name
-          || "Unknown",
+        providerName:
+          (profile as { full_name?: string })?.full_name ||
+          p.business_name ||
+          "Unknown",
         providerEmail: (profile as { email?: string })?.email || "",
-        providerPhone: p.phone || (profile as { phone?: string })?.phone || null,
+        providerPhone:
+          p.phone || (profile as { phone?: string })?.phone || null,
         businessType: p.business_type,
         accountStatus: p.account_status,
         profilePhotoUrl: p.profile_photo_url,
@@ -282,7 +264,7 @@ export async function getVerificationQueue(
  * @param providerId The service_providers.id to review
  */
 export async function getVerificationDetail(
-  providerId: string
+  providerId: string,
 ): Promise<{ data: VerificationDetail | null; error: string | null }> {
   try {
     const { error: authError } = await requireAdmin();
@@ -295,7 +277,8 @@ export async function getVerificationDetail(
     // Fetch provider with profile
     const { data: provider, error: provError } = await admin
       .from("service_providers")
-      .select(`
+      .select(
+        `
         id,
         user_id,
         business_name,
@@ -310,7 +293,8 @@ export async function getVerificationDetail(
           phone,
           verification_level
         )
-      `)
+      `,
+      )
       .eq("id", providerId)
       .single();
 
@@ -335,29 +319,42 @@ export async function getVerificationDetail(
 
     const detail: VerificationDetail = {
       providerId: provider.id,
-      providerName: (profile as { full_name?: string })?.full_name
-        || provider.business_name
-        || "Unknown",
+      providerName:
+        (profile as { full_name?: string })?.full_name ||
+        provider.business_name ||
+        "Unknown",
       providerEmail: (profile as { email?: string })?.email || "",
-      providerPhone: provider.phone || (profile as { phone?: string })?.phone || null,
+      providerPhone:
+        provider.phone || (profile as { phone?: string })?.phone || null,
       businessType: provider.business_type,
       accountStatus: provider.account_status,
       profilePhotoUrl: provider.profile_photo_url,
       userId: provider.user_id,
       createdAt: provider.created_at ?? new Date().toISOString(),
-      verificationLevel: (profile as { verification_level?: string })?.verification_level || null,
-      documents: await Promise.all((docs ?? []).map(async (d) => ({
-        id: d.id,
-        documentType: d.document_type,
-        // document_url holds a storage PATH for the private KYC bucket.
-        // Signed at read time; null renders as a placeholder.
-        documentUrl: await createSignedUrl("provider-documents", d.document_url),
-        status: d.status,
-        rejectionReason: d.rejection_reason,
-        reviewedAt: (d as Record<string, unknown>).reviewed_at as string | null ?? null,
-        reviewedBy: (d as Record<string, unknown>).reviewed_by as string | null ?? null,
-        createdAt: d.created_at,
-      }))),
+      verificationLevel:
+        (profile as { verification_level?: string })?.verification_level ||
+        null,
+      documents: await Promise.all(
+        (docs ?? []).map(async (d) => ({
+          id: d.id,
+          documentType: d.document_type,
+          // document_url holds a storage PATH for the private KYC bucket.
+          // Signed at read time; null renders as a placeholder.
+          documentUrl: await createSignedUrl(
+            "provider-documents",
+            d.document_url,
+          ),
+          status: d.status,
+          rejectionReason: d.rejection_reason,
+          reviewedAt:
+            ((d as Record<string, unknown>).reviewed_at as string | null) ??
+            null,
+          reviewedBy:
+            ((d as Record<string, unknown>).reviewed_by as string | null) ??
+            null,
+          createdAt: d.created_at,
+        })),
+      ),
     };
 
     return { data: detail, error: null };
@@ -382,7 +379,7 @@ export async function getVerificationDetail(
  * @param providerId The service_providers.id to approve
  */
 export async function approveVerification(
-  providerId: string
+  providerId: string,
 ): Promise<AdminActionResult> {
   try {
     const { userId: adminUserId, error: authError } = await requireAdmin();
@@ -439,11 +436,14 @@ export async function approveVerification(
     }
 
     // 4. Update profile
+    // is_verified is NOT written here: it is a generated column derived from
+    // verification_level ((verification_level = 'full')). Setting
+    // verification_level = 'full' IS what makes the profile verified. Writing
+    // both was how the two could disagree.
     const { error: profileError } = await admin
       .from("profiles")
       .update({
         verification_level: "full",
-        is_verified: true,
         updated_at: now,
       })
       .eq("id", provider.user_id);
@@ -461,9 +461,9 @@ export async function approveVerification(
       .single();
 
     const providerName =
-      (profileData as { full_name?: string })?.full_name
-      || provider.business_name
-      || "Provider";
+      (profileData as { full_name?: string })?.full_name ||
+      provider.business_name ||
+      "Provider";
 
     // 6. Send approval notification (fire-and-forget)
     notifyProviderVerificationApproved({
@@ -471,7 +471,7 @@ export async function approveVerification(
       providerId,
       providerName,
     }).catch((err) =>
-      console.error("[Admin] Approval notification failed:", err)
+      console.error("[Admin] Approval notification failed:", err),
     );
 
     // 7. Revalidate admin pages
@@ -500,7 +500,7 @@ export async function approveVerification(
  */
 export async function rejectVerification(
   providerId: string,
-  reasons: Record<string, string>
+  reasons: Record<string, string>,
 ): Promise<AdminActionResult> {
   try {
     const { userId: adminUserId, error: authError } = await requireAdmin();
@@ -509,7 +509,10 @@ export async function rejectVerification(
     }
 
     if (!reasons || Object.keys(reasons).length === 0) {
-      return { success: false, error: "At least one rejection reason is required." };
+      return {
+        success: false,
+        error: "At least one rejection reason is required.",
+      };
     }
 
     const admin = createAdminClient();
@@ -585,24 +588,29 @@ export async function rejectVerification(
         .eq("id", provider.user_id)
         .single();
 
-      // Reset profile verification level back to 'id' (docs submitted but rejected)
-      await admin
+      // Reset profile verification level back to 'id' (docs submitted but rejected).
+      // is_verified follows automatically: it is generated from
+      // verification_level, and 'id' is not 'full', so it becomes false.
+      const { error: resetError } = await admin
         .from("profiles")
         .update({
           verification_level: "id",
-          is_verified: false,
           updated_at: now,
         })
         .eq("id", provider.user_id);
 
+      if (resetError) {
+        console.error("[Admin] Reject profile reset error:", resetError);
+      }
+
       const providerName =
-        (profileData as { full_name?: string })?.full_name
-        || provider.business_name
-        || "Provider";
+        (profileData as { full_name?: string })?.full_name ||
+        provider.business_name ||
+        "Provider";
 
       // Compile human-readable rejection summary
-      const reasonSummary = reasons.general
-        || Object.values(reasons).join("; ");
+      const reasonSummary =
+        reasons.general || Object.values(reasons).join("; ");
 
       // 4. Send rejection notification (fire-and-forget)
       notifyProviderVerificationRejected({
@@ -611,7 +619,7 @@ export async function rejectVerification(
         providerName,
         reason: reasonSummary,
       }).catch((err) =>
-        console.error("[Admin] Rejection notification failed:", err)
+        console.error("[Admin] Rejection notification failed:", err),
       );
     }
 

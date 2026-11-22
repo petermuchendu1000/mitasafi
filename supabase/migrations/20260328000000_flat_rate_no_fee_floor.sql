@@ -171,11 +171,40 @@ BEGIN
     RAISE EXCEPTION 'FAILED: % configs active at this instant, expected exactly 1', v_active;
   END IF;
 
+  -- Asserted on VERSION 2 -- the row this migration creates -- and not on
+  -- whatever happens to be active now.
+  --
+  -- It used to read `WHERE effective @> now()`, which was true the day this
+  -- ran and became false on 2026-11-05, when
+  -- 20260341000000_commission_bands.sql superseded this schedule with
+  -- declining bands and REMOVED the KES 5,000 cap. The active config is now
+  -- v3, whose max_fee_cents is NULL, so `max_fee_cents = 500000` no longer
+  -- holds. That single conjunct is the whole of the failure: v3 still has
+  -- rate_bps 1000, min_fee_cents 0 and min_job_amount_cents 0.
+  --
+  -- A migration can only sensibly assert what IT established. Whether its
+  -- schedule is still the live one is the business of whichever migration ran
+  -- last, and asserting otherwise makes every past migration fail the moment a
+  -- pricing decision changes -- which is exactly what happened: this file
+  -- stopped being replayable into a fresh environment nine days after it was
+  -- written, for no defect of its own.
+  --
+  -- The data change above is already guarded ("v2 already present; leaving it
+  -- untouched"), so the replay was never corrupting anything -- verified by
+  -- replaying it against a from-scratch database and confirming the active
+  -- config was still v3 with its five bands afterwards. Only this assertion
+  -- was stale.
+  --
+  -- What is NOT weakened: v1 reproducibility is asserted separately below, the
+  -- single-active-config invariant is asserted above and still reads `now()`
+  -- because it is a property of the table rather than of one schedule, and the
+  -- fee-arithmetic assertions pass their parameters explicitly so they test
+  -- the function rather than the config.
   IF NOT EXISTS (SELECT 1 FROM public.commission_config
-                  WHERE effective @> now()
+                  WHERE scope = 'global' AND currency = 'KES' AND version = 2
                     AND rate_bps = 1000 AND min_fee_cents = 0
                     AND max_fee_cents = 500000 AND min_job_amount_cents = 0) THEN
-    RAISE EXCEPTION 'FAILED: the active config is not flat 10%% with no floor and no minimum';
+    RAISE EXCEPTION 'FAILED: v2 is not flat 10%% with no floor, no minimum and the KES 5,000 cap';
   END IF;
 
   IF public.active_min_job_amount() <> 0 THEN

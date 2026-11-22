@@ -188,6 +188,11 @@ describe("transactional email is replyable", () => {
    */
   const EXPECTED_SITES = [
     ["src/lib/email/booking-emails.ts", "FROM_ADDRESS"],
+    // sendSearchAlertNotification, and sendOperationalAlert -- the erasure
+    // queue watchdog. Both send as alerts@; the second goes to the operators
+    // rather than to a user, which is why it is a separate function and not a
+    // parameter on the first.
+    ["src/lib/email/index.ts", "MAIL_FROM.alerts"],
     ["src/lib/email/index.ts", "MAIL_FROM.alerts"],
     ["src/lib/email/index.ts", "MAIL_FROM.notifications"],
   ];

@@ -1,7 +1,103 @@
 app = "mitasafi-web"
 primary_region = "jnb"
 
+# DEPLOYING THIS APP REQUIRES SEVEN --build-arg VALUES. READ THIS FIRST.
+#
+# The Dockerfile declares seven NEXT_PUBLIC_* ARGs and Next INLINES them into
+# the client bundle at build time. There is deliberately no [build.args] block
+# below: the Supabase publishable key and the other values are treated as
+# rotatable credentials and are not committed to this repository.
+#
+# The consequence is a trap. `flyctl deploy` with no --build-arg flags SUCCEEDS
+# and builds every one of them as the EMPTY STRING. Measured consequences,
+# worst first:
+#   1. NEXT_PUBLIC_APP_ENV="" makes /api/payments/mpesa/health UNAUTHENTICATED.
+#      It gates on this value being exactly "production" (health/route.ts), so
+#      an empty value opens configuration probing to the internet.
+#   2. An empty Supabase URL/key breaks the browser client for every visitor.
+#   3. An empty NEXT_PUBLIC_APP_URL breaks every generated link.
+# Nothing in the build or in Fly's health checking catches any of this: there
+# are no [http_service.checks] here, so Fly releases whatever builds.
+#
+# DO NOT source .env.local for a deploy. It is a development file:
+# NEXT_PUBLIC_APP_ENV=development, NEXT_PUBLIC_APP_URL=http://localhost:3000,
+# and its NEXT_PUBLIC_SUPABASE_ANON_KEY is the 208-char LEGACY JWT, whereas
+# production is built with the 46-char sb_publishable_* key. Using it would
+# silently swap the browser's Supabase key.
+#
+# NEXT_PUBLIC_MAPBOX_TOKEN and NEXT_PUBLIC_GOOGLE_CLIENT_ID were built EMPTY in
+# every image up to 2026-11-21, which is why the map never rendered and Google
+# sign-in could not work: the client id is half of an OAuth pair and an empty
+# half fails. Both are now supplied. The Mapbox value must be a PUBLIC pk.*
+# token — an sk.* token is a secret and must never be a build arg, because
+# build args are inlined into the browser bundle.
+#
+# GOOGLE_CLIENT_SECRET is the other half of that pair and is a Fly SECRET, never
+# a build arg: as an ARG it would both persist in image history and ship to every
+# browser. It was already set correctly — proven by re-setting it to the supplied
+# value and getting back the identical secret digest — and the supplied id/secret
+# pair was confirmed matched against Google's token endpoint, which answered
+# invalid_grant (bad code, good credentials) rather than invalid_client.
+#
+# NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is read by the source but is not an ARG at
+# all, so it can never be set by a deploy.
+#
+# Verify a deploy by digest rather than by eye: the inlined key in
+# .next/static must hash to the same value as the one in the previous image,
+# and /api/payments/mpesa/health must still answer 401.
+#
+# From a sandbox behind an HTTPS-intercepting proxy, Fly's default Depot
+# builder fails its gRPC TLS handshake ("x509: certificate signed by unknown
+# authority") even with SSL_CERT_FILE pointed at the proxy CA. Use
+# `--depot=false --remote-only`, which goes over WireGuard and works.
 [build]
+
+# Callback source-IP trust for the M-Pesa Daraja webhook.
+#
+# extractTrustedClientIp() in src/lib/payments/mpesa-config.ts has NO default
+# for this: a header is only trustworthy if the serving platform writes it AND
+# overwrites a client-supplied copy, which is a fact about the deployment, not
+# about the code. On Fly, with nothing in front of fly-proxy, that header is
+# fly-client-ip. Verified against production on 2026-11-19: a request carrying a
+# forged `fly-client-ip` had it overwritten before reaching the app.
+#
+# WITHOUT this, the code falls back to indexing x-forwarded-for from the right
+# by MPESA_TRUSTED_PROXY_HOPS. On Fly the RIGHTMOST entry is an address assigned
+# to THIS APP, not the client, so the old default of 1 could never see a
+# Safaricom IP and every genuine callback would be denied.
+#
+# HOP COUNT, MEASURED 2026-11-21 (previously a guess, and deliberately left
+# unset until measured). Against production with the platform header cleared:
+#   - probe with no x-forwarded-for            -> hop 2 resolved the real caller
+#   - probe with 1 forged entry                -> hop 2 resolved the real caller
+#   - probe with 2 forged entries              -> hop 2 resolved the real caller
+#   - same probe via mitasafi-web.fly.dev      -> same
+#   - probe from INSIDE the jnb machine, so the request entered the jnb edge
+#     with the machine in jnb (same region)    -> same
+# The forged markers were never resolved in any of those. So fly-proxy
+# contributes exactly TWO entries, constant regardless of what the client sends,
+# and 2 is the correct hop count here.
+#
+# Do not raise it further. The trusted index is len - hops, so with a forged
+# prefix of length f the chain is f + 2 long and the forged region is read
+# exactly when hops > 2. Too LOW is fail-closed and merely useless; too HIGH is
+# fail-open.
+#
+# These are declared here, and not only as Fly secrets, so a freshly created
+# environment inherits them. The same two values are currently ALSO set as
+# secrets (applied without a rebuild). Keep them identical: this file only takes
+# effect on `flyctl deploy`, and which source wins when both define a name is
+# not something this comment asserts.
+#
+# TRUSTED_* (unprefixed) are the same two facts for the rate limiter in
+# src/lib/security/rate-limit.ts, which resolves a client the same way but under
+# its own names, so that a limiter change can never alter a payment
+# authorization. Its hop default is also 1 for the fail-open reason above.
+[env]
+  MPESA_TRUSTED_CLIENT_IP_HEADER = "fly-client-ip"
+  MPESA_TRUSTED_PROXY_HOPS = "2"
+  TRUSTED_CLIENT_IP_HEADER = "fly-client-ip"
+  TRUSTED_PROXY_HOPS = "2"
 
 [http_service]
   internal_port = 3000

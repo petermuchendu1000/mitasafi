@@ -22,6 +22,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types/db-helpers";
 import { getPrimaryRoleByHierarchy } from "@/types/db-helpers";
 import { getCustomerDashboardData } from "@/lib/services/dashboard";
+import { getCachedRoles } from "@/lib/cache/queries";
+import { productRoles, normalizeRoleParam } from "@/lib/identity/roles";
 import {
   CustomerDashboardShell,
   ActiveBookingsWidget,
@@ -36,12 +38,17 @@ interface DashboardPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function DashboardPage({
+  searchParams,
+}: DashboardPageProps) {
   const params = await searchParams;
-  const activeRoleParam = typeof params.activeRole === "string" ? params.activeRole : undefined;
+  const activeRoleParam =
+    typeof params.activeRole === "string" ? params.activeRole : undefined;
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
@@ -49,17 +56,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   // ── Profile & Roles ───────────────────────────────────────────────────
 
-  const [{ data: profileData }, { data: rolesData }] = await Promise.all([
+  const [{ data: profileData }, { roles }] = await Promise.all([
     supabase
       .from("profiles")
       .select("id, full_name, email, phone, avatar_url, primary_role")
       .eq("id", user.id)
       .single(),
-    supabase
-      .from("user_roles")
-      .select("role, is_verified")
-      .eq("user_id", user.id)
-      .eq("is_active", true),
+    getCachedRoles(),
   ]);
 
   const profile = profileData as {
@@ -71,11 +74,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     primary_role: string | null;
   } | null;
 
-  const userRoles: { role: UserRole; is_verified: boolean }[] =
-    rolesData?.map((r: { role: string; is_verified: boolean | null }) => ({
-      role: r.role as UserRole,
-      is_verified: r.is_verified ?? false,
-    })) || [];
+  // Mapped back to this page's local shape so its consumers are untouched.
+  // productRoles excludes 'admin', which user_roles can hold but this page's
+  // role-switcher is not a place to switch into.
+  const userRoles: { role: UserRole; is_verified: boolean }[] = productRoles(
+    roles,
+  ).map((r) => ({ role: r.role, is_verified: r.isVerified }));
 
   // No roles → send to signup
   if (userRoles.length === 0) {
@@ -86,12 +90,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const allRoles = userRoles.map((r) => r.role);
 
-  let primaryRole: UserRole;
-  if (activeRoleParam && allRoles.includes(activeRoleParam as UserRole)) {
-    primaryRole = activeRoleParam as UserRole;
-  } else {
-    primaryRole = getPrimaryRoleByHierarchy(allRoles);
-  }
+  // Two checks, not one cast: normalizeRoleParam validates the URL value
+  // against the one alias map, and the membership test then confirms the user
+  // actually holds it. The previous form cast the raw parameter to UserRole in
+  // order to look it up, so the type was asserted before anything checked it.
+  const requestedRole = normalizeRoleParam(activeRoleParam);
+  const primaryRole: UserRole =
+    requestedRole && allRoles.includes(requestedRole)
+      ? requestedRole
+      : getPrimaryRoleByHierarchy(allRoles);
 
   if (primaryRole === "landlord") {
     redirect("/dashboard/landlord");

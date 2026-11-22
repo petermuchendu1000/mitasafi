@@ -14,9 +14,18 @@
  *      DigitalOcean range, matched with startsWith() rather than CIDR.
  *
  * A fourth was introduced by the first fix and is covered here too: trusting a
- * platform header (fly-client-ip) BY DEFAULT. This repo deploys to Vercel,
- * which neither writes nor strips that header, so the default made it
- * attacker-controlled and it was preferred over x-forwarded-for.
+ * platform header (fly-client-ip) BY DEFAULT. On a platform that neither writes
+ * nor strips that header the default makes it attacker-controlled, and it is
+ * preferred over x-forwarded-for.
+ *
+ * CORRECTION: this header used to assert "This repo deploys to Vercel". It does
+ * not — production runs on Fly.io. That matters for how these tests read. The
+ * x-forwarded-for cases below exercise the hop arithmetic with the default of
+ * 1 hop, which is correct as a unit test of that function but is NOT how this
+ * deployment is configured: on Fly the rightmost entry is the app's own
+ * address, so production sets MPESA_TRUSTED_CLIENT_IP_HEADER=fly-client-ip and
+ * takes the platform-header path that "honours a platform header only once the
+ * operator names it" covers below.
  *
  * Every "ATTACK" case below was verified to pass the whitelist before its fix.
  */
@@ -45,7 +54,7 @@ const H = (o: Record<string, string>) => ({
 function decide(
   hdrs: Record<string, string>,
   env: Record<string, string | undefined> = PROD,
-  environment: "sandbox" | "production" = "production"
+  environment: "sandbox" | "production" = "production",
 ): boolean {
   const { ip } = extractTrustedClientIp(H(hdrs), env);
   return authorizeCallbackIp(ip, environment, env).allowed;
@@ -89,7 +98,9 @@ describe("ATTACK: spoofed x-forwarded-for positions", () => {
   });
 
   it("denies an absurdly long chain used to push the trusted hop out of range", () => {
-    expect(decide({ "x-forwarded-for": Array(200).fill(SAFARICOM).join(", ") })).toBe(false);
+    expect(
+      decide({ "x-forwarded-for": Array(200).fill(SAFARICOM).join(", ") }),
+    ).toBe(false);
   });
 
   it("denies absent, empty and unparseable sources", () => {
@@ -104,44 +115,61 @@ describe("ATTACK: forged platform headers", () => {
   it("ignores fly-client-ip when no platform header is configured", () => {
     // The default used to be "fly-client-ip" and it was preferred over XFF, so
     // this exact request passed the production whitelist.
-    expect(decide({ "fly-client-ip": SAFARICOM, "x-forwarded-for": EDGE })).toBe(false);
+    expect(
+      decide({ "fly-client-ip": SAFARICOM, "x-forwarded-for": EDGE }),
+    ).toBe(false);
   });
 
   it("ignores x-real-ip when no platform header is configured", () => {
-    expect(decide({ "x-real-ip": SAFARICOM, "x-forwarded-for": EDGE })).toBe(false);
+    expect(decide({ "x-real-ip": SAFARICOM, "x-forwarded-for": EDGE })).toBe(
+      false,
+    );
   });
 
   it("honours a platform header only once the operator names it", () => {
     const env = { ...PROD, MPESA_TRUSTED_CLIENT_IP_HEADER: "fly-client-ip" };
-    expect(decide({ "fly-client-ip": SAFARICOM, "x-forwarded-for": EDGE }, env)).toBe(true);
+    expect(
+      decide({ "fly-client-ip": SAFARICOM, "x-forwarded-for": EDGE }, env),
+    ).toBe(true);
   });
 
   it("rejects a configured platform header carrying a list (not platform-written)", () => {
     const env = { ...PROD, MPESA_TRUSTED_CLIENT_IP_HEADER: "fly-client-ip" };
-    expect(decide({ "fly-client-ip": `${SAFARICOM}, 1.2.3.4`, "x-forwarded-for": EDGE }, env)).toBe(false);
+    expect(
+      decide(
+        { "fly-client-ip": `${SAFARICOM}, 1.2.3.4`, "x-forwarded-for": EDGE },
+        env,
+      ),
+    ).toBe(false);
   });
 });
 
 describe("the sandbox fail-open is closed", () => {
   it("does not allow everything just because the environment is sandbox", () => {
-    expect(decide({ "x-forwarded-for": "127.0.0.1" }, PROD, "sandbox")).toBe(false);
+    expect(decide({ "x-forwarded-for": "127.0.0.1" }, PROD, "sandbox")).toBe(
+      false,
+    );
   });
 
   it("stays closed on a deploy where MPESA_ENVIRONMENT is simply unset", () => {
     const env = { NODE_ENV: "production" };
-    expect(decide({ "x-forwarded-for": "127.0.0.1" }, env, "sandbox")).toBe(false);
+    expect(decide({ "x-forwarded-for": "127.0.0.1" }, env, "sandbox")).toBe(
+      false,
+    );
   });
 
   it("requires every insecure-mode condition at once", () => {
     // flag alone is not enough
-    expect(isInsecureCallbackModeEnabled({ MPESA_ALLOW_INSECURE_CALLBACKS: "true" })).toBe(false);
+    expect(
+      isInsecureCallbackModeEnabled({ MPESA_ALLOW_INSECURE_CALLBACKS: "true" }),
+    ).toBe(false);
     // flag + explicit sandbox, but a production app env
     expect(
       isInsecureCallbackModeEnabled({
         MPESA_ALLOW_INSECURE_CALLBACKS: "true",
         MPESA_ENVIRONMENT: "sandbox",
         NEXT_PUBLIC_APP_ENV: "production",
-      })
+      }),
     ).toBe(false);
     // flag + explicit sandbox, but NODE_ENV production
     expect(
@@ -149,7 +177,7 @@ describe("the sandbox fail-open is closed", () => {
         MPESA_ALLOW_INSECURE_CALLBACKS: "true",
         MPESA_ENVIRONMENT: "sandbox",
         NODE_ENV: "production",
-      })
+      }),
     ).toBe(false);
     // all conditions met
     expect(
@@ -157,7 +185,7 @@ describe("the sandbox fail-open is closed", () => {
         MPESA_ALLOW_INSECURE_CALLBACKS: "true",
         MPESA_ENVIRONMENT: "sandbox",
         NODE_ENV: "development",
-      })
+      }),
     ).toBe(true);
   });
 
@@ -167,7 +195,11 @@ describe("the sandbox fail-open is closed", () => {
       MPESA_ENVIRONMENT: "sandbox",
       NODE_ENV: "development",
     };
-    expect(decide({ "x-forwarded-for": "8.8.8.8" }, env, "sandbox")).toBe(false);
-    expect(decide({ "x-forwarded-for": "127.0.0.1" }, env, "sandbox")).toBe(true);
+    expect(decide({ "x-forwarded-for": "8.8.8.8" }, env, "sandbox")).toBe(
+      false,
+    );
+    expect(decide({ "x-forwarded-for": "127.0.0.1" }, env, "sandbox")).toBe(
+      true,
+    );
   });
 });
