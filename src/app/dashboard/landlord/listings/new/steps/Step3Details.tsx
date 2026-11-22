@@ -87,7 +87,9 @@ export function Step3Details() {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           Tell us about the unit
         </h2>
-        <p className="text-gray-500">Size, condition, and what's included</p>
+        <p className="text-gray-500">
+          Size, condition, and what&apos;s included
+        </p>
       </div>
 
       <div className="space-y-8">

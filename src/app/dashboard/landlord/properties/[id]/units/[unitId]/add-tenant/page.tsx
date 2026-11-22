@@ -304,7 +304,7 @@ export default function AddTenantPage({
               Personal Information
             </h2>
             <p className="text-sm text-gray-500 mb-6">
-              Enter the tenant's personal details
+              Enter the tenant&apos;s personal details
             </p>
 
             <div className="space-y-4">

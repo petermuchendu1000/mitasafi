@@ -416,8 +416,8 @@ export function InquiryModal({
                   </div>
 
                   <p className="text-xs text-gray-500 flex items-center gap-1">
-                    We'll share your phone with the landlord so they can reach
-                    you
+                    We&apos;ll share your phone with the landlord so they can
+                    reach you
                   </p>
                 </div>
               )}

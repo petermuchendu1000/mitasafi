@@ -188,7 +188,7 @@ export function Step4CommercialAmenities() {
           Building Amenities
         </h2>
         <p className="text-gray-500">
-          What's included with this commercial space?
+          What&apos;s included with this commercial space?
         </p>
       </div>
 

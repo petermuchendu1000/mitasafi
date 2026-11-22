@@ -204,7 +204,9 @@ export function Step6Pricing() {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           Set your price
         </h2>
-        <p className="text-gray-500">Rent, deposit, and when it's available</p>
+        <p className="text-gray-500">
+          Rent, deposit, and when it&apos;s available
+        </p>
       </div>
 
       <div className="space-y-6">
