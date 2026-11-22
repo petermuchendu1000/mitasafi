@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Logo, Container } from "@/components/ui";
@@ -19,46 +19,66 @@ const navLinks = [
   { label: "How It Works", href: "/#how-it-works" },
 ];
 
+/**
+ * The saved-listings count, read from localStorage as an external store.
+ *
+ * This was a mount effect that seeded state and then subscribed, which ESLint reported
+ * as react-hooks/set-state-in-effect. Reading it in full showed a defect the rule does
+ * not report: the "storage" listener was registered as an anonymous function but the
+ * cleanup removed `handleChange`. removeEventListener only detaches the SAME reference,
+ * so that listener survived unmount — and because Navbar renders the badge twice, every
+ * Navbar mount stranded two of them, each holding a closure over that mount's setCount.
+ * Measured before this change: two live listeners after one mount/unmount, eight after
+ * three. See __tests__/Navbar.listeners.test.tsx.
+ *
+ * localStorage plus a change event IS an external store, so useSyncExternalStore is the
+ * API for it. The subscription's teardown removes exactly what it added — the leak is
+ * gone by construction rather than by remembering to match references — and there is no
+ * effect and no setState left for the rule to object to.
+ */
+export function subscribeSavedListings(onChange: () => void): () => void {
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === STORAGE_KEY) onChange();
+  };
+  window.addEventListener("savedListingsChanged", onChange);
+  window.addEventListener("storage", onStorage);
+  return () => {
+    window.removeEventListener("savedListingsChanged", onChange);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+function getSavedCount(): number {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(saved) ? saved.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** There is no localStorage during SSR; the badge starts hidden, as it did before. */
+function getServerSavedCount(): number {
+  return 0;
+}
+
 // Saved count badge component
 function SavedCountBadge() {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    // Initial count
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      setCount(saved.length);
-    } catch {
-      // Ignore
-    }
-
-    // Listen for changes from other components
-    const handleChange = () => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-        setCount(saved.length);
-      } catch {
-        // Ignore
-      }
-    };
-
-    window.addEventListener("savedListingsChanged", handleChange);
-    // Also listen for storage events from other tabs
-    window.addEventListener("storage", (e) => {
-      if (e.key === STORAGE_KEY) handleChange();
-    });
-
-    return () => {
-      window.removeEventListener("savedListingsChanged", handleChange);
-      window.removeEventListener("storage", handleChange);
-    };
-  }, []);
+  const count = useSyncExternalStore(
+    subscribeSavedListings,
+    getSavedCount,
+    getServerSavedCount,
+  );
 
   return (
     <Link
       href="/saved"
       className="relative p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-      title={count > 0 ? `${count} saved ${count === 1 ? "property" : "properties"}` : "Saved properties"}
+      title={
+        count > 0
+          ? `${count} saved ${count === 1 ? "property" : "properties"}`
+          : "Saved properties"
+      }
     >
       <Heart className="w-5 h-5" />
       {count > 0 && (
@@ -77,18 +97,14 @@ export function Navbar() {
     <header
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-        "bg-white/95 backdrop-blur-md shadow-soft"
+        "bg-white/95 backdrop-blur-md shadow-soft",
       )}
     >
       <Container>
         <nav className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <Logo
-              variant="full"
-              color="teal"
-              size="sm"
-            />
+            <Logo variant="full" color="teal" size="sm" />
           </Link>
 
           {/* Desktop Navigation */}
@@ -144,7 +160,7 @@ export function Navbar() {
         <div
           className={cn(
             "lg:hidden overflow-hidden transition-all duration-300",
-            isMobileMenuOpen ? "max-h-96 pb-6" : "max-h-0"
+            isMobileMenuOpen ? "max-h-96 pb-6" : "max-h-0",
           )}
         >
           <div className="flex flex-col gap-4 pt-4 border-t border-gray-200">
@@ -169,7 +185,10 @@ export function Navbar() {
               <Link
                 href="/signup"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={buttonVariants({ variant: "primary", fullWidth: true })}
+                className={buttonVariants({
+                  variant: "primary",
+                  fullWidth: true,
+                })}
               >
                 Create Account
               </Link>
