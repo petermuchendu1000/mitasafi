@@ -1,11 +1,11 @@
 /**
  * Saved Listings Page
- * 
+ *
  * Displays user's saved/favorited properties from local storage.
  * Clean, professional design - no banners or distracting UI elements.
- * 
+ *
  * REALTIME UPDATES:
- * Uses WebSocket subscription to receive instant notifications when 
+ * Uses WebSocket subscription to receive instant notifications when
  * any saved listing's status changes (rented, paused, deleted).
  */
 
@@ -16,21 +16,26 @@ import Link from "next/link";
 import { Heart, Search, ArrowRight, Wifi, WifiOff, Bell } from "lucide-react";
 import { Navbar, Footer } from "@/components/landing";
 import { Container } from "@/components/ui";
-import { ListingCard, ListingCardSkeleton, type ListingCardData } from "@/components/shared";
+import {
+  ListingCard,
+  ListingCardSkeleton,
+  type ListingCardData,
+} from "@/components/shared";
 import { UnavailableListingModal } from "@/components/listings/UnavailableListingModal";
 import type { ListingCard as LegacyListingCard } from "@/lib/listings/types";
 import { addNotification, getUnreadCount } from "@/lib/notifications";
-import { useRealtimeListingStatus, type ListingStatusUpdate } from "@/hooks/useRealtimeListingStatus";
+import {
+  useRealtimeListingStatus,
+  type ListingStatusUpdate,
+} from "@/hooks/useRealtimeListingStatus";
 import { cn } from "@/lib/utils";
-
-// Local storage key
-const STORAGE_KEY = "mitasafi_saved_listings";
-
-interface SavedListing {
-  listingId: string;
-  savedAt: string;
-  lastKnownStatus?: string;
-}
+import {
+  SAVED_LISTINGS_STORAGE_KEY,
+  readSavedListings,
+  writeSavedListings,
+  subscribeSavedListings,
+  type SavedListing,
+} from "@/lib/saved-listings/store";
 
 /**
  * Transform legacy ListingCard to shared ListingCardData format
@@ -50,7 +55,8 @@ function transformToCardData(listing: LegacyListingCard): ListingCardData {
     available_now: listing.available_now,
     published_at: listing.published_at,
     created_at: listing.published_at || new Date().toISOString(),
-    status: (listing.status as "active" | "paused" | "rented" | "draft") || "active",
+    status:
+      (listing.status as "active" | "paused" | "rented" | "draft") || "active",
     views_count: 0,
     inquiries_count: 0,
     bedrooms: listing.bedrooms,
@@ -77,7 +83,7 @@ export default function SavedListingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notificationCount, setNotificationCount] = useState(0);
-  
+
   // Unavailable listing modal state
   const [unavailableModalOpen, setUnavailableModalOpen] = useState(false);
   const [unavailableListing, setUnavailableListing] = useState<{
@@ -92,30 +98,32 @@ export default function SavedListingsPage() {
     cover_photo?: string | null;
     status: "rented" | "paused" | "archived";
   } | null>(null);
-  const [similarListings, setSimilarListings] = useState<LegacyListingCard[]>([]);
-  
+  const [similarListings, setSimilarListings] = useState<LegacyListingCard[]>(
+    [],
+  );
+
   // Build map of last known statuses for realtime comparison
   const lastKnownStatuses = useMemo(() => {
     const map = new Map<string, string>();
-    savedIds.forEach(s => {
+    savedIds.forEach((s) => {
       if (s.lastKnownStatus) {
         map.set(s.listingId, s.lastKnownStatus);
       }
     });
     return map;
   }, [savedIds]);
-  
+
   // Get listing IDs for realtime subscription
-  const listingIdsToMonitor = useMemo(() => 
-    savedIds.map(s => s.listingId), 
-    [savedIds]
+  const listingIdsToMonitor = useMemo(
+    () => savedIds.map((s) => s.listingId),
+    [savedIds],
   );
-  
+
   // Realtime subscription for listing status changes
-  const { 
-    isConnected: isRealtimeConnected, 
+  const {
+    isConnected: isRealtimeConnected,
     status: realtimeStatus,
-    recentChanges 
+    recentChanges,
   } = useRealtimeListingStatus({
     listingIds: listingIdsToMonitor,
     lastKnownStatuses,
@@ -124,37 +132,56 @@ export default function SavedListingsPage() {
       // Update the listings state with new status
       // Cast to match LegacyListingCard status type
       const newStatus = update.status as LegacyListingCard["status"];
-      setListings(prev => prev.map(listing => 
-        listing.id === update.id 
-          ? { ...listing, status: newStatus }
-          : listing
-      ));
-      
+      setListings((prev) =>
+        prev.map((listing) =>
+          listing.id === update.id
+            ? { ...listing, status: newStatus }
+            : listing,
+        ),
+      );
+
       // Update saved IDs with new status
-      setSavedIds(prev => {
-        const updated = prev.map(s => 
-          s.listingId === update.id 
+      setSavedIds((prev) => {
+        const updated = prev.map((s) =>
+          s.listingId === update.id
             ? { ...s, lastKnownStatus: update.status }
-            : s
+            : s,
         );
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        // Deliberately a bare write, not writeSavedListings. This runs inside a
+        // setSavedIds updater, and the store's write dispatches the change event; that
+        // would re-enter the subscription above, which calls setSavedIds again with a
+        // freshly parsed (so never reference-equal) array, and the two would feed each
+        // other. The value being persisted here is lastKnownStatus, which no other
+        // reader derives anything from, so not notifying costs nothing.
+        // The store reads through a cache keyed on the raw string, so a direct write is
+        // still picked up by the next read.
+        localStorage.setItem(
+          SAVED_LISTINGS_STORAGE_KEY,
+          JSON.stringify(updated),
+        );
         return updated;
       });
-      
+
       // Update notification count
       setNotificationCount(getUnreadCount());
-      
+
       // Show unavailable modal if listing became rented or paused
-      if ((update.status === "rented" || update.status === "paused") && previousStatus === "active") {
-        const affectedListing = listings.find(l => l.id === update.id);
+      if (
+        (update.status === "rented" || update.status === "paused") &&
+        previousStatus === "active"
+      ) {
+        const affectedListing = listings.find((l) => l.id === update.id);
         if (affectedListing) {
           // Get similar listings (same area, exclude the unavailable one)
-          const similar = listings.filter(l => 
-            l.id !== update.id && 
-            l.area === affectedListing.area &&
-            l.status === "active"
-          ).slice(0, 4);
-          
+          const similar = listings
+            .filter(
+              (l) =>
+                l.id !== update.id &&
+                l.area === affectedListing.area &&
+                l.status === "active",
+            )
+            .slice(0, 4);
+
           setSimilarListings(similar);
           setUnavailableListing({
             id: affectedListing.id,
@@ -176,88 +203,88 @@ export default function SavedListingsPage() {
 
   // Load saved IDs from local storage
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as SavedListing[];
-      setSavedIds(saved);
-    } catch {
-      setSavedIds([]);
-    }
-    
+    setSavedIds([...readSavedListings()]);
+
     // Load initial notification count
     setNotificationCount(getUnreadCount());
   }, []);
 
   // Check for status changes and create notifications
-  const checkStatusChanges = useCallback((
-    savedList: SavedListing[], 
-    fetchedListings: LegacyListingCard[]
-  ) => {
-    const updatedSaved = [...savedList];
-    let hasChanges = false;
+  const checkStatusChanges = useCallback(
+    (savedList: SavedListing[], fetchedListings: LegacyListingCard[]) => {
+      const updatedSaved = [...savedList];
+      let hasChanges = false;
 
-    // Track fetched IDs
-    const fetchedIds = new Set(fetchedListings.map(l => l.id));
+      // Track fetched IDs
+      const fetchedIds = new Set(fetchedListings.map((l) => l.id));
 
-    // Check each saved listing
-    savedList.forEach((saved, index) => {
-      const listing = fetchedListings.find(l => l.id === saved.listingId);
-      
-      if (listing) {
-        // Get current and previous status
-        const previousStatus = saved.lastKnownStatus || "active"; // Default to active for old saved items
-        const currentStatus = listing.status || "active";
-        
-        // Check for status changes (only notify if actually changed)
-        if (previousStatus !== currentStatus) {
-          // Determine notification type
-          let notificationType: "rented" | "paused" | "deleted" | "resumed" = "paused";
-          if (currentStatus === "rented") notificationType = "rented";
-          else if (currentStatus === "paused") notificationType = "paused";
-          else if (currentStatus === "active" && previousStatus !== "active") notificationType = "resumed";
-          
-          // Create notification
-          addNotification({
-            listingId: listing.id,
-            listingTitle: listing.title,
-            type: notificationType,
-            timestamp: Date.now(),
-          });
-          
-          // Update stored status
-          updatedSaved[index] = { ...saved, lastKnownStatus: currentStatus };
-          hasChanges = true;
-        } else if (!saved.lastKnownStatus) {
-          // First time seeing this listing, just record the status without notification
-          updatedSaved[index] = { ...saved, lastKnownStatus: currentStatus };
-          hasChanges = true;
+      // Check each saved listing
+      savedList.forEach((saved, index) => {
+        const listing = fetchedListings.find((l) => l.id === saved.listingId);
+
+        if (listing) {
+          // Get current and previous status
+          const previousStatus = saved.lastKnownStatus || "active"; // Default to active for old saved items
+          const currentStatus = listing.status || "active";
+
+          // Check for status changes (only notify if actually changed)
+          if (previousStatus !== currentStatus) {
+            // Determine notification type
+            let notificationType: "rented" | "paused" | "deleted" | "resumed" =
+              "paused";
+            if (currentStatus === "rented") notificationType = "rented";
+            else if (currentStatus === "paused") notificationType = "paused";
+            else if (currentStatus === "active" && previousStatus !== "active")
+              notificationType = "resumed";
+
+            // Create notification
+            addNotification({
+              listingId: listing.id,
+              listingTitle: listing.title,
+              type: notificationType,
+              timestamp: Date.now(),
+            });
+
+            // Update stored status
+            updatedSaved[index] = { ...saved, lastKnownStatus: currentStatus };
+            hasChanges = true;
+          } else if (!saved.lastKnownStatus) {
+            // First time seeing this listing, just record the status without notification
+            updatedSaved[index] = { ...saved, lastKnownStatus: currentStatus };
+            hasChanges = true;
+          }
+        } else if (!fetchedIds.has(saved.listingId)) {
+          // Listing was deleted by landlord
+          if (saved.lastKnownStatus !== "deleted") {
+            // Create notification for deletion
+            addNotification({
+              listingId: saved.listingId,
+              listingTitle: `Saved property`,
+              type: "deleted",
+              timestamp: Date.now(),
+            });
+            updatedSaved[index] = { ...saved, lastKnownStatus: "deleted" };
+            hasChanges = true;
+          }
         }
-      } else if (!fetchedIds.has(saved.listingId)) {
-        // Listing was deleted by landlord
-        if (saved.lastKnownStatus !== "deleted") {
-          // Create notification for deletion
-          addNotification({
-            listingId: saved.listingId,
-            listingTitle: `Saved property`,
-            type: "deleted",
-            timestamp: Date.now(),
-          });
-          updatedSaved[index] = { ...saved, lastKnownStatus: "deleted" };
-          hasChanges = true;
+      });
+
+      // Remove deleted listings from saved
+      const cleanedSaved = updatedSaved.filter(
+        (s) => s.lastKnownStatus !== "deleted",
+      );
+
+      if (hasChanges) {
+        // Writing through the store notifies as part of the write, so the separate
+        // dispatchEvent that used to follow this line is gone.
+        writeSavedListings(cleanedSaved);
+        if (cleanedSaved.length !== savedList.length) {
+          setSavedIds(cleanedSaved);
         }
       }
-    });
-
-    // Remove deleted listings from saved
-    const cleanedSaved = updatedSaved.filter(s => s.lastKnownStatus !== "deleted");
-    
-    if (hasChanges) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanedSaved));
-      if (cleanedSaved.length !== savedList.length) {
-        setSavedIds(cleanedSaved);
-      }
-      window.dispatchEvent(new CustomEvent("savedListingsChanged"));
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Fetch listing details for saved IDs
   useEffect(() => {
@@ -272,19 +299,21 @@ export default function SavedListingsPage() {
       setError(null);
 
       try {
-        const ids = savedIds.map(s => s.listingId);
-        const response = await fetch(`/api/listings/batch?ids=${ids.join(",")}`);
-        
+        const ids = savedIds.map((s) => s.listingId);
+        const response = await fetch(
+          `/api/listings/batch?ids=${ids.join(",")}`,
+        );
+
         if (!response.ok) {
           throw new Error("Failed to fetch listings");
         }
 
         const data = await response.json();
         const fetchedListings = data.listings || [];
-        
+
         // Check for status changes
         checkStatusChanges(savedIds, fetchedListings);
-        
+
         setListings(fetchedListings);
       } catch (err) {
         console.error("Failed to fetch saved listings:", err);
@@ -297,26 +326,23 @@ export default function SavedListingsPage() {
     fetchListings();
   }, [savedIds, checkStatusChanges]);
 
-  // Listen for changes from other components
+  // Listen for changes from other components.
+  //
+  // This block used to register its own pair of listeners, and it carried the same
+  // defect as Navbar did — character for character, which is what duplication does. The
+  // "storage" listener was added as an anonymous function while the cleanup removed
+  // `handleChange`:
+  //
+  //     window.addEventListener("storage", (e) => { ... });
+  //     return () => window.removeEventListener("storage", handleChange);
+  //
+  // removeEventListener only detaches the same reference, so that listener outlived
+  // every visit to this page. subscribeSavedListings removes exactly what it adds, and
+  // its symmetry is asserted in lib/saved-listings/__tests__/store.test.ts.
   useEffect(() => {
-    const handleChange = () => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as SavedListing[];
-        setSavedIds(saved);
-      } catch {
-        // Ignore
-      }
-    };
-
-    window.addEventListener("savedListingsChanged", handleChange);
-    window.addEventListener("storage", (e) => {
-      if (e.key === STORAGE_KEY) handleChange();
+    return subscribeSavedListings(() => {
+      setSavedIds([...readSavedListings()]);
     });
-
-    return () => {
-      window.removeEventListener("savedListingsChanged", handleChange);
-      window.removeEventListener("storage", handleChange);
-    };
   }, []);
 
   // Count of actual available listings
@@ -331,15 +357,16 @@ export default function SavedListingsPage() {
           <Container>
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Saved Properties</h1>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Saved Properties
+                </h1>
                 <p className="text-gray-500 mt-1">
-                  {availableCount === 0 
-                    ? "No saved properties" 
-                    : `${availableCount} ${availableCount === 1 ? "property" : "properties"}`
-                  }
+                  {availableCount === 0
+                    ? "No saved properties"
+                    : `${availableCount} ${availableCount === 1 ? "property" : "properties"}`}
                 </p>
               </div>
-              
+
               {/* Realtime status indicator */}
               {listingIdsToMonitor.length > 0 && (
                 <div className="flex items-center gap-3">
@@ -347,17 +374,22 @@ export default function SavedListingsPage() {
                   {notificationCount > 0 && (
                     <div className="flex items-center gap-1.5 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
                       <Bell className="w-3 h-3" />
-                      <span>{notificationCount} update{notificationCount !== 1 ? "s" : ""}</span>
+                      <span>
+                        {notificationCount} update
+                        {notificationCount !== 1 ? "s" : ""}
+                      </span>
                     </div>
                   )}
-                  
+
                   {/* Connection indicator */}
-                  <div className={cn(
-                    "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
-                    isRealtimeConnected 
-                      ? "bg-green-100 text-green-700" 
-                      : "bg-gray-100 text-gray-600"
-                  )}>
+                  <div
+                    className={cn(
+                      "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
+                      isRealtimeConnected
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-600",
+                    )}
+                  >
                     {isRealtimeConnected ? (
                       <>
                         <Wifi className="w-3 h-3" />
@@ -381,9 +413,11 @@ export default function SavedListingsPage() {
           <Container>
             {isLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {Array.from({ length: Math.min(savedIds.length || 3, 6) }).map((_, i) => (
-                  <ListingCardSkeleton key={i} />
-                ))}
+                {Array.from({ length: Math.min(savedIds.length || 3, 6) }).map(
+                  (_, i) => (
+                    <ListingCardSkeleton key={i} />
+                  ),
+                )}
               </div>
             ) : error ? (
               <div className="text-center py-16">
@@ -400,9 +434,9 @@ export default function SavedListingsPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {listings.map((listing) => (
-                  <ListingCard 
-                    key={listing.id} 
-                    listing={transformToCardData(listing)} 
+                  <ListingCard
+                    key={listing.id}
+                    listing={transformToCardData(listing)}
                     variant="public"
                   />
                 ))}
@@ -412,7 +446,7 @@ export default function SavedListingsPage() {
         </section>
       </main>
       <Footer />
-      
+
       {/* Unavailable Listing Modal - Lead capture */}
       {unavailableListing && (
         <UnavailableListingModal
@@ -422,7 +456,7 @@ export default function SavedListingsPage() {
             setUnavailableListing(null);
           }}
           listing={unavailableListing}
-          similarListings={similarListings.map(l => ({
+          similarListings={similarListings.map((l) => ({
             id: l.id,
             title: l.title,
             area: l.area,
