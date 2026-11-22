@@ -1,6 +1,6 @@
 /**
  * Step 5: Description + Images
- * 
+ *
  * Provider adds optional description and photos for each service.
  * Images are uploaded immediately on selection (Supabase Storage via server action).
  * Data syncs to formData on every change so the footer's Continue works correctly.
@@ -26,9 +26,11 @@ export function Step5DescriptionImages() {
   const [uploading, setUploading] = useState(false);
 
   // Local state for all services' descriptions and uploaded image URLs
-  const [serviceData, setServiceData] = useState<Record<string, ServiceImageData>>(() => {
+  const [serviceData, setServiceData] = useState<
+    Record<string, ServiceImageData>
+  >(() => {
     const initial: Record<string, ServiceImageData> = {};
-    formData.selectedServices.forEach(service => {
+    formData.selectedServices.forEach((service) => {
       const existing = formData.serviceImages?.[service.serviceId];
       initial[service.serviceId] = {
         description: existing?.description || service.description || "",
@@ -40,13 +42,16 @@ export function Step5DescriptionImages() {
 
   const currentService = formData.selectedServices[currentServiceIndex];
   const totalServices = formData.selectedServices.length;
-  const currentData = serviceData[currentService?.serviceId] || { description: "", imageUrls: [] };
+  const currentData = serviceData[currentService?.serviceId] || {
+    description: "",
+    imageUrls: [],
+  };
 
   // Sync to formData whenever serviceData changes
   const syncToForm = useCallback(
     (data: Record<string, ServiceImageData>) => {
       // Update descriptions on each selected service
-      const updatedServices = formData.selectedServices.map(service => ({
+      const updatedServices = formData.selectedServices.map((service) => ({
         ...service,
         description: data[service.serviceId]?.description || "",
       }));
@@ -56,7 +61,7 @@ export function Step5DescriptionImages() {
         serviceImages: data,
       });
     },
-    [formData.selectedServices, updateFormData]
+    [formData.selectedServices, updateFormData],
   );
 
   // Sync on every change
@@ -67,7 +72,7 @@ export function Step5DescriptionImages() {
 
   // Update description
   const handleDescriptionChange = (value: string) => {
-    setServiceData(prev => ({
+    setServiceData((prev) => ({
       ...prev,
       [currentService.serviceId]: {
         ...prev[currentService.serviceId],
@@ -94,28 +99,46 @@ export function Step5DescriptionImages() {
 
       const result = await uploadServiceImage(fd);
       if (result.success && result.data?.url) {
-        setServiceData(prev => ({
+        setServiceData((prev) => ({
           ...prev,
           [currentService.serviceId]: {
             ...prev[currentService.serviceId],
-            imageUrls: [...(prev[currentService.serviceId]?.imageUrls || []), result.data!.url],
+            imageUrls: [
+              ...(prev[currentService.serviceId]?.imageUrls || []),
+              result.data!.url,
+            ],
           },
         }));
       }
     }
 
     setUploading(false);
-    // Reset input so same file can be re-selected
+    // Reset input so the same file can be re-selected. Without this, picking the same
+    // photo twice in a row fires no change event and the upload silently does nothing.
+    //
+    // SUPPRESSED, with evidence, rather than "fixed":
+    //  1. The value being modified is a DOM <input> reached through a React synthetic
+    //     event. It is not a value returned from a hook, which is what this rule
+    //     prohibits.
+    //  2. The rule misidentifies the target: it reports `currentService`, a const
+    //     derived at the top of this component and never assigned anywhere in the file.
+    //  3. Capturing e.target into a local first was tried; the rule still fired, on the
+    //     local. So there is no formulation of this idiom that satisfies it.
+    //  4. Deleting the line is a real regression (point 1 of this comment), so there is
+    //     no behaviour change available that would make the rule pass honestly.
+    // eslint-disable-next-line react-hooks/immutability
     e.target.value = "";
   };
 
   // Remove image URL
   const handleImageRemove = (index: number) => {
-    setServiceData(prev => ({
+    setServiceData((prev) => ({
       ...prev,
       [currentService.serviceId]: {
         ...prev[currentService.serviceId],
-        imageUrls: prev[currentService.serviceId].imageUrls.filter((_, i) => i !== index),
+        imageUrls: prev[currentService.serviceId].imageUrls.filter(
+          (_, i) => i !== index,
+        ),
       },
     }));
   };
@@ -136,7 +159,9 @@ export function Step5DescriptionImages() {
   if (!currentService) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">No services selected. Please go back and select services.</p>
+        <p className="text-gray-500">
+          No services selected. Please go back and select services.
+        </p>
       </div>
     );
   }
@@ -149,7 +174,8 @@ export function Step5DescriptionImages() {
           Add details for your services
         </h2>
         <p className="mt-2 text-gray-600">
-          Each service needs at least one photo. Descriptions are optional but help you stand out.
+          Each service needs at least one photo. Descriptions are optional but
+          help you stand out.
         </p>
       </div>
 
@@ -188,7 +214,9 @@ export function Step5DescriptionImages() {
       {/* Single service view */}
       {totalServices === 1 && (
         <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-          <p className="font-medium text-gray-900">{currentService.serviceName}</p>
+          <p className="font-medium text-gray-900">
+            {currentService.serviceName}
+          </p>
           <p className="text-sm text-gray-600 mt-1">
             {currentService.subcategoryName} • {currentService.categoryName}
           </p>
@@ -201,7 +229,8 @@ export function Step5DescriptionImages() {
           Service Description <span className="text-gray-400">(optional)</span>
         </label>
         <p className="text-sm text-gray-600 mb-3">
-          Briefly explain what&apos;s included or not included in this service (2-3 lines)
+          Briefly explain what&apos;s included or not included in this service
+          (2-3 lines)
         </p>
         <textarea
           value={currentData.description}
@@ -222,7 +251,8 @@ export function Step5DescriptionImages() {
           Photos of Past Work <span className="text-red-500">*</span>
         </label>
         <p className="text-sm text-gray-600 mb-3">
-          At least 1 photo required per service. Phone photos are fine. (Max 3 per service)
+          At least 1 photo required per service. Phone photos are fine. (Max 3
+          per service)
         </p>
 
         {/* Image preview grid */}
@@ -248,14 +278,17 @@ export function Step5DescriptionImages() {
 
           {/* Upload button (show if less than 3 images and not uploading) */}
           {currentData.imageUrls.length < 3 && (
-            <label className={cn(
-              "aspect-square rounded-lg border-2 border-dashed cursor-pointer flex flex-col items-center justify-center transition-colors",
-              uploading
-                ? "border-teal-400 bg-teal-50 cursor-wait"
-                : currentData.imageUrls.length === 0 && errors[`images_${currentService.serviceId}`]
-                  ? "border-red-300 hover:border-red-400 bg-red-50 hover:bg-red-50"
-                  : "border-gray-300 hover:border-teal-500 bg-gray-50 hover:bg-teal-50"
-            )}>
+            <label
+              className={cn(
+                "aspect-square rounded-lg border-2 border-dashed cursor-pointer flex flex-col items-center justify-center transition-colors",
+                uploading
+                  ? "border-teal-400 bg-teal-50 cursor-wait"
+                  : currentData.imageUrls.length === 0 &&
+                      errors[`images_${currentService.serviceId}`]
+                    ? "border-red-300 hover:border-red-400 bg-red-50 hover:bg-red-50"
+                    : "border-gray-300 hover:border-teal-500 bg-gray-50 hover:bg-teal-50",
+              )}
+            >
               {uploading ? (
                 <>
                   <Loader2 className="w-6 h-6 text-teal-500 mb-1 animate-spin" />
@@ -286,11 +319,12 @@ export function Step5DescriptionImages() {
         )}
 
         {/* Validation error */}
-        {currentData.imageUrls.length === 0 && errors[`images_${currentService.serviceId}`] && (
-          <p className="text-sm text-red-600 font-medium mt-1">
-            Upload at least one photo for this service
-          </p>
-        )}
+        {currentData.imageUrls.length === 0 &&
+          errors[`images_${currentService.serviceId}`] && (
+            <p className="text-sm text-red-600 font-medium mt-1">
+              Upload at least one photo for this service
+            </p>
+          )}
       </div>
 
       {/* Helper text */}
@@ -312,8 +346,11 @@ export function Step5DescriptionImages() {
       {totalServices > 1 && (
         <div className="flex gap-1">
           {formData.selectedServices.map((svc, index) => {
-            const hasImage = (serviceData[svc.serviceId]?.imageUrls?.length || 0) > 0;
-            const hasError = !hasImage && Object.keys(errors).some(k => k === `images_${svc.serviceId}`);
+            const hasImage =
+              (serviceData[svc.serviceId]?.imageUrls?.length || 0) > 0;
+            const hasError =
+              !hasImage &&
+              Object.keys(errors).some((k) => k === `images_${svc.serviceId}`);
             return (
               <button
                 key={index}
@@ -326,7 +363,7 @@ export function Step5DescriptionImages() {
                       ? "bg-teal-600"
                       : index <= currentServiceIndex
                         ? "bg-teal-400"
-                        : "bg-gray-200"
+                        : "bg-gray-200",
                 )}
                 title={svc.serviceName}
               />

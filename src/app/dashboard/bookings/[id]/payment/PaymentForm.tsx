@@ -82,6 +82,12 @@ export function PaymentForm({
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // True once this component has unmounted. Checked after every await in pollStatus.
   const cancelledRef = useRef(false);
+  // Holds the current pollStatus so the chain can re-invoke itself without the callback
+  // referring to its own binding before that binding exists. See the note at the
+  // setTimeout calls below.
+  const pollStatusRef = useRef<((pId: string, attempt: number) => void) | null>(
+    null,
+  );
 
   // Cleanup polling on unmount
   //
@@ -132,7 +138,7 @@ export function PaymentForm({
           // Non-fatal: keep polling
           setPollCount(attempt + 1);
           pollTimerRef.current = setTimeout(
-            () => pollStatus(pId, attempt + 1),
+            () => pollStatusRef.current?.(pId, attempt + 1),
             POLL_INTERVAL_MS,
           );
           return;
@@ -170,7 +176,7 @@ export function PaymentForm({
         );
         setPollCount(attempt + 1);
         pollTimerRef.current = setTimeout(
-          () => pollStatus(pId, attempt + 1),
+          () => pollStatusRef.current?.(pId, attempt + 1),
           POLL_INTERVAL_MS,
         );
       } catch {
@@ -178,13 +184,28 @@ export function PaymentForm({
         if (cancelledRef.current) return;
         setPollCount(attempt + 1);
         pollTimerRef.current = setTimeout(
-          () => pollStatus(pId, attempt + 1),
+          () => pollStatusRef.current?.(pId, attempt + 1),
           POLL_INTERVAL_MS,
         );
       }
     },
     [router],
   );
+
+  // Keep pollStatusRef pointing at the current pollStatus.
+  //
+  // pollStatus re-invokes itself from a setTimeout. Writing `pollStatus(...)` inside its
+  // own definition reads the binding before it exists (react-hooks/immutability), and it
+  // also pins the chain to the instance captured when the timer was scheduled rather than
+  // the current one. Going through a ref keeps the recursion on the latest instance.
+  //
+  // This effect is declared BEFORE the one that starts a chain, so the ref is populated
+  // in the same commit, before any 3s timer could fire. The optional call is a guard, not
+  // an expected path. __tests__/PaymentForm.polling.test.tsx covers two consecutive ticks,
+  // so a chain broken by this indirection fails there rather than in production.
+  useEffect(() => {
+    pollStatusRef.current = pollStatus;
+  }, [pollStatus]);
 
   // Start polling when paymentId is set and isPolling is true
   useEffect(() => {

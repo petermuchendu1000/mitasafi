@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Profiler, useEffect, useRef, useState } from "react";
 
 interface ComponentMetric {
   component: string;
@@ -303,18 +303,34 @@ export function withPerformanceMonitoring<P extends object>(
       Component.displayName ||
       Component.name ||
       "UnknownComponent";
-    const renderStart = useRef<number>(performance.now());
-
-    useEffect(() => {
-      const renderTime = performance.now() - renderStart.current;
-      clientPerf.logComponent({
-        component: name,
-        renderTime,
-        timestamp: Date.now(),
-      });
-    });
-
-    return <Component {...props} />;
+    // Measured by React, not by hand.
+    //
+    // This was `useRef<number>(performance.now())` plus an effect computing
+    // `performance.now() - renderStart.current`. Two problems. The small one is the
+    // impure call during render that react-hooks/purity reported: useRef evaluates its
+    // argument on every render and keeps only the first result. The large one is what
+    // that implies — renderStart was pinned to MOUNT time, so every render after the
+    // first logged the time since the component appeared, labelled renderTime. A
+    // component left on screen for ten seconds reported a ten-second render;
+    // __tests__/withPerformanceMonitoring.test.tsx reproduced exactly that
+    // (Expected < 5000, Received 10000) before this change.
+    //
+    // Profiler's actualDuration is the time React spent rendering this subtree for this
+    // commit, which is the number this HOC always claimed to report.
+    return (
+      <Profiler
+        id={name}
+        onRender={(_id, _phase, actualDuration) => {
+          clientPerf.logComponent({
+            component: name,
+            renderTime: actualDuration,
+            timestamp: Date.now(),
+          });
+        }}
+      >
+        <Component {...props} />
+      </Profiler>
+    );
   };
 
   WrappedComponent.displayName = `withPerformance(${componentName || Component.displayName || Component.name})`;

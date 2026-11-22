@@ -177,6 +177,46 @@ describe("PaymentForm polling lifecycle", () => {
     expect(deferred.calls).toHaveLength(MOUNTS);
   });
 
+  /**
+   * Guards the RECURSION itself. pollStatus re-invokes itself from a setTimeout, and
+   * react-hooks/immutability flags that self-reference because the callback is read
+   * before its own declaration. Any rewiring of that recursion — through a ref, a
+   * reducer, whatever — must keep the chain running, and nothing else in this file
+   * exercises a second tick, so a silently broken chain would go unnoticed.
+   *
+   * CONTRADICTING RESULT = a request count that stays at 1 after the interval elapses.
+   */
+  it("keeps polling: a pending status schedules and issues the next tick", async () => {
+    render(
+      <PaymentForm
+        bookingId="bk_1"
+        amount={1000}
+        defaultPhone="0712345678"
+        pendingPaymentId="pay_A"
+      />,
+    );
+
+    expect(deferred.calls).toHaveLength(1);
+
+    // First tick comes back still pending -> the chain must schedule another.
+    await deferred.settle(PENDING_BODY);
+
+    await act(async () => {
+      jest.advanceTimersByTime(POLL_INTERVAL_MS);
+    });
+
+    expect(deferred.calls).toHaveLength(2);
+    expect(deferred.calls[1]).toContain("paymentId=pay_A");
+
+    // And again, to show it is a chain and not a single extra tick.
+    await deferred.settle(PENDING_BODY);
+    await act(async () => {
+      jest.advanceTimersByTime(POLL_INTERVAL_MS);
+    });
+
+    expect(deferred.calls).toHaveLength(3);
+  });
+
   it("H1: a terminal status ends the chain and schedules nothing further", async () => {
     render(
       <PaymentForm
