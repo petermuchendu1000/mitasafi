@@ -13,16 +13,18 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  readSavedListings,
+  writeSavedListings,
+  type SavedListing,
+} from "@/lib/saved-listings/store";
 
-const STORAGE_KEY = "mitasafi_saved_listings";
 const SYNC_DEBOUNCE_MS = 2000;
 
-export interface SavedListing {
-  listingId: string;
-  savedAt: string; // ISO date string
-  notes?: string;
-  lastKnownStatus?: string; // For tracking status changes
-}
+// The shape and the storage key now live in @/lib/saved-listings/store, which is the
+// one module that knows how saved listings are persisted. Re-exported so existing
+// importers of this type keep working.
+export type { SavedListing };
 
 interface UseSavedListingsReturn {
   savedListings: SavedListing[];
@@ -34,33 +36,13 @@ interface UseSavedListingsReturn {
   isSynced: boolean;
 }
 
-// Get saved listings from local storage
-function getLocalSavedListings(): SavedListing[] {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed;
-  } catch {
-    return [];
-  }
-}
-
-// Save listings to local storage
-function setLocalSavedListings(listings: SavedListing[]): void {
-  if (typeof window === "undefined") return;
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(listings));
-  } catch (error) {
-    console.error("Failed to save to local storage:", error);
-  }
-}
+// Local copies of these used to live here. setLocalSavedListings wrote to storage and
+// returned WITHOUT dispatching "savedListingsChanged", while the four other writers of
+// this key all dispatched it — so saving through SaveButton (which uses this hook) left
+// the Navbar count stale until a reload. writeSavedListings notifies as part of the
+// write, so that cannot recur. Reproduced in __tests__/useSavedListings.notify.test.ts.
+const getLocalSavedListings = (): SavedListing[] => [...readSavedListings()];
+const setLocalSavedListings = writeSavedListings;
 
 export function useSavedListings(): UseSavedListingsReturn {
   const [savedListings, setSavedListings] = useState<SavedListing[]>([]);

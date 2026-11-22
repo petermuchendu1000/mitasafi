@@ -7,9 +7,11 @@ import { Logo, Container } from "@/components/ui";
 import { buttonVariants } from "@/components/ui/Button";
 import { NotificationCenter } from "@/components/shared/NotificationCenter";
 import { Menu, X, Heart } from "lucide-react";
-
-// Local storage key for saved listings (same as PropertyCard)
-const STORAGE_KEY = "mitasafi_saved_listings";
+import {
+  subscribeSavedListings,
+  readSavedListings,
+  getSavedListingsServerSnapshot,
+} from "@/lib/saved-listings/store";
 
 const navLinks = [
   { label: "Browse Homes", href: "/properties" },
@@ -20,55 +22,29 @@ const navLinks = [
 ];
 
 /**
- * The saved-listings count, read from localStorage as an external store.
+ * The saved-listings count.
  *
  * This was a mount effect that seeded state and then subscribed, which ESLint reported
  * as react-hooks/set-state-in-effect. Reading it in full showed a defect the rule does
- * not report: the "storage" listener was registered as an anonymous function but the
+ * not report: the "storage" listener was registered as an anonymous function while the
  * cleanup removed `handleChange`. removeEventListener only detaches the SAME reference,
  * so that listener survived unmount — and because Navbar renders the badge twice, every
- * Navbar mount stranded two of them, each holding a closure over that mount's setCount.
- * Measured before this change: two live listeners after one mount/unmount, eight after
- * three. See __tests__/Navbar.listeners.test.tsx.
+ * mount stranded two of them, each holding a closure over that mount's setCount.
+ * Measured before the change: two live listeners after one mount/unmount, eight after
+ * three.
  *
- * localStorage plus a change event IS an external store, so useSyncExternalStore is the
- * API for it. The subscription's teardown removes exactly what it added — the leak is
- * gone by construction rather than by remembering to match references — and there is no
- * effect and no setState left for the rule to object to.
+ * localStorage plus a change event is an external store, so useSyncExternalStore is the
+ * API for it. Both the subscription and the snapshot now come from
+ * @/lib/saved-listings/store, which is the single owner of this key — this file used to
+ * be one of five places that declared and parsed it independently.
  */
-export function subscribeSavedListings(onChange: () => void): () => void {
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY) onChange();
-  };
-  window.addEventListener("savedListingsChanged", onChange);
-  window.addEventListener("storage", onStorage);
-  return () => {
-    window.removeEventListener("savedListingsChanged", onChange);
-    window.removeEventListener("storage", onStorage);
-  };
-}
-
-function getSavedCount(): number {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(saved) ? saved.length : 0;
-  } catch {
-    return 0;
-  }
-}
-
-/** There is no localStorage during SSR; the badge starts hidden, as it did before. */
-function getServerSavedCount(): number {
-  return 0;
-}
-
-// Saved count badge component
 function SavedCountBadge() {
-  const count = useSyncExternalStore(
+  const saved = useSyncExternalStore(
     subscribeSavedListings,
-    getSavedCount,
-    getServerSavedCount,
+    readSavedListings,
+    getSavedListingsServerSnapshot,
   );
+  const count = saved.length;
 
   return (
     <Link
