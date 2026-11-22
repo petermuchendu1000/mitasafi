@@ -1,22 +1,22 @@
 /**
  * Inquiry Modal Component (v2 - Engagement First)
- * 
+ *
  * Modal for contacting landlord that works for EVERYONE:
  * - Public users: Show contact form (name, email/phone, message)
  * - Logged-in users: Pre-fill from profile, link inquiry to account
- * 
+ *
  * NO LOGIN REQUIRED to contact a landlord.
  * Lead capture happens naturally through the form.
- * 
+ *
  * Theme: 70% Teal, 30% Orange (submit button in orange)
  */
 
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { 
-  X, 
-  MessageCircle, 
+import {
+  X,
+  MessageCircle,
   Calendar,
   Send,
   Loader2,
@@ -24,7 +24,7 @@ import {
   Mail,
   User as UserIcon,
   AlertCircle,
-  Sparkles
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -101,7 +101,7 @@ export function InquiryModal({
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  
+
   const nameInputRef = useRef<HTMLInputElement>(null);
   const messageRef = useRef<HTMLTextAreaElement>(null);
 
@@ -109,16 +109,26 @@ export function InquiryModal({
   useEffect(() => {
     if (isOpen) {
       const defaultMessage = `Hi${landlordName ? ` ${landlordName.split(" ")[0]}` : ""},\n\nI'm interested in the ${listingTitle} in ${listingArea}. Is it still available?\n\nPlease let me know when I can view it.\n\nThank you!`;
-      
-      setFormData(prev => ({
+
+      setFormData((prev) => ({
         ...prev,
         name: userName || prev.name,
         email: userEmail || prev.email,
-        phone: userPhone ? formatPhone(userPhone.replace("+254", "")) : prev.phone,
+        phone: userPhone
+          ? formatPhone(userPhone.replace("+254", ""))
+          : prev.phone,
         message: prev.message || defaultMessage,
       }));
     }
-  }, [isOpen, userName, userEmail, userPhone, landlordName, listingTitle, listingArea]);
+  }, [
+    isOpen,
+    userName,
+    userEmail,
+    userPhone,
+    landlordName,
+    listingTitle,
+    listingArea,
+  ]);
 
   // Focus appropriate input when modal opens
   useEffect(() => {
@@ -172,7 +182,7 @@ export function InquiryModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -184,7 +194,7 @@ export function InquiryModal({
 
     try {
       // Format phone with country code if provided
-      const formattedPhone = formData.phone 
+      const formattedPhone = formData.phone
         ? `+254${formData.phone.replace(/\D/g, "")}`
         : null;
 
@@ -199,12 +209,16 @@ export function InquiryModal({
         // Message
         message: formData.message.trim(),
         request_viewing: formData.requestViewing,
-        preferred_viewing_time: formData.requestViewing ? formData.preferredTime : null,
-        preferred_viewing_day: formData.requestViewing ? formData.preferredDay : null,
+        preferred_viewing_time: formData.requestViewing
+          ? formData.preferredTime
+          : null,
+        preferred_viewing_day: formData.requestViewing
+          ? formData.preferredDay
+          : null,
         // User ID if logged in
         user_id: userId || null,
       };
-      
+
       console.log("[InquiryModal] Sending request:", requestBody);
 
       const response = await fetch("/api/inquiries", {
@@ -232,7 +246,7 @@ export function InquiryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -247,7 +261,9 @@ export function InquiryModal({
             </div>
             <div>
               <h2 className="font-semibold text-gray-900">Contact Landlord</h2>
-              <p className="text-sm text-gray-500 truncate max-w-[200px]">{listingTitle}</p>
+              <p className="text-sm text-gray-500 truncate max-w-[200px]">
+                {listingTitle}
+              </p>
             </div>
           </div>
           <button
@@ -270,23 +286,27 @@ export function InquiryModal({
                 Message Sent!
               </h3>
               <p className="text-gray-600 mb-6 max-w-xs mx-auto">
-                The landlord will receive your inquiry and typically responds within 24 hours
+                The landlord will receive your inquiry and typically responds
+                within 24 hours
               </p>
-              
+
               {!isAuthenticated && (
                 <div className="bg-brand-50 rounded-xl p-4 mb-6 text-left">
                   <div className="flex items-start gap-3">
                     <Sparkles className="w-5 h-5 text-brand-600 mt-0.5" />
                     <div>
-                      <p className="font-medium text-brand-900 text-sm">Create a free account</p>
+                      <p className="font-medium text-brand-900 text-sm">
+                        Create a free account
+                      </p>
                       <p className="text-brand-700 text-xs mt-1">
-                        Track your inquiries, save listings, and get notified when similar homes are available.
+                        Track your inquiries, save listings, and get notified
+                        when similar homes are available.
                       </p>
                     </div>
                   </div>
                 </div>
               )}
-              
+
               <button
                 onClick={onClose}
                 className="bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 px-8 rounded-xl transition-colors"
@@ -302,8 +322,14 @@ export function InquiryModal({
                 <div className="space-y-3">
                   {/* Name */}
                   <div>
-                    <label htmlFor="inquiry-name" className="block text-sm font-medium text-gray-700 mb-1">
-                      Your Name <span className="text-gray-400 text-xs font-normal">(optional)</span>
+                    <label
+                      htmlFor="inquiry-name"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Your Name{" "}
+                      <span className="text-gray-400 text-xs font-normal">
+                        (optional)
+                      </span>
                     </label>
                     <div className="relative">
                       <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -312,11 +338,20 @@ export function InquiryModal({
                         id="inquiry-name"
                         type="text"
                         value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        onBlur={() => setTouched(prev => ({ ...prev, name: true }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            name: e.target.value,
+                          }))
+                        }
+                        onBlur={() =>
+                          setTouched((prev) => ({ ...prev, name: true }))
+                        }
                         className={cn(
                           "w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500",
-                          touched.name && !formData.name.trim() ? "border-error-300" : "border-gray-200"
+                          touched.name && !formData.name.trim()
+                            ? "border-error-300"
+                            : "border-gray-200",
                         )}
                         placeholder="John Doe"
                       />
@@ -327,7 +362,10 @@ export function InquiryModal({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Email */}
                     <div>
-                      <label htmlFor="inquiry-email" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label
+                        htmlFor="inquiry-email"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
                         Email <span className="text-gray-400">(optional)</span>
                       </label>
                       <div className="relative">
@@ -336,7 +374,12 @@ export function InquiryModal({
                           id="inquiry-email"
                           type="email"
                           value={formData.email}
-                          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              email: e.target.value,
+                            }))
+                          }
                           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                           placeholder="you@email.com"
                         />
@@ -345,7 +388,10 @@ export function InquiryModal({
 
                     {/* Phone */}
                     <div>
-                      <label htmlFor="inquiry-phone" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label
+                        htmlFor="inquiry-phone"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
                         Phone <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
@@ -356,7 +402,12 @@ export function InquiryModal({
                           id="inquiry-phone"
                           type="tel"
                           value={formData.phone}
-                          onChange={(e) => setFormData(prev => ({ ...prev, phone: formatPhone(e.target.value) }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              phone: formatPhone(e.target.value),
+                            }))
+                          }
                           className="w-full pl-14 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                           placeholder="712 345 678"
                         />
@@ -365,7 +416,8 @@ export function InquiryModal({
                   </div>
 
                   <p className="text-xs text-gray-500 flex items-center gap-1">
-                    We'll share your phone with the landlord so they can reach you
+                    We'll share your phone with the landlord so they can reach
+                    you
                   </p>
                 </div>
               )}
@@ -378,21 +430,34 @@ export function InquiryModal({
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{userName}</p>
-                    <p className="text-sm text-gray-500">{userEmail || userPhone}</p>
+                    <p className="text-sm text-gray-500">
+                      {userEmail || userPhone}
+                    </p>
                   </div>
                 </div>
               )}
 
               {/* Message */}
               <div>
-                <label htmlFor="inquiry-message" className="block text-sm font-medium text-gray-700 mb-1">
-                  Your Message <span className="text-gray-400 text-xs font-normal">(optional)</span>
+                <label
+                  htmlFor="inquiry-message"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Your Message{" "}
+                  <span className="text-gray-400 text-xs font-normal">
+                    (optional)
+                  </span>
                 </label>
                 <textarea
                   ref={messageRef}
                   id="inquiry-message"
                   value={formData.message}
-                  onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      message: e.target.value,
+                    }))
+                  }
                   rows={4}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 resize-none text-gray-900 placeholder-gray-400"
                   placeholder="Write your message..."
@@ -405,7 +470,12 @@ export function InquiryModal({
                   <input
                     type="checkbox"
                     checked={formData.requestViewing}
-                    onChange={(e) => setFormData(prev => ({ ...prev, requestViewing: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        requestViewing: e.target.checked,
+                      }))
+                    }
                     className="mt-0.5 w-5 h-5 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
                   />
                   <div>
@@ -413,7 +483,9 @@ export function InquiryModal({
                       <Calendar className="w-4 h-4 text-brand-600" />
                       Request a viewing
                     </span>
-                    <span className="text-sm text-gray-500">I&apos;d like to schedule a visit</span>
+                    <span className="text-sm text-gray-500">
+                      I&apos;d like to schedule a visit
+                    </span>
                   </div>
                 </label>
 
@@ -426,7 +498,12 @@ export function InquiryModal({
                       </label>
                       <select
                         value={formData.preferredTime}
-                        onChange={(e) => setFormData(prev => ({ ...prev, preferredTime: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            preferredTime: e.target.value,
+                          }))
+                        }
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                       >
                         <option value="morning">Morning (9am-12pm)</option>
@@ -440,7 +517,12 @@ export function InquiryModal({
                       </label>
                       <select
                         value={formData.preferredDay}
-                        onChange={(e) => setFormData(prev => ({ ...prev, preferredDay: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            preferredDay: e.target.value,
+                          }))
+                        }
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                       >
                         <option value="weekday">Weekday</option>
