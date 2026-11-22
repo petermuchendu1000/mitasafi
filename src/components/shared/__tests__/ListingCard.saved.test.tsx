@@ -176,6 +176,32 @@ describe("ListingCard saved state", () => {
       expect(screen.getByLabelText(SAVE)).toBeInTheDocument();
     });
 
+    /**
+     * Added after the browser run on the listing detail page, which had the same
+     * read-push-write against a stale isSaved as this card did. There, clicking the
+     * heart after a save made elsewhere appended a SECOND entry for the same id and the
+     * Navbar badge read 2. None of the other tests here clicked after an external save,
+     * so none of them would have caught it.
+     */
+    it("D1 does not append a duplicate when clicked after a save made elsewhere", async () => {
+      mockFetch({ getOk: false });
+      await act(async () => {
+        render(<ListingCard listing={listing} variant="public" />);
+      });
+
+      act(() => {
+        writeSavedListings([
+          { listingId: listing.id, savedAt: "2026-01-02T00:00:00.000Z" },
+        ]);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText(UNSAVE));
+      });
+
+      expect(readSavedListings().map((s) => s.listingId)).toEqual([]);
+    });
+
     it("D2 the database sync notifies other components", async () => {
       mockFetch({
         serverSaved: [

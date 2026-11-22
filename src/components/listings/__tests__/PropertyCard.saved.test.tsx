@@ -97,6 +97,27 @@ describe("PropertyCard saved state", () => {
       expect(screen.getByLabelText(SAVE)).toBeInTheDocument();
     });
 
+    /**
+     * Added after the browser run on the listing detail page, which had the same
+     * read-push-write against a stale isSaved as this card did. There, clicking the
+     * heart after a save made elsewhere appended a SECOND entry for the same id and the
+     * Navbar badge read 2. The tests above would not have caught it: none of them
+     * clicked after an external save. This one does.
+     */
+    it("does not append a duplicate when clicked after a save made elsewhere", () => {
+      render(<PropertyCard listing={listing} />);
+
+      act(() => {
+        writeSavedListings([
+          { listingId: listing.id, savedAt: "2026-01-02T00:00:00.000Z" },
+        ]);
+      });
+
+      fireEvent.click(screen.getByLabelText(UNSAVE));
+
+      expect(readSavedListings().map((s) => s.listingId)).toEqual([]);
+    });
+
     it("ignores a change to a different listing", () => {
       render(<PropertyCard listing={listing} />);
 
