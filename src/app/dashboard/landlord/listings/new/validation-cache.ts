@@ -1,6 +1,6 @@
 /**
  * Validation Cache & Performance Utilities
- * 
+ *
  * Implements scalability improvements:
  * 1. Validation Caching - LRU cache for validation results
  * 2. Configuration Memoization - Stable references for config lookups
@@ -8,8 +8,16 @@
  * 4. Lazy Field Validation - Only validates touched fields until submission
  */
 
-import type { CommercialFormData, CommercialType, CommercialSubtype } from "./commercial-types";
-import { validateRequiredFields, getRequiredFields, type RequiredFieldConfig } from "./required-fields-config";
+import type {
+  CommercialFormData,
+  CommercialType,
+  CommercialSubtype,
+} from "./commercial-types";
+import {
+  validateRequiredFields,
+  getRequiredFields,
+  type RequiredFieldConfig,
+} from "./required-fields-config";
 
 // =============================================================================
 // LRU CACHE IMPLEMENTATION
@@ -86,11 +94,23 @@ class LRUCache<K, V> {
 function hashFormData(formData: CommercialFormData): string {
   // Only hash fields that affect validation
   const relevantFields = [
-    'sizeSqm', 'fitoutLevel', 'layoutType', 'buildingGrade',
-    'clearHeightM', 'floorLoadCapacity', 'parkingSpacesCount',
-    'totalRooms', 'totalBeds', 'seatingCapacity', 'classroomCount',
-    'totalStudentCapacity', 'rackHeight', 'coldStorageCapacity',
-    'rentPerSqm', 'rentAmount', 'pricingModel'
+    "sizeSqm",
+    "fitoutLevel",
+    "layoutType",
+    "buildingGrade",
+    "clearHeightM",
+    "floorLoadCapacity",
+    "parkingSpacesCount",
+    "totalRooms",
+    "totalBeds",
+    "seatingCapacity",
+    "classroomCount",
+    "totalStudentCapacity",
+    "rackHeight",
+    "coldStorageCapacity",
+    "rentPerSqm",
+    "rentAmount",
+    "pricingModel",
   ] as const;
 
   const subset: Record<string, unknown> = {};
@@ -99,7 +119,7 @@ function hashFormData(formData: CommercialFormData): string {
       subset[field] = formData[field as keyof CommercialFormData];
     }
   }
-  
+
   return JSON.stringify(subset);
 }
 
@@ -116,12 +136,12 @@ const validationCache = new LRUCache<string, Record<string, string>>({
 export function validateRequiredFieldsCached(
   formData: CommercialFormData,
   type: CommercialType | null,
-  subtype: CommercialSubtype | null
+  subtype: CommercialSubtype | null,
 ): Record<string, string> {
   if (!type) return {};
 
-  const cacheKey = `${type}:${subtype || 'null'}:${hashFormData(formData)}`;
-  
+  const cacheKey = `${type}:${subtype || "null"}:${hashFormData(formData)}`;
+
   // Check cache first
   const cached = validationCache.get(cacheKey);
   if (cached !== undefined) {
@@ -130,10 +150,10 @@ export function validateRequiredFieldsCached(
 
   // Perform validation
   const result = validateRequiredFields(formData, type, subtype);
-  
+
   // Cache result
   validationCache.set(cacheKey, result);
-  
+
   return result;
 }
 
@@ -168,18 +188,18 @@ const configCache = new Map<string, RequiredFieldConfig[]>();
  */
 export function getRequiredFieldsMemoized(
   type: CommercialType | null,
-  subtype: CommercialSubtype | null
+  subtype: CommercialSubtype | null,
 ): RequiredFieldConfig[] {
   if (!type) return [];
 
-  const cacheKey = `${type}:${subtype || 'null'}`;
-  
+  const cacheKey = `${type}:${subtype || "null"}`;
+
   let cached = configCache.get(cacheKey);
   if (!cached) {
     cached = getRequiredFields(type, subtype);
     configCache.set(cacheKey, cached);
   }
-  
+
   return cached;
 }
 
@@ -201,7 +221,7 @@ interface DebouncedValidator {
   validate: (
     formData: CommercialFormData,
     type: CommercialType | null,
-    subtype: CommercialSubtype | null
+    subtype: CommercialSubtype | null,
   ) => void;
   cancel: () => void;
   flush: () => void;
@@ -210,13 +230,13 @@ interface DebouncedValidator {
 /**
  * Create a debounced validator that waits before validating
  * Reduces validation calls during rapid typing
- * 
+ *
  * @param callback Function to call with validation errors
  * @param delayMs Delay in milliseconds (default: 200ms)
  */
 export function createDebouncedValidator(
   callback: ValidateCallback,
-  delayMs = 200
+  delayMs = 200,
 ): DebouncedValidator {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let lastArgs: {
@@ -228,7 +248,7 @@ export function createDebouncedValidator(
   const validate = (
     formData: CommercialFormData,
     type: CommercialType | null,
-    subtype: CommercialSubtype | null
+    subtype: CommercialSubtype | null,
   ) => {
     lastArgs = { formData, type, subtype };
 
@@ -257,7 +277,7 @@ export function createDebouncedValidator(
       const errors = validateRequiredFieldsCached(
         lastArgs.formData,
         lastArgs.type,
-        lastArgs.subtype
+        lastArgs.subtype,
       );
       callback(errors);
     }
@@ -273,7 +293,7 @@ export function createDebouncedValidator(
 /**
  * Validate only touched fields
  * Improves UX by not showing errors for untouched fields
- * 
+ *
  * @param formData The form data to validate
  * @param type Commercial type
  * @param subtype Commercial subtype
@@ -285,7 +305,7 @@ export function validateTouchedFields(
   type: CommercialType | null,
   subtype: CommercialSubtype | null,
   touchedFields: Set<string>,
-  validateAll = false
+  validateAll = false,
 ): Record<string, string> {
   // If validateAll is true or no touched fields tracking, validate everything
   if (validateAll || touchedFields.size === 0) {
@@ -294,7 +314,7 @@ export function validateTouchedFields(
 
   // Get all errors
   const allErrors = validateRequiredFieldsCached(formData, type, subtype);
-  
+
   // Filter to only touched fields
   const touchedErrors: Record<string, string> = {};
   for (const [field, error] of Object.entries(allErrors)) {
@@ -302,48 +322,14 @@ export function validateTouchedFields(
       touchedErrors[field] = error;
     }
   }
-  
+
   return touchedErrors;
 }
 
-/**
- * Create a touched field tracker
- */
-export function createTouchedFieldTracker() {
-  const touched = new Set<string>();
-
-  return {
-    /** Mark a field as touched */
-    touch: (field: string) => {
-      touched.add(field);
-    },
-    
-    /** Check if a field is touched */
-    isTouched: (field: string) => {
-      return touched.has(field);
-    },
-    
-    /** Get all touched fields */
-    getTouched: () => {
-      return new Set(touched);
-    },
-    
-    /** Mark all fields as touched (e.g., on form submission) */
-    touchAll: (fields: string[]) => {
-      fields.forEach(f => touched.add(f));
-    },
-    
-    /** Reset touched state */
-    reset: () => {
-      touched.clear();
-    },
-    
-    /** Get count of touched fields */
-    get size() {
-      return touched.size;
-    }
-  };
-}
+// createTouchedFieldTracker stood here. useOptimizedValidation was its only caller and
+// stopped using it when the touched set moved into React state: a Set held in a ref was
+// mutated in place and paired with forceUpdate({}) to provoke a re-render, which is what
+// react-hooks/set-state-in-effect and the refs/purity rules were reporting there.
 
 // =============================================================================
 // INCREMENTAL VALIDATION
@@ -357,18 +343,18 @@ export function validateSingleField(
   field: keyof CommercialFormData,
   formData: CommercialFormData,
   type: CommercialType | null,
-  subtype: CommercialSubtype | null
+  subtype: CommercialSubtype | null,
 ): string | null {
   const requiredFields = getRequiredFieldsMemoized(type, subtype);
-  const fieldConfig = requiredFields.find(f => f.field === field);
-  
+  const fieldConfig = requiredFields.find((f) => f.field === field);
+
   if (!fieldConfig) return null;
-  
+
   // Check conditional requirement
   if (fieldConfig.when && !fieldConfig.when(formData)) {
     return null;
   }
-  
+
   const value = formData[field];
   return fieldConfig.validate(value, formData);
 }
