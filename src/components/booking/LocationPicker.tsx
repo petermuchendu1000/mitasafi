@@ -11,7 +11,14 @@
 // =============================================================================
 
 import { useState, useEffect } from "react";
-import { MapPin, Plus, Home, Briefcase, Building2, ChevronDown } from "lucide-react";
+import {
+  MapPin,
+  Plus,
+  Home,
+  Briefcase,
+  Building2,
+  ChevronDown,
+} from "lucide-react";
 import { NAIROBI_AREAS } from "@/lib/constants";
 import type { LocationType } from "@/types/bookings";
 
@@ -55,7 +62,7 @@ export function LocationPicker({
   onChange,
 }: LocationPickerProps) {
   const [mode, setMode] = useState<"saved" | "new">(
-    savedLocations.length > 0 ? "saved" : "new"
+    savedLocations.length > 0 ? "saved" : "new",
   );
 
   // If no saved locations, force "new" mode
@@ -79,7 +86,7 @@ export function LocationPicker({
 
   function handleFieldChange(
     field: keyof LocationData,
-    fieldValue: string | boolean
+    fieldValue: string | boolean,
   ) {
     onChange({ ...value, locationId: undefined, [field]: fieldValue });
   }
@@ -188,7 +195,7 @@ export function LocationPicker({
               htmlFor="loc-address2"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Floor / unit  (optional)
+              Floor / unit (optional)
             </label>
             <input
               id="loc-address2"
@@ -241,7 +248,11 @@ export function LocationPicker({
                 [
                   { value: "home", label: "Home", icon: Home },
                   { value: "office", label: "Office", icon: Briefcase },
-                  { value: "public_place", label: "Public Place", icon: Building2 },
+                  {
+                    value: "public_place",
+                    label: "Public Place",
+                    icon: Building2,
+                  },
                   { value: "other", label: "Other", icon: MapPin },
                 ] as const
               ).map((opt) => (
@@ -273,9 +284,7 @@ export function LocationPicker({
             <textarea
               id="loc-access"
               value={value.accessNotes}
-              onChange={(e) =>
-                handleFieldChange("accessNotes", e.target.value)
-              }
+              onChange={(e) => handleFieldChange("accessNotes", e.target.value)}
               placeholder="e.g. Gate code 1234, ask for the watchman at the blue gate"
               rows={2}
               className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
