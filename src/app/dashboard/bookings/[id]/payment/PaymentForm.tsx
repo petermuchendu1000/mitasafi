@@ -72,18 +72,31 @@ export function PaymentForm({
 
   // Polling state
   const [paymentId, setPaymentId] = useState<string | null>(
-    pendingPaymentId ?? null
+    pendingPaymentId ?? null,
   );
   const [isPolling, setIsPolling] = useState(!!pendingPaymentId);
   const [pollCount, setPollCount] = useState(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(
-    pendingPaymentId ? "Checking payment status…" : null
+    pendingPaymentId ? "Checking payment status…" : null,
   );
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True once this component has unmounted. Checked after every await in pollStatus.
+  const cancelledRef = useRef(false);
 
   // Cleanup polling on unmount
+  //
+  // Clearing the timer is NOT sufficient on its own. While a status request is awaiting
+  // a response there is no timer to clear, so the cleanup had nothing to cancel and the
+  // fetch continuation went on to schedule a fresh tick against an unmounted component —
+  // and every tick after it re-scheduled. A user who navigated away mid-payment left a
+  // chain polling /api/payments/mpesa/query every 3s for up to MAX_POLL_ATTEMPTS ticks,
+  // and each abandoned visit added another one. Reproduced in
+  // __tests__/PaymentForm.polling.test.tsx: one request became two across an unmount, and
+  // three abandoned mounts left six live timers instead of none.
   useEffect(() => {
+    cancelledRef.current = false;
     return () => {
+      cancelledRef.current = true;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, []);
@@ -93,29 +106,34 @@ export function PaymentForm({
   // ---------------------------------------------------------------------------
   const pollStatus = useCallback(
     async (pId: string, attempt: number) => {
+      if (cancelledRef.current) return;
+
       if (attempt >= MAX_POLL_ATTEMPTS) {
         setIsPolling(false);
         setStatusMessage(null);
         setError(
           "Payment confirmation is taking longer than expected. " +
             "If you've already paid, it will be confirmed shortly. " +
-            "You can refresh this page to check."
+            "You can refresh this page to check.",
         );
         return;
       }
 
       try {
         const res = await fetch(
-          `/api/payments/mpesa/query?paymentId=${pId}&poll=${attempt % 5 === 0 ? "true" : "false"}`
+          `/api/payments/mpesa/query?paymentId=${pId}&poll=${attempt % 5 === 0 ? "true" : "false"}`,
         );
         const data: PaymentStatusResult = await res.json();
+
+        // The component may have unmounted while the request was in flight.
+        if (cancelledRef.current) return;
 
         if (!data.success || !data.payment) {
           // Non-fatal: keep polling
           setPollCount(attempt + 1);
           pollTimerRef.current = setTimeout(
             () => pollStatus(pId, attempt + 1),
-            POLL_INTERVAL_MS
+            POLL_INTERVAL_MS,
           );
           return;
         }
@@ -132,7 +150,7 @@ export function PaymentForm({
           } else if (status === "failed") {
             setError(
               data.payment.failure_reason ||
-                "Payment was not completed. You can try again."
+                "Payment was not completed. You can try again.",
             );
             setPaymentId(null);
           } else {
@@ -148,23 +166,24 @@ export function PaymentForm({
             ? "Waiting for M-Pesa confirmation…"
             : attempt < 15
               ? "Still waiting — please check your phone for the M-Pesa prompt…"
-              : "Payment is being processed. This may take a moment…"
+              : "Payment is being processed. This may take a moment…",
         );
         setPollCount(attempt + 1);
         pollTimerRef.current = setTimeout(
           () => pollStatus(pId, attempt + 1),
-          POLL_INTERVAL_MS
+          POLL_INTERVAL_MS,
         );
       } catch {
-        // Network error — retry
+        // Network error — retry, unless we are gone.
+        if (cancelledRef.current) return;
         setPollCount(attempt + 1);
         pollTimerRef.current = setTimeout(
           () => pollStatus(pId, attempt + 1),
-          POLL_INTERVAL_MS
+          POLL_INTERVAL_MS,
         );
       }
     },
-    [router]
+    [router],
   );
 
   // Start polling when paymentId is set and isPolling is true
@@ -214,11 +233,13 @@ export function PaymentForm({
       setIsPolling(true);
       setPollCount(0);
       setStatusMessage(
-        data.customerMessage || "Check your phone for the M-Pesa prompt…"
+        data.customerMessage || "Check your phone for the M-Pesa prompt…",
       );
       setIsSubmitting(false);
     } catch {
-      setError("Something went wrong. Please check your connection and try again.");
+      setError(
+        "Something went wrong. Please check your connection and try again.",
+      );
       setIsSubmitting(false);
     }
   };
