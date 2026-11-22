@@ -34,6 +34,13 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
+  readSavedListings,
+  writeSavedListings,
+  addSavedListing,
+  removeSavedListing,
+} from "@/lib/saved-listings/store";
+import { useIsListingSaved } from "@/lib/saved-listings/useIsListingSaved";
+import {
   type ListingCardData,
   PROPERTY_TYPE_LABELS,
   STATUS_BADGE_CONFIG,
@@ -61,33 +68,39 @@ interface ListingCardProps {
   linkTarget?: "_self" | "_blank";
 }
 
-// Local storage key for saved listings (public variant)
-const STORAGE_KEY = "mitasafi_saved_listings";
+// The storage key used to be declared here too. Reads and writes now go through
+// @/lib/saved-listings/store, the one module that owns it.
 
-// Cache for database saved listings (shared across all cards)
-let savedListingsCache: { listingIds: Set<string>; fetchedAt: number } | null =
-  null;
+/**
+ * When the server's saved listings were last reconciled into local storage, and the
+ * in-flight request if there is one. Shared by every card on the page.
+ *
+ * This used to also cache the Set of saved ids, because each card read that Set back and
+ * called setIsSaved with it. The cards no longer ask: the reconciliation writes through
+ * the store, and the store tells them. Keeping the Set would have left write-only state
+ * whose staleness could not be observed, so it is gone and only the timestamp remains.
+ */
+let lastSyncedAt = 0;
 let fetchPromise: Promise<void> | null = null;
 
-// Fetch saved listings from database once (shared)
-async function fetchSavedListingsOnce(): Promise<Set<string>> {
-  const now = Date.now();
+const SYNC_TTL_MS = 30_000;
 
-  // Return cached if fresh (less than 30 seconds old)
-  if (savedListingsCache && now - savedListingsCache.fetchedAt < 30000) {
-    return savedListingsCache.listingIds;
-  }
+/** Reconcile storage with the server's list at most once per TTL, across all cards. */
+async function fetchSavedListingsOnce(): Promise<void> {
+  if (lastSyncedAt !== 0 && Date.now() - lastSyncedAt < SYNC_TTL_MS) return;
 
-  // If already fetching, wait for it
+  // Already in flight for another card — join it rather than issue a second request.
   if (fetchPromise) {
     await fetchPromise;
-    return savedListingsCache?.listingIds || new Set();
+    return;
   }
 
-  // Fetch from API
   fetchPromise = (async () => {
     try {
       const res = await fetch("/api/saved-listings");
+      // A non-ok answer means no server truth to apply: 401 is the ordinary case for a
+      // signed-out visitor, whose saves live only in storage. Leave storage alone, and
+      // leave lastSyncedAt alone so the next card may try again.
       if (res.ok) {
         const data = await res.json();
         const ids = new Set<string>(
@@ -95,12 +108,9 @@ async function fetchSavedListingsOnce(): Promise<Set<string>> {
             (s: { listing_id: string }) => s.listing_id,
           ),
         );
-        savedListingsCache = { listingIds: ids, fetchedAt: Date.now() };
 
-        // Sync localStorage
-        const localSaved = JSON.parse(
-          localStorage.getItem(STORAGE_KEY) || "[]",
-        ) as { listingId: string; savedAt: string }[];
+        // Sync local storage to the server's answer.
+        const localSaved = [...readSavedListings()];
         data.saved_listings?.forEach(
           (s: { listing_id: string; created_at: string }) => {
             if (!localSaved.some((ls) => ls.listingId === s.listing_id)) {
@@ -112,7 +122,11 @@ async function fetchSavedListingsOnce(): Promise<Set<string>> {
           },
         );
         const synced = localSaved.filter((ls) => ids.has(ls.listingId));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
+        // This used to be a bare localStorage.setItem, so the sync could change what is
+        // stored and leave every other reader of the key — the Navbar count above all —
+        // showing the old number. writeSavedListings notifies as part of the write.
+        writeSavedListings(synced);
+        lastSyncedAt = Date.now();
       }
     } catch {
       // Network error - use localStorage only
@@ -122,12 +136,11 @@ async function fetchSavedListingsOnce(): Promise<Set<string>> {
   })();
 
   await fetchPromise;
-  return savedListingsCache?.listingIds || new Set();
 }
 
-// Invalidate cache when saving/unsaving
+// Invalidate after a successful save/unsave, so the next card reconciles afresh.
 function invalidateSavedListingsCache() {
-  savedListingsCache = null;
+  lastSyncedAt = 0;
 }
 
 // =============================================================================
@@ -285,7 +298,13 @@ export function ListingCard({
   linkTarget = "_self",
 }: ListingCardProps) {
   const [imageError, setImageError] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+
+  // Subscribed, not sampled at mount, and no longer overridden by the server round-trip
+  // below. The mount effect used to seed this from localStorage and then call
+  // setIsSaved(ids.has(id)) with the fetch result — so for a signed-out visitor, whose
+  // /api/saved-listings call answers 401 and yields an empty set, every heart was cleared
+  // on every mount. Local-first saves are the whole point of this key for that visitor.
+  const isSaved = useIsListingSaved(listing.id);
 
   // Get cover image
   const coverImage = listing.cover_photo || listing.photos?.[0]?.url;
@@ -305,26 +324,15 @@ export function ListingCard({
   const propertyTypeLabel =
     PROPERTY_TYPE_LABELS[listing.property_type] || listing.property_type;
 
-  // Initialize saved state from local storage (public variant only)
-  // Also check database for logged-in users
+  // Pull the logged-in user's saved listings once per 30s across all cards. There is no
+  // setState here any more: the sync's only job is to reconcile storage, and storage
+  // notifies, so the result reaches this card and every other reader the same way. That
+  // also means a card no longer needs to be the one that awaited the fetch to see it.
   useEffect(() => {
     if (variant === "public") {
-      // First check localStorage for immediate UI
-      try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as {
-          listingId: string;
-        }[];
-        setIsSaved(saved.some((s) => s.listingId === listing.id));
-      } catch {
-        // Ignore parse errors
-      }
-
-      // Then sync with database (uses shared cache)
-      fetchSavedListingsOnce().then((ids) => {
-        setIsSaved(ids.has(listing.id));
-      });
+      void fetchSavedListingsOnce();
     }
-  }, [listing.id, variant]);
+  }, [variant]);
 
   const handleSave = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -332,30 +340,18 @@ export function ListingCard({
 
     if (variant !== "public") return;
 
+    const newSavedState = !isSaved;
+
+    // The optimistic update IS the write: it notifies synchronously, this card and every
+    // other view of the listing are subscribed, so there is no separate setState to keep
+    // in step with storage.
+    if (newSavedState) {
+      addSavedListing(listing.id, listing.status || "active");
+    } else {
+      removeSavedListing(listing.id);
+    }
+
     try {
-      // Optimistic UI update
-      const newSavedState = !isSaved;
-      setIsSaved(newSavedState);
-
-      // Update localStorage for quick access
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as {
-        listingId: string;
-        savedAt: string;
-        lastKnownStatus?: string;
-      }[];
-      if (!newSavedState) {
-        const updated = saved.filter((s) => s.listingId !== listing.id);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } else {
-        saved.push({
-          listingId: listing.id,
-          savedAt: new Date().toISOString(),
-          lastKnownStatus: listing.status || "active",
-        });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-      }
-      window.dispatchEvent(new CustomEvent("savedListingsChanged"));
-
       // Sync to database (for notifications to work)
       // This runs in background - doesn't block UI
       const url = newSavedState
@@ -383,8 +379,16 @@ export function ListingCard({
       }
     } catch (err) {
       console.error("Failed to save listing:", err);
-      // Revert optimistic update on error
-      setIsSaved(!isSaved);
+      // Undo the optimistic write. The previous line here was setIsSaved(!isSaved), and
+      // `isSaved` in this closure is the PRE-CLICK value, so !isSaved was newSavedState —
+      // it re-asserted the state it meant to undo, and storage was never reverted at all.
+      // Inverting the operation (rather than restoring a whole list captured earlier)
+      // keeps any save made for a different listing in the meantime.
+      if (newSavedState) {
+        removeSavedListing(listing.id);
+      } else {
+        addSavedListing(listing.id, listing.status || "active");
+      }
     }
   };
 

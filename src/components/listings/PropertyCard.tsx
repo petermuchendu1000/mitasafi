@@ -37,14 +37,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ListingCard } from "@/lib/listings/types";
+import {
+  addSavedListing,
+  removeSavedListing,
+} from "@/lib/saved-listings/store";
+import { useIsListingSaved } from "@/lib/saved-listings/useIsListingSaved";
 
-// Local storage key for saved listings
-const STORAGE_KEY = "mitasafi_saved_listings";
-
-interface SavedListing {
-  listingId: string;
-  savedAt: string;
-}
+// The storage key, the SavedListing shape and the read/write/notify logic used to be
+// declared here, independently of the four other places that owned the same key. They now
+// live in @/lib/saved-listings/store.
 
 interface PropertyCardProps {
   listing: ListingCard;
@@ -300,23 +301,16 @@ export function PropertyCard({
   className,
   priority = false,
 }: PropertyCardProps) {
-  const [isSaved, setIsSaved] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
 
-  // Initialize saved state from local storage
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(
-        localStorage.getItem(STORAGE_KEY) || "[]",
-      ) as SavedListing[];
-      setIsSaved(saved.some((s) => s.listingId === listing.id));
-    } catch {
-      // Ignore parse errors
-    }
-  }, [listing.id]);
+  // Subscribed, not sampled at mount. This card registered no saved-listings listener, so
+  // the heart was fixed at whatever storage said when it first rendered: saving the same
+  // property from its detail page, from /saved, or from the ListingCard showing it
+  // elsewhere on the page left this heart empty until the route remounted.
+  const isSaved = useIsListingSaved(listing.id);
 
   // Close share menu when clicking outside
   useEffect(() => {
@@ -338,29 +332,13 @@ export function PropertyCard({
     e.preventDefault();
     e.stopPropagation();
 
-    try {
-      const saved = JSON.parse(
-        localStorage.getItem(STORAGE_KEY) || "[]",
-      ) as (SavedListing & { lastKnownStatus?: string })[];
-      if (isSaved) {
-        // Remove
-        const updated = saved.filter((s) => s.listingId !== listing.id);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        setIsSaved(false);
-      } else {
-        // Add with current status for change tracking
-        saved.push({
-          listingId: listing.id,
-          savedAt: new Date().toISOString(),
-          lastKnownStatus: listing.status || "active",
-        });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-        setIsSaved(true);
-      }
-      // Dispatch event for other components to sync
-      window.dispatchEvent(new CustomEvent("savedListingsChanged"));
-    } catch (err) {
-      console.error("Failed to save listing:", err);
+    // No setIsSaved here: the write notifies, this component is subscribed, and so is
+    // every other view of the same listing. The status is recorded at save time so /saved
+    // can report changes since.
+    if (isSaved) {
+      removeSavedListing(listing.id);
+    } else {
+      addSavedListing(listing.id, listing.status || "active");
     }
   };
 

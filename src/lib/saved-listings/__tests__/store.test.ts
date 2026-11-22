@@ -26,6 +26,9 @@ import {
   subscribeSavedListings,
   getSavedListingsServerSnapshot,
   resetSavedListingsCacheForTests,
+  isListingSaved,
+  addSavedListing,
+  removeSavedListing,
   type SavedListing,
 } from "../store";
 
@@ -125,6 +128,77 @@ describe("saved-listings store", () => {
       writeSavedListings([one]);
 
       expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("single-listing helpers", () => {
+    it("reports membership", () => {
+      writeSavedListings([one]);
+      expect(isListingSaved("a")).toBe(true);
+      expect(isListingSaved("b")).toBe(false);
+    });
+
+    it("adds, keeping what was already there", () => {
+      writeSavedListings([one]);
+      addSavedListing("c", "rented");
+
+      const stored = readSavedListings();
+      expect(stored.map((s) => s.listingId)).toEqual(["a", "c"]);
+      expect(stored[1].lastKnownStatus).toBe("rented");
+      expect(stored[1].savedAt).toEqual(expect.any(String));
+    });
+
+    it("defaults the recorded status to active", () => {
+      addSavedListing("c");
+      expect(readSavedListings()[0].lastKnownStatus).toBe("active");
+    });
+
+    it("removes only the listing named", () => {
+      writeSavedListings([one, two]);
+      removeSavedListing("a");
+      expect(readSavedListings().map((s) => s.listingId)).toEqual(["b"]);
+    });
+
+    /**
+     * The hazard these helpers exist to remove. Both cards used to do
+     * `saved.push(...)` on the parsed array and write it back. readSavedListings now
+     * returns a CACHED array that useSyncExternalStore compares by reference, so an
+     * in-place push would mutate a snapshot React believes is unchanged — and the heart
+     * would not move. A regression to .push fails here.
+     */
+    it("never mutates a snapshot that has already been handed out", () => {
+      writeSavedListings([one]);
+      const snapshot = readSavedListings();
+
+      addSavedListing("c");
+
+      expect(snapshot.map((s) => s.listingId)).toEqual(["a"]);
+      expect(readSavedListings().map((s) => s.listingId)).toEqual(["a", "c"]);
+      expect(readSavedListings()).not.toBe(snapshot);
+    });
+
+    it("is idempotent, and silent when nothing changes", () => {
+      writeSavedListings([one]);
+      const onChange = jest.fn();
+      const teardown = subscribeSavedListings(onChange);
+
+      addSavedListing("a"); // already saved
+      removeSavedListing("b"); // not saved
+
+      expect(readSavedListings().map((s) => s.listingId)).toEqual(["a"]);
+      expect(onChange).not.toHaveBeenCalled();
+      teardown();
+    });
+
+    it("notifies when something does change", () => {
+      const onChange = jest.fn();
+      const teardown = subscribeSavedListings(onChange);
+
+      addSavedListing("a");
+      removeSavedListing("a");
+
+      expect(onChange).toHaveBeenCalledTimes(2);
+      teardown();
     });
   });
 

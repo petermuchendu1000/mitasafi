@@ -109,6 +109,42 @@ export function writeSavedListings(listings: readonly SavedListing[]): void {
   notifySavedListingsChanged();
 }
 
+/** Is this listing saved right now? A primitive, so it is safe as a getSnapshot result. */
+export function isListingSaved(listingId: string): boolean {
+  return readSavedListings().some((s) => s.listingId === listingId);
+}
+
+/**
+ * Add one listing, idempotently.
+ *
+ * Both cards used to read, mutate the parsed array with .push and write it back. Reading
+ * through this module returns a CACHED array that useSyncExternalStore compares by
+ * reference, so mutating it in place would change a snapshot React believes is unchanged.
+ * These two helpers exist so no caller has to know that: they copy, never mutate.
+ */
+export function addSavedListing(
+  listingId: string,
+  lastKnownStatus?: string,
+): void {
+  const current = readSavedListings();
+  if (current.some((s) => s.listingId === listingId)) return;
+  writeSavedListings([
+    ...current,
+    {
+      listingId,
+      savedAt: new Date().toISOString(),
+      lastKnownStatus: lastKnownStatus ?? "active",
+    },
+  ]);
+}
+
+/** Remove one listing, idempotently. */
+export function removeSavedListing(listingId: string): void {
+  const current = readSavedListings();
+  if (!current.some((s) => s.listingId === listingId)) return;
+  writeSavedListings(current.filter((s) => s.listingId !== listingId));
+}
+
 /**
  * Subscribe to changes, from this tab (the custom event) and from others (the storage
  * event). The returned teardown removes exactly what was added — the Navbar leak came
