@@ -1,9 +1,9 @@
 /**
  * Listings Grid Component
- * 
+ *
  * Displays listings in a responsive grid with filtering options.
  * Client component for interactive features.
- * 
+ *
  * Features:
  * - Status filtering
  * - Pause/Resume listings
@@ -18,12 +18,12 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ListingCard, type ListingCardData } from "./ListingCard";
 import { useToast } from "@/components/ui";
-import { 
-  pauseListing, 
-  resumeListing, 
+import {
+  pauseListing,
+  resumeListing,
   deleteListing,
   duplicateListing,
-  markAsRented
+  markAsRented,
 } from "./actions";
 import { Filter, AlertTriangle, X } from "lucide-react";
 
@@ -45,17 +45,23 @@ interface DeleteConfirmModalProps {
   onCancel: () => void;
 }
 
-function DeleteConfirmModal({ isOpen, listingTitle, isDeleting, onConfirm, onCancel }: DeleteConfirmModalProps) {
+function DeleteConfirmModal({
+  isOpen,
+  listingTitle,
+  isDeleting,
+  onConfirm,
+  onCancel,
+}: DeleteConfirmModalProps) {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onCancel}
       />
-      
+
       {/* Modal */}
       <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 animate-in fade-in zoom-in-95 duration-200">
         {/* Close button */}
@@ -76,8 +82,9 @@ function DeleteConfirmModal({ isOpen, listingTitle, isDeleting, onConfirm, onCan
           Delete Listing?
         </h3>
         <p className="text-sm text-gray-600 text-center mb-6">
-          Are you sure you want to delete <span className="font-medium">"{listingTitle}"</span>? 
-          This action cannot be undone and all associated photos will be removed.
+          Are you sure you want to delete{" "}
+          <span className="font-medium">&quot;{listingTitle}&quot;</span>? This
+          action cannot be undone and all associated photos will be removed.
         </p>
 
         {/* Actions */}
@@ -89,7 +96,7 @@ function DeleteConfirmModal({ isOpen, listingTitle, isDeleting, onConfirm, onCan
               "flex-1 px-4 py-2.5 rounded-lg text-sm font-medium",
               "bg-gray-100 text-gray-700 hover:bg-gray-200",
               "transition-colors",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
+              "disabled:opacity-50 disabled:cursor-not-allowed",
             )}
           >
             Cancel
@@ -102,7 +109,7 @@ function DeleteConfirmModal({ isOpen, listingTitle, isDeleting, onConfirm, onCan
               "bg-red-600 text-white hover:bg-red-700",
               "transition-colors",
               "disabled:opacity-50 disabled:cursor-not-allowed",
-              "flex items-center justify-center gap-2"
+              "flex items-center justify-center gap-2",
             )}
           >
             {isDeleting ? (
@@ -128,12 +135,12 @@ export function ListingsGrid({ listings: initialListings }: ListingsGridProps) {
   const router = useRouter();
   const { success, error: showError } = useToast();
   const [isPending, startTransition] = useTransition();
-  
+
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  
+
   // Local state for optimistic updates
   const [listings, setListings] = useState(initialListings);
-  
+
   // Delete modal state
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -167,23 +174,25 @@ export function ListingsGrid({ listings: initialListings }: ListingsGridProps) {
   // ==========================================================================
 
   const handlePause = async (id: string) => {
-    const listing = listings.find(l => l.id === id);
+    const listing = listings.find((l) => l.id === id);
     if (!listing) return;
 
     // Optimistic update
-    setListings(prev => 
-      prev.map(l => l.id === id ? { ...l, status: "paused" as const } : l)
+    setListings((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, status: "paused" as const } : l)),
     );
 
     startTransition(async () => {
       const result = await pauseListing(id);
-      
+
       if (result.success) {
         success("Listing paused");
       } else {
         // Revert on error
-        setListings(prev => 
-          prev.map(l => l.id === id ? { ...l, status: "active" as const } : l)
+        setListings((prev) =>
+          prev.map((l) =>
+            l.id === id ? { ...l, status: "active" as const } : l,
+          ),
         );
         showError(result.error || "Failed to pause");
       }
@@ -191,23 +200,25 @@ export function ListingsGrid({ listings: initialListings }: ListingsGridProps) {
   };
 
   const handleResume = async (id: string) => {
-    const listing = listings.find(l => l.id === id);
+    const listing = listings.find((l) => l.id === id);
     if (!listing) return;
 
     // Optimistic update
-    setListings(prev => 
-      prev.map(l => l.id === id ? { ...l, status: "active" as const } : l)
+    setListings((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, status: "active" as const } : l)),
     );
 
     startTransition(async () => {
       const result = await resumeListing(id);
-      
+
       if (result.success) {
         success("Listing active");
       } else {
         // Revert on error
-        setListings(prev => 
-          prev.map(l => l.id === id ? { ...l, status: "paused" as const } : l)
+        setListings((prev) =>
+          prev.map((l) =>
+            l.id === id ? { ...l, status: "paused" as const } : l,
+          ),
         );
         showError(result.error || "Failed to resume");
       }
@@ -215,7 +226,7 @@ export function ListingsGrid({ listings: initialListings }: ListingsGridProps) {
   };
 
   const handleDeleteClick = (id: string) => {
-    const listing = listings.find(l => l.id === id);
+    const listing = listings.find((l) => l.id === id);
     if (!listing) return;
 
     setDeleteModal({
@@ -230,13 +241,13 @@ export function ListingsGrid({ listings: initialListings }: ListingsGridProps) {
     setIsDeleting(true);
 
     const result = await deleteListing(listingId);
-    
+
     setIsDeleting(false);
     setDeleteModal({ isOpen: false, listingId: "", listingTitle: "" });
 
     if (result.success) {
       // Remove from local state
-      setListings(prev => prev.filter(l => l.id !== listingId));
+      setListings((prev) => prev.filter((l) => l.id !== listingId));
       success("Listing deleted");
     } else {
       showError(result.error || "Failed to delete");
@@ -250,12 +261,12 @@ export function ListingsGrid({ listings: initialListings }: ListingsGridProps) {
   };
 
   const handleDuplicate = async (id: string) => {
-    const listing = listings.find(l => l.id === id);
+    const listing = listings.find((l) => l.id === id);
     if (!listing) return;
 
     startTransition(async () => {
       const result = await duplicateListing(id);
-      
+
       if (result.success && result.newListingId) {
         success("Draft copy created");
         // Navigate to edit the new listing
@@ -273,23 +284,23 @@ export function ListingsGrid({ listings: initialListings }: ListingsGridProps) {
   };
 
   const handleMarkAsRented = async (id: string) => {
-    const listing = listings.find(l => l.id === id);
+    const listing = listings.find((l) => l.id === id);
     if (!listing) return;
 
     // Optimistic update
-    setListings(prev => 
-      prev.map(l => l.id === id ? { ...l, status: "rented" as const } : l)
+    setListings((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, status: "rented" as const } : l)),
     );
 
     startTransition(async () => {
       const result = await markAsRented(id);
-      
+
       if (result.success) {
         success("Marked as rented");
       } else {
         // Revert on error
-        setListings(prev => 
-          prev.map(l => l.id === id ? { ...l, status: listing.status } : l)
+        setListings((prev) =>
+          prev.map((l) => (l.id === id ? { ...l, status: listing.status } : l)),
         );
         showError(result.error || "Failed to update");
       }
@@ -303,26 +314,32 @@ export function ListingsGrid({ listings: initialListings }: ListingsGridProps) {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           {/* Status Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto">
-            {(["all", "active", "draft", "paused", "rented"] as const).map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
-                  statusFilter === status
-                    ? "bg-teal-100 text-teal-700"
-                    : "text-gray-600 hover:bg-gray-100"
-                )}
-              >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-                <span className={cn(
-                  "ml-1.5 text-xs",
-                  statusFilter === status ? "text-teal-600" : "text-gray-400"
-                )}>
-                  {counts[status]}
-                </span>
-              </button>
-            ))}
+            {(["all", "active", "draft", "paused", "rented"] as const).map(
+              (status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
+                    statusFilter === status
+                      ? "bg-teal-100 text-teal-700"
+                      : "text-gray-600 hover:bg-gray-100",
+                  )}
+                >
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                  <span
+                    className={cn(
+                      "ml-1.5 text-xs",
+                      statusFilter === status
+                        ? "text-teal-600"
+                        : "text-gray-400",
+                    )}
+                  >
+                    {counts[status]}
+                  </span>
+                </button>
+              ),
+            )}
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 /**
  * Listing Actions Component
- * 
+ *
  * Client-side actions for managing a listing from the detail page.
  * Handles pause/resume, copy link, mark as rented, delete.
  */
@@ -103,7 +103,7 @@ export function ListingActions({ listing }: ListingActionsProps) {
     const result = await deleteListing(listing.id);
     setIsDeleting(false);
     setShowDeleteModal(false);
-    
+
     if (result.success) {
       success("Listing deleted");
       router.push("/dashboard/landlord/listings");
@@ -115,8 +115,10 @@ export function ListingActions({ listing }: ListingActionsProps) {
   return (
     <>
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">Quick Actions</h3>
-        
+        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">
+          Quick Actions
+        </h3>
+
         <div className="space-y-1">
           {/* Pause / Resume */}
           {listing.status === "active" && (
@@ -128,7 +130,7 @@ export function ListingActions({ listing }: ListingActionsProps) {
               disabled={isPending}
             />
           )}
-          
+
           {listing.status === "paused" && (
             <ActionButton
               icon={<Play className="w-4 h-4" />}
@@ -138,7 +140,7 @@ export function ListingActions({ listing }: ListingActionsProps) {
               disabled={isPending}
             />
           )}
-          
+
           {/* Mark as Rented */}
           {(listing.status === "active" || listing.status === "paused") && (
             <ActionButton
@@ -149,7 +151,7 @@ export function ListingActions({ listing }: ListingActionsProps) {
               disabled={isPending}
             />
           )}
-          
+
           {/* Copy Link */}
           <ActionButton
             icon={<Copy className="w-4 h-4" />}
@@ -158,7 +160,7 @@ export function ListingActions({ listing }: ListingActionsProps) {
             onClick={handleCopyLink}
             disabled={isPending}
           />
-          
+
           {/* Duplicate */}
           <ActionButton
             icon={<Share2 className="w-4 h-4" />}
@@ -167,7 +169,7 @@ export function ListingActions({ listing }: ListingActionsProps) {
             onClick={handleDuplicate}
             disabled={isPending}
           />
-          
+
           {/* Delete */}
           <ActionButton
             icon={<Trash2 className="w-4 h-4" />}
@@ -183,11 +185,11 @@ export function ListingActions({ listing }: ListingActionsProps) {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div 
+          <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => !isDeleting && setShowDeleteModal(false)}
           />
-          
+
           <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => !isDeleting && setShowDeleteModal(false)}
@@ -204,8 +206,9 @@ export function ListingActions({ listing }: ListingActionsProps) {
               Delete Listing?
             </h3>
             <p className="text-sm text-gray-600 text-center mb-6">
-              Are you sure you want to delete <span className="font-semibold">"{listing.title}"</span>? 
-              This action cannot be undone.
+              Are you sure you want to delete{" "}
+              <span className="font-semibold">&quot;{listing.title}&quot;</span>
+              ? This action cannot be undone.
             </p>
 
             <div className="flex gap-3">
@@ -251,11 +254,11 @@ interface ActionButtonProps {
   variant?: "default" | "danger";
 }
 
-function ActionButton({ 
-  icon, 
-  label, 
-  description, 
-  onClick, 
+function ActionButton({
+  icon,
+  label,
+  description,
+  onClick,
   disabled,
   variant = "default",
 }: ActionButtonProps) {
@@ -266,12 +269,19 @@ function ActionButton({
       className={cn(
         "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left",
         "hover:bg-gray-50",
-        disabled && "opacity-50 cursor-not-allowed"
+        disabled && "opacity-50 cursor-not-allowed",
       )}
     >
       <div className="flex-shrink-0 text-gray-500">{icon}</div>
       <div className="flex-1 min-w-0">
-        <p className={cn("font-medium text-sm", variant === "danger" ? "text-red-600" : "text-gray-900")}>{label}</p>
+        <p
+          className={cn(
+            "font-medium text-sm",
+            variant === "danger" ? "text-red-600" : "text-gray-900",
+          )}
+        >
+          {label}
+        </p>
         <p className="text-xs text-gray-500">{description}</p>
       </div>
     </button>

@@ -1,22 +1,22 @@
 /**
  * Services Page - Fiverr-Style Marketplace
- * 
+ *
  * Unified search hub for 700+ services with:
  * - Search-first UX (autocomplete with suggestions)
  * - Faceted sidebar filters
  * - Category quick-nav chips
  * - URL state persistence
  * - Responsive sidebar/sheet layout
- * 
+ *
  * URL Pattern: /services?category=X&subcategory=Y&q=search
  * All routes resolve to this single page with different filter states.
- * 
+ *
  * Performance optimizations:
  * - Server-side data fetching
  * - Parallel data loading
  * - Incremental static regeneration ready
  * - Optimistic UI updates
- * 
+ *
  * Design: 70% teal (brand), 30% orange (CTA accents)
  */
 
@@ -40,10 +40,7 @@ import {
 } from "@/components/services";
 import { getProviders, getFeaturedProviders } from "@/lib/services/providers";
 import { getCategoriesWithSubs } from "@/lib/services/categories";
-import {
-  PROVIDERS_PER_PAGE,
-  SERVICE_CATEGORIES,
-} from "@/lib/constants";
+import { PROVIDERS_PER_PAGE, SERVICE_CATEGORIES } from "@/lib/constants";
 import { ServicesMobileFilterButton } from "./mobile-filter-button";
 import { QuickFilterToggle } from "./quick-filter-toggle";
 import Link from "next/link";
@@ -194,9 +191,7 @@ export default async function ServicesPage({ searchParams }: PageProps) {
       pageSize: PROVIDERS_PER_PAGE,
     }),
     // Featured providers: only on landing (no filters, page 1)
-    !hasFilters && page === 1
-      ? getFeaturedProviders(6)
-      : Promise.resolve([]),
+    !hasFilters && page === 1 ? getFeaturedProviders(6) : Promise.resolve([]),
     getCategoriesWithSubs(),
   ]);
 
@@ -228,14 +223,17 @@ export default async function ServicesPage({ searchParams }: PageProps) {
                 Home services you can trust
               </h1>
               <p className="text-lg lg:text-xl text-white/70 max-w-2xl mx-auto mb-6 animate-fade-in-up animate-fill-both animate-delay-200">
-                From cleaning to movers, repairs to security — compare prices, read reviews, and book online.
+                From cleaning to movers, repairs to security — compare prices,
+                read reviews, and book online.
               </p>
 
               {/* Search Autocomplete — wider */}
               <div className="relative z-40 max-w-2xl xl:max-w-3xl mx-auto mb-5 animate-fade-in-up animate-fill-both animate-delay-300">
-                <Suspense fallback={
-                  <div className="h-14 bg-white/10 rounded-2xl animate-pulse" />
-                }>
+                <Suspense
+                  fallback={
+                    <div className="h-14 bg-white/10 rounded-2xl animate-pulse" />
+                  }
+                >
                   <ServiceSearchAutocomplete
                     variant="hero"
                     showPopularOnFocus={true}
@@ -266,8 +264,12 @@ export default async function ServicesPage({ searchParams }: PageProps) {
             <section className="mb-12">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Trending pros this week</h2>
-                  <p className="text-gray-600 mt-1">Top-rated professionals in Nairobi</p>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Trending pros this week
+                  </h2>
+                  <p className="text-gray-600 mt-1">
+                    Top-rated professionals in Nairobi
+                  </p>
                 </div>
                 <Link
                   href="/services/browse?sort=rating"
@@ -301,7 +303,12 @@ export default async function ServicesPage({ searchParams }: PageProps) {
               <div>
                 <h2 className="text-xl lg:text-2xl font-bold text-gray-900">
                   {params.q ? (
-                    <>Results for <span className="text-brand-600">"{params.q}"</span></>
+                    <>
+                      Results for{" "}
+                      <span className="text-brand-600">
+                        &quot;{params.q}&quot;
+                      </span>
+                    </>
                   ) : hasFilters ? (
                     "Filtered Results"
                   ) : (
@@ -309,9 +316,11 @@ export default async function ServicesPage({ searchParams }: PageProps) {
                   )}
                 </h2>
                 <p className="text-gray-600 mt-1">
-                  {totalProviders.toLocaleString()} provider{totalProviders !== 1 ? "s" : ""} found
+                  {totalProviders.toLocaleString()} provider
+                  {totalProviders !== 1 ? "s" : ""} found
                   {selectedCategory && ` in ${selectedCategory.name}`}
-                  {params.area && ` • ${params.area.split(",")[0]}${params.area.includes(",") ? " +" + (params.area.split(",").length - 1) : ""}`}
+                  {params.area &&
+                    ` • ${params.area.split(",")[0]}${params.area.includes(",") ? " +" + (params.area.split(",").length - 1) : ""}`}
                 </p>
               </div>
             </div>
@@ -320,16 +329,14 @@ export default async function ServicesPage({ searchParams }: PageProps) {
             <div className="flex items-center gap-3">
               {/* Quick Filter Toggles (like Fiverr's Pro services, Instant response) */}
               <div className="flex items-center gap-2">
-                <QuickFilterToggle
-                  label="Verified"
-                  paramKey="verified"
-                />
-                <QuickFilterToggle
-                  label="Instant"
-                  paramKey="instant"
-                />
+                <QuickFilterToggle label="Verified" paramKey="verified" />
+                <QuickFilterToggle label="Instant" paramKey="instant" />
               </div>
-              <Suspense fallback={<div className="h-10 w-40 bg-gray-100 rounded-xl animate-pulse" />}>
+              <Suspense
+                fallback={
+                  <div className="h-10 w-40 bg-gray-100 rounded-xl animate-pulse" />
+                }
+              >
                 <SortDropdown />
               </Suspense>
               {/* Mobile Filter Button */}
