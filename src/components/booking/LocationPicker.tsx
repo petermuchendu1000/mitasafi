@@ -10,7 +10,7 @@
 // - Optionally saving the new location for future use
 // =============================================================================
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   MapPin,
   Plus,
@@ -61,16 +61,21 @@ export function LocationPicker({
   value,
   onChange,
 }: LocationPickerProps) {
-  const [mode, setMode] = useState<"saved" | "new">(
+  // What the user last chose. Only meaningful while there are saved locations.
+  const [preferredMode, setPreferredMode] = useState<"saved" | "new">(
     savedLocations.length > 0 ? "saved" : "new",
   );
 
-  // If no saved locations, force "new" mode
-  useEffect(() => {
-    if (savedLocations.length === 0) {
-      setMode("new");
-    }
-  }, [savedLocations.length]);
+  // Derived, not synchronised by an effect.
+  //
+  // This used to be plain state forced to "new" from a useEffect whenever
+  // savedLocations emptied. That left one render in between where the state still
+  // said "saved" and the list was already empty — and in that render NEITHER branch
+  // below draws anything, because the saved list is guarded by
+  // `savedLocations.length > 0` and the new-address form by `mode === "new"`. The
+  // user saw an empty panel until the effect landed. Deriving removes the gap: there
+  // is no render in which the two disagree.
+  const mode = savedLocations.length === 0 ? "new" : preferredMode;
 
   function handleSelectSaved(locId: string) {
     const loc = savedLocations.find((l) => l.id === locId);
@@ -98,7 +103,7 @@ export function LocationPicker({
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setMode("saved")}
+            onClick={() => setPreferredMode("saved")}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors ${
               mode === "saved"
                 ? "border-teal-600 bg-teal-50 text-teal-700"
@@ -111,7 +116,7 @@ export function LocationPicker({
           <button
             type="button"
             onClick={() => {
-              setMode("new");
+              setPreferredMode("new");
               onChange({
                 ...value,
                 locationId: undefined,

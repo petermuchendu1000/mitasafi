@@ -64,6 +64,13 @@ export function ListingMap({
 
   const hasCoordinates = latitude !== null && longitude !== null;
 
+  // Derived, not discovered by an effect. The token is read from the environment at
+  // module scope, so whether we have one is knowable on the first render. It used to
+  // be found out inside the init effect, which called setMapError(true) — so with no
+  // token configured the first paint showed the map frame and its loading spinner,
+  // and only the second paint replaced it with "Map not available".
+  const hasMapboxToken = Boolean(mapboxgl.accessToken);
+
   // Parse landmarks string into array
   const landmarksList = landmarks
     ? landmarks
@@ -74,11 +81,8 @@ export function ListingMap({
 
   // Initialize map
   useEffect(() => {
-    if (!hasCoordinates || !mapContainer.current || map.current) return;
-    if (!mapboxgl.accessToken) {
-      setMapError(true);
-      return;
-    }
+    if (!hasCoordinates || !hasMapboxToken) return;
+    if (!mapContainer.current || map.current) return;
 
     try {
       const zoom = hideExactAddress ? APPROX_ZOOM : EXACT_ZOOM;
@@ -199,7 +203,7 @@ export function ListingMap({
         map.current = null;
       }
     };
-  }, [hasCoordinates, latitude, longitude, hideExactAddress]);
+  }, [hasCoordinates, hasMapboxToken, latitude, longitude, hideExactAddress]);
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -229,7 +233,7 @@ export function ListingMap({
       </div>
 
       {/* Map */}
-      {hasCoordinates && !mapError ? (
+      {hasCoordinates && hasMapboxToken && !mapError ? (
         <div className="relative rounded-lg overflow-hidden border border-gray-200">
           <div ref={mapContainer} className="h-48 lg:h-56 bg-gray-100" />
 

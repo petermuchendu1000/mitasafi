@@ -33,6 +33,9 @@ import {
   clearValidationCache,
 } from "../validation-cache";
 
+/** Stable identity, so `errors` does not change reference on every render. */
+const EMPTY_ERRORS: Record<string, string> = Object.freeze({});
+
 interface UseOptimizedValidationOptions {
   /** Debounce delay in ms (default: 200) */
   debounceMs?: number;
@@ -75,9 +78,28 @@ export function useOptimizedValidation(
     lazyValidation = true,
   } = options;
 
-  // State
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  // Errors produced by a validation run. The debounced validator writes this from its
+  // callback, which is a legitimate setState — it is a subscription to an external
+  // timer, not a synchronous write during an effect body.
+  //
+  // validateOnMount used to be a second mount effect that ran the validator and called
+  // setErrors, costing an extra render before the form could show anything. It is the
+  // initial value, so it belongs in the initialiser. validateRequiredFieldsCached is a
+  // pure function over its arguments; its only effect is populating a memo cache, which
+  // is idempotent and safe to repeat under StrictMode's double invoke.
+  const [validatedErrors, setValidatedErrors] = useState<
+    Record<string, string>
+  >(() =>
+    validateOnMount && type
+      ? validateRequiredFieldsCached(formData, type, subtype)
+      : {},
+  );
   const [isValidating, setIsValidating] = useState(false);
+
+  // With no type selected there is nothing to validate, so there are no errors. That
+  // was an effect calling setErrors({}) on every formData change while type was null —
+  // a render, then a state write, then another render, to arrive at a constant.
+  const errors = type ? validatedErrors : EMPTY_ERRORS;
 
   // Touched fields.
   //
@@ -102,7 +124,7 @@ export function useOptimizedValidation(
   // Initialize debounced validator
   useEffect(() => {
     validatorRef.current = createDebouncedValidator((validationErrors) => {
-      setErrors(validationErrors);
+      setValidatedErrors(validationErrors);
       setIsValidating(false);
     }, debounceMs);
 
@@ -113,28 +135,11 @@ export function useOptimizedValidation(
 
   // Validate on form data change (debounced)
   useEffect(() => {
-    if (!type) {
-      setErrors({});
-      return;
-    }
+    if (!type) return;
 
     setIsValidating(true);
     validatorRef.current?.validate(formData, type, subtype);
   }, [formData, type, subtype]);
-
-  // Validate on mount if requested
-  useEffect(() => {
-    if (validateOnMount && type) {
-      const initialErrors = validateRequiredFieldsCached(
-        formData,
-        type,
-        subtype,
-      );
-      setErrors(initialErrors);
-    }
-    // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Clear cache when type changes
   useEffect(() => {
@@ -171,7 +176,7 @@ export function useOptimizedValidation(
       return next;
     });
 
-    setErrors(allErrors);
+    setValidatedErrors(allErrors);
 
     return allErrors;
   }, [formData, type, subtype]);

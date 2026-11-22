@@ -598,7 +598,6 @@ export function useDateInput(
   initialValue: string | null = null,
 ): UseDateInputReturn {
   const [value, setValueInternal] = useState<string>(initialValue || "");
-  const [error, setError] = useState<string | null>(null);
 
   const isValid = useMemo(() => {
     if (!value) return true; // Empty is valid (optional)
@@ -610,13 +609,13 @@ export function useDateInput(
     return formatAvailabilityDate(value);
   }, [value]);
 
-  useEffect(() => {
-    if (value && !isValid) {
-      setError("Invalid date format. Use YYYY-MM-DD");
-    } else {
-      setError(null);
-    }
-  }, [value, isValid]);
+  // Derived, not stored. This was state kept in step by an effect, which meant the
+  // message always described the PREVIOUS value for one render after each keystroke:
+  // typing a character re-rendered with the new value and the old error, and only the
+  // effect's follow-up render agreed with itself. It is a pure function of
+  // (value, isValid), so it is computed here.
+  const error =
+    value && !isValid ? "Invalid date format. Use YYYY-MM-DD" : null;
 
   const setValue = useCallback((newValue: string) => {
     setValueInternal(newValue);
@@ -624,7 +623,6 @@ export function useDateInput(
 
   const clear = useCallback(() => {
     setValueInternal("");
-    setError(null);
   }, []);
 
   const setToToday = useCallback(() => {
