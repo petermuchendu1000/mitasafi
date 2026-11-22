@@ -40,6 +40,11 @@ import type {
   PriceBreakdown,
 } from "@/lib/listings/types";
 import { cn } from "@/lib/utils";
+import {
+  addSavedListing,
+  removeSavedListing,
+} from "@/lib/saved-listings/store";
+import { useIsListingSaved } from "@/lib/saved-listings/useIsListingSaved";
 
 interface ListingDetailClientProps {
   listing: Listing;
@@ -94,7 +99,14 @@ export function ListingDetailClient({
   const searchParams = useSearchParams();
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [unavailableModalOpen, setUnavailableModalOpen] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+
+  // Subscribed, not sampled at mount. This page renders THREE readers of the saved key at
+  // once — this heart, the Navbar count, and the SimilarListings cards — and this was the
+  // only one that did not listen. Measured in a browser before the change: a save made by
+  // any other component moved the Navbar badge to 1 while this heart stayed empty, and
+  // because handleSave then still believed the listing was unsaved, the next click on it
+  // appended a SECOND entry for the same id and the badge read 2.
+  const isSaved = useIsListingSaved(listing.id);
 
   // Check if listing is unavailable
   const isUnavailable = listing.status !== "active";
@@ -157,48 +169,16 @@ export function ListingDetailClient({
     }
   };
 
+  // Toggle saved state in local storage (works for everyone, syncs when logged in).
+  // addSavedListing is idempotent, so even a stale view cannot append a duplicate entry
+  // the way the previous read-push-write did.
   const handleSave = () => {
-    // Toggle saved state in local storage (works for everyone, syncs when logged in)
-    const STORAGE_KEY = "mitasafi_saved_listings";
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      if (isSaved) {
-        // Remove from saved
-        const updated = saved.filter(
-          (s: { listingId: string }) => s.listingId !== listing.id,
-        );
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        setIsSaved(false);
-      } else {
-        // Add to saved with current status for change tracking
-        saved.push({
-          listingId: listing.id,
-          savedAt: new Date().toISOString(),
-          lastKnownStatus: listing.status || "active",
-        });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-        setIsSaved(true);
-      }
-      // Dispatch event for navbar to update saved count
-      window.dispatchEvent(new CustomEvent("savedListingsChanged"));
-    } catch (e) {
-      console.error("Failed to save listing:", e);
+    if (isSaved) {
+      removeSavedListing(listing.id);
+    } else {
+      addSavedListing(listing.id, listing.status || "active");
     }
   };
-
-  // Initialize saved state from local storage
-  useEffect(() => {
-    const STORAGE_KEY = "mitasafi_saved_listings";
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      const isListingSaved = saved.some(
-        (s: { listingId: string }) => s.listingId === listing.id,
-      );
-      setIsSaved(isListingSaved);
-    } catch {
-      // Ignore parse errors
-    }
-  }, [listing.id]);
 
   // Safe back navigation - only goes back if previous page was internal
   const handleBack = () => {
