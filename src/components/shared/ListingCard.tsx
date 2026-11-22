@@ -1,10 +1,10 @@
 /**
  * Shared Listing Card Component
- * 
+ *
  * Compact, Fiverr-style card for displaying listings.
  * Used across public browse pages and landlord dashboard.
  * Supports both residential and commercial property types.
- * 
+ *
  * Design: Compact 16:10 aspect ratio, minimal padding
  */
 
@@ -13,12 +13,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { 
-  Bed, 
-  Bath, 
-  Maximize2, 
-  MapPin, 
-  Eye, 
+import {
+  Bed,
+  Bath,
+  Maximize2,
+  MapPin,
+  Eye,
   MessageSquare,
   CheckCircle,
   Heart,
@@ -65,24 +65,25 @@ interface ListingCardProps {
 const STORAGE_KEY = "mitasafi_saved_listings";
 
 // Cache for database saved listings (shared across all cards)
-let savedListingsCache: { listingIds: Set<string>; fetchedAt: number } | null = null;
+let savedListingsCache: { listingIds: Set<string>; fetchedAt: number } | null =
+  null;
 let fetchPromise: Promise<void> | null = null;
 
 // Fetch saved listings from database once (shared)
 async function fetchSavedListingsOnce(): Promise<Set<string>> {
   const now = Date.now();
-  
+
   // Return cached if fresh (less than 30 seconds old)
   if (savedListingsCache && now - savedListingsCache.fetchedAt < 30000) {
     return savedListingsCache.listingIds;
   }
-  
+
   // If already fetching, wait for it
   if (fetchPromise) {
     await fetchPromise;
     return savedListingsCache?.listingIds || new Set();
   }
-  
+
   // Fetch from API
   fetchPromise = (async () => {
     try {
@@ -90,18 +91,27 @@ async function fetchSavedListingsOnce(): Promise<Set<string>> {
       if (res.ok) {
         const data = await res.json();
         const ids = new Set<string>(
-          (data.saved_listings || []).map((s: { listing_id: string }) => s.listing_id)
+          (data.saved_listings || []).map(
+            (s: { listing_id: string }) => s.listing_id,
+          ),
         );
         savedListingsCache = { listingIds: ids, fetchedAt: Date.now() };
-        
+
         // Sync localStorage
-        const localSaved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as { listingId: string; savedAt: string }[];
-        data.saved_listings?.forEach((s: { listing_id: string; created_at: string }) => {
-          if (!localSaved.some(ls => ls.listingId === s.listing_id)) {
-            localSaved.push({ listingId: s.listing_id, savedAt: s.created_at });
-          }
-        });
-        const synced = localSaved.filter(ls => ids.has(ls.listingId));
+        const localSaved = JSON.parse(
+          localStorage.getItem(STORAGE_KEY) || "[]",
+        ) as { listingId: string; savedAt: string }[];
+        data.saved_listings?.forEach(
+          (s: { listing_id: string; created_at: string }) => {
+            if (!localSaved.some((ls) => ls.listingId === s.listing_id)) {
+              localSaved.push({
+                listingId: s.listing_id,
+                savedAt: s.created_at,
+              });
+            }
+          },
+        );
+        const synced = localSaved.filter((ls) => ids.has(ls.listingId));
         localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
       }
     } catch {
@@ -110,7 +120,7 @@ async function fetchSavedListingsOnce(): Promise<Set<string>> {
       fetchPromise = null;
     }
   })();
-  
+
   await fetchPromise;
   return savedListingsCache?.listingIds || new Set();
 }
@@ -147,7 +157,11 @@ function ResidentialMetrics({ listing }: { listing: ListingCardData }) {
       <Metric icon={<Bed className="w-3 h-3" />} value={listing.bedrooms} />
       <Metric icon={<Bath className="w-3 h-3" />} value={listing.bathrooms} />
       {listing.size_sqft && (
-        <Metric icon={<Maximize2 className="w-3 h-3" />} value={listing.size_sqft} unit="sqft" />
+        <Metric
+          icon={<Maximize2 className="w-3 h-3" />}
+          value={listing.size_sqft}
+          unit="sqft"
+        />
       )}
     </div>
   );
@@ -155,56 +169,92 @@ function ResidentialMetrics({ listing }: { listing: ListingCardData }) {
 
 function CommercialMetrics({ listing }: { listing: ListingCardData }) {
   const commercialType = listing.commercial_type;
-  
+
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
       {/* Size in sqm for all commercial */}
       {listing.size_sqm && (
-        <Metric icon={<Maximize2 className="w-3 h-3" />} value={listing.size_sqm} unit="sqm" />
+        <Metric
+          icon={<Maximize2 className="w-3 h-3" />}
+          value={listing.size_sqm}
+          unit="sqm"
+        />
       )}
-      
+
       {/* Type-specific metrics */}
       {commercialType === "office" && (
         <>
-          <Metric icon={<Users className="w-3 h-3" />} value={listing.workstation_capacity} />
+          <Metric
+            icon={<Users className="w-3 h-3" />}
+            value={listing.workstation_capacity}
+          />
           {listing.building_grade && (
-            <Metric icon={<Building2 className="w-3 h-3" />} value={`${listing.building_grade}`} />
+            <Metric
+              icon={<Building2 className="w-3 h-3" />}
+              value={`${listing.building_grade}`}
+            />
           )}
         </>
       )}
-      
+
       {(commercialType === "retail" || commercialType === "food_beverage") && (
         <>
           {listing.seating_capacity && (
-            <Metric icon={<UtensilsCrossed className="w-3 h-3" />} value={listing.seating_capacity} />
+            <Metric
+              icon={<UtensilsCrossed className="w-3 h-3" />}
+              value={listing.seating_capacity}
+            />
           )}
           {listing.frontage_width_m && (
-            <Metric icon={<Ruler className="w-3 h-3" />} value={listing.frontage_width_m} unit="m" />
+            <Metric
+              icon={<Ruler className="w-3 h-3" />}
+              value={listing.frontage_width_m}
+              unit="m"
+            />
           )}
         </>
       )}
-      
+
       {commercialType === "warehouse" && (
         <>
           {listing.clear_height_m && (
-            <Metric icon={<Ruler className="w-3 h-3" />} value={listing.clear_height_m} unit="m" />
+            <Metric
+              icon={<Ruler className="w-3 h-3" />}
+              value={listing.clear_height_m}
+              unit="m"
+            />
           )}
-          {listing.loading_docks !== null && listing.loading_docks !== undefined && listing.loading_docks > 0 && (
-            <Metric icon={<Truck className="w-3 h-3" />} value={listing.loading_docks} />
-          )}
+          {listing.loading_docks !== null &&
+            listing.loading_docks !== undefined &&
+            listing.loading_docks > 0 && (
+              <Metric
+                icon={<Truck className="w-3 h-3" />}
+                value={listing.loading_docks}
+              />
+            )}
         </>
       )}
-      
+
       {commercialType === "automotive" && (
-        <Metric icon={<Car className="w-3 h-3" />} value={listing.parking_spaces_count} />
+        <Metric
+          icon={<Car className="w-3 h-3" />}
+          value={listing.parking_spaces_count}
+        />
       )}
-      
+
       {commercialType === "hospitality" && (
-        <Metric icon={<Hotel className="w-3 h-3" />} value={listing.room_count} />
+        <Metric
+          icon={<Hotel className="w-3 h-3" />}
+          value={listing.room_count}
+        />
       )}
-      
+
       {commercialType === "commercial_land" && (
-        <Metric icon={<LandPlot className="w-3 h-3" />} value={listing.plot_size_acres} unit="ac" />
+        <Metric
+          icon={<LandPlot className="w-3 h-3" />}
+          value={listing.plot_size_acres}
+          unit="ac"
+        />
       )}
     </div>
   );
@@ -212,11 +262,11 @@ function CommercialMetrics({ listing }: { listing: ListingCardData }) {
 
 function ListingMetrics({ listing }: { listing: ListingCardData }) {
   const isCommercial = listing.listing_category === "commercial";
-  
+
   if (isCommercial) {
     return <CommercialMetrics listing={listing} />;
   }
-  
+
   return <ResidentialMetrics listing={listing} />;
 }
 
@@ -224,8 +274,8 @@ function ListingMetrics({ listing }: { listing: ListingCardData }) {
 // MAIN COMPONENT
 // =============================================================================
 
-export function ListingCard({ 
-  listing, 
+export function ListingCard({
+  listing,
   variant = "public",
   priority = false,
   className,
@@ -239,17 +289,21 @@ export function ListingCard({
 
   // Get cover image
   const coverImage = listing.cover_photo || listing.photos?.[0]?.url;
-  
+
   // Generate link href
-  const linkHref = href || (variant === "landlord" 
-    ? `/dashboard/landlord/listings/${listing.id}` 
-    : `/properties/${listing.id}`);
-    
+  const linkHref =
+    href ||
+    (variant === "landlord"
+      ? `/dashboard/landlord/listings/${listing.id}`
+      : `/properties/${listing.id}`);
+
   // Status badge
-  const statusBadge = STATUS_BADGE_CONFIG[listing.status] || STATUS_BADGE_CONFIG.draft;
-  
+  const statusBadge =
+    STATUS_BADGE_CONFIG[listing.status] || STATUS_BADGE_CONFIG.draft;
+
   // Property type label
-  const propertyTypeLabel = PROPERTY_TYPE_LABELS[listing.property_type] || listing.property_type;
+  const propertyTypeLabel =
+    PROPERTY_TYPE_LABELS[listing.property_type] || listing.property_type;
 
   // Initialize saved state from local storage (public variant only)
   // Also check database for logged-in users
@@ -257,14 +311,16 @@ export function ListingCard({
     if (variant === "public") {
       // First check localStorage for immediate UI
       try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as { listingId: string }[];
-        setIsSaved(saved.some(s => s.listingId === listing.id));
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as {
+          listingId: string;
+        }[];
+        setIsSaved(saved.some((s) => s.listingId === listing.id));
       } catch {
         // Ignore parse errors
       }
-      
+
       // Then sync with database (uses shared cache)
-      fetchSavedListingsOnce().then(ids => {
+      fetchSavedListingsOnce().then((ids) => {
         setIsSaved(ids.has(listing.id));
       });
     }
@@ -273,41 +329,47 @@ export function ListingCard({
   const handleSave = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (variant !== "public") return;
-    
+
     try {
       // Optimistic UI update
       const newSavedState = !isSaved;
       setIsSaved(newSavedState);
-      
+
       // Update localStorage for quick access
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as { listingId: string; savedAt: string; lastKnownStatus?: string }[];
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as {
+        listingId: string;
+        savedAt: string;
+        lastKnownStatus?: string;
+      }[];
       if (!newSavedState) {
-        const updated = saved.filter(s => s.listingId !== listing.id);
+        const updated = saved.filter((s) => s.listingId !== listing.id);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       } else {
-        saved.push({ 
-          listingId: listing.id, 
+        saved.push({
+          listingId: listing.id,
           savedAt: new Date().toISOString(),
-          lastKnownStatus: listing.status || "active"
+          lastKnownStatus: listing.status || "active",
         });
         localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
       }
       window.dispatchEvent(new CustomEvent("savedListingsChanged"));
-      
+
       // Sync to database (for notifications to work)
       // This runs in background - doesn't block UI
-      const url = newSavedState 
-        ? "/api/saved-listings" 
+      const url = newSavedState
+        ? "/api/saved-listings"
         : `/api/saved-listings?listing_id=${listing.id}`;
-      
+
       const response = await fetch(url, {
         method: newSavedState ? "POST" : "DELETE",
         headers: { "Content-Type": "application/json" },
-        ...(newSavedState && { body: JSON.stringify({ listing_id: listing.id }) }),
+        ...(newSavedState && {
+          body: JSON.stringify({ listing_id: listing.id }),
+        }),
       });
-      
+
       if (!response.ok) {
         // If not authenticated, that's okay - localStorage still works
         // User just won't get notifications
@@ -337,9 +399,9 @@ export function ListingCard({
             fill
             className={cn(
               "object-cover transition-transform duration-300",
-              listing.status === "active" || variant === "landlord" 
-                ? "group-hover:scale-105" 
-                : "grayscale opacity-75"
+              listing.status === "active" || variant === "landlord"
+                ? "group-hover:scale-105"
+                : "grayscale opacity-75",
             )}
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
             priority={priority}
@@ -356,7 +418,9 @@ export function ListingCard({
         {variant === "public" && listing.status !== "active" && (
           <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
             <span className="px-3 py-1.5 bg-white/95 rounded-full text-xs font-semibold text-gray-700 shadow-sm">
-              {listing.status === "rented" ? "Rented Out" : "Currently Unavailable"}
+              {listing.status === "rented"
+                ? "Rented Out"
+                : "Currently Unavailable"}
             </span>
           </div>
         )}
@@ -369,7 +433,7 @@ export function ListingCard({
               "absolute top-2 right-2 p-2 rounded-full transition-all z-10",
               isSaved
                 ? "bg-orange-500 text-white shadow-md"
-                : "bg-white/90 text-gray-500 hover:bg-white hover:text-orange-500 shadow-sm"
+                : "bg-white/90 text-gray-500 hover:bg-white hover:text-orange-500 shadow-sm",
             )}
             aria-label={isSaved ? "Remove from saved" : "Save property"}
           >
@@ -382,17 +446,23 @@ export function ListingCard({
       <div className="p-4 overflow-hidden">
         {/* Row 1: Price + Status/Verified */}
         <div className="flex items-center justify-between mb-2">
-          <span className={cn(
-            "text-lg font-bold",
-            listing.status !== "active" && variant === "public" ? "text-gray-400" : "text-gray-900"
-          )}>
+          <span
+            className={cn(
+              "text-lg font-bold",
+              listing.status !== "active" && variant === "public"
+                ? "text-gray-400"
+                : "text-gray-900",
+            )}
+          >
             {formatCurrency(listing.rent_amount, listing.currency)}
             <span className="text-sm font-normal text-gray-500">/mo</span>
           </span>
-          
+
           {variant === "landlord" ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
-              <span className={cn("w-1.5 h-1.5 rounded-full", statusBadge.dot)} />
+              <span
+                className={cn("w-1.5 h-1.5 rounded-full", statusBadge.dot)}
+              />
               {statusBadge.label}
             </span>
           ) : listing.status === "rented" ? (
@@ -418,19 +488,24 @@ export function ListingCard({
         </div>
 
         {/* Row 2: Title */}
-        <h3 className={cn(
-          "font-semibold text-sm leading-snug transition-colors line-clamp-2 mb-1.5",
-          listing.status !== "active" && variant === "public" 
-            ? "text-gray-400" 
-            : "text-gray-900 group-hover:text-teal-600"
-        )}>
+        <h3
+          className={cn(
+            "font-semibold text-sm leading-snug transition-colors line-clamp-2 mb-1.5",
+            listing.status !== "active" && variant === "public"
+              ? "text-gray-400"
+              : "text-gray-900 group-hover:text-teal-600",
+          )}
+        >
           {listing.title}
         </h3>
 
         {/* Row 3: Location */}
         <p className="text-xs text-gray-500 flex items-center gap-1 mb-2">
           <MapPin className="w-3 h-3 flex-shrink-0" />
-          <span className="truncate">{listing.area}{listing.city ? `, ${listing.city}` : ""}</span>
+          <span className="truncate">
+            {listing.area}
+            {listing.city ? `, ${listing.city}` : ""}
+          </span>
         </p>
 
         {/* Row 4: Type + Metrics */}
@@ -467,20 +542,18 @@ export function ListingCard({
   );
 
   return (
-    <div className={cn(
-      "bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all group relative overflow-hidden",
-      isUpdating && "opacity-70 pointer-events-none",
-      className
-    )}>
+    <div
+      className={cn(
+        "bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all group relative overflow-hidden",
+        isUpdating && "opacity-70 pointer-events-none",
+        className,
+      )}
+    >
       {/* Actions slot (for landlord menu) */}
       {actions}
-      
+
       {/* Card as link */}
-      <Link 
-        href={linkHref}
-        target={linkTarget}
-        className="block"
-      >
+      <Link href={linkHref} target={linkTarget} className="block">
         {CardContent}
       </Link>
     </div>
