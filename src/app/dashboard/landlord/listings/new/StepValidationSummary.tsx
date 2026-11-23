@@ -46,7 +46,18 @@ export function StepValidationSummary() {
   const { currentStep, validation } = state;
 
   const stepValidation = validation[currentStep];
-  const messages = Object.entries(stepValidation?.errors ?? {})
+
+  // Only when the step actually BLOCKS. Step5CommercialPhotos records a
+  // "Please add a cover photo" error while setting isValid: true, because
+  // photos are optional — and the first version of this component ignored
+  // isValid, so that step announced "One thing left before you can continue"
+  // next to a perfectly usable Continue button. The sentence was false.
+  // An advisory message belongs beside its field, not in a blocking banner.
+  const blocking = stepValidation?.isValid === false;
+
+  const messages = (
+    blocking ? Object.entries(stepValidation?.errors ?? {}) : []
+  )
     // Guard against an empty or non-string message reaching the list.
     .filter(([, message]) => typeof message === "string" && message.trim())
     .map(([field, message]) => [field, message as string] as const);

@@ -25,6 +25,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { useWizard } from "../context";
+import { FieldError, fieldErrorProps } from "../FieldError";
 import { NAIROBI_AREAS } from "../types";
 import { useStep7Content } from "../useWizardContent";
 import {
@@ -42,6 +43,7 @@ const formatAmount = (value: number | null | undefined): string => {
 
 export function Step7CommercialReview() {
   const { state, updateFormData, setValidation, goToStep } = useWizard();
+  const stepErrors = state.validation[7]?.errors ?? {};
   const content = useStep7Content();
   const {
     title,
@@ -414,6 +416,7 @@ export function Step7CommercialReview() {
               </div>
               <input
                 id="listingTitle"
+                {...fieldErrorProps("title", stepErrors.title)}
                 type="text"
                 value={title}
                 onChange={(e) => updateFormData({ title: e.target.value })}
@@ -421,6 +424,7 @@ export function Step7CommercialReview() {
                 maxLength={80}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
+              <FieldError field="title" error={stepErrors.title} />
               <div className="flex justify-between mt-1">
                 <span className="text-xs text-gray-500">
                   {content.title.helper}
@@ -460,6 +464,7 @@ export function Step7CommercialReview() {
               </div>
               <textarea
                 id="listingDescription"
+                {...fieldErrorProps("description", stepErrors.description)}
                 value={description}
                 onChange={(e) =>
                   updateFormData({ description: e.target.value })
@@ -468,6 +473,7 @@ export function Step7CommercialReview() {
                 placeholder={content.description.placeholder}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
               />
+              <FieldError field="description" error={stepErrors.description} />
               <div className="flex justify-between mt-1">
                 <span className="text-xs text-gray-500">
                   Minimum 50 characters

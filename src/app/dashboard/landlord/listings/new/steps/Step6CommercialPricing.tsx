@@ -17,6 +17,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Calendar, Info, Plus, X } from "lucide-react";
 import { useWizard } from "../context";
+import { FieldError, fieldErrorProps } from "../FieldError";
 import { formatAmount, parseAmount } from "../utils";
 import {
   COMMERCIAL_PRICING_MODELS,
@@ -57,6 +58,7 @@ const CURRENCY_OPTIONS = [
 
 export function Step6CommercialPricing() {
   const { state, updateFormData, setValidation } = useWizard();
+  const stepErrors = state.validation[6]?.errors ?? {};
   const {
     commercial,
     currency,
@@ -323,6 +325,7 @@ export function Step6CommercialPricing() {
                   </div>
                   <input
                     id="rentAmount"
+                    {...fieldErrorProps("rentAmount", stepErrors.rentAmount)}
                     type="text"
                     inputMode="numeric"
                     value={rentInputValue}
@@ -343,6 +346,7 @@ export function Step6CommercialPricing() {
                     className="flex-1 px-4 py-2.5 rounded-r-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-600"
                   />
                 </div>
+                <FieldError field="rentAmount" error={stepErrors.rentAmount} />
                 {pricingModel === "per_sqm" && (
                   <p className="text-xs text-gray-500 mt-1">per sqm / month</p>
                 )}
@@ -381,6 +385,10 @@ export function Step6CommercialPricing() {
                   <div className="relative">
                     <input
                       id="revenueShare"
+                      {...fieldErrorProps(
+                        "revenueShare",
+                        stepErrors.revenueShare,
+                      )}
                       type="number"
                       value={revenueSharePercent || ""}
                       onChange={(e) =>
@@ -396,6 +404,10 @@ export function Step6CommercialPricing() {
                       %
                     </span>
                   </div>
+                  <FieldError
+                    field="revenueShare"
+                    error={stepErrors.revenueShare}
+                  />
                 </div>
                 <div className="flex items-end">
                   <label
@@ -783,6 +795,10 @@ export function Step6CommercialPricing() {
                 <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   id="availableFrom"
+                  {...fieldErrorProps(
+                    "availableFrom",
+                    stepErrors.availableFrom,
+                  )}
                   type="date"
                   value={availableFrom || ""}
                   onChange={(e) =>
@@ -792,6 +808,10 @@ export function Step6CommercialPricing() {
                   className="w-full pl-12 pr-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-600"
                 />
               </div>
+              <FieldError
+                field="availableFrom"
+                error={stepErrors.availableFrom}
+              />
             </div>
           </div>
         </section>

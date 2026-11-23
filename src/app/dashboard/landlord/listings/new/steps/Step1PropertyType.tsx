@@ -1,11 +1,11 @@
 /**
  * Step 1: Property Type Selection
- * 
+ *
  * First step in the property wizard where landlord selects:
  * 1. Listing category (Residential or Commercial)
  * 2. Property type or commercial category
  * 3. Sub-type (for commercial)
- * 
+ *
  * Design: Teal 60%, Orange 40% accents. Clean and professional.
  */
 
@@ -13,12 +13,12 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { 
-  Building2, 
-  Home, 
-  Warehouse, 
-  Castle, 
-  BedDouble, 
+import {
+  Building2,
+  Home,
+  Warehouse,
+  Castle,
+  BedDouble,
   Square,
   Check,
   Crown,
@@ -33,8 +33,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useWizard } from "../context";
-import { 
-  PROPERTY_TYPES, 
+import { FieldError, fieldErrorId } from "../FieldError";
+import {
+  PROPERTY_TYPES,
   LISTING_CATEGORIES,
   COMMERCIAL_CATEGORIES,
   COMMERCIAL_SUBTYPES,
@@ -71,12 +72,9 @@ const commercialIconMap: Record<string, React.ElementType> = {
 
 export function Step1PropertyType() {
   const { state, updateFormData, setValidation } = useWizard();
-  const { 
-    listingCategory, 
-    propertyType, 
-    commercialType,
-    commercialSubtype,
-  } = state.formData;
+  const stepErrors = state.validation[1]?.errors ?? {};
+  const { listingCategory, propertyType, commercialType, commercialSubtype } =
+    state.formData;
 
   // Track if subtype selection is shown
   const [showSubtypes, setShowSubtypes] = useState(false);
@@ -92,7 +90,8 @@ export function Step1PropertyType() {
     } else if (listingCategory === "commercial") {
       isValid = commercialType !== null && commercialSubtype !== null;
       if (!commercialType) errors.commercialType = "Please select a category";
-      if (!commercialSubtype) errors.commercialSubtype = "Please select a sub-type";
+      if (!commercialSubtype)
+        errors.commercialSubtype = "Please select a sub-type";
     }
 
     setValidation(1, {
@@ -100,11 +99,17 @@ export function Step1PropertyType() {
       errors,
       touched: { listingCategory: true },
     });
-  }, [listingCategory, propertyType, commercialType, commercialSubtype, setValidation]);
+  }, [
+    listingCategory,
+    propertyType,
+    commercialType,
+    commercialSubtype,
+    setValidation,
+  ]);
 
   // Handle category toggle
   const handleCategoryChange = (category: ListingCategory) => {
-    updateFormData({ 
+    updateFormData({
       listingCategory: category,
       // Reset selections when switching
       propertyType: null,
@@ -125,8 +130,8 @@ export function Step1PropertyType() {
       maisonette: 3,
       villa: 4,
     };
-    
-    updateFormData({ 
+
+    updateFormData({
       propertyType: type,
       bedrooms: defaultBedrooms[type],
     });
@@ -134,7 +139,7 @@ export function Step1PropertyType() {
 
   // Handle commercial category selection
   const handleCommercialCategorySelect = (type: CommercialType) => {
-    updateFormData({ 
+    updateFormData({
       commercialType: type,
       commercialSubtype: null,
     });
@@ -150,7 +155,7 @@ export function Step1PropertyType() {
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+        <h2 id="listing-what" className="text-2xl font-bold text-gray-900 mb-2">
           What are you listing?
         </h2>
         <p className="text-gray-500">
@@ -166,13 +171,15 @@ export function Step1PropertyType() {
             return (
               <button
                 key={category.id}
-                onClick={() => handleCategoryChange(category.id as ListingCategory)}
+                onClick={() =>
+                  handleCategoryChange(category.id as ListingCategory)
+                }
                 className={cn(
                   "px-6 py-2.5 rounded-md text-sm font-medium transition-all duration-200",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
                   isSelected
                     ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                    : "text-gray-600 hover:text-gray-900",
                 )}
               >
                 {category.label}
@@ -184,52 +191,66 @@ export function Step1PropertyType() {
 
       {/* Residential Selection */}
       {listingCategory === "residential" && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {PROPERTY_TYPES.map((type) => {
-            const Icon = residentialIconMap[type.id] || Building2;
-            const isSelected = propertyType === type.id;
+        <>
+          <div
+            role="group"
+            aria-labelledby="listing-what"
+            aria-describedby={
+              stepErrors.propertyType ? fieldErrorId("propertyType") : undefined
+            }
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+          >
+            {PROPERTY_TYPES.map((type) => {
+              const Icon = residentialIconMap[type.id] || Building2;
+              const isSelected = propertyType === type.id;
 
-            return (
-              <button
-                key={type.id}
-                onClick={() => handleResidentialSelect(type.id)}
-                className={cn(
-                  "relative flex flex-col items-center gap-3 p-5 rounded-xl",
-                  "border-2 transition-all duration-200",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2",
-                  isSelected
-                    ? "border-teal-600 bg-teal-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                )}
-              >
-                {isSelected && (
-                  <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                  </div>
-                )}
-                <div
+              return (
+                <button
+                  key={type.id}
+                  onClick={() => handleResidentialSelect(type.id)}
                   className={cn(
-                    "w-12 h-12 rounded-xl flex items-center justify-center",
-                    isSelected ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-500"
+                    "relative flex flex-col items-center gap-3 p-5 rounded-xl",
+                    "border-2 transition-all duration-200",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2",
+                    isSelected
+                      ? "border-teal-600 bg-teal-50"
+                      : "border-gray-200 bg-white hover:border-gray-300",
                   )}
                 >
-                  <Icon className="w-6 h-6" strokeWidth={1.5} />
-                </div>
-                <div className="text-center">
-                  <span className={cn(
-                    "block font-semibold text-sm",
-                    isSelected ? "text-teal-700" : "text-gray-900"
-                  )}>
-                    {type.label}
-                  </span>
-                  <span className="text-xs text-gray-500 mt-0.5 block">
-                    {type.description}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                  {isSelected && (
+                    <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      "w-12 h-12 rounded-xl flex items-center justify-center",
+                      isSelected
+                        ? "bg-teal-600 text-white"
+                        : "bg-gray-100 text-gray-500",
+                    )}
+                  >
+                    <Icon className="w-6 h-6" strokeWidth={1.5} />
+                  </div>
+                  <div className="text-center">
+                    <span
+                      className={cn(
+                        "block font-semibold text-sm",
+                        isSelected ? "text-teal-700" : "text-gray-900",
+                      )}
+                    >
+                      {type.label}
+                    </span>
+                    <span className="text-xs text-gray-500 mt-0.5 block">
+                      {type.description}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <FieldError field="propertyType" error={stepErrors.propertyType} />
+        </>
       )}
 
       {/* Commercial Selection */}
@@ -237,10 +258,22 @@ export function Step1PropertyType() {
         <div className="space-y-6">
           {/* Commercial Categories */}
           <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-3">
+            <h3
+              id="listing-category-label"
+              className="text-sm font-medium text-gray-700 mb-3"
+            >
               Select category
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div
+              role="group"
+              aria-labelledby="listing-category-label"
+              aria-describedby={
+                stepErrors.commercialType
+                  ? fieldErrorId("commercialType")
+                  : undefined
+              }
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"
+            >
               {COMMERCIAL_CATEGORIES.map((category) => {
                 const Icon = commercialIconMap[category.id] || Building2;
                 const isSelected = commercialType === category.id;
@@ -255,32 +288,43 @@ export function Step1PropertyType() {
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2",
                       isSelected
                         ? "border-teal-600 bg-teal-50"
-                        : "border-gray-200 bg-white hover:border-gray-300"
+                        : "border-gray-200 bg-white hover:border-gray-300",
                     )}
                   >
                     {isSelected && (
                       <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-teal-600 flex items-center justify-center">
-                        <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                        <Check
+                          className="w-2.5 h-2.5 text-white"
+                          strokeWidth={3}
+                        />
                       </div>
                     )}
                     <div
                       className={cn(
                         "w-10 h-10 rounded-lg flex items-center justify-center",
-                        isSelected ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-500"
+                        isSelected
+                          ? "bg-teal-600 text-white"
+                          : "bg-gray-100 text-gray-500",
                       )}
                     >
                       <Icon className="w-5 h-5" strokeWidth={1.5} />
                     </div>
-                    <span className={cn(
-                      "text-xs font-medium text-center",
-                      isSelected ? "text-teal-700" : "text-gray-700"
-                    )}>
+                    <span
+                      className={cn(
+                        "text-xs font-medium text-center",
+                        isSelected ? "text-teal-700" : "text-gray-700",
+                      )}
+                    >
                       {category.label}
                     </span>
                   </button>
                 );
               })}
             </div>
+            <FieldError
+              field="commercialType"
+              error={stepErrors.commercialType}
+            />
           </div>
 
           {/* Commercial Sub-types */}
@@ -290,32 +334,49 @@ export function Step1PropertyType() {
                 <ChevronRight className="w-4 h-4 text-orange-500" />
                 Select type
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div
+                role="group"
+                aria-describedby={
+                  stepErrors.commercialSubtype
+                    ? fieldErrorId("commercialSubtype")
+                    : undefined
+                }
+                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
+              >
                 {COMMERCIAL_SUBTYPES[commercialType]?.map((subtype) => {
                   const isSelected = commercialSubtype === subtype.id;
 
                   return (
                     <button
                       key={subtype.id}
-                      onClick={() => handleCommercialSubtypeSelect(subtype.id as CommercialSubtype)}
+                      onClick={() =>
+                        handleCommercialSubtypeSelect(
+                          subtype.id as CommercialSubtype,
+                        )
+                      }
                       className={cn(
                         "relative flex flex-col items-start p-4 rounded-lg",
                         "border-2 transition-all duration-200 text-left",
                         "focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2",
                         isSelected
                           ? "border-orange-500 bg-orange-50"
-                          : "border-gray-200 bg-white hover:border-gray-300"
+                          : "border-gray-200 bg-white hover:border-gray-300",
                       )}
                     >
                       {isSelected && (
                         <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center">
-                          <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                          <Check
+                            className="w-2.5 h-2.5 text-white"
+                            strokeWidth={3}
+                          />
                         </div>
                       )}
-                      <span className={cn(
-                        "font-medium text-sm",
-                        isSelected ? "text-orange-700" : "text-gray-900"
-                      )}>
+                      <span
+                        className={cn(
+                          "font-medium text-sm",
+                          isSelected ? "text-orange-700" : "text-gray-900",
+                        )}
+                      >
                         {subtype.label}
                       </span>
                       <span className="text-xs text-gray-500 mt-0.5">
@@ -325,14 +386,20 @@ export function Step1PropertyType() {
                   );
                 })}
               </div>
+              <FieldError
+                field="commercialSubtype"
+                error={stepErrors.commercialSubtype}
+              />
             </div>
           )}
         </div>
       )}
 
       {/* Selection Summary */}
-      {((listingCategory === "residential" && propertyType) || 
-        (listingCategory === "commercial" && commercialType && commercialSubtype)) && (
+      {((listingCategory === "residential" && propertyType) ||
+        (listingCategory === "commercial" &&
+          commercialType &&
+          commercialSubtype)) && (
         <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
@@ -340,13 +407,14 @@ export function Step1PropertyType() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900">
-                {listingCategory === "residential" 
-                  ? PROPERTY_TYPES.find(t => t.id === propertyType)?.label
-                  : `${COMMERCIAL_CATEGORIES.find(c => c.id === commercialType)?.label} - ${COMMERCIAL_SUBTYPES[commercialType!]?.find(s => s.id === commercialSubtype)?.label}`
-                }
+                {listingCategory === "residential"
+                  ? PROPERTY_TYPES.find((t) => t.id === propertyType)?.label
+                  : `${COMMERCIAL_CATEGORIES.find((c) => c.id === commercialType)?.label} - ${COMMERCIAL_SUBTYPES[commercialType!]?.find((s) => s.id === commercialSubtype)?.label}`}
               </p>
               <p className="text-xs text-gray-500">
-                {listingCategory === "residential" ? "Residential Property" : "Commercial Property"}
+                {listingCategory === "residential"
+                  ? "Residential Property"
+                  : "Commercial Property"}
               </p>
             </div>
           </div>

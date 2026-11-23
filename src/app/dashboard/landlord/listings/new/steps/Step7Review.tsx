@@ -28,11 +28,13 @@ import {
   CreditCard,
 } from "lucide-react";
 import { useWizard } from "../context";
+import { FieldError, fieldErrorProps } from "../FieldError";
 import { useStep7Content } from "../useWizardContent";
 import { PROPERTY_TYPES, NAIROBI_AREAS, AMENITY_CATEGORIES } from "../types";
 
 export function Step7Review() {
   const { state, updateFormData, setValidation, goToStep } = useWizard();
+  const stepErrors = state.validation[7]?.errors ?? {};
   const content = useStep7Content();
   const {
     title,
@@ -385,6 +387,7 @@ export function Step7Review() {
               </div>
               <input
                 id="listingTitle"
+                {...fieldErrorProps("title", stepErrors.title)}
                 type="text"
                 value={title || ""}
                 onChange={(e) => updateFormData({ title: e.target.value })}
@@ -398,6 +401,7 @@ export function Step7Review() {
                     "border-red-300 focus:ring-red-500",
                 )}
               />
+              <FieldError field="title" error={stepErrors.title} />
               <div className="flex justify-between mt-1.5">
                 <p className="text-xs text-gray-500">{content.title.helper}</p>
                 <span
@@ -435,6 +439,7 @@ export function Step7Review() {
               </div>
               <textarea
                 id="listingDescription"
+                {...fieldErrorProps("description", stepErrors.description)}
                 value={description || ""}
                 onChange={(e) =>
                   updateFormData({ description: e.target.value })
@@ -449,6 +454,7 @@ export function Step7Review() {
                   "resize-y min-h-[150px] max-h-[400px]",
                 )}
               />
+              <FieldError field="description" error={stepErrors.description} />
               <div className="flex justify-between mt-1.5">
                 <p
                   className={cn(

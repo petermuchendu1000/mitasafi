@@ -1,9 +1,9 @@
 /**
  * Step 5: Commercial Photos Upload
- * 
+ *
  * Category-based photo upload tailored for commercial properties.
  * Shows relevant photo categories based on commercial type/subtype.
- * 
+ *
  * Uses dynamic content from content-config.ts for accurate
  * tips and messaging based on listing type.
  */
@@ -12,10 +12,10 @@
 
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { 
-  Plus, 
-  X, 
-  Star, 
+import {
+  Plus,
+  X,
+  Star,
   AlertCircle,
   MoreHorizontal,
   Camera,
@@ -84,7 +84,11 @@ import {
 } from "lucide-react";
 import { useWizard } from "../context";
 import { usePhotoUpload } from "../usePhotoUpload";
-import { getPhotoCategories, getMinPhotos, type PhotoCategory } from "../commercial-flow-config";
+import {
+  getPhotoCategories,
+  getMinPhotos,
+  type PhotoCategory,
+} from "../commercial-flow-config";
 import { useStep5Content } from "../useWizardContent";
 
 const MAX_PHOTOS = 20;
@@ -169,57 +173,78 @@ interface CategoryPhoto {
 export function Step5CommercialPhotos() {
   const { state, updateFormData, setValidation } = useWizard();
   const { photos, commercialType, commercialSubtype } = state.formData;
-  const { uploadPhoto, deletePhoto, isUploading, errors: uploadErrors, clearErrors } = usePhotoUpload();
-  
+  const {
+    uploadPhoto,
+    deletePhoto,
+    isUploading,
+    errors: uploadErrors,
+    clearErrors,
+  } = usePhotoUpload();
+
   // Get dynamic content based on listing type
   const content = useStep5Content();
-  
+
   const [localErrors, setLocalErrors] = useState<string[]>([]);
-  const [uploadingSlots, setUploadingSlots] = useState<Record<string, boolean>>({});
+  const [uploadingSlots, setUploadingSlots] = useState<Record<string, boolean>>(
+    {},
+  );
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const additionalInputRef = useRef<HTMLInputElement>(null);
 
   // Get photo categories based on commercial type/subtype
-  const photoCategories = useMemo(() => 
-    getPhotoCategories(commercialType, commercialSubtype),
-    [commercialType, commercialSubtype]
-  );
-  
-  const minPhotos = useMemo(() => 
-    getMinPhotos(commercialType, commercialSubtype),
-    [commercialType, commercialSubtype]
+  const photoCategories = useMemo(
+    () => getPhotoCategories(commercialType, commercialSubtype),
+    [commercialType, commercialSubtype],
   );
 
-  // Combine upload errors with local errors
+  const minPhotos = useMemo(
+    () => getMinPhotos(commercialType, commercialSubtype),
+    [commercialType, commercialSubtype],
+  );
+
+  // Combine upload errors with local errors.
+  //
+  // The "add a cover photo" prompt is computed in the effect below and pushed
+  // into wizard state, but this step sets isValid: true because photos are
+  // optional — so the step summary deliberately does not show it. It would
+  // otherwise have gone nowhere at all: visible in neither place.
+  const coverPrompt = state.validation[5]?.errors?.cover;
   const allErrors = [
     ...localErrors,
-    ...uploadErrors.map((e: { fileName: string; message: string }) => `${e.fileName}: ${e.message}`)
+    ...(coverPrompt ? [coverPrompt] : []),
+    ...uploadErrors.map(
+      (e: { fileName: string; message: string }) =>
+        `${e.fileName}: ${e.message}`,
+    ),
   ];
 
   // Convert photos array to category map for easier access
-  const photosByCategory = (photos || []).reduce((acc, photo) => {
-    if (photo.category) {
-      acc[photo.category] = photo as CategoryPhoto;
-    }
-    return acc;
-  }, {} as Record<string, CategoryPhoto>);
+  const photosByCategory = (photos || []).reduce(
+    (acc, photo) => {
+      if (photo.category) {
+        acc[photo.category] = photo as CategoryPhoto;
+      }
+      return acc;
+    },
+    {} as Record<string, CategoryPhoto>,
+  );
 
   // Get additional photos (those without predefined categories)
-  const categoryIds = photoCategories.map(c => c.id);
+  const categoryIds = photoCategories.map((c) => c.id);
   const additionalPhotosList = (photos || []).filter(
-    (p) => p.category && !categoryIds.includes(p.category)
+    (p) => p.category && !categoryIds.includes(p.category),
   );
 
   // Validation
   useEffect(() => {
     const photoCount = photos?.length || 0;
-    const hasCover = photos?.some(p => p.category === "cover");
+    const hasCover = photos?.some((p) => p.category === "cover");
     const errors: Record<string, string> = {};
-    
+
     if (!hasCover && photoCount > 0) {
       errors.cover = "Please add a cover photo";
     }
-    
+
     // Photos are optional but we track the minimum recommendation
     setValidation(5, {
       isValid: true, // Always valid - photos are optional
@@ -229,162 +254,185 @@ export function Step5CommercialPhotos() {
   }, [photos, setValidation]);
 
   // Handle category photo upload
-  const handleCategoryPhoto = useCallback(async (category: string, file: File) => {
-    setLocalErrors([]);
-    clearErrors();
-    
-    const currentPhotos = photos || [];
-    const existingPhoto = currentPhotos.find((p) => p.category === category);
-    
-    // Create a temporary local preview while uploading
-    const tempId = `photo-${category}-${Date.now()}`;
-    const localPreview = URL.createObjectURL(file);
-    
-    // Show uploading state
-    setUploadingSlots(prev => ({ ...prev, [category]: true }));
-    
-    // Add temporary photo with local preview
-    const tempPhoto: CategoryPhoto = {
-      id: tempId,
-      category,
-      preview: localPreview,
-      isUploading: true,
-    };
-    
-    // Remove existing photo for this category and add temp
-    const photosWithTemp = [
-      ...currentPhotos.filter((p) => p.category !== category),
-      tempPhoto,
-    ];
-    updateFormData({ photos: photosWithTemp });
-    
-    // Delete old photo from storage if exists
-    if (existingPhoto?.path) {
-      await deletePhoto(existingPhoto.path);
-    }
-    
-    // Upload to Supabase
-    const result = await uploadPhoto(file, category);
-    
-    setUploadingSlots(prev => ({ ...prev, [category]: false }));
-    
-    if (result) {
-      // Success - update with real URL
-      const finalPhoto: CategoryPhoto = {
+  const handleCategoryPhoto = useCallback(
+    async (category: string, file: File) => {
+      setLocalErrors([]);
+      clearErrors();
+
+      const currentPhotos = photos || [];
+      const existingPhoto = currentPhotos.find((p) => p.category === category);
+
+      // Create a temporary local preview while uploading
+      const tempId = `photo-${category}-${Date.now()}`;
+      const localPreview = URL.createObjectURL(file);
+
+      // Show uploading state
+      setUploadingSlots((prev) => ({ ...prev, [category]: true }));
+
+      // Add temporary photo with local preview
+      const tempPhoto: CategoryPhoto = {
         id: tempId,
         category,
-        preview: result.url,
-        url: result.url,
-        path: result.path,
-        isUploading: false,
+        preview: localPreview,
+        isUploading: true,
       };
-      
-      // Clean up local preview
-      URL.revokeObjectURL(localPreview);
-      
-      updateFormData({
-        photos: [
-          ...currentPhotos.filter((p) => p.category !== category),
-          finalPhoto,
-        ],
-      });
-    } else {
-      // Failed - remove temp photo
-      URL.revokeObjectURL(localPreview);
-      updateFormData({
-        photos: currentPhotos.filter((p) => p.category !== category),
-      });
-    }
-  }, [photos, uploadPhoto, deletePhoto, updateFormData, clearErrors]);
+
+      // Remove existing photo for this category and add temp
+      const photosWithTemp = [
+        ...currentPhotos.filter((p) => p.category !== category),
+        tempPhoto,
+      ];
+      updateFormData({ photos: photosWithTemp });
+
+      // Delete old photo from storage if exists
+      if (existingPhoto?.path) {
+        await deletePhoto(existingPhoto.path);
+      }
+
+      // Upload to Supabase
+      const result = await uploadPhoto(file, category);
+
+      setUploadingSlots((prev) => ({ ...prev, [category]: false }));
+
+      if (result) {
+        // Success - update with real URL
+        const finalPhoto: CategoryPhoto = {
+          id: tempId,
+          category,
+          preview: result.url,
+          url: result.url,
+          path: result.path,
+          isUploading: false,
+        };
+
+        // Clean up local preview
+        URL.revokeObjectURL(localPreview);
+
+        updateFormData({
+          photos: [
+            ...currentPhotos.filter((p) => p.category !== category),
+            finalPhoto,
+          ],
+        });
+      } else {
+        // Failed - remove temp photo
+        URL.revokeObjectURL(localPreview);
+        updateFormData({
+          photos: currentPhotos.filter((p) => p.category !== category),
+        });
+      }
+    },
+    [photos, uploadPhoto, deletePhoto, updateFormData, clearErrors],
+  );
 
   // Handle additional photos upload
-  const handleAdditionalPhotos = useCallback(async (files: FileList | File[]) => {
-    const fileArray = Array.from(files);
-    const currentPhotos = photos || [];
-    const currentCount = currentPhotos.length;
-    const remainingSlots = MAX_PHOTOS - currentCount;
-    
-    if (fileArray.length > remainingSlots) {
-      setLocalErrors([`You can only add ${remainingSlots} more photo${remainingSlots !== 1 ? "s" : ""}`]);
-      return;
-    }
+  const handleAdditionalPhotos = useCallback(
+    async (files: FileList | File[]) => {
+      const fileArray = Array.from(files);
+      const currentPhotos = photos || [];
+      const currentCount = currentPhotos.length;
+      const remainingSlots = MAX_PHOTOS - currentCount;
 
-    setLocalErrors([]);
-    clearErrors();
-
-    // Create all temp photos first with unique IDs
-    const timestamp = Date.now();
-    const tempPhotos: CategoryPhoto[] = fileArray.map((file, idx) => ({
-      id: `photo-extra-${timestamp}-${idx}`,
-      category: `extra-${timestamp}-${idx}`,
-      preview: URL.createObjectURL(file),
-      isUploading: true,
-    }));
-
-    // Add all temp photos at once to state
-    let updatedPhotos = [...currentPhotos, ...tempPhotos];
-    updateFormData({ photos: updatedPhotos });
-
-    // Upload each file sequentially and update state after each
-    for (let idx = 0; idx < fileArray.length; idx++) {
-      const file = fileArray[idx];
-      const tempPhoto = tempPhotos[idx];
-      
-      const result = await uploadPhoto(file, tempPhoto.category);
-      
-      if (result) {
-        URL.revokeObjectURL(tempPhoto.preview);
-        
-        updatedPhotos = updatedPhotos.map((p) =>
-          p.id === tempPhoto.id
-            ? { ...p, preview: result.url, url: result.url, path: result.path, isUploading: false }
-            : p
-        );
-      } else {
-        URL.revokeObjectURL(tempPhoto.preview);
-        updatedPhotos = updatedPhotos.filter((p) => p.id !== tempPhoto.id);
+      if (fileArray.length > remainingSlots) {
+        setLocalErrors([
+          `You can only add ${remainingSlots} more photo${remainingSlots !== 1 ? "s" : ""}`,
+        ]);
+        return;
       }
-      
+
+      setLocalErrors([]);
+      clearErrors();
+
+      // Create all temp photos first with unique IDs
+      const timestamp = Date.now();
+      const tempPhotos: CategoryPhoto[] = fileArray.map((file, idx) => ({
+        id: `photo-extra-${timestamp}-${idx}`,
+        category: `extra-${timestamp}-${idx}`,
+        preview: URL.createObjectURL(file),
+        isUploading: true,
+      }));
+
+      // Add all temp photos at once to state
+      let updatedPhotos = [...currentPhotos, ...tempPhotos];
       updateFormData({ photos: updatedPhotos });
-    }
-  }, [photos, uploadPhoto, updateFormData, clearErrors]);
+
+      // Upload each file sequentially and update state after each
+      for (let idx = 0; idx < fileArray.length; idx++) {
+        const file = fileArray[idx];
+        const tempPhoto = tempPhotos[idx];
+
+        const result = await uploadPhoto(file, tempPhoto.category);
+
+        if (result) {
+          URL.revokeObjectURL(tempPhoto.preview);
+
+          updatedPhotos = updatedPhotos.map((p) =>
+            p.id === tempPhoto.id
+              ? {
+                  ...p,
+                  preview: result.url,
+                  url: result.url,
+                  path: result.path,
+                  isUploading: false,
+                }
+              : p,
+          );
+        } else {
+          URL.revokeObjectURL(tempPhoto.preview);
+          updatedPhotos = updatedPhotos.filter((p) => p.id !== tempPhoto.id);
+        }
+
+        updateFormData({ photos: updatedPhotos });
+      }
+    },
+    [photos, uploadPhoto, updateFormData, clearErrors],
+  );
 
   // Remove photo
-  const removePhoto = useCallback(async (photoId: string) => {
-    const currentPhotos = photos || [];
-    const photoToRemove = currentPhotos.find((p) => p.id === photoId);
-    
-    if (photoToRemove?.path) {
-      await deletePhoto(photoToRemove.path);
-    }
-    
-    if (photoToRemove?.preview?.startsWith("blob:")) {
-      URL.revokeObjectURL(photoToRemove.preview);
-    }
+  const removePhoto = useCallback(
+    async (photoId: string) => {
+      const currentPhotos = photos || [];
+      const photoToRemove = currentPhotos.find((p) => p.id === photoId);
 
-    updateFormData({ 
-      photos: currentPhotos.filter((p) => p.id !== photoId) 
-    });
-  }, [photos, deletePhoto, updateFormData]);
+      if (photoToRemove?.path) {
+        await deletePhoto(photoToRemove.path);
+      }
 
-  const handleFileChange = useCallback((category: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleCategoryPhoto(category, file);
-    }
-    if (fileInputRefs.current[category]) {
-      fileInputRefs.current[category]!.value = "";
-    }
-  }, [handleCategoryPhoto]);
+      if (photoToRemove?.preview?.startsWith("blob:")) {
+        URL.revokeObjectURL(photoToRemove.preview);
+      }
 
-  const handleAdditionalFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      handleAdditionalPhotos(e.target.files);
-    }
-    if (additionalInputRef.current) {
-      additionalInputRef.current.value = "";
-    }
-  }, [handleAdditionalPhotos]);
+      updateFormData({
+        photos: currentPhotos.filter((p) => p.id !== photoId),
+      });
+    },
+    [photos, deletePhoto, updateFormData],
+  );
+
+  const handleFileChange = useCallback(
+    (category: string, e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        handleCategoryPhoto(category, file);
+      }
+      if (fileInputRefs.current[category]) {
+        fileInputRefs.current[category]!.value = "";
+      }
+    },
+    [handleCategoryPhoto],
+  );
+
+  const handleAdditionalFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        handleAdditionalPhotos(e.target.files);
+      }
+      if (additionalInputRef.current) {
+        additionalInputRef.current.value = "";
+      }
+    },
+    [handleAdditionalPhotos],
+  );
 
   const photoCount = photos?.length || 0;
   const hasEnoughPhotos = photoCount >= minPhotos;
@@ -396,9 +444,7 @@ export function Step5CommercialPhotos() {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           {content.header.title}
         </h2>
-        <p className="text-gray-500">
-          {content.header.subtitle}
-        </p>
+        <p className="text-gray-500">{content.header.subtitle}</p>
       </div>
 
       {/* Error Messages */}
@@ -408,7 +454,9 @@ export function Step5CommercialPhotos() {
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
               {allErrors.map((error, idx) => (
-                <p key={idx} className="text-sm text-red-600">{error}</p>
+                <p key={idx} className="text-sm text-red-600">
+                  {error}
+                </p>
               ))}
             </div>
           </div>
@@ -422,19 +470,20 @@ export function Step5CommercialPhotos() {
           const photo = photosByCategory[category.id];
           const IconComponent = ICON_MAP[category.icon] || Camera;
           const isCover = category.id === "cover";
-          const isSlotUploading = uploadingSlots[category.id] || photo?.isUploading;
-          
+          const isSlotUploading =
+            uploadingSlots[category.id] || photo?.isUploading;
+
           return (
             <div
               key={category.id}
               className={cn(
                 "relative aspect-square rounded-xl overflow-hidden",
                 "border-2 border-dashed transition-all",
-                photo 
-                  ? "border-transparent" 
-                  : isCover 
-                    ? "border-teal-300 bg-teal-50/50" 
-                    : "border-gray-200 bg-gray-50 hover:border-gray-300"
+                photo
+                  ? "border-transparent"
+                  : isCover
+                    ? "border-teal-300 bg-teal-50/50"
+                    : "border-gray-200 bg-gray-50 hover:border-gray-300",
               )}
             >
               {photo ? (
@@ -445,14 +494,14 @@ export function Step5CommercialPhotos() {
                     alt={category.label}
                     className="w-full h-full object-cover"
                   />
-                  
+
                   {/* Loading overlay */}
                   {isSlotUploading && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                       <Loader2 className="w-8 h-8 text-white animate-spin" />
                     </div>
                   )}
-                  
+
                   {/* Cover badge */}
                   {isCover && !isSlotUploading && (
                     <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-teal-600 text-white text-xs font-medium rounded-lg">
@@ -460,7 +509,7 @@ export function Step5CommercialPhotos() {
                       Cover
                     </div>
                   )}
-                  
+
                   {/* Remove button */}
                   {!isSlotUploading && (
                     <button
@@ -476,26 +525,36 @@ export function Step5CommercialPhotos() {
                 // Empty slot
                 <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer group">
                   <input
-                    ref={(el) => { fileInputRefs.current[category.id] = el; }}
+                    ref={(el) => {
+                      fileInputRefs.current[category.id] = el;
+                    }}
                     type="file"
                     accept={ACCEPTED_TYPES.join(",")}
                     onChange={(e) => handleFileChange(category.id, e)}
                     className="hidden"
                   />
-                  <IconComponent className={cn(
-                    "w-8 h-8 mb-2 transition-colors",
-                    isCover ? "text-teal-400 group-hover:text-teal-500" : "text-gray-300 group-hover:text-gray-400"
-                  )} />
-                  <span className={cn(
-                    "text-sm font-medium",
-                    isCover ? "text-teal-600" : "text-gray-600"
-                  )}>
+                  <IconComponent
+                    className={cn(
+                      "w-8 h-8 mb-2 transition-colors",
+                      isCover
+                        ? "text-teal-400 group-hover:text-teal-500"
+                        : "text-gray-300 group-hover:text-gray-400",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "text-sm font-medium",
+                      isCover ? "text-teal-600" : "text-gray-600",
+                    )}
+                  >
                     {category.label}
                   </span>
-                  <span className={cn(
-                    "text-xs mt-0.5",
-                    isCover ? "text-teal-500" : "text-gray-400"
-                  )}>
+                  <span
+                    className={cn(
+                      "text-xs mt-0.5",
+                      isCover ? "text-teal-500" : "text-gray-400",
+                    )}
+                  >
                     + Add
                   </span>
                 </label>
@@ -510,7 +569,7 @@ export function Step5CommercialPhotos() {
             className={cn(
               "relative aspect-square rounded-xl overflow-hidden",
               "border-2 border-dashed border-gray-200 bg-gray-50",
-              "hover:border-gray-300 transition-colors"
+              "hover:border-gray-300 transition-colors",
             )}
           >
             <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer group">
@@ -535,7 +594,9 @@ export function Step5CommercialPhotos() {
       {/* Additional Photos Grid */}
       {additionalPhotosList.length > 0 && (
         <div className="mb-6">
-          <p className="text-sm font-medium text-gray-700 mb-3">Additional photos</p>
+          <p className="text-sm font-medium text-gray-700 mb-3">
+            Additional photos
+          </p>
           <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
             {additionalPhotosList.map((photo) => (
               <div
@@ -567,12 +628,14 @@ export function Step5CommercialPhotos() {
       )}
 
       {/* Photo Count Status */}
-      <div className={cn(
-        "flex items-center justify-center gap-2 py-3 px-4 rounded-lg",
-        hasEnoughPhotos 
-          ? "bg-teal-50 text-teal-700" 
-          : "bg-orange-50 text-orange-700"
-      )}>
+      <div
+        className={cn(
+          "flex items-center justify-center gap-2 py-3 px-4 rounded-lg",
+          hasEnoughPhotos
+            ? "bg-teal-50 text-teal-700"
+            : "bg-orange-50 text-orange-700",
+        )}
+      >
         <Camera className="w-4 h-4" />
         <span className="text-sm font-medium">
           {photoCount} of {MAX_PHOTOS} photos
@@ -582,7 +645,9 @@ export function Step5CommercialPhotos() {
 
       {/* Tips */}
       <div className="mt-6 bg-gray-50 rounded-xl p-4">
-        <p className="text-sm font-medium text-gray-700 mb-2">{content.tips.title}</p>
+        <p className="text-sm font-medium text-gray-700 mb-2">
+          {content.tips.title}
+        </p>
         <ul className="text-sm text-gray-500 space-y-1">
           {content.tips.items?.map((tip, idx) => (
             <li key={idx}>• {tip}</li>

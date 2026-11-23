@@ -102,9 +102,19 @@ describe("wizard validation errors are announced", () => {
         // not the target. Require that at least one of them is a real id.
         const quoted = [...m[2].matchAll(/"([^"]+)"/g)].map((q) => q[1]);
         if (!quoted.length) continue;
-        const resolves = quoted.some((q) =>
-          new RegExp(`\\bid="${q}"`).test(src),
-        );
+        const resolves = quoted.some((q) => {
+          // Literal: the id is written out in this file.
+          if (new RegExp(`\\bid="${q}"`).test(src)) return true;
+          // Derived: `fieldErrorId("x")` renders as id="x-error", and the
+          // element carrying it is <FieldError field="x" />, so no literal
+          // id="x" ever appears. Requiring the component is STRICTER than
+          // requiring a literal id: it proves the message is actually
+          // rendered, not merely named somewhere.
+          return (
+            new RegExp(`fieldErrorId\\(\\s*"${q}"`).test(m[2]) &&
+            new RegExp(`<FieldError\\s+field="${q}"`).test(src)
+          );
+        });
         if (!resolves) bad.push(quoted.join("|"));
       }
       if (bad.length) broken[rel] = bad;
