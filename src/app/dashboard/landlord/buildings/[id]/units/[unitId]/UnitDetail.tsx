@@ -12,9 +12,9 @@
  *
  *   Two links went nowhere. "Edit Unit" (from the header and Quick Actions)
  *   pointed at a route that did not exist — that route is now built. "Renew
- *   Lease" pointed at another that still does not, and is removed rather than
- *   left as a 404; so is the chevron to /dashboard/landlord/tenants/<id>,
- *   which has no route either.
+ *   Lease" pointed at another that still does not, and stays removed rather
+ *   than left as a 404. The chevron to /dashboard/landlord/tenants/<id> was
+ *   removed with it and is back: that route now exists.
  *
  *   "Record Payment" opened a modal that saved nothing. It writes now.
  */
@@ -24,6 +24,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  ChevronRight,
   Home,
   Edit2,
   Users,
@@ -363,7 +364,13 @@ export function UnitDetail({ data }: { data: UnitDetailData }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {tenant.name}
+                          <Link
+                            href={`/dashboard/landlord/tenants/${tenant.id}`}
+                            className="hover:text-teal-600 inline-flex items-center gap-1"
+                          >
+                            {tenant.name}
+                            <ChevronRight className="w-4 h-4 text-gray-300" />
+                          </Link>
                         </h3>
                         <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                           <ShieldCheck className="w-3 h-3" />
@@ -555,11 +562,21 @@ export function UnitDetail({ data }: { data: UnitDetailData }) {
                     <Edit2 className="w-4 h-4 text-gray-400" />
                     Edit this unit
                   </Link>
+                  {tenant && (
+                    <Link
+                      href={`/dashboard/landlord/tenants/${tenant.id}`}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                    >
+                      <Users className="w-4 h-4 text-gray-400" />
+                      Tenant profile
+                    </Link>
+                  )}
                   {/*
-                    "Renew lease" used to sit here pointing at a route that
-                    does not exist, as did a chevron to
-                    /dashboard/landlord/tenants/<id>. Both were 404s and both
-                    are removed rather than left to fail.
+                    "Renew lease" used to sit here pointing at a route that does
+                    not exist. It is still missing and the link is still absent;
+                    the tenant chevron, removed at the same time for the same
+                    reason, is back because /dashboard/landlord/tenants/<id> now
+                    exists.
                   */}
                 </div>
                 {data.pastLeaseCount > 0 && (

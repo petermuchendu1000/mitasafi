@@ -99,3 +99,10 @@ supabase/.temp
 # -------------------------------------------
 .next/analyze/
 analyze/
+
+# Verification artifacts. A harness with an unset output directory wrote
+# `undefined/48-unit-after-payment.png` into the repo root and it reached a
+# commit; screenshots belong in the session scratchpad, never here.
+/undefined/
+/shots*/
+*.screenshot.png

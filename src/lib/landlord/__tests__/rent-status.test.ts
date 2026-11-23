@@ -212,6 +212,35 @@ describe("rent status: the grace boundary", () => {
     expect(r.daysLate).toBe(1);
   });
 
+  it("reports NO lateness once the month is settled", () => {
+    // daysLate used to be calendar-only, so a paid month still said "13 days
+    // late" after the grace period. One call site had already been patched to
+    // hide it; the tenant directory asked the same question and got the same
+    // wrong answer. Lateness belongs to money still owed.
+    const r = a101({
+      amountPaid: 85000,
+      today: { year: 2026, month: 11, day: 23 },
+    });
+    expect(r.status).toBe("paid");
+    expect(r.balance).toBe(0);
+    expect(r.daysLate).toBe(0);
+  });
+
+  it("keeps full lateness while any balance remains", () => {
+    // A part payment must not shorten the clock on what is still owed.
+    const r = a101({
+      amountPaid: 1,
+      today: { year: 2026, month: 11, day: 23 },
+    });
+    expect(r.status).toBe("partial");
+    expect(r.balance).toBe(84999);
+    expect(r.daysLate).toBe(13);
+  });
+
+  it("an overpayment is not late either", () => {
+    expect(a101({ amountPaid: 999999 }).daysLate).toBe(0);
+  });
+
   it("counts the days late from the end of grace, not the due day", () => {
     expect(a101({ today: { year: 2026, month: 11, day: 23 } }).daysLate).toBe(
       13,

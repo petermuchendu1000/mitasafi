@@ -173,14 +173,36 @@ export function rentStatusForPeriod(input: RentStatusInput): RentStatusResult {
 
   const graceEndsOn = addDays(dueDate, Math.max(0, input.gracePeriodDays));
 
+  // Calendar only: this decides overdue vs pending below, where it must not
+  // depend on how much has been paid (that branch is only reached when
+  // nothing has).
   const pastGrace = compareCivil(input.today, graceEndsOn) > 0;
-  const daysLate = pastGrace
-    ? Math.round(
-        (Date.UTC(input.today.year, input.today.month - 1, input.today.day) -
-          Date.UTC(graceEndsOn.year, graceEndsOn.month - 1, graceEndsOn.day)) /
-          86_400_000,
-      )
-    : 0;
+
+  // Lateness, by contrast, is a property of money STILL OWED.
+  //
+  // This was calendar-only, so a month paid in full still reported "13 days
+  // late" once the grace period had passed. I patched the symptom at one call
+  // site (the unit detail badge read "Paid · 13d late") and left the field
+  // itself wrong; the tenant directory then asked the same question and got
+  // the same wrong answer, which is how it was caught.
+  //
+  // Keeping the two conditions separate rather than overloading pastGrace
+  // avoids a hidden coupling: a later edit to the status branches cannot
+  // silently change what daysLate means, and vice versa. A balance still owed
+  // keeps its full lateness, so nothing that IS late can be made to look
+  // current by this.
+  const daysLate =
+    pastGrace && balance > 0
+      ? Math.round(
+          (Date.UTC(input.today.year, input.today.month - 1, input.today.day) -
+            Date.UTC(
+              graceEndsOn.year,
+              graceEndsOn.month - 1,
+              graceEndsOn.day,
+            )) /
+            86_400_000,
+        )
+      : 0;
 
   let status: RentStatus;
   if (due === 0 || paid >= due) {
