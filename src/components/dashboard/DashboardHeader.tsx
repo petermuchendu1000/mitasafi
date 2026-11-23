@@ -62,5 +62,4 @@ export function DashboardHeader(props: DashboardHeaderProps) {
 }
 
 // Export individual components for flexible usage
-export { RoleSwitchBanner } from "./RoleSwitchBanner";
 export { UserProfileDropdown } from "./UserProfileDropdown";

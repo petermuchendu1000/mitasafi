@@ -134,9 +134,32 @@ export function useOptimizedValidation(
   }, [debounceMs]);
 
   // Validate on form data change (debounced)
+  //
+  // SUPPRESSED DELIBERATELY, with the reasoning rather than a shrug.
+  //
+  // isValidating means "a debounced validation run has been started and has not come
+  // back yet". That is a fact about work in flight, not a function of the inputs:
+  // formData changing is what STARTS the run, and nothing about formData says whether
+  // the 200ms timer has since elapsed. There is no render-time expression that
+  // computes it, which is what every other fix in this sweep relied on.
+  //
+  // Note what is NOT suppressed. This same effect used to call setErrors({}) here as
+  // well; that one WAS derivable — with no type selected there are no errors — and it
+  // is now `const errors = type ? validatedErrors : EMPTY_ERRORS` above. Removing it
+  // is what exposed this line, since the rule reports only the first synchronous
+  // setState in an effect. The two were not the same kind of problem and have not
+  // been given the same treatment.
+  //
+  // The escapes are the same three as in ListingMap and are no better here: deferring
+  // the call hides the cascade without removing it, and starting out "validating" on
+  // mount would spin the indicator for forms nobody has touched.
+  //
+  // Pinned instead by __tests__/useOptimizedValidation.test.ts, which asserts
+  // isValidating goes true when the form changes and false once the run completes.
   useEffect(() => {
     if (!type) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsValidating(true);
     validatorRef.current?.validate(formData, type, subtype);
   }, [formData, type, subtype]);

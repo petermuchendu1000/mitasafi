@@ -194,6 +194,38 @@ export function ListingMap({
         setMapError(true);
       });
     } catch {
+      /**
+       * SUPPRESSED DELIBERATELY, with the reasoning rather than a shrug.
+       *
+       * react-hooks/set-state-in-effect is right that this is a synchronous setState
+       * in an effect body, and right that it costs a render. It is wrong that the
+       * render is avoidable.
+       *
+       * Everything else this rule flagged across the codebase was a value that could
+       * be known at render time — read from a prop, from the URL, from a store, or
+       * derived from other state — and all of those were removed rather than
+       * suppressed. This one cannot be: whether `new mapboxgl.Map(...)` throws is not
+       * knowable until it is called, it can only be called once there is a DOM node
+       * to mount into, and a DOM node only exists after a render. Nothing can tell us
+       * the map failed before we have tried.
+       *
+       * The three escapes available are all worse than the warning. Wrapping the call
+       * in queueMicrotask or an inner async IIFE silences the rule while leaving the
+       * cascading render exactly where it was — checked directly against the rule;
+       * that is laundering, not fixing. Rendering the fallback optimistically would
+       * show "Map not available" to everyone whose map works. Pushing the try/catch
+       * into a child so the failure arrives as a prop just moves the same setState
+       * one component up.
+       *
+       * So the rule is silenced here and the behaviour is pinned by a test instead:
+       * __tests__/ListingMap.error.test.tsx renders with a constructor that throws and
+       * asserts the fallback appears. Silencing a rule without that test would be the
+       * actual sin.
+       */
+      // The directive must sit immediately above the statement: a second comment
+      // line between them makes "next line" mean the comment, and the rule still
+      // fires. That is how the first attempt at this was caught.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMapError(true);
     }
 
