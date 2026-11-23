@@ -8,21 +8,26 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Save, Loader2, Building2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Building2 } from "lucide-react";
 import { useWizard } from "./context";
-import { TOTAL_STEPS, WIZARD_STEPS } from "./types";
+import { TOTAL_STEPS } from "./types";
 
 interface WizardNavigationProps {
-  onSaveDraft?: () => Promise<void>;
   onSave?: () => Promise<void>;
+  /**
+   * What the submit is doing right now ("Uploading photos… 2 of 4"). Saving a
+   * building uploads photos first, which on a slow connection is long enough
+   * that a bare spinner reads as a hang.
+   */
+  progressLabel?: string | null;
 }
 
 export function WizardNavigation({
-  onSaveDraft,
   onSave,
+  progressLabel,
 }: WizardNavigationProps) {
   const { state, nextStep, prevStep, canProceed } = useWizard();
-  const { currentStep, isSaving, isSubmitting, isDirty, lastSaved } = state;
+  const { currentStep, isSubmitting } = state;
 
   const isFirstStep = currentStep === 1;
   const isLastStep = currentStep === TOTAL_STEPS;
@@ -41,12 +46,6 @@ export function WizardNavigation({
   const handleSave = async () => {
     if (onSave && canContinue) {
       await onSave();
-    }
-  };
-
-  const handleSaveDraft = async () => {
-    if (onSaveDraft) {
-      await onSaveDraft();
     }
   };
 
@@ -71,30 +70,20 @@ export function WizardNavigation({
           )}
         </div>
 
-        {/* Center: Save Status */}
+        {/*
+          A "Save draft" button used to live here. It called a handler that
+          waited 1000ms and alerted "Draft saved successfully!" without writing
+          anything. There is nowhere for a draft to go — buildings_status_check
+          is (active | inactive | archived), there is no drafts table, and Step
+          4 keeps photos as base64 so the browser's storage quota is not an
+          option either. It is removed rather than left lying; giving drafts a
+          real home is a schema change.
+        */}
         <div className="flex-1 flex justify-center">
-          {isDirty && !isSaving && (
-            <button
-              onClick={handleSaveDraft}
-              className={cn(
-                "inline-flex items-center gap-2 px-3 py-1.5 rounded-md",
-                "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
-                "transition-colors text-xs font-medium",
-              )}
-            >
-              <Save className="w-3.5 h-3.5" />
-              Save draft
-            </button>
-          )}
-          {isSaving && (
+          {isSubmitting && progressLabel && (
             <span className="inline-flex items-center gap-2 text-xs text-gray-500">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Saving...
-            </span>
-          )}
-          {lastSaved && !isDirty && !isSaving && (
-            <span className="text-xs text-gray-400">
-              Saved {formatRelativeTime(lastSaved)}
+              {progressLabel}
             </span>
           )}
         </div>
@@ -117,7 +106,7 @@ export function WizardNavigation({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
+                  Saving…
                 </>
               ) : (
                 <>
@@ -147,21 +136,4 @@ export function WizardNavigation({
       </div>
     </div>
   );
-}
-
-// Helper function for relative time
-function formatRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-
-  if (diffMins < 1) return "just now";
-  if (diffMins === 1) return "1 min ago";
-  if (diffMins < 60) return `${diffMins} mins ago`;
-
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours === 1) return "1 hour ago";
-  if (diffHours < 24) return `${diffHours} hours ago`;
-
-  return date.toLocaleDateString();
 }

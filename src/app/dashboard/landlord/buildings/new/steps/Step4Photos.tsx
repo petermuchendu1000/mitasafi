@@ -22,9 +22,14 @@ import {
 } from "lucide-react";
 import { useWizard } from "../context";
 import { type StepValidation } from "../types";
+import {
+  selectPhotos,
+  DEFAULT_PHOTO_LIMITS,
+} from "@/lib/landlord/photo-selection";
 
-const MAX_PHOTOS = 20;
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+// The limits themselves live with the rules, in photo-selection.ts;
+// MAX_PHOTOS stays here because the UI counts against it.
+const MAX_PHOTOS = DEFAULT_PHOTO_LIMITS.maxPhotos;
 
 const PHOTO_SUGGESTIONS = [
   "Building exterior (front view)",
@@ -78,48 +83,61 @@ export function Step4Photos() {
     }
   }, []);
 
+  /**
+   * Take the selected files into form state.
+   *
+   * THIS NEVER WORKED BEFORE, and the reason is worth keeping written down.
+   * The previous version held on to `files` — the LIVE FileList owned by the
+   * input element — and, inside each FileReader's async onload, checked
+   * `newPhotos.length === files.length` before committing. handleFileChange
+   * resets `fileInputRef.current.value = ""` immediately after calling this,
+   * which empties that same FileList. So by the time onload ran, files.length
+   * was 0, the check was `1 === 0`, and updateFormData was never called.
+   * Measured in a real browser: picking a photo left "0 / 20 photos uploaded"
+   * with no error shown and nothing in state.
+   *
+   * Two things fix it. selectPhotos returns a plain ARRAY, snapshotting the
+   * selection away from the input. And the readers are awaited together rather
+   * than racing a counter, so a file that is skipped cannot strand the rest —
+   * the old counter could never reach its target if any file was rejected,
+   * which silently dropped the whole selection.
+   */
   const processFiles = useCallback(
-    (files: FileList | null) => {
-      if (!files) return;
-
+    async (files: FileList | null) => {
       setError(null);
-      const newPhotos: string[] = [];
-      const totalPhotos = formData.photos.length + files.length;
 
-      if (totalPhotos > MAX_PHOTOS) {
-        setError(
-          `Maximum ${MAX_PHOTOS} photos allowed. You can add ${MAX_PHOTOS - formData.photos.length} more.`,
-        );
+      const { accepted, rejected } = selectPhotos(
+        formData.photos.length,
+        files,
+      );
+      if (rejected.length > 0) setError(rejected.join(" "));
+      if (accepted.length === 0) return;
+
+      const read = (file: File) =>
+        new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) =>
+            resolve(e.target?.result ? (e.target.result as string) : null);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(file);
+        });
+
+      const results = await Promise.all(accepted.map(read));
+      const newPhotos = results.filter((r): r is string => r !== null);
+      if (newPhotos.length === 0) {
+        setError("Those photos could not be read. Try different files.");
         return;
       }
+      if (newPhotos.length < accepted.length) {
+        setError(
+          `${accepted.length - newPhotos.length} photo(s) could not be read.`,
+        );
+      }
 
-      Array.from(files).forEach((file) => {
-        if (!file.type.startsWith("image/")) {
-          setError("Please upload only image files (JPEG, PNG, WebP)");
-          return;
-        }
-
-        if (file.size > MAX_FILE_SIZE) {
-          setError("Each image must be under 5MB");
-          return;
-        }
-
-        // Create a preview URL (in production, upload to storage)
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            newPhotos.push(e.target.result as string);
-            if (newPhotos.length === files.length) {
-              const updatedPhotos = [...formData.photos, ...newPhotos];
-              updateFormData({
-                photos: updatedPhotos,
-                // Set first photo as cover if none set
-                cover_photo: formData.cover_photo || updatedPhotos[0],
-              });
-            }
-          }
-        };
-        reader.readAsDataURL(file);
+      const updatedPhotos = [...formData.photos, ...newPhotos];
+      updateFormData({
+        photos: updatedPhotos,
+        cover_photo: formData.cover_photo || updatedPhotos[0],
       });
     },
     [formData.photos, formData.cover_photo, updateFormData],
@@ -130,14 +148,14 @@ export function Step4Photos() {
       e.preventDefault();
       e.stopPropagation();
       setDragActive(false);
-      processFiles(e.dataTransfer.files);
+      void processFiles(e.dataTransfer.files);
     },
     [processFiles],
   );
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      processFiles(e.target.files);
+      void processFiles(e.target.files);
       // Reset input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
