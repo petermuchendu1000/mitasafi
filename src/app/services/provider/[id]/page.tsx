@@ -46,6 +46,7 @@ import type { ReviewWithReviewer } from "@/types/reviews";
 import { ProviderCard } from "@/components/services/ProviderCard";
 import { SocialLinksSection } from "@/components/services/SocialLinksSection";
 import { ShareButton } from "@/components/services/ShareButton";
+import { TrackProviderView } from "@/components/services/TrackProviderView";
 import { createClient } from "@/lib/supabase/server";
 import { ExpandableText } from "@/components/ui/ExpandableText";
 import { siteUrl } from "@/lib/site/urls";
@@ -468,8 +469,30 @@ export default async function ProviderProfilePage({ params }: PageProps) {
     })),
   };
 
+  // Cheapest active service, for the recently-viewed card. servicesWithPricing is
+  // already built above; quote-only services have a null price and are skipped.
+  const servicePrices = servicesWithPricing
+    .map((s) => s.price)
+    .filter((price): price is number => typeof price === "number");
+  const minServicePrice =
+    servicePrices.length > 0 ? Math.min(...servicePrices) : null;
+
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Record this visit for the home page's "Recently viewed" section. Renders
+          nothing; see components/services/TrackProviderView.tsx for why this writer
+          did not previously exist. */}
+      <TrackProviderView
+        id={provider.id}
+        businessName={provider.business_name}
+        tagline={(providerAny.tagline as string | null) ?? null}
+        logoUrl={provider.profile_photo_url ?? null}
+        ratingAverage={provider.average_rating ?? null}
+        ratingCount={provider.total_reviews ?? null}
+        minPrice={minServicePrice}
+        categoryIds={(provider.categories ?? []).join(",")}
+      />
+
       {/* JSON-LD Structured Data for SEO */}
       <script
         type="application/ld+json"

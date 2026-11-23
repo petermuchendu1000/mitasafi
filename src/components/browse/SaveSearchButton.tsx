@@ -17,6 +17,10 @@ import { useToast } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { createArrayStore } from "@/lib/browser-storage/local-store";
 import { useLocalStore } from "@/lib/browser-storage/useLocalStore";
+import {
+  canonicalSearchHash,
+  storedListContains,
+} from "@/lib/search/criteria-hash";
 
 interface SearchCriteria {
   areas?: string[];
@@ -79,14 +83,11 @@ function formatCriteriaLabel(criteria: SearchCriteria): string {
 /**
  * Searches this browser has already been notified about.
  *
- * Each entry is `JSON.stringify(searchCriteria)` — the scheme that was already in use,
- * kept as-is because changing it would orphan everything users have stored. It is
- * fragile in a way worth recording: JSON.stringify depends on key insertion order, so
- * the same logical search built with its keys in a different order hashes differently
- * and the button would offer to save it again. Normalising the comparison (parse each
- * side and re-stringify with sorted keys) would fix that without a migration, but it is
- * a change to matching behaviour rather than to this lint finding, so it is reported
- * and not made here.
+ * Entries are a canonical hash of the criteria — keys sorted, unset fields dropped,
+ * array filters sorted — rather than a bare JSON.stringify, whose output depends on
+ * the order the object happened to be built in. Entries written by the previous
+ * scheme are plain JSON and canonicalise to the same string, so nothing already in a
+ * user's browser is orphaned and no migration runs. See lib/search/criteria-hash.ts.
  */
 const savedSearchesStore = createArrayStore<string>(
   "mitasafi_saved_searches",
@@ -116,7 +117,7 @@ export function SaveSearchButton({
   const [error, setError] = useState<string | null>(null);
 
   const savedSearches = useLocalStore(savedSearchesStore);
-  const searchHash = JSON.stringify(searchCriteria);
+  const searchHash = canonicalSearchHash(searchCriteria);
 
   // Derived. The effect this replaces re-read localStorage and re-parsed it on every
   // render, not once: `searchCriteria` is an object literal built inline by
@@ -125,11 +126,13 @@ export function SaveSearchButton({
   // the cost rather than removing it.
   const isSaved =
     justSaved ||
-    (isAuthenticated && !!userId && savedSearches.includes(searchHash));
+    (isAuthenticated &&
+      !!userId &&
+      storedListContains(savedSearches, searchCriteria));
 
   // Handle successful alert creation (from modal or quick save)
   const handleSuccess = () => {
-    if (!savedSearches.includes(searchHash)) {
+    if (!storedListContains(savedSearches, searchCriteria)) {
       savedSearchesStore.write([...savedSearches, searchHash]);
     }
     setJustSaved(true);

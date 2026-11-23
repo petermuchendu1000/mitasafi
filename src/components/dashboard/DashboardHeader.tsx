@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { UserProfileDropdown } from "./UserProfileDropdown";
 import type { UserRole } from "@/types/db-helpers";
 import { normalizeRoleParam } from "@/lib/identity/roles";
+import { markRoleNewlyAdded } from "@/lib/identity/newly-added-roles";
 
 interface DashboardHeaderProps {
   userName: string;
@@ -29,6 +30,24 @@ function DashboardHeaderInner({
   // normalizeRoleParam returns null for anything unrecognised, so ?newRole=junk no
   // longer reaches roleConfig[...] as a key.
   const newRole = normalizeRoleParam(searchParams.get("newRole"));
+
+  // Remember that this role was just added, so the "New" badge survives the
+  // ?newRole= parameter leaving the URL.
+  //
+  // This is the writer that went missing. RoleSwitchBanner was the only caller of
+  // markRoleNewlyAdded and has been deleted for having no call sites of its own —
+  // but it was never rendered either, so the key has in fact never been written and
+  // the badge has only ever lasted as long as the query parameter. Recording it here
+  // is where it belonged anyway: this is the component that learns a role was added,
+  // and it is on every dashboard page rather than on a banner nobody mounted.
+  //
+  // markRoleNewlyAdded does not overwrite an existing timestamp, so revisiting the
+  // URL does not extend the seven days; and it writes nothing when the role is
+  // already recorded, so it cannot loop through its own notification. No setState
+  // here — the badge is derived from the store inside UserProfileDropdown.
+  useEffect(() => {
+    if (newRole) markRoleNewlyAdded(newRole);
+  }, [newRole]);
 
   return (
     <UserProfileDropdown

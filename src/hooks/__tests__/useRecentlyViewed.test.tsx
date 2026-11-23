@@ -3,8 +3,8 @@
  */
 
 /**
- * Recently-viewed providers and services are read from two stores, not loaded into
- * state by a mount effect.
+ * Recently-viewed providers are read from a store, not loaded into state by a mount
+ * effect.
  *
  * A NOTE ON WHAT THIS FEATURE DOES
  *   Nothing in the repository calls addProvider, addService, trackProviderView or
@@ -20,7 +20,6 @@ import { renderHook, act } from "@testing-library/react";
 import { useRecentlyViewed, trackProviderView } from "../useRecentlyViewed";
 
 const PROVIDERS_KEY = "mitasafi_recently_viewed_providers";
-const SERVICES_KEY = "mitasafi_recently_viewed_services";
 const DAY = 86_400_000;
 
 function storedProvider(id: string, viewedAt: number) {
@@ -33,19 +32,6 @@ function storedProvider(id: string, viewedAt: number) {
     rating_count: 1,
     min_price: 100,
     categories: [],
-    viewedAt,
-  };
-}
-
-function storedService(id: string, viewedAt: number) {
-  return {
-    id,
-    name: `Service ${id}`,
-    slug: `s-${id}`,
-    category_name: "Cleaning",
-    category_slug: "cleaning",
-    subcategory_name: "Deep",
-    subcategory_slug: "deep",
     viewedAt,
   };
 }
@@ -127,18 +113,6 @@ describe("reading", () => {
 
     const { result } = renderHook(() => useRecentlyViewed());
     expect(result.current.providers.map((p) => p.id)).toEqual(["a"]);
-  });
-
-  it("reads providers and services independently", () => {
-    localStorage.setItem(
-      SERVICES_KEY,
-      JSON.stringify([storedService("s1", Date.now())]),
-    );
-
-    const { result } = renderHook(() => useRecentlyViewed());
-    expect(result.current.providers).toHaveLength(0);
-    expect(result.current.services).toHaveLength(1);
-    expect(result.current.hasHistory).toBe(true);
   });
 });
 
@@ -253,14 +227,10 @@ describe("writing", () => {
     setItem.mockRestore();
   });
 
-  it("clearAll removes both keys", () => {
+  it("clearAll removes the key", () => {
     localStorage.setItem(
       PROVIDERS_KEY,
       JSON.stringify([storedProvider("a", Date.now())]),
-    );
-    localStorage.setItem(
-      SERVICES_KEY,
-      JSON.stringify([storedService("s", Date.now())]),
     );
     const { result } = renderHook(() => useRecentlyViewed());
 
@@ -269,7 +239,6 @@ describe("writing", () => {
     });
 
     expect(localStorage.getItem(PROVIDERS_KEY)).toBeNull();
-    expect(localStorage.getItem(SERVICES_KEY)).toBeNull();
     expect(result.current.hasHistory).toBe(false);
   });
 });

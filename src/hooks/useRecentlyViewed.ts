@@ -1,7 +1,7 @@
 // =============================================================================
 // MITASAFI: RECENTLY VIEWED HOOK
 // =============================================================================
-// Tracks recently viewed providers and services in localStorage.
+// Tracks recently viewed providers in localStorage.
 // Used for personalization on landing page (Fiverr-style).
 // =============================================================================
 
@@ -30,23 +30,11 @@ export interface RecentlyViewedProvider {
   viewedAt: number; // timestamp
 }
 
-export interface RecentlyViewedService {
-  id: string;
-  name: string;
-  slug: string;
-  category_name: string;
-  category_slug: string;
-  subcategory_name: string;
-  subcategory_slug: string;
-  viewedAt: number;
-}
-
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
 const PROVIDERS_KEY = "mitasafi_recently_viewed_providers";
-const SERVICES_KEY = "mitasafi_recently_viewed_services";
 const MAX_ITEMS = 12;
 const EXPIRY_DAYS = 30;
 const EXPIRY_MS = EXPIRY_DAYS * 24 * 60 * 60 * 1000;
@@ -56,7 +44,7 @@ const EXPIRY_MS = EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 // =============================================================================
 //
 // Two keys, two stores, both at module scope. They replace a mount effect that read
-// both keys, filtered each by age and called setProviders / setServices — the reported
+// the key, filtered it by age and called setProviders — the reported
 // setState — and the pair of useState lists behind it.
 //
 // Expiry is applied in `parse`, not during render. The cutoff depends on Date.now(),
@@ -66,7 +54,6 @@ const EXPIRY_MS = EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 // (filter once per mount) without the extra commit.
 
 const EMPTY_PROVIDERS: readonly RecentlyViewedProvider[] = Object.freeze([]);
-const EMPTY_SERVICES: readonly RecentlyViewedService[] = Object.freeze([]);
 
 function isRecentProvider(value: unknown): value is RecentlyViewedProvider {
   const v = value as RecentlyViewedProvider;
@@ -75,17 +62,6 @@ function isRecentProvider(value: unknown): value is RecentlyViewedProvider {
     v !== null &&
     typeof v.id === "string" &&
     typeof v.business_name === "string" &&
-    typeof v.viewedAt === "number"
-  );
-}
-
-function isRecentService(value: unknown): value is RecentlyViewedService {
-  const v = value as RecentlyViewedService;
-  return (
-    typeof v === "object" &&
-    v !== null &&
-    typeof v.id === "string" &&
-    typeof v.name === "string" &&
     typeof v.viewedAt === "number"
   );
 }
@@ -101,20 +77,6 @@ const providersStore = createLocalStore<readonly RecentlyViewedProvider[]>({
       .filter(isRecentProvider)
       .filter((p) => p.viewedAt > cutoff);
     return valid.length === 0 ? EMPTY_PROVIDERS : valid;
-  },
-});
-
-const servicesStore = createLocalStore<readonly RecentlyViewedService[]>({
-  key: SERVICES_KEY,
-  empty: EMPTY_SERVICES,
-  parse: (raw) => {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    const cutoff = Date.now() - EXPIRY_MS;
-    const valid = parsed
-      .filter(isRecentService)
-      .filter((s) => s.viewedAt > cutoff);
-    return valid.length === 0 ? EMPTY_SERVICES : valid;
   },
 });
 
@@ -163,12 +125,10 @@ function prepend<T extends { id: string }>(
 
 export function useRecentlyViewed() {
   const providers = useLocalStore(providersStore);
-  const services = useLocalStore(servicesStore);
 
   // Housekeeping only: no setState, so nothing cascades. See pruneExpiredIn.
   useEffect(() => {
     pruneExpiredIn(providersStore);
-    pruneExpiredIn(servicesStore);
   }, []);
 
   const addProvider = useCallback(
@@ -180,18 +140,8 @@ export function useRecentlyViewed() {
     [],
   );
 
-  const addService = useCallback(
-    (service: Omit<RecentlyViewedService, "viewedAt">) => {
-      servicesStore.write(
-        prepend(servicesStore.read(), { ...service, viewedAt: Date.now() }),
-      );
-    },
-    [],
-  );
-
   const clearAll = useCallback(() => {
     providersStore.clear();
-    servicesStore.clear();
   }, []);
 
   const removeProvider = useCallback((providerId: string) => {
@@ -200,21 +150,12 @@ export function useRecentlyViewed() {
     providersStore.write(current.filter((p) => p.id !== providerId));
   }, []);
 
-  const removeService = useCallback((serviceId: string) => {
-    const current = servicesStore.read();
-    if (!current.some((s) => s.id === serviceId)) return;
-    servicesStore.write(current.filter((s) => s.id !== serviceId));
-  }, []);
-
   return {
     providers,
-    services,
     addProvider,
-    addService,
     removeProvider,
-    removeService,
     clearAll,
-    hasHistory: providers.length > 0 || services.length > 0,
+    hasHistory: providers.length > 0,
   };
 }
 
@@ -225,30 +166,27 @@ export function useRecentlyViewed() {
 /**
  * Record a provider view from outside React.
  *
- * These used to read and write localStorage directly, with their own JSON handling and
- * their own copy of the cap-and-dedupe logic. That made them invisible to a mounted
- * useRecentlyViewed: nothing notified it, so the list on the home page would not update
+ * This used to read and write localStorage directly, with its own JSON handling and
+ * its own copy of the cap-and-dedupe logic, which made it invisible to a mounted
+ * useRecentlyViewed: nothing notified it, so the home page's list would not update
  * until a remount. Writing through the store notifies.
  *
- * NOTE, and this is a finding rather than a change: nothing in the repository calls
- * these two functions, or the hook's addProvider / addService. A repo-wide grep for
- * either key finds only this file. So no recently-viewed data is ever written, and
- * RecentlyViewedSection — rendered on the home page at app/page.tsx:42 — can never show
- * anything. Supplying a caller is a product decision, not part of removing a lint
- * error, so it is reported and left alone.
+ * It also had no callers at all, which meant the whole feature was inert: nothing
+ * wrote recently-viewed data and RecentlyViewedSection could never show anything.
+ * components/services/TrackProviderView.tsx is the caller, on the provider detail
+ * page.
+ *
+ * The services half of this module — RecentlyViewedService, addService,
+ * removeService, trackServiceView and their store — was removed at the same time. It
+ * had neither a writer nor a reader: RecentlyViewedSection only renders providers.
+ * Wiring it up would have meant adding a writer with no reader, which is the same
+ * problem pointing the other way. It is a few lines to bring back from git history if
+ * recently-viewed services are ever wanted.
  */
 export function trackProviderView(
   provider: Omit<RecentlyViewedProvider, "viewedAt">,
 ) {
   providersStore.write(
     prepend(providersStore.read(), { ...provider, viewedAt: Date.now() }),
-  );
-}
-
-export function trackServiceView(
-  service: Omit<RecentlyViewedService, "viewedAt">,
-) {
-  servicesStore.write(
-    prepend(servicesStore.read(), { ...service, viewedAt: Date.now() }),
   );
 }
