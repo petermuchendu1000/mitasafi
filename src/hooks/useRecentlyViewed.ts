@@ -7,7 +7,12 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback } from "react";
+import {
+  createLocalStore,
+  type LocalStore,
+} from "@/lib/browser-storage/local-store";
+import { useLocalStore } from "@/lib/browser-storage/useLocalStore";
 
 // =============================================================================
 // TYPES
@@ -44,144 +49,166 @@ const PROVIDERS_KEY = "mitasafi_recently_viewed_providers";
 const SERVICES_KEY = "mitasafi_recently_viewed_services";
 const MAX_ITEMS = 12;
 const EXPIRY_DAYS = 30;
+const EXPIRY_MS = EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+
+// =============================================================================
+// STORES
+// =============================================================================
+//
+// Two keys, two stores, both at module scope. They replace a mount effect that read
+// both keys, filtered each by age and called setProviders / setServices — the reported
+// setState — and the pair of useState lists behind it.
+//
+// Expiry is applied in `parse`, not during render. The cutoff depends on Date.now(),
+// so filtering in a useMemo would recompute on every render and hand React a new array
+// each time, which is exactly what useSyncExternalStore must not be given. Parsing
+// happens once per change of the raw string, so this preserves the previous behaviour
+// (filter once per mount) without the extra commit.
+
+const EMPTY_PROVIDERS: readonly RecentlyViewedProvider[] = Object.freeze([]);
+const EMPTY_SERVICES: readonly RecentlyViewedService[] = Object.freeze([]);
+
+function isRecentProvider(value: unknown): value is RecentlyViewedProvider {
+  const v = value as RecentlyViewedProvider;
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    typeof v.id === "string" &&
+    typeof v.business_name === "string" &&
+    typeof v.viewedAt === "number"
+  );
+}
+
+function isRecentService(value: unknown): value is RecentlyViewedService {
+  const v = value as RecentlyViewedService;
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    typeof v.id === "string" &&
+    typeof v.name === "string" &&
+    typeof v.viewedAt === "number"
+  );
+}
+
+const providersStore = createLocalStore<readonly RecentlyViewedProvider[]>({
+  key: PROVIDERS_KEY,
+  empty: EMPTY_PROVIDERS,
+  parse: (raw) => {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const cutoff = Date.now() - EXPIRY_MS;
+    const valid = parsed
+      .filter(isRecentProvider)
+      .filter((p) => p.viewedAt > cutoff);
+    return valid.length === 0 ? EMPTY_PROVIDERS : valid;
+  },
+});
+
+const servicesStore = createLocalStore<readonly RecentlyViewedService[]>({
+  key: SERVICES_KEY,
+  empty: EMPTY_SERVICES,
+  parse: (raw) => {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const cutoff = Date.now() - EXPIRY_MS;
+    const valid = parsed
+      .filter(isRecentService)
+      .filter((s) => s.viewedAt > cutoff);
+    return valid.length === 0 ? EMPTY_SERVICES : valid;
+  },
+});
+
+/**
+ * Write expired entries out of storage for one store.
+ *
+ * `parse` already hides them from readers, so this is pure housekeeping: it stops a
+ * list that is never read from growing forever. It writes only when the stored count
+ * differs from the usable count, which makes it idempotent and unable to drive a
+ * notify/re-render loop.
+ *
+ * Generic over the element type so the two stores can share it without a cast; an
+ * earlier version looped over a tuple of both stores and needed a @ts-expect-error to
+ * do it, which is a suppression standing in for a type that was simply available.
+ */
+function pruneExpiredIn<T>(store: LocalStore<readonly T[]>): void {
+  let storedCount: number;
+  try {
+    const raw = localStorage.getItem(store.key);
+    if (!raw) return;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return;
+    storedCount = parsed.length;
+  } catch {
+    return;
+  }
+
+  const usable = store.read();
+  if (usable.length !== storedCount) store.write(usable);
+}
+
+/** Most recent first, capped, de-duplicated by id. */
+function prepend<T extends { id: string }>(
+  list: readonly T[],
+  item: T,
+): readonly T[] {
+  return [item, ...list.filter((existing) => existing.id !== item.id)].slice(
+    0,
+    MAX_ITEMS,
+  );
+}
 
 // =============================================================================
 // MAIN HOOK
 // =============================================================================
 
 export function useRecentlyViewed() {
-  const [providers, setProviders] = useState<RecentlyViewedProvider[]>([]);
-  const [services, setServices] = useState<RecentlyViewedService[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const providers = useLocalStore(providersStore);
+  const services = useLocalStore(servicesStore);
 
-  // Load from localStorage on mount
+  // Housekeeping only: no setState, so nothing cascades. See pruneExpiredIn.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    try {
-      // Load providers
-      const storedProviders = localStorage.getItem(PROVIDERS_KEY);
-      if (storedProviders) {
-        const parsed = JSON.parse(storedProviders) as RecentlyViewedProvider[];
-        // Filter out expired items (older than EXPIRY_DAYS)
-        const cutoff = Date.now() - EXPIRY_DAYS * 24 * 60 * 60 * 1000;
-        const valid = parsed.filter((p) => p.viewedAt > cutoff);
-        setProviders(valid);
-
-        // Clean up storage if items were removed
-        if (valid.length !== parsed.length) {
-          localStorage.setItem(PROVIDERS_KEY, JSON.stringify(valid));
-        }
-      }
-
-      // Load services
-      const storedServices = localStorage.getItem(SERVICES_KEY);
-      if (storedServices) {
-        const parsed = JSON.parse(storedServices) as RecentlyViewedService[];
-        const cutoff = Date.now() - EXPIRY_DAYS * 24 * 60 * 60 * 1000;
-        const valid = parsed.filter((s) => s.viewedAt > cutoff);
-        setServices(valid);
-
-        if (valid.length !== parsed.length) {
-          localStorage.setItem(SERVICES_KEY, JSON.stringify(valid));
-        }
-      }
-    } catch (error) {
-      console.error("Error loading recently viewed:", error);
-    }
-
-    setIsLoaded(true);
+    pruneExpiredIn(providersStore);
+    pruneExpiredIn(servicesStore);
   }, []);
 
-  // Add provider to recently viewed
   const addProvider = useCallback(
     (provider: Omit<RecentlyViewedProvider, "viewedAt">) => {
-      if (typeof window === "undefined") return;
-
-      setProviders((prev) => {
-        // Remove if already exists
-        const filtered = prev.filter((p) => p.id !== provider.id);
-
-        // Add to beginning with timestamp
-        const updated = [
-          { ...provider, viewedAt: Date.now() },
-          ...filtered,
-        ].slice(0, MAX_ITEMS);
-
-        // Persist
-        try {
-          localStorage.setItem(PROVIDERS_KEY, JSON.stringify(updated));
-        } catch (error) {
-          console.error("Error saving recently viewed providers:", error);
-        }
-
-        return updated;
-      });
+      providersStore.write(
+        prepend(providersStore.read(), { ...provider, viewedAt: Date.now() }),
+      );
     },
     [],
   );
 
-  // Add service to recently viewed
   const addService = useCallback(
     (service: Omit<RecentlyViewedService, "viewedAt">) => {
-      if (typeof window === "undefined") return;
-
-      setServices((prev) => {
-        const filtered = prev.filter((s) => s.id !== service.id);
-
-        const updated = [
-          { ...service, viewedAt: Date.now() },
-          ...filtered,
-        ].slice(0, MAX_ITEMS);
-
-        try {
-          localStorage.setItem(SERVICES_KEY, JSON.stringify(updated));
-        } catch (error) {
-          console.error("Error saving recently viewed services:", error);
-        }
-
-        return updated;
-      });
+      servicesStore.write(
+        prepend(servicesStore.read(), { ...service, viewedAt: Date.now() }),
+      );
     },
     [],
   );
 
-  // Clear all
   const clearAll = useCallback(() => {
-    if (typeof window === "undefined") return;
-
-    setProviders([]);
-    setServices([]);
-    localStorage.removeItem(PROVIDERS_KEY);
-    localStorage.removeItem(SERVICES_KEY);
+    providersStore.clear();
+    servicesStore.clear();
   }, []);
 
-  // Remove single provider
   const removeProvider = useCallback((providerId: string) => {
-    if (typeof window === "undefined") return;
-
-    setProviders((prev) => {
-      const updated = prev.filter((p) => p.id !== providerId);
-      localStorage.setItem(PROVIDERS_KEY, JSON.stringify(updated));
-      return updated;
-    });
+    const current = providersStore.read();
+    if (!current.some((p) => p.id === providerId)) return;
+    providersStore.write(current.filter((p) => p.id !== providerId));
   }, []);
 
-  // Remove single service
   const removeService = useCallback((serviceId: string) => {
-    if (typeof window === "undefined") return;
-
-    setServices((prev) => {
-      const updated = prev.filter((s) => s.id !== serviceId);
-      localStorage.setItem(SERVICES_KEY, JSON.stringify(updated));
-      return updated;
-    });
+    const current = servicesStore.read();
+    if (!current.some((s) => s.id === serviceId)) return;
+    servicesStore.write(current.filter((s) => s.id !== serviceId));
   }, []);
 
   return {
     providers,
     services,
-    isLoaded,
     addProvider,
     addService,
     removeProvider,
@@ -195,48 +222,33 @@ export function useRecentlyViewed() {
 // STANDALONE FUNCTIONS (for use outside React)
 // =============================================================================
 
+/**
+ * Record a provider view from outside React.
+ *
+ * These used to read and write localStorage directly, with their own JSON handling and
+ * their own copy of the cap-and-dedupe logic. That made them invisible to a mounted
+ * useRecentlyViewed: nothing notified it, so the list on the home page would not update
+ * until a remount. Writing through the store notifies.
+ *
+ * NOTE, and this is a finding rather than a change: nothing in the repository calls
+ * these two functions, or the hook's addProvider / addService. A repo-wide grep for
+ * either key finds only this file. So no recently-viewed data is ever written, and
+ * RecentlyViewedSection — rendered on the home page at app/page.tsx:42 — can never show
+ * anything. Supplying a caller is a product decision, not part of removing a lint
+ * error, so it is reported and left alone.
+ */
 export function trackProviderView(
   provider: Omit<RecentlyViewedProvider, "viewedAt">,
 ) {
-  if (typeof window === "undefined") return;
-
-  try {
-    const stored = localStorage.getItem(PROVIDERS_KEY);
-    const existing = stored
-      ? (JSON.parse(stored) as RecentlyViewedProvider[])
-      : [];
-
-    const filtered = existing.filter((p) => p.id !== provider.id);
-    const updated = [{ ...provider, viewedAt: Date.now() }, ...filtered].slice(
-      0,
-      MAX_ITEMS,
-    );
-
-    localStorage.setItem(PROVIDERS_KEY, JSON.stringify(updated));
-  } catch (error) {
-    console.error("Error tracking provider view:", error);
-  }
+  providersStore.write(
+    prepend(providersStore.read(), { ...provider, viewedAt: Date.now() }),
+  );
 }
 
 export function trackServiceView(
   service: Omit<RecentlyViewedService, "viewedAt">,
 ) {
-  if (typeof window === "undefined") return;
-
-  try {
-    const stored = localStorage.getItem(SERVICES_KEY);
-    const existing = stored
-      ? (JSON.parse(stored) as RecentlyViewedService[])
-      : [];
-
-    const filtered = existing.filter((s) => s.id !== service.id);
-    const updated = [{ ...service, viewedAt: Date.now() }, ...filtered].slice(
-      0,
-      MAX_ITEMS,
-    );
-
-    localStorage.setItem(SERVICES_KEY, JSON.stringify(updated));
-  } catch (error) {
-    console.error("Error tracking service view:", error);
-  }
+  servicesStore.write(
+    prepend(servicesStore.read(), { ...service, viewedAt: Date.now() }),
+  );
 }

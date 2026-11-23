@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -15,10 +15,13 @@ import {
   ArrowRightLeft,
 } from "lucide-react";
 import type { UserRole } from "@/types/db-helpers";
-import { normalizeRoleParam } from "@/lib/identity/roles";
-
-const NEW_ROLES_STORAGE_KEY = "mitasafi_newly_added_roles";
-const NEW_ROLE_EXPIRY_DAYS = 7; // Badge shows for 7 days after role added
+import {
+  newlyAddedRolesStore,
+  unexpiredNewRoles,
+  pruneExpiredNewRoles,
+  clearNewRole,
+} from "@/lib/identity/newly-added-roles";
+import { useLocalStore } from "@/lib/browser-storage/useLocalStore";
 
 interface UserProfileDropdownProps {
   userName: string;
@@ -72,68 +75,37 @@ export function UserProfileDropdown({
   newlyAddedRole,
 }: UserProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [newRolesFromStorage, setNewRolesFromStorage] = useState<Set<UserRole>>(
-    new Set(),
-  );
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Load newly added roles from localStorage on mount
+  const storedNewRoles = useLocalStore(newlyAddedRolesStore);
+
+  // Which roles show a "New" badge: derived from storage and from the prop, not
+  // assembled in state by two effects.
+  //
+  // The two effects this replaces were:
+  //   1. a mount effect that read the key, filtered out expired entries and called
+  //      setNewRolesFromStorage(...)  — the reported setState, and the reason a badge
+  //      written by RoleSwitchBanner never appeared in an already-mounted dropdown;
+  //   2. an effect that merged the newlyAddedRole prop into that same state with
+  //      setNewRolesFromStorage(prev => new Set([...prev, newlyAddedRole])) — a copy of
+  //      a value the component is handed on every render.
+  //
+  // `storedNewRoles` keeps a stable reference while the raw string is unchanged, so
+  // memoising on it is sound; the Set itself is only ever read with .has().
+  const newRolesFromStorage = useMemo(() => {
+    const roles = new Set(unexpiredNewRoles(storedNewRoles));
+    if (newlyAddedRole) roles.add(newlyAddedRole);
+    return roles;
+  }, [storedNewRoles, newlyAddedRole]);
+
+  // Housekeeping, not state: drop entries that have expired or that are not roles.
+  // pruneExpiredNewRoles writes nothing when there is nothing to drop, so it cannot
+  // drive a notify/re-render loop and is safe under StrictMode's double invoke.
   useEffect(() => {
-    const storedData = localStorage.getItem(NEW_ROLES_STORAGE_KEY);
-    if (!storedData) {
-      setNewRolesFromStorage(new Set());
-      return;
-    }
-
-    try {
-      const parsed: Record<string, { addedAt: string }> =
-        JSON.parse(storedData);
-      const now = new Date();
-      const validNewRoles = new Set<UserRole>();
-      const updatedData: Record<string, { addedAt: string }> = {};
-
-      for (const [role, data] of Object.entries(parsed)) {
-        const addedAt = new Date(data.addedAt);
-        const daysSinceAdded =
-          (now.getTime() - addedAt.getTime()) / (1000 * 60 * 60 * 24);
-
-        // These keys come from localStorage, which the user can edit, so
-        // `role as UserRole` asserted something nothing had checked.
-        // normalizeRoleParam returns null for anything unrecognised, and a
-        // junk key is then simply dropped rather than becoming a badge.
-        const validRole = normalizeRoleParam(role);
-        if (validRole && daysSinceAdded < NEW_ROLE_EXPIRY_DAYS) {
-          validNewRoles.add(validRole);
-          updatedData[role] = data;
-        }
-      }
-
-      // Clean up expired entries
-      if (Object.keys(updatedData).length !== Object.keys(parsed).length) {
-        if (Object.keys(updatedData).length > 0) {
-          localStorage.setItem(
-            NEW_ROLES_STORAGE_KEY,
-            JSON.stringify(updatedData),
-          );
-        } else {
-          localStorage.removeItem(NEW_ROLES_STORAGE_KEY);
-        }
-      }
-
-      setNewRolesFromStorage(validNewRoles);
-    } catch {
-      setNewRolesFromStorage(new Set());
-    }
+    pruneExpiredNewRoles();
   }, []);
-
-  // Also track if newlyAddedRole prop is set (from URL)
-  useEffect(() => {
-    if (newlyAddedRole) {
-      setNewRolesFromStorage((prev) => new Set([...prev, newlyAddedRole]));
-    }
-  }, [newlyAddedRole]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -163,29 +135,10 @@ export function UserProfileDropdown({
   }, []);
 
   const handleRoleSwitch = (role: UserRole) => {
-    // Clear "new" status for this role when user switches to it
-    if (newRolesFromStorage.has(role)) {
-      const storedData = localStorage.getItem(NEW_ROLES_STORAGE_KEY);
-      if (storedData) {
-        try {
-          const parsed: Record<string, { addedAt: string }> =
-            JSON.parse(storedData);
-          delete parsed[role];
-          if (Object.keys(parsed).length > 0) {
-            localStorage.setItem(NEW_ROLES_STORAGE_KEY, JSON.stringify(parsed));
-          } else {
-            localStorage.removeItem(NEW_ROLES_STORAGE_KEY);
-          }
-        } catch {
-          // Ignore errors
-        }
-      }
-      setNewRolesFromStorage((prev) => {
-        const updated = new Set(prev);
-        updated.delete(role);
-        return updated;
-      });
-    }
+    // Clear "new" status for this role when the user switches to it. The store write
+    // notifies, so the setState that used to mirror it is gone. The badge for a role
+    // named in the URL goes when params.delete("newRole") below removes it.
+    clearNewRole(role);
 
     // Update URL to reflect the active role view
     const params = new URLSearchParams(searchParams.toString());

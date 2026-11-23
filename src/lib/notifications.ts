@@ -6,6 +6,7 @@
  */
 
 export const NOTIFICATIONS_KEY = "mitasafi_notifications";
+export const NOTIFICATIONS_CHANGED_EVENT = "notificationsChanged";
 
 export interface Notification {
   id: string;
@@ -91,6 +92,36 @@ export function clearAllNotifications(): void {
  */
 export function getUnreadCount(): number {
   return getNotifications().filter((n) => !n.read).length;
+}
+
+/**
+ * Subscribe to notification changes, from this tab and from others.
+ *
+ * The four writers above already dispatch `notificationsChanged`, but every listener
+ * was registered by hand at the call site, and the only one in the repo
+ * (ui/NotificationBell.tsx) listens for the same-tab event alone, so a notification
+ * added in another tab was never shown. The teardown returned here removes exactly what
+ * it added.
+ *
+ * Deliberately not built on createLocalStore: the snapshots this backs are NUMBERS
+ * (unread counts), so the reference-caching rule useSyncExternalStore imposes on object
+ * snapshots does not apply, and getNotifications() filters by age — a time-dependent
+ * parse that a raw-string cache would freeze at its first read.
+ */
+export function subscribeNotifications(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === NOTIFICATIONS_KEY || e.key === null) onChange();
+  };
+
+  window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onChange);
+  window.addEventListener("storage", onStorage);
+
+  return () => {
+    window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onChange);
+    window.removeEventListener("storage", onStorage);
+  };
 }
 
 /**

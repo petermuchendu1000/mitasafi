@@ -23,19 +23,18 @@ import {
 } from "@/components/shared";
 import { UnavailableListingModal } from "@/components/listings/UnavailableListingModal";
 import type { ListingCard as LegacyListingCard } from "@/lib/listings/types";
-import { addNotification, getUnreadCount } from "@/lib/notifications";
+import { addNotification } from "@/lib/notifications";
+import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
 import {
   useRealtimeListingStatus,
   type ListingStatusUpdate,
 } from "@/hooks/useRealtimeListingStatus";
 import { cn } from "@/lib/utils";
 import {
-  SAVED_LISTINGS_STORAGE_KEY,
-  readSavedListings,
   writeSavedListings,
-  subscribeSavedListings,
   type SavedListing,
 } from "@/lib/saved-listings/store";
+import { useSavedListings } from "@/lib/saved-listings/useSavedListings";
 
 /**
  * Transform legacy ListingCard to shared ListingCardData format
@@ -78,11 +77,16 @@ function transformToCardData(listing: LegacyListingCard): ListingCardData {
 }
 
 export default function SavedListingsPage() {
-  const [savedIds, setSavedIds] = useState<SavedListing[]>([]);
+  // The list is a subscription, not a copy. Two effects are gone: a mount effect that
+  // seeded state from storage (the reported setState) and a second that subscribed and
+  // re-seeded it on every change. See lib/saved-listings/useSavedListings.ts.
+  const savedIds = useSavedListings();
   const [listings, setListings] = useState<LegacyListingCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [notificationCount, setNotificationCount] = useState(0);
+  // Subscribed, not copied. This was state written from a mount effect and again from
+  // the realtime handler below; both were restatements of what lib/notifications owns.
+  const notificationCount = useUnreadNotificationCount();
 
   // Unavailable listing modal state
   const [unavailableModalOpen, setUnavailableModalOpen] = useState(false);
@@ -140,30 +144,24 @@ export default function SavedListingsPage() {
         ),
       );
 
-      // Update saved IDs with new status
-      setSavedIds((prev) => {
-        const updated = prev.map((s) =>
+      // Update saved IDs with new status.
+      //
+      // This was a bare localStorage.setItem inside a setSavedIds updater, with a
+      // comment explaining that writeSavedListings could not be used because its
+      // notification would re-enter the subscription and the two would feed each other.
+      // That was true of the code as written, and the cause was the `[...]` spread in
+      // the subscription: it discarded the store's cached reference, so every notify
+      // produced a new array and another render. Reading through useSavedListings keeps
+      // the cached reference, so a notify that changes nothing compares equal and
+      // stops. The write can therefore notify, which is what makes the Navbar count and
+      // the cards agree with this page.
+      writeSavedListings(
+        savedIds.map((s) =>
           s.listingId === update.id
             ? { ...s, lastKnownStatus: update.status }
             : s,
-        );
-        // Deliberately a bare write, not writeSavedListings. This runs inside a
-        // setSavedIds updater, and the store's write dispatches the change event; that
-        // would re-enter the subscription above, which calls setSavedIds again with a
-        // freshly parsed (so never reference-equal) array, and the two would feed each
-        // other. The value being persisted here is lastKnownStatus, which no other
-        // reader derives anything from, so not notifying costs nothing.
-        // The store reads through a cache keyed on the raw string, so a direct write is
-        // still picked up by the next read.
-        localStorage.setItem(
-          SAVED_LISTINGS_STORAGE_KEY,
-          JSON.stringify(updated),
-        );
-        return updated;
-      });
-
-      // Update notification count
-      setNotificationCount(getUnreadCount());
+        ),
+      );
 
       // Show unavailable modal if listing became rented or paused
       if (
@@ -201,17 +199,19 @@ export default function SavedListingsPage() {
     },
   });
 
-  // Load saved IDs from local storage
-  useEffect(() => {
-    setSavedIds([...readSavedListings()]);
-
-    // Load initial notification count
-    setNotificationCount(getUnreadCount());
-  }, []);
-
+  // The mount effect that used to be here is gone entirely. It read two client-only
+  // stores into state, and removing the first setState only exposed the second — which
+  // is this rule's defining behaviour: it reports the FIRST synchronous setState in an
+  // effect, not every one, so clearing a site can uncover the next.
+  //
   // Check for status changes and create notifications
   const checkStatusChanges = useCallback(
-    (savedList: SavedListing[], fetchedListings: LegacyListingCard[]) => {
+    (
+      // readonly: this is the store's cached snapshot, which React compares by
+      // reference. The body already copies it before changing anything.
+      savedList: readonly SavedListing[],
+      fetchedListings: LegacyListingCard[],
+    ) => {
       const updatedSaved = [...savedList];
       let hasChanges = false;
 
@@ -275,12 +275,10 @@ export default function SavedListingsPage() {
       );
 
       if (hasChanges) {
-        // Writing through the store notifies as part of the write, so the separate
-        // dispatchEvent that used to follow this line is gone.
+        // Writing through the store notifies as part of the write, so neither the
+        // dispatchEvent that used to follow this line nor the setSavedIds that mirrored
+        // it into component state is needed: useSavedListings picks it up.
         writeSavedListings(cleanedSaved);
-        if (cleanedSaved.length !== savedList.length) {
-          setSavedIds(cleanedSaved);
-        }
       }
     },
     [],
@@ -326,24 +324,13 @@ export default function SavedListingsPage() {
     fetchListings();
   }, [savedIds, checkStatusChanges]);
 
-  // Listen for changes from other components.
-  //
-  // This block used to register its own pair of listeners, and it carried the same
-  // defect as Navbar did — character for character, which is what duplication does. The
-  // "storage" listener was added as an anonymous function while the cleanup removed
-  // `handleChange`:
-  //
-  //     window.addEventListener("storage", (e) => { ... });
-  //     return () => window.removeEventListener("storage", handleChange);
-  //
-  // removeEventListener only detaches the same reference, so that listener outlived
-  // every visit to this page. subscribeSavedListings removes exactly what it adds, and
-  // its symmetry is asserted in lib/saved-listings/__tests__/store.test.ts.
-  useEffect(() => {
-    return subscribeSavedListings(() => {
-      setSavedIds([...readSavedListings()]);
-    });
-  }, []);
+  // The effect that used to live here subscribed to the store and called
+  // setSavedIds([...readSavedListings()]). useSavedListings does the subscribing now,
+  // and does it without the spread. Its predecessor's own comment is worth keeping
+  // because it records a real bug that was fixed here earlier: the "storage" listener
+  // was added anonymously and removed by a different reference, so it outlived every
+  // visit to this page. subscribeSavedListings removes exactly what it adds, and that
+  // symmetry is asserted in lib/saved-listings/__tests__/store.test.ts.
 
   // Count of actual available listings
   const availableCount = listings.length;

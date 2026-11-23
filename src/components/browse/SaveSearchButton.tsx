@@ -10,11 +10,13 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Bell, Check, Loader2 } from "lucide-react";
 import { SearchAlertModal } from "@/components/listings/SearchAlertModal";
 import { useToast } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { createArrayStore } from "@/lib/browser-storage/local-store";
+import { useLocalStore } from "@/lib/browser-storage/useLocalStore";
 
 interface SearchCriteria {
   areas?: string[];
@@ -74,6 +76,23 @@ function formatCriteriaLabel(criteria: SearchCriteria): string {
   return parts.join(" ") || "All new listings";
 }
 
+/**
+ * Searches this browser has already been notified about.
+ *
+ * Each entry is `JSON.stringify(searchCriteria)` — the scheme that was already in use,
+ * kept as-is because changing it would orphan everything users have stored. It is
+ * fragile in a way worth recording: JSON.stringify depends on key insertion order, so
+ * the same logical search built with its keys in a different order hashes differently
+ * and the button would offer to save it again. Normalising the comparison (parse each
+ * side and re-stringify with sorted keys) would fix that without a migration, but it is
+ * a change to matching behaviour rather than to this lint finding, so it is reported
+ * and not made here.
+ */
+const savedSearchesStore = createArrayStore<string>(
+  "mitasafi_saved_searches",
+  (value): value is string => typeof value === "string",
+);
+
 export function SaveSearchButton({
   searchCriteria,
   isAuthenticated = false,
@@ -91,39 +110,34 @@ export function SaveSearchButton({
   const savedText = "Notified!";
   const [modalOpen, setModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  // A save made in THIS session, which is all a guest gets: nothing is recorded for a
+  // visitor with no account, so there is nothing to derive from. Genuine event state.
+  const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const savedSearches = useLocalStore(savedSearchesStore);
+  const searchHash = JSON.stringify(searchCriteria);
+
+  // Derived. The effect this replaces re-read localStorage and re-parsed it on every
+  // render, not once: `searchCriteria` is an object literal built inline by
+  // ListingsGrid, so it has a fresh identity each time and the dependency array never
+  // matched. The setState then bailed out because the boolean was unchanged, which hid
+  // the cost rather than removing it.
+  const isSaved =
+    justSaved ||
+    (isAuthenticated && !!userId && savedSearches.includes(searchHash));
 
   // Handle successful alert creation (from modal or quick save)
   const handleSuccess = () => {
-    // Mark as saved in localStorage
-    const savedSearches = JSON.parse(
-      localStorage.getItem("mitasafi_saved_searches") || "[]",
-    );
-    savedSearches.push(JSON.stringify(searchCriteria));
-    localStorage.setItem(
-      "mitasafi_saved_searches",
-      JSON.stringify(savedSearches),
-    );
-
-    setIsSaved(true);
+    if (!savedSearches.includes(searchHash)) {
+      savedSearchesStore.write([...savedSearches, searchHash]);
+    }
+    setJustSaved(true);
     success("You'll be notified when new listings match");
   };
 
   // Check if user can do one-click save (needs email OR phone)
   const canQuickSave = isAuthenticated && (userEmail || userPhone);
-
-  // Check if this search is already saved (for logged-in users)
-  useEffect(() => {
-    if (!isAuthenticated || !userId) return;
-
-    // Check localStorage for saved search hash
-    const savedSearches = JSON.parse(
-      localStorage.getItem("mitasafi_saved_searches") || "[]",
-    );
-    const searchHash = JSON.stringify(searchCriteria);
-    setIsSaved(savedSearches.includes(searchHash));
-  }, [searchCriteria, isAuthenticated, userId]);
 
   // One-click save for logged-in users with contact info
   const handleQuickSave = async () => {

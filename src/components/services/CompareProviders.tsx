@@ -17,7 +17,7 @@ import {
   useCallback,
   createContext,
   useContext,
-  useEffect,
+  useMemo,
   type ReactNode,
 } from "react";
 import {
@@ -38,13 +38,15 @@ import {
   getCategoryById,
 } from "@/lib/constants";
 import type { ServiceProviderCardData } from "@/types/service-providers";
+import { createArrayStore } from "@/lib/browser-storage/local-store";
+import { useLocalStore } from "@/lib/browser-storage/useLocalStore";
 
 // =============================================================================
 // COMPARE CONTEXT
 // =============================================================================
 
 interface CompareContextValue {
-  providers: ServiceProviderCardData[];
+  providers: readonly ServiceProviderCardData[];
   addProvider: (provider: ServiceProviderCardData) => boolean;
   removeProvider: (providerId: string) => void;
   clearAll: () => void;
@@ -53,64 +55,64 @@ interface CompareContextValue {
 
 const CompareContext = createContext<CompareContextValue | null>(null);
 
-const STORAGE_KEY = "mitasafi-compare-providers";
 const MAX_PROVIDERS = 3;
+
+/**
+ * The compare list, owned by one store at module scope.
+ *
+ * The entries are whole provider objects the browse page handed us, and they come back
+ * out of localStorage where the user could have edited them, so the guard checks the
+ * two fields every consumer dereferences without a null check: `id` (the React key and
+ * the identity used for add/remove) and `business_name` (rendered, and `.charAt(0)` is
+ * called on it in two places). An entry missing either is dropped rather than crashing
+ * the comparison table.
+ */
+const compareProvidersStore = createArrayStore<ServiceProviderCardData>(
+  "mitasafi-compare-providers",
+  (value): value is ServiceProviderCardData =>
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as ServiceProviderCardData).id === "string" &&
+    typeof (value as ServiceProviderCardData).business_name === "string",
+);
 
 export function CompareProvidersProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  const [providers, setProviders] = useState<ServiceProviderCardData[]>([]);
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setProviders(parsed);
-        }
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
-    setIsHydrated(true);
-  }, []);
-
-  // Persist to localStorage on change
-  useEffect(() => {
-    if (isHydrated) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(providers));
-      } catch {
-        // Ignore localStorage errors
-      }
-    }
-  }, [providers, isHydrated]);
+  // One store subscription replaces: state, a mount effect that loaded localStorage
+  // into it (the reported setState), a second effect that wrote state back to
+  // localStorage on every change, and the isHydrated flag that existed only to stop
+  // that second effect overwriting storage with [] before the first had run.
+  //
+  // That flag is worth a note, because the hazard it guarded is now structural rather
+  // than ordered. It worked by effect declaration order: load ran first and set
+  // isHydrated, persist ran second and skipped because it still saw the old value.
+  // Reordering the two effects, or adding a third that changed `providers`, would have
+  // silently armed a "write [] over the user's list" bug. Reading and writing through
+  // one store cannot express that mistake.
+  const providers = useLocalStore(compareProvidersStore);
 
   const addProvider = useCallback(
     (provider: ServiceProviderCardData): boolean => {
-      let added = false;
-      setProviders((prev) => {
-        if (prev.length >= MAX_PROVIDERS) return prev;
-        if (prev.some((p) => p.id === provider.id)) return prev;
-        added = true;
-        return [...prev, provider];
-      });
-      return added;
+      const current = compareProvidersStore.read();
+      if (current.length >= MAX_PROVIDERS) return false;
+      if (current.some((p) => p.id === provider.id)) return false;
+      compareProvidersStore.write([...current, provider]);
+      return true;
     },
     [],
   );
 
   const removeProvider = useCallback((providerId: string) => {
-    setProviders((prev) => prev.filter((p) => p.id !== providerId));
+    const current = compareProvidersStore.read();
+    if (!current.some((p) => p.id === providerId)) return;
+    compareProvidersStore.write(current.filter((p) => p.id !== providerId));
   }, []);
 
   const clearAll = useCallback(() => {
-    setProviders([]);
+    compareProvidersStore.clear();
   }, []);
 
   const isInCompare = useCallback(
@@ -120,18 +122,17 @@ export function CompareProvidersProvider({
     [providers],
   );
 
+  // Memoised. The object literal used to be built inline, so it had a fresh identity
+  // on every render of the provider and re-rendered every consumer of the context —
+  // which on /services/browse is the bar and every card's compare button. The store
+  // snapshot and all four callbacks are stable, so there is nothing left to churn.
+  const value = useMemo(
+    () => ({ providers, addProvider, removeProvider, clearAll, isInCompare }),
+    [providers, addProvider, removeProvider, clearAll, isInCompare],
+  );
+
   return (
-    <CompareContext.Provider
-      value={{
-        providers,
-        addProvider,
-        removeProvider,
-        clearAll,
-        isInCompare,
-      }}
-    >
-      {children}
-    </CompareContext.Provider>
+    <CompareContext.Provider value={value}>{children}</CompareContext.Provider>
   );
 }
 
@@ -268,7 +269,10 @@ export function CompareBar({ className }: CompareBarProps) {
 // =============================================================================
 
 interface CompareModalProps {
-  providers: ServiceProviderCardData[];
+  // readonly: these come straight from the store's cached snapshot, which React
+  // compares by reference. Mutating them in place would change a value React believes
+  // is unchanged, so the type says so rather than leaving it to be remembered.
+  providers: readonly ServiceProviderCardData[];
   onClose: () => void;
 }
 

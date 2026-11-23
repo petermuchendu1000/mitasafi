@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { UserProfileDropdown } from "./UserProfileDropdown";
 import type { UserRole } from "@/types/db-helpers";
+import { normalizeRoleParam } from "@/lib/identity/roles";
 
 interface DashboardHeaderProps {
   userName: string;
@@ -22,7 +23,12 @@ function DashboardHeaderInner({
   allRoles,
 }: DashboardHeaderProps) {
   const searchParams = useSearchParams();
-  const newRole = searchParams.get("newRole") as UserRole | null;
+  // `as UserRole` asserted something nothing had checked, on a value that comes
+  // straight from the query string. UserProfileDropdown's storage path was already
+  // hardened this way; the URL path is the same hole and is one line from the same fix.
+  // normalizeRoleParam returns null for anything unrecognised, so ?newRole=junk no
+  // longer reaches roleConfig[...] as a key.
+  const newRole = normalizeRoleParam(searchParams.get("newRole"));
 
   return (
     <UserProfileDropdown

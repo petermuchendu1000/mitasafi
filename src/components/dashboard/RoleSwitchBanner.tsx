@@ -4,6 +4,8 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { X, ArrowRight, Sparkles, Home, Building2, Wrench } from "lucide-react";
 import type { UserRole } from "@/types/db-helpers";
+// The key used to be declared here as a second private const. One owner now.
+import { markRoleNewlyAdded } from "@/lib/identity/newly-added-roles";
 
 interface RoleSwitchBannerProps {
   currentViewRole: UserRole;
@@ -11,7 +13,6 @@ interface RoleSwitchBannerProps {
 }
 
 const BANNER_STORAGE_KEY = "mitasafi_role_banner";
-const NEW_ROLES_STORAGE_KEY = "mitasafi_newly_added_roles";
 const MAX_BANNER_VIEWS_PER_SESSION = 3;
 
 // Role display configuration
@@ -53,26 +54,10 @@ function RoleSwitchBannerInner({
       return;
     }
 
-    // Store the newly added role in localStorage (for badge persistence)
-    const newRolesData = localStorage.getItem(NEW_ROLES_STORAGE_KEY);
-    let newlyAddedRoles: Record<string, { addedAt: string }> = {};
-
-    try {
-      if (newRolesData) {
-        newlyAddedRoles = JSON.parse(newRolesData);
-      }
-    } catch {
-      // Invalid data
-    }
-
-    // Mark this role as newly added if not already
-    if (!newlyAddedRoles[newRole]) {
-      newlyAddedRoles[newRole] = { addedAt: new Date().toISOString() };
-      localStorage.setItem(
-        NEW_ROLES_STORAGE_KEY,
-        JSON.stringify(newlyAddedRoles),
-      );
-    }
+    // Store the newly added role (for badge persistence). Writing through the store
+    // notifies, so an already-mounted UserProfileDropdown now shows the badge instead
+    // of waiting for a remount. markRoleNewlyAdded is idempotent.
+    markRoleNewlyAdded(newRole);
 
     // Get session-based view tracking
     // Use sessionStorage for per-login tracking (clears when browser closes or new session)

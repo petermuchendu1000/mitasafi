@@ -129,11 +129,13 @@ function ProviderCard({ provider, onRemove }: ProviderCardProps) {
 // =============================================================================
 
 export function RecentlyViewedSection() {
-  const { providers, isLoaded, removeProvider, clearAll } = useRecentlyViewed();
+  const { providers, removeProvider, clearAll } = useRecentlyViewed();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Don't render if no history or not loaded yet
-  if (!isLoaded || providers.length === 0) {
+  // `isLoaded` was dropped from the hook: it was always false exactly when
+  // providers was still [], so `!isLoaded ||` could never change this outcome.
+  if (providers.length === 0) {
     return null;
   }
 
