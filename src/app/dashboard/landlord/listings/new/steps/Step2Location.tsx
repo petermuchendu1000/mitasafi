@@ -1,9 +1,9 @@
 /**
  * Step 2: Location
- * 
+ *
  * Captures property address and location details.
  * Includes Google Places autocomplete for accurate addresses.
- * 
+ *
  * Uses dynamic content from content-config.ts for accurate
  * labels and placeholders based on listing type.
  */
@@ -12,7 +12,14 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { MapPin, Building, ChevronDown, Info, Search, Loader2 } from "lucide-react";
+import {
+  MapPin,
+  Building,
+  ChevronDown,
+  Info,
+  Search,
+  Loader2,
+} from "lucide-react";
 import { useWizard } from "../context";
 import { NAIROBI_AREAS } from "../types";
 import { useStep2Content } from "../useWizardContent";
@@ -32,11 +39,11 @@ interface PlacePrediction {
 
 export function Step2Location() {
   const { state, updateFormData, setValidation, setFieldTouched } = useWizard();
-  const { 
-    buildingName, 
-    streetAddress, 
-    area, 
-    city, 
+  const {
+    buildingName,
+    streetAddress,
+    area,
+    city,
     unitNumber,
     hideExactAddress,
   } = state.formData;
@@ -46,7 +53,7 @@ export function Step2Location() {
 
   const [isAreaDropdownOpen, setIsAreaDropdownOpen] = useState(false);
   const [areaSearch, setAreaSearch] = useState("");
-  
+
   // Google Places state
   const [addressSearch, setAddressSearch] = useState(streetAddress);
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
@@ -58,16 +65,16 @@ export function Step2Location() {
   // Flatten areas for search - properly handle the new structure
   const allAreas: AreaItem[] = Object.entries(NAIROBI_AREAS).flatMap(
     ([categoryKey, categoryData]) =>
-      categoryData.areas.map((a) => ({ 
-        id: a.id, 
-        name: a.name, 
-        category: categoryData.label 
-      }))
+      categoryData.areas.map((a) => ({
+        id: a.id,
+        name: a.name,
+        category: categoryData.label,
+      })),
   );
 
   const filteredAreas = areaSearch
-    ? allAreas.filter((a) => 
-        a.name.toLowerCase().includes(areaSearch.toLowerCase())
+    ? allAreas.filter((a) =>
+        a.name.toLowerCase().includes(areaSearch.toLowerCase()),
       )
     : allAreas;
 
@@ -77,15 +84,15 @@ export function Step2Location() {
   // Validation - building name is now mandatory
   useEffect(() => {
     const errors: Record<string, string> = {};
-    
+
     if (!buildingName.trim()) {
       errors.buildingName = `${content.buildingName.label} is required`;
     }
-    
+
     if (!streetAddress.trim()) {
       errors.streetAddress = `${content.streetAddress.label} is required`;
     }
-    
+
     if (!area.trim()) {
       errors.area = `${content.area.label} is required`;
     }
@@ -116,16 +123,16 @@ export function Step2Location() {
     }
 
     setIsSearching(true);
-    
+
     try {
       const response = await fetch(
-        `/api/places/autocomplete?input=${encodeURIComponent(query)}`
+        `/api/places/autocomplete?input=${encodeURIComponent(query)}`,
       );
-      
+
       if (response.ok) {
         const data = await response.json();
         setPredictions(data.predictions || []);
-        
+
         // Log any API errors for debugging
         if (data.error) {
           console.warn("Places API:", data.error);
@@ -145,11 +152,11 @@ export function Step2Location() {
   const handleAddressInputChange = (value: string) => {
     setAddressSearch(value);
     setShowPredictions(true);
-    
+
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     searchTimeoutRef.current = setTimeout(() => {
       searchPlaces(value);
     }, 300);
@@ -161,7 +168,7 @@ export function Step2Location() {
     handleFieldChange("streetAddress", prediction.description);
     setShowPredictions(false);
     setPredictions([]);
-    
+
     // Try to auto-detect area from the address
     const addressLower = prediction.description.toLowerCase();
     for (const areaItem of allAreas) {
@@ -193,19 +200,18 @@ export function Step2Location() {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           {content.header.title}
         </h2>
-        <p className="text-gray-500">
-          {content.header.subtitle}
-        </p>
+        <p className="text-gray-500">{content.header.subtitle}</p>
       </div>
 
       <div className="space-y-6">
         {/* Building/Property Name - NOW MANDATORY */}
         <div>
-          <label 
-            htmlFor="buildingName" 
+          <label
+            htmlFor="buildingName"
             className="block text-sm font-medium text-gray-700 mb-1.5"
           >
-            {content.buildingName.label} <span className="text-orange-500">*</span>
+            {content.buildingName.label}{" "}
+            <span className="text-orange-500">*</span>
           </label>
           <div className="relative">
             <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -213,7 +219,9 @@ export function Step2Location() {
               type="text"
               id="buildingName"
               value={buildingName}
-              onChange={(e) => handleFieldChange("buildingName", e.target.value)}
+              onChange={(e) =>
+                handleFieldChange("buildingName", e.target.value)
+              }
               placeholder={content.buildingName.placeholder}
               className={cn(
                 "w-full pl-10 pr-4 py-3 rounded-lg border bg-white",
@@ -222,7 +230,7 @@ export function Step2Location() {
                 "transition-colors",
                 touched.buildingName && errors.buildingName
                   ? "border-red-300 bg-red-50"
-                  : "border-gray-300"
+                  : "border-gray-300",
               )}
             />
           </div>
@@ -237,11 +245,12 @@ export function Step2Location() {
 
         {/* Street Address with Google Places Autocomplete */}
         <div>
-          <label 
-            htmlFor="streetAddress" 
+          <label
+            htmlFor="streetAddress"
             className="block text-sm font-medium text-gray-700 mb-1.5"
           >
-            {content.streetAddress.label} <span className="text-orange-500">*</span>
+            {content.streetAddress.label}{" "}
+            <span className="text-orange-500">*</span>
           </label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -251,7 +260,9 @@ export function Step2Location() {
               id="streetAddress"
               value={addressSearch}
               onChange={(e) => handleAddressInputChange(e.target.value)}
-              onFocus={() => addressSearch.length >= 2 && setShowPredictions(true)}
+              onFocus={() =>
+                addressSearch.length >= 2 && setShowPredictions(true)
+              }
               onBlur={handleAddressBlur}
               placeholder={content.streetAddress.placeholder}
               className={cn(
@@ -261,13 +272,13 @@ export function Step2Location() {
                 "transition-colors",
                 touched.streetAddress && errors.streetAddress
                   ? "border-red-300 bg-red-50"
-                  : "border-gray-300"
+                  : "border-gray-300",
               )}
             />
             {isSearching && (
               <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 animate-spin" />
             )}
-            
+
             {/* Predictions Dropdown */}
             {showPredictions && (predictions.length > 0 || isSearching) && (
               <div className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -302,7 +313,9 @@ export function Step2Location() {
             )}
           </div>
           {touched.streetAddress && errors.streetAddress ? (
-            <p className="text-xs text-red-600 mt-1.5">{errors.streetAddress}</p>
+            <p className="text-xs text-red-600 mt-1.5">
+              {errors.streetAddress}
+            </p>
           ) : (
             <p className="text-xs text-gray-500 mt-1.5">
               {content.streetAddress.helper}
@@ -314,14 +327,15 @@ export function Step2Location() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Area/Neighborhood */}
           <div>
-            <label 
-              htmlFor="area" 
+            <label
+              htmlFor="area"
               className="block text-sm font-medium text-gray-700 mb-1.5"
             >
               {content.area.label} <span className="text-orange-500">*</span>
             </label>
             <div className="relative">
               <button
+                id="area"
                 type="button"
                 onClick={() => setIsAreaDropdownOpen(!isAreaDropdownOpen)}
                 className={cn(
@@ -330,16 +344,22 @@ export function Step2Location() {
                   "transition-colors",
                   touched.area && errors.area
                     ? "border-red-300 bg-red-50"
-                    : "border-gray-300"
+                    : "border-gray-300",
                 )}
               >
-                <span className={selectedAreaName ? "text-gray-900" : "text-gray-400"}>
+                <span
+                  className={
+                    selectedAreaName ? "text-gray-900" : "text-gray-400"
+                  }
+                >
                   {selectedAreaName || "Select area"}
                 </span>
-                <ChevronDown className={cn(
-                  "w-5 h-5 text-gray-400 transition-transform",
-                  isAreaDropdownOpen && "rotate-180"
-                )} />
+                <ChevronDown
+                  className={cn(
+                    "w-5 h-5 text-gray-400 transition-transform",
+                    isAreaDropdownOpen && "rotate-180",
+                  )}
+                />
               </button>
 
               {/* Dropdown */}
@@ -356,7 +376,7 @@ export function Step2Location() {
                       autoFocus
                     />
                   </div>
-                  
+
                   {/* Options */}
                   <div className="max-h-48 overflow-y-auto">
                     {areaSearch ? (
@@ -369,7 +389,7 @@ export function Step2Location() {
                             onClick={() => handleAreaSelect(a.id)}
                             className={cn(
                               "w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50",
-                              area === a.id && "bg-teal-50 text-teal-700"
+                              area === a.id && "bg-teal-50 text-teal-700",
                             )}
                           >
                             {a.name}
@@ -385,26 +405,28 @@ export function Step2Location() {
                       )
                     ) : (
                       // Grouped by category when not searching
-                      Object.entries(NAIROBI_AREAS).map(([categoryKey, categoryData]) => (
-                        <div key={categoryKey}>
-                          <div className="px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            {categoryData.label}
+                      Object.entries(NAIROBI_AREAS).map(
+                        ([categoryKey, categoryData]) => (
+                          <div key={categoryKey}>
+                            <div className="px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                              {categoryData.label}
+                            </div>
+                            {categoryData.areas.map((a) => (
+                              <button
+                                key={a.id}
+                                type="button"
+                                onClick={() => handleAreaSelect(a.id)}
+                                className={cn(
+                                  "w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50",
+                                  area === a.id && "bg-teal-50 text-teal-700",
+                                )}
+                              >
+                                {a.name}
+                              </button>
+                            ))}
                           </div>
-                          {categoryData.areas.map((a) => (
-                            <button
-                              key={a.id}
-                              type="button"
-                              onClick={() => handleAreaSelect(a.id)}
-                              className={cn(
-                                "w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50",
-                                area === a.id && "bg-teal-50 text-teal-700"
-                              )}
-                            >
-                              {a.name}
-                            </button>
-                          ))}
-                        </div>
-                      ))
+                        ),
+                      )
                     )}
                   </div>
                 </div>
@@ -417,8 +439,8 @@ export function Step2Location() {
 
           {/* City */}
           <div>
-            <label 
-              htmlFor="city" 
+            <label
+              htmlFor="city"
               className="block text-sm font-medium text-gray-700 mb-1.5"
             >
               {content.city.label} <span className="text-orange-500">*</span>
@@ -431,7 +453,7 @@ export function Step2Location() {
               className={cn(
                 "w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50",
                 "text-gray-900",
-                "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
               )}
               readOnly
             />
@@ -443,12 +465,14 @@ export function Step2Location() {
 
         {/* Unit Number */}
         <div>
-          <label 
-            htmlFor="unitNumber" 
+          <label
+            htmlFor="unitNumber"
             className="block text-sm font-medium text-gray-700 mb-1.5"
           >
             {content.unitNumber.label}
-            <span className="text-gray-400 font-normal ml-1">{content.unitNumber.optionalText}</span>
+            <span className="text-gray-400 font-normal ml-1">
+              {content.unitNumber.optionalText}
+            </span>
           </label>
           <input
             type="text"
@@ -459,19 +483,21 @@ export function Step2Location() {
             className={cn(
               "w-full px-4 py-3 rounded-lg border border-gray-300 bg-white",
               "text-gray-900 placeholder:text-gray-400",
-              "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
             )}
           />
         </div>
 
         {/* Landmarks */}
         <div>
-          <label 
-            htmlFor="landmarks" 
+          <label
+            htmlFor="landmarks"
             className="block text-sm font-medium text-gray-700 mb-1.5"
           >
             {content.landmarks.label}
-            <span className="text-gray-400 font-normal ml-1">{content.landmarks.optionalText}</span>
+            <span className="text-gray-400 font-normal ml-1">
+              {content.landmarks.optionalText}
+            </span>
           </label>
           <input
             type="text"
@@ -482,7 +508,7 @@ export function Step2Location() {
             className={cn(
               "w-full px-4 py-3 rounded-lg border border-gray-300 bg-white",
               "text-gray-900 placeholder:text-gray-400",
-              "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
             )}
           />
           <p className="text-xs text-gray-500 mt-1.5">
@@ -492,12 +518,14 @@ export function Step2Location() {
 
         {/* Plot Number */}
         <div>
-          <label 
-            htmlFor="plotNumber" 
+          <label
+            htmlFor="plotNumber"
             className="block text-sm font-medium text-gray-700 mb-1.5"
           >
             {content.plotNumber.label}
-            <span className="text-gray-400 font-normal ml-1">{content.plotNumber.optionalText}</span>
+            <span className="text-gray-400 font-normal ml-1">
+              {content.plotNumber.optionalText}
+            </span>
           </label>
           <input
             type="text"
@@ -508,7 +536,7 @@ export function Step2Location() {
             className={cn(
               "w-full px-4 py-3 rounded-lg border border-gray-300 bg-white",
               "text-gray-900 placeholder:text-gray-400",
-              "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
             )}
           />
           <p className="text-xs text-gray-500 mt-1.5">
@@ -522,10 +550,12 @@ export function Step2Location() {
             <input
               type="checkbox"
               checked={hideExactAddress}
-              onChange={(e) => handleFieldChange("hideExactAddress", e.target.checked)}
+              onChange={(e) =>
+                handleFieldChange("hideExactAddress", e.target.checked)
+              }
               className={cn(
                 "mt-0.5 w-5 h-5 rounded border-gray-300",
-                "text-teal-600 focus:ring-teal-500 focus:ring-offset-0"
+                "text-teal-600 focus:ring-teal-500 focus:ring-offset-0",
               )}
             />
             <div>
@@ -544,13 +574,10 @@ export function Step2Location() {
           <Info className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-teal-800">
             <p className="font-medium">{content.infoBox.title}</p>
-            <p className="text-teal-700 mt-0.5">
-              {content.infoBox.message}
-            </p>
+            <p className="text-teal-700 mt-0.5">{content.infoBox.message}</p>
           </div>
         </div>
       </div>
     </div>
   );
 }
-

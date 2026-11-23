@@ -1,13 +1,13 @@
 /**
  * Office Space Details
- * 
+ *
  * Captures office-specific information:
  * - Size and fit-out level
  * - Layout and configuration
  * - Infrastructure (power, HVAC, fiber)
- * 
+ *
  * Design: Clean, professional. Teal primary, orange accents.
- * 
+ *
  * REFACTORED: Uses useCommercialForm hook for standardized state/validation
  */
 
@@ -32,7 +32,12 @@ export function OfficeDetails() {
   const { commercial, updateCommercial, isRequired } = useCommercialForm();
 
   // Number input handlers
-  const handleNumberChange = (field: keyof typeof commercial, value: number, min: number, max: number) => {
+  const handleNumberChange = (
+    field: keyof typeof commercial,
+    value: number,
+    min: number,
+    max: number,
+  ) => {
     const newValue = Math.max(min, Math.min(max, value));
     updateCommercial({ [field]: newValue });
   };
@@ -44,9 +49,7 @@ export function OfficeDetails() {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           Office Space Details
         </h2>
-        <p className="text-gray-500">
-          Size, layout, and infrastructure
-        </p>
+        <p className="text-gray-500">Size, layout, and infrastructure</p>
       </div>
 
       <div className="space-y-6">
@@ -60,19 +63,30 @@ export function OfficeDetails() {
             {/* Size */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Total Size {isRequired("sizeSqm") && <span className="text-orange-500">*</span>}
+                <label
+                  htmlFor="totalSize"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Total Size{" "}
+                  {isRequired("sizeSqm") && (
+                    <span className="text-orange-500">*</span>
+                  )}
                 </label>
                 <div className="relative">
                   <input
+                    id="totalSize"
                     type="number"
                     value={commercial.sizeSqm || ""}
-                    onChange={(e) => updateCommercial({ sizeSqm: parseInt(e.target.value) || null })}
+                    onChange={(e) =>
+                      updateCommercial({
+                        sizeSqm: parseInt(e.target.value) || null,
+                      })
+                    }
                     placeholder="e.g., 150"
                     className={cn(
                       "w-full px-4 py-3 pr-16 rounded-lg border transition-colors",
                       "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
-                      "border-gray-300"
+                      "border-gray-300",
                     )}
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
@@ -82,15 +96,23 @@ export function OfficeDetails() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="ceilingHeight"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Ceiling Height
                 </label>
                 <div className="relative">
                   <input
+                    id="ceilingHeight"
                     type="number"
                     step="0.1"
                     value={commercial.ceilingHeightM || ""}
-                    onChange={(e) => updateCommercial({ ceilingHeightM: parseFloat(e.target.value) || null })}
+                    onChange={(e) =>
+                      updateCommercial({
+                        ceilingHeightM: parseFloat(e.target.value) || null,
+                      })
+                    }
                     placeholder="e.g., 3.0"
                     className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
@@ -104,33 +126,50 @@ export function OfficeDetails() {
             {/* Floor Level & Building Grade */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="floorLevel"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Floor Level
                 </label>
                 <input
+                  id="floorLevel"
                   type="text"
                   value={commercial.floorLevel}
-                  onChange={(e) => updateCommercial({ floorLevel: e.target.value })}
+                  onChange={(e) =>
+                    updateCommercial({ floorLevel: e.target.value })
+                  }
                   placeholder="e.g., 5th Floor"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div
+                  id="buildingGradeLabel"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Building Grade
-                </label>
-                <div className="flex gap-2">
+                </div>
+                <div
+                  role="group"
+                  aria-labelledby="buildingGradeLabel"
+                  className="flex gap-2"
+                >
                   {BUILDING_GRADES.map((grade) => (
                     <button
                       key={grade.id}
                       type="button"
-                      onClick={() => updateCommercial({ buildingGrade: grade.id as BuildingGrade })}
+                      onClick={() =>
+                        updateCommercial({
+                          buildingGrade: grade.id as BuildingGrade,
+                        })
+                      }
                       className={cn(
                         "flex-1 py-2.5 px-3 rounded-lg border-2 text-sm font-medium transition-all",
                         commercial.buildingGrade === grade.id
                           ? "border-teal-600 bg-teal-50 text-teal-700"
-                          : "border-gray-200 hover:border-gray-300 text-gray-700"
+                          : "border-gray-200 hover:border-gray-300 text-gray-700",
                       )}
                     >
                       {grade.label}
@@ -142,29 +181,47 @@ export function OfficeDetails() {
 
             {/* Fit-out Level */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fit-out Level {isRequired("fitoutLevel") && <span className="text-orange-500">*</span>}
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div
+                id="fitOutLevelLabel"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Fit-out Level{" "}
+                {isRequired("fitoutLevel") && (
+                  <span className="text-orange-500">*</span>
+                )}
+              </div>
+              <div
+                role="group"
+                aria-labelledby="fitOutLevelLabel"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+              >
                 {FITOUT_LEVELS.map((level) => (
                   <button
                     key={level.id}
                     type="button"
-                    onClick={() => updateCommercial({ fitoutLevel: level.id as FitoutLevel })}
+                    onClick={() =>
+                      updateCommercial({ fitoutLevel: level.id as FitoutLevel })
+                    }
                     className={cn(
                       "p-3 rounded-lg border-2 text-left transition-all",
                       commercial.fitoutLevel === level.id
                         ? "border-teal-600 bg-teal-50"
-                        : "border-gray-200 hover:border-gray-300"
+                        : "border-gray-200 hover:border-gray-300",
                     )}
                   >
-                    <span className={cn(
-                      "block text-sm font-medium",
-                      commercial.fitoutLevel === level.id ? "text-teal-700" : "text-gray-900"
-                    )}>
+                    <span
+                      className={cn(
+                        "block text-sm font-medium",
+                        commercial.fitoutLevel === level.id
+                          ? "text-teal-700"
+                          : "text-gray-900",
+                      )}
+                    >
                       {level.label}
                     </span>
-                    <span className="text-xs text-gray-500">{level.description}</span>
+                    <span className="text-xs text-gray-500">
+                      {level.description}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -181,20 +238,34 @@ export function OfficeDetails() {
           <div className="p-5 space-y-5">
             {/* Layout Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Layout {isRequired("layoutType") && <span className="text-orange-500">*</span>}
-              </label>
-              <div className="flex flex-wrap gap-3">
+              <div
+                id="layoutLabel"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Layout{" "}
+                {isRequired("layoutType") && (
+                  <span className="text-orange-500">*</span>
+                )}
+              </div>
+              <div
+                role="group"
+                aria-labelledby="layoutLabel"
+                className="flex flex-wrap gap-3"
+              >
                 {OFFICE_LAYOUT_OPTIONS.map((layout) => (
                   <button
                     key={layout.id}
                     type="button"
-                    onClick={() => updateCommercial({ layoutType: layout.id as OfficeLayoutType })}
+                    onClick={() =>
+                      updateCommercial({
+                        layoutType: layout.id as OfficeLayoutType,
+                      })
+                    }
                     className={cn(
                       "px-4 py-2.5 rounded-lg border-2 text-sm font-medium transition-all",
                       commercial.layoutType === layout.id
                         ? "border-teal-600 bg-teal-50 text-teal-700"
-                        : "border-gray-200 hover:border-gray-300 text-gray-700"
+                        : "border-gray-200 hover:border-gray-300 text-gray-700",
                     )}
                   >
                     {layout.label}
@@ -206,26 +277,48 @@ export function OfficeDetails() {
             {/* Capacity & Rooms */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="workstationCapacity"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Workstation Capacity
                 </label>
                 <input
+                  id="workstationCapacity"
                   type="number"
                   value={commercial.workstationCapacity || ""}
-                  onChange={(e) => updateCommercial({ workstationCapacity: parseInt(e.target.value) || null })}
+                  onChange={(e) =>
+                    updateCommercial({
+                      workstationCapacity: parseInt(e.target.value) || null,
+                    })
+                  }
                   placeholder="e.g., 25"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div
+                  id="privateOfficesLabel"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Private Offices
-                </label>
-                <div className="flex items-center gap-3">
+                </div>
+                <div
+                  role="group"
+                  aria-labelledby="privateOfficesLabel"
+                  className="flex items-center gap-3"
+                >
                   <button
                     type="button"
-                    onClick={() => handleNumberChange("privateOffices", commercial.privateOffices - 1, 0, 50)}
+                    onClick={() =>
+                      handleNumberChange(
+                        "privateOffices",
+                        commercial.privateOffices - 1,
+                        0,
+                        50,
+                      )
+                    }
                     className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                   >
                     <Minus className="w-4 h-4 text-gray-600" />
@@ -235,7 +328,14 @@ export function OfficeDetails() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleNumberChange("privateOffices", commercial.privateOffices + 1, 0, 50)}
+                    onClick={() =>
+                      handleNumberChange(
+                        "privateOffices",
+                        commercial.privateOffices + 1,
+                        0,
+                        50,
+                      )
+                    }
                     className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                   >
                     <Plus className="w-4 h-4 text-gray-600" />
@@ -244,13 +344,27 @@ export function OfficeDetails() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div
+                  id="meetingRoomsLabel"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Meeting Rooms
-                </label>
-                <div className="flex items-center gap-3">
+                </div>
+                <div
+                  role="group"
+                  aria-labelledby="meetingRoomsLabel"
+                  className="flex items-center gap-3"
+                >
                   <button
                     type="button"
-                    onClick={() => handleNumberChange("meetingRooms", commercial.meetingRooms - 1, 0, 20)}
+                    onClick={() =>
+                      handleNumberChange(
+                        "meetingRooms",
+                        commercial.meetingRooms - 1,
+                        0,
+                        20,
+                      )
+                    }
                     className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                   >
                     <Minus className="w-4 h-4 text-gray-600" />
@@ -260,7 +374,14 @@ export function OfficeDetails() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleNumberChange("meetingRooms", commercial.meetingRooms + 1, 0, 20)}
+                    onClick={() =>
+                      handleNumberChange(
+                        "meetingRooms",
+                        commercial.meetingRooms + 1,
+                        0,
+                        20,
+                      )
+                    }
                     className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                   >
                     <Plus className="w-4 h-4 text-gray-600" />
@@ -271,10 +392,17 @@ export function OfficeDetails() {
 
             {/* Pantry */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div
+                id="pantryKitchenLabel"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Pantry / Kitchen
-              </label>
-              <div className="flex gap-3">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="pantryKitchenLabel"
+                className="flex gap-3"
+              >
                 {[
                   { id: "none", label: "None" },
                   { id: "shared", label: "Shared" },
@@ -283,12 +411,16 @@ export function OfficeDetails() {
                   <button
                     key={option.id}
                     type="button"
-                    onClick={() => updateCommercial({ hasPantry: option.id as "none" | "shared" | "private" })}
+                    onClick={() =>
+                      updateCommercial({
+                        hasPantry: option.id as "none" | "shared" | "private",
+                      })
+                    }
                     className={cn(
                       "px-4 py-2.5 rounded-lg border-2 text-sm font-medium transition-all",
                       commercial.hasPantry === option.id
                         ? "border-teal-600 bg-teal-50 text-teal-700"
-                        : "border-gray-200 hover:border-gray-300 text-gray-700"
+                        : "border-gray-200 hover:border-gray-300 text-gray-700",
                     )}
                   >
                     {option.label}
@@ -309,14 +441,22 @@ export function OfficeDetails() {
             {/* Power & HVAC */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="powerCapacity"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Power Capacity
                 </label>
                 <div className="relative">
                   <input
+                    id="powerCapacity"
                     type="number"
                     value={commercial.powerKva || ""}
-                    onChange={(e) => updateCommercial({ powerKva: parseInt(e.target.value) || null })}
+                    onChange={(e) =>
+                      updateCommercial({
+                        powerKva: parseInt(e.target.value) || null,
+                      })
+                    }
                     placeholder="e.g., 50"
                     className="w-full px-4 py-3 pr-14 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
@@ -327,20 +467,29 @@ export function OfficeDetails() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div
+                  id="hvacAirConditioningLabel"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   HVAC / Air Conditioning
-                </label>
-                <div className="flex gap-2">
+                </div>
+                <div
+                  role="group"
+                  aria-labelledby="hvacAirConditioningLabel"
+                  className="flex gap-2"
+                >
                   {HVAC_OPTIONS.map((option) => (
                     <button
                       key={option.id}
                       type="button"
-                      onClick={() => updateCommercial({ hvacType: option.id as HVACType })}
+                      onClick={() =>
+                        updateCommercial({ hvacType: option.id as HVACType })
+                      }
                       className={cn(
                         "flex-1 py-2.5 px-2 rounded-lg border-2 text-xs font-medium transition-all",
                         commercial.hvacType === option.id
                           ? "border-teal-600 bg-teal-50 text-teal-700"
-                          : "border-gray-200 hover:border-gray-300 text-gray-700"
+                          : "border-gray-200 hover:border-gray-300 text-gray-700",
                       )}
                     >
                       {option.label}
@@ -352,10 +501,17 @@ export function OfficeDetails() {
 
             {/* Features Checkboxes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div
+                id="featuresLabel"
+                className="block text-sm font-medium text-gray-700 mb-3"
+              >
                 Features
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="featuresLabel"
+                className="grid grid-cols-2 sm:grid-cols-3 gap-3"
+              >
                 {[
                   { key: "has3PhasePower", label: "3-Phase Power" },
                   { key: "hasFiberReady", label: "Fiber Internet Ready" },
@@ -368,13 +524,19 @@ export function OfficeDetails() {
                       "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
                       commercial[feature.key as keyof typeof commercial]
                         ? "border-teal-600 bg-teal-50"
-                        : "border-gray-200 hover:border-gray-300"
+                        : "border-gray-200 hover:border-gray-300",
                     )}
                   >
                     <input
                       type="checkbox"
-                      checked={commercial[feature.key as keyof typeof commercial] as boolean}
-                      onChange={(e) => updateCommercial({ [feature.key]: e.target.checked })}
+                      checked={
+                        commercial[
+                          feature.key as keyof typeof commercial
+                        ] as boolean
+                      }
+                      onChange={(e) =>
+                        updateCommercial({ [feature.key]: e.target.checked })
+                      }
                       className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                     />
                     <span className="text-sm font-medium text-gray-700">

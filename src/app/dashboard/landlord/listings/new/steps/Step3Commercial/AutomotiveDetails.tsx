@@ -1,13 +1,13 @@
 /**
  * Automotive Space Details
- * 
+ *
  * Captures automotive-specific information:
  * - Parking spaces and type
  * - Service bays and equipment
  * - Car wash and fuel facilities
- * 
+ *
  * Design: Clean, professional. Teal primary, orange accents.
- * 
+ *
  * REFACTORED: Uses useCommercialForm hook for standardized state/validation
  */
 
@@ -33,8 +33,15 @@ const CAR_WASH_TYPES = [
 
 export function AutomotiveDetails() {
   // Use shared hook for standardized state management & validation
-  const { commercial, updateCommercial, isRequired, commercialSubtype } = useCommercialForm();
-  const { isParkingLot, isParkingBuilding, isGarage, isCarWash, isPetrolStation } = useCommercialSubtype();
+  const { commercial, updateCommercial, isRequired, commercialSubtype } =
+    useCommercialForm();
+  const {
+    isParkingLot,
+    isParkingBuilding,
+    isGarage,
+    isCarWash,
+    isPetrolStation,
+  } = useCommercialSubtype();
 
   // Determine which fields to show based on subtype
   const isParking = commercialSubtype?.includes("parking");
@@ -62,14 +69,22 @@ export function AutomotiveDetails() {
           <div className="p-5 space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="totalSize"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Total Size <span className="text-orange-500">*</span>
                 </label>
                 <div className="relative">
                   <input
+                    id="totalSize"
                     type="number"
                     value={commercial.sizeSqm || ""}
-                    onChange={(e) => updateCommercial({ sizeSqm: parseInt(e.target.value) || null })}
+                    onChange={(e) =>
+                      updateCommercial({
+                        sizeSqm: parseInt(e.target.value) || null,
+                      })
+                    }
                     placeholder="e.g., 500"
                     className="w-full px-4 py-3 pr-16 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
@@ -80,15 +95,26 @@ export function AutomotiveDetails() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Road Frontage {isRequired("frontageWidthM") && <span className="text-orange-500">*</span>}
+                <label
+                  htmlFor="roadFrontage"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Road Frontage{" "}
+                  {isRequired("frontageWidthM") && (
+                    <span className="text-orange-500">*</span>
+                  )}
                 </label>
                 <div className="relative">
                   <input
+                    id="roadFrontage"
                     type="number"
                     step="0.1"
                     value={commercial.roadFrontageM || ""}
-                    onChange={(e) => updateCommercial({ roadFrontageM: parseFloat(e.target.value) || null })}
+                    onChange={(e) =>
+                      updateCommercial({
+                        roadFrontageM: parseFloat(e.target.value) || null,
+                      })
+                    }
                     placeholder="e.g., 30"
                     className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
@@ -101,13 +127,30 @@ export function AutomotiveDetails() {
 
             {/* Parking Spaces */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Parking Spaces {isRequired("parkingSpacesCount") && <span className="text-orange-500">*</span>}
-              </label>
-              <div className="flex items-center gap-3 w-48">
+              <div
+                id="parkingSpacesLabel"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Parking Spaces{" "}
+                {isRequired("parkingSpacesCount") && (
+                  <span className="text-orange-500">*</span>
+                )}
+              </div>
+              <div
+                role="group"
+                aria-labelledby="parkingSpacesLabel"
+                className="flex items-center gap-3 w-48"
+              >
                 <button
                   type="button"
-                  onClick={() => updateCommercial({ parkingSpacesCount: Math.max(0, (commercial.parkingSpacesCount || 0) - 1) })}
+                  onClick={() =>
+                    updateCommercial({
+                      parkingSpacesCount: Math.max(
+                        0,
+                        (commercial.parkingSpacesCount || 0) - 1,
+                      ),
+                    })
+                  }
                   className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                 >
                   <Minus className="w-4 h-4 text-gray-600" />
@@ -117,7 +160,14 @@ export function AutomotiveDetails() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => updateCommercial({ parkingSpacesCount: Math.min(1000, (commercial.parkingSpacesCount || 0) + 1) })}
+                  onClick={() =>
+                    updateCommercial({
+                      parkingSpacesCount: Math.min(
+                        1000,
+                        (commercial.parkingSpacesCount || 0) + 1,
+                      ),
+                    })
+                  }
                   className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                 >
                   <Plus className="w-4 h-4 text-gray-600" />
@@ -128,29 +178,46 @@ export function AutomotiveDetails() {
             {/* Parking Type */}
             {isParking && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div
+                  id="parkingTypeLabel"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Parking Type
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                </div>
+                <div
+                  role="group"
+                  aria-labelledby="parkingTypeLabel"
+                  className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+                >
                   {PARKING_TYPES.map((type) => (
                     <button
                       key={type.id}
                       type="button"
-                      onClick={() => updateCommercial({ parkingType: type.id as typeof commercial.parkingType })}
+                      onClick={() =>
+                        updateCommercial({
+                          parkingType: type.id as typeof commercial.parkingType,
+                        })
+                      }
                       className={cn(
                         "p-3 rounded-lg border-2 text-left transition-all",
                         commercial.parkingType === type.id
                           ? "border-teal-600 bg-teal-50"
-                          : "border-gray-200 hover:border-gray-300"
+                          : "border-gray-200 hover:border-gray-300",
                       )}
                     >
-                      <span className={cn(
-                        "block text-sm font-medium",
-                        commercial.parkingType === type.id ? "text-teal-700" : "text-gray-900"
-                      )}>
+                      <span
+                        className={cn(
+                          "block text-sm font-medium",
+                          commercial.parkingType === type.id
+                            ? "text-teal-700"
+                            : "text-gray-900",
+                        )}
+                      >
                         {type.label}
                       </span>
-                      <span className="text-xs text-gray-500">{type.description}</span>
+                      <span className="text-xs text-gray-500">
+                        {type.description}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -160,13 +227,22 @@ export function AutomotiveDetails() {
             {/* Number of Floors - for parking buildings */}
             {isParkingBuilding && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Number of Floors {isRequired("floorLevel") && <span className="text-orange-500">*</span>}
+                <label
+                  htmlFor="numberOfFloors"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Number of Floors{" "}
+                  {isRequired("floorLevel") && (
+                    <span className="text-orange-500">*</span>
+                  )}
                 </label>
                 <input
+                  id="numberOfFloors"
                   type="text"
                   value={commercial.floorLevel || ""}
-                  onChange={(e) => updateCommercial({ floorLevel: e.target.value })}
+                  onChange={(e) =>
+                    updateCommercial({ floorLevel: e.target.value })
+                  }
                   placeholder="e.g., 5 floors"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
@@ -179,19 +255,35 @@ export function AutomotiveDetails() {
         {(isGarage || isShowroom) && (
           <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Service Facilities</h3>
+              <h3 className="font-semibold text-gray-900">
+                Service Facilities
+              </h3>
             </div>
 
             <div className="p-5 space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Work Bays {isRequired("workBays") && <span className="text-orange-500">*</span>}
-                  </label>
-                  <div className="flex items-center gap-3">
+                  <div
+                    id="workBaysLabel"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Work Bays{" "}
+                    {isRequired("workBays") && (
+                      <span className="text-orange-500">*</span>
+                    )}
+                  </div>
+                  <div
+                    role="group"
+                    aria-labelledby="workBaysLabel"
+                    className="flex items-center gap-3"
+                  >
                     <button
                       type="button"
-                      onClick={() => updateCommercial({ workBays: Math.max(0, (commercial.workBays || 0) - 1) })}
+                      onClick={() =>
+                        updateCommercial({
+                          workBays: Math.max(0, (commercial.workBays || 0) - 1),
+                        })
+                      }
                       className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                     >
                       <Minus className="w-4 h-4 text-gray-600" />
@@ -201,7 +293,14 @@ export function AutomotiveDetails() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => updateCommercial({ workBays: Math.min(30, (commercial.workBays || 0) + 1) })}
+                      onClick={() =>
+                        updateCommercial({
+                          workBays: Math.min(
+                            30,
+                            (commercial.workBays || 0) + 1,
+                          ),
+                        })
+                      }
                       className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                     >
                       <Plus className="w-4 h-4 text-gray-600" />
@@ -210,13 +309,27 @@ export function AutomotiveDetails() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div
+                    id="vehicleLiftsLabel"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Vehicle Lifts
-                  </label>
-                  <div className="flex items-center gap-3">
+                  </div>
+                  <div
+                    role="group"
+                    aria-labelledby="vehicleLiftsLabel"
+                    className="flex items-center gap-3"
+                  >
                     <button
                       type="button"
-                      onClick={() => updateCommercial({ vehicleLiftCount: Math.max(0, (commercial.vehicleLiftCount || 0) - 1) })}
+                      onClick={() =>
+                        updateCommercial({
+                          vehicleLiftCount: Math.max(
+                            0,
+                            (commercial.vehicleLiftCount || 0) - 1,
+                          ),
+                        })
+                      }
                       className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                     >
                       <Minus className="w-4 h-4 text-gray-600" />
@@ -226,7 +339,14 @@ export function AutomotiveDetails() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => updateCommercial({ vehicleLiftCount: Math.min(20, (commercial.vehicleLiftCount || 0) + 1) })}
+                      onClick={() =>
+                        updateCommercial({
+                          vehicleLiftCount: Math.min(
+                            20,
+                            (commercial.vehicleLiftCount || 0) + 1,
+                          ),
+                        })
+                      }
                       className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                     >
                       <Plus className="w-4 h-4 text-gray-600" />
@@ -240,13 +360,15 @@ export function AutomotiveDetails() {
                   "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
                   commercial.inspectionPit
                     ? "border-teal-600 bg-teal-50"
-                    : "border-gray-200 hover:border-gray-300"
+                    : "border-gray-200 hover:border-gray-300",
                 )}
               >
                 <input
                   type="checkbox"
                   checked={commercial.inspectionPit || false}
-                  onChange={(e) => updateCommercial({ inspectionPit: e.target.checked })}
+                  onChange={(e) =>
+                    updateCommercial({ inspectionPit: e.target.checked })
+                  }
                   className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                 />
                 <span className="text-sm font-medium text-gray-700">
@@ -261,25 +383,41 @@ export function AutomotiveDetails() {
         {isCarWash && (
           <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Car Wash Facilities</h3>
+              <h3 className="font-semibold text-gray-900">
+                Car Wash Facilities
+              </h3>
             </div>
 
             <div className="p-5 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Car Wash Type {isRequired("carWashType") && <span className="text-orange-500">*</span>}
-                </label>
-                <div className="flex flex-wrap gap-3">
+                <div
+                  id="carWashTypeLabel"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Car Wash Type{" "}
+                  {isRequired("carWashType") && (
+                    <span className="text-orange-500">*</span>
+                  )}
+                </div>
+                <div
+                  role="group"
+                  aria-labelledby="carWashTypeLabel"
+                  className="flex flex-wrap gap-3"
+                >
                   {CAR_WASH_TYPES.map((type) => (
                     <button
                       key={type.id}
                       type="button"
-                      onClick={() => updateCommercial({ carWashType: type.id as typeof commercial.carWashType })}
+                      onClick={() =>
+                        updateCommercial({
+                          carWashType: type.id as typeof commercial.carWashType,
+                        })
+                      }
                       className={cn(
                         "px-4 py-2.5 rounded-lg border-2 text-sm font-medium transition-all",
                         commercial.carWashType === type.id
                           ? "border-teal-600 bg-teal-50 text-teal-700"
-                          : "border-gray-200 hover:border-gray-300 text-gray-700"
+                          : "border-gray-200 hover:border-gray-300 text-gray-700",
                       )}
                     >
                       {type.label}
@@ -293,13 +431,15 @@ export function AutomotiveDetails() {
                   "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
                   commercial.waterRecyclingSystem
                     ? "border-teal-600 bg-teal-50"
-                    : "border-gray-200 hover:border-gray-300"
+                    : "border-gray-200 hover:border-gray-300",
                 )}
               >
                 <input
                   type="checkbox"
                   checked={commercial.waterRecyclingSystem || false}
-                  onChange={(e) => updateCommercial({ waterRecyclingSystem: e.target.checked })}
+                  onChange={(e) =>
+                    updateCommercial({ waterRecyclingSystem: e.target.checked })
+                  }
                   className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                 />
                 <span className="text-sm font-medium text-gray-700">
@@ -314,19 +454,38 @@ export function AutomotiveDetails() {
         {isPetrolStation && (
           <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Fuel Station Facilities</h3>
+              <h3 className="font-semibold text-gray-900">
+                Fuel Station Facilities
+              </h3>
             </div>
 
             <div className="p-5 space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pump Islands {isRequired("pumpIslands") && <span className="text-orange-500">*</span>}
-                  </label>
-                  <div className="flex items-center gap-3">
+                  <div
+                    id="pumpIslandsLabel"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Pump Islands{" "}
+                    {isRequired("pumpIslands") && (
+                      <span className="text-orange-500">*</span>
+                    )}
+                  </div>
+                  <div
+                    role="group"
+                    aria-labelledby="pumpIslandsLabel"
+                    className="flex items-center gap-3"
+                  >
                     <button
                       type="button"
-                      onClick={() => updateCommercial({ pumpIslands: Math.max(0, (commercial.pumpIslands || 0) - 1) })}
+                      onClick={() =>
+                        updateCommercial({
+                          pumpIslands: Math.max(
+                            0,
+                            (commercial.pumpIslands || 0) - 1,
+                          ),
+                        })
+                      }
                       className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                     >
                       <Minus className="w-4 h-4 text-gray-600" />
@@ -336,7 +495,14 @@ export function AutomotiveDetails() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => updateCommercial({ pumpIslands: Math.min(20, (commercial.pumpIslands || 0) + 1) })}
+                      onClick={() =>
+                        updateCommercial({
+                          pumpIslands: Math.min(
+                            20,
+                            (commercial.pumpIslands || 0) + 1,
+                          ),
+                        })
+                      }
                       className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                     >
                       <Plus className="w-4 h-4 text-gray-600" />
@@ -345,14 +511,22 @@ export function AutomotiveDetails() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="convenienceStoreArea"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Convenience Store Area
                   </label>
                   <div className="relative">
                     <input
+                      id="convenienceStoreArea"
                       type="number"
                       value={commercial.convenienceStoreSqm || ""}
-                      onChange={(e) => updateCommercial({ convenienceStoreSqm: parseInt(e.target.value) || null })}
+                      onChange={(e) =>
+                        updateCommercial({
+                          convenienceStoreSqm: parseInt(e.target.value) || null,
+                        })
+                      }
                       placeholder="e.g., 50"
                       className="w-full px-4 py-3 pr-16 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                     />
@@ -368,13 +542,15 @@ export function AutomotiveDetails() {
                   "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
                   commercial.canopyCovered
                     ? "border-teal-600 bg-teal-50"
-                    : "border-gray-200 hover:border-gray-300"
+                    : "border-gray-200 hover:border-gray-300",
                 )}
               >
                 <input
                   type="checkbox"
                   checked={commercial.canopyCovered || false}
-                  onChange={(e) => updateCommercial({ canopyCovered: e.target.checked })}
+                  onChange={(e) =>
+                    updateCommercial({ canopyCovered: e.target.checked })
+                  }
                   className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                 />
                 <span className="text-sm font-medium text-gray-700">
@@ -388,18 +564,34 @@ export function AutomotiveDetails() {
         {/* EV Charging */}
         <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900">Electric Vehicle Facilities</h3>
+            <h3 className="font-semibold text-gray-900">
+              Electric Vehicle Facilities
+            </h3>
           </div>
 
           <div className="p-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div
+                id="evChargingStationsLabel"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 EV Charging Stations
-              </label>
-              <div className="flex items-center gap-3 w-48">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="evChargingStationsLabel"
+                className="flex items-center gap-3 w-48"
+              >
                 <button
                   type="button"
-                  onClick={() => updateCommercial({ evChargingStations: Math.max(0, (commercial.evChargingStations || 0) - 1) })}
+                  onClick={() =>
+                    updateCommercial({
+                      evChargingStations: Math.max(
+                        0,
+                        (commercial.evChargingStations || 0) - 1,
+                      ),
+                    })
+                  }
                   className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                 >
                   <Minus className="w-4 h-4 text-gray-600" />
@@ -409,7 +601,14 @@ export function AutomotiveDetails() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => updateCommercial({ evChargingStations: Math.min(50, (commercial.evChargingStations || 0) + 1) })}
+                  onClick={() =>
+                    updateCommercial({
+                      evChargingStations: Math.min(
+                        50,
+                        (commercial.evChargingStations || 0) + 1,
+                      ),
+                    })
+                  }
                   className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
                 >
                   <Plus className="w-4 h-4 text-gray-600" />

@@ -1,12 +1,12 @@
 /**
  * Step 7: Commercial Review & Publish
- * 
+ *
  * Final review for commercial listings with:
  * - Title and description
  * - Commercial details summary
  * - Pricing summary
  * - Preview and publish
- * 
+ *
  * Uses dynamic content from content-config.ts.
  */
 
@@ -14,8 +14,8 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { 
-  MapPin, 
+import {
+  MapPin,
   Maximize,
   Check,
   Edit3,
@@ -27,8 +27,8 @@ import {
 import { useWizard } from "../context";
 import { NAIROBI_AREAS } from "../types";
 import { useStep7Content } from "../useWizardContent";
-import { 
-  COMMERCIAL_CATEGORIES, 
+import {
+  COMMERCIAL_CATEGORIES,
   COMMERCIAL_SUBTYPES,
   COMMERCIAL_AMENITY_CATEGORIES,
   type CommercialType,
@@ -43,7 +43,7 @@ const formatAmount = (value: number | null | undefined): string => {
 export function Step7CommercialReview() {
   const { state, updateFormData, setValidation, goToStep } = useWizard();
   const content = useStep7Content();
-  const { 
+  const {
     title,
     description,
     commercialType,
@@ -73,7 +73,7 @@ export function Step7CommercialReview() {
   // Validation
   useEffect(() => {
     const errors: Record<string, string> = {};
-    
+
     if (!title || title.trim().length < 10) {
       errors.title = "Title must be at least 10 characters";
     } else if (title.trim().length > 80) {
@@ -92,7 +92,10 @@ export function Step7CommercialReview() {
   }, [title, description, setValidation]);
 
   // Get commercial type label
-  const commercialTypeLabel = COMMERCIAL_CATEGORIES.find((c) => c.id === commercialType)?.label || commercialType || "Not selected";
+  const commercialTypeLabel =
+    COMMERCIAL_CATEGORIES.find((c) => c.id === commercialType)?.label ||
+    commercialType ||
+    "Not selected";
 
   // Get subtype label
   const getSubtypeLabel = () => {
@@ -106,16 +109,19 @@ export function Step7CommercialReview() {
   // Get area label
   const areaLabel = (() => {
     for (const categoryData of Object.values(NAIROBI_AREAS)) {
-      const found = categoryData.areas.find((a: { id: string; name: string }) => a.id === area);
+      const found = categoryData.areas.find(
+        (a: { id: string; name: string }) => a.id === area,
+      );
       if (found) return found.name;
     }
     return area || "";
   })();
 
   // Get cover photo
-  const coverPhoto = (photos || []).find((p) => p.category === "cover") 
-    || (photos || []).find((p) => p.isCover) 
-    || photos?.[0];
+  const coverPhoto =
+    (photos || []).find((p) => p.category === "cover") ||
+    (photos || []).find((p) => p.isCover) ||
+    photos?.[0];
 
   // Get selected amenities labels
   const selectedAmenities = (commercialAmenities || []).map((amenityId) => {
@@ -130,18 +136,19 @@ export function Step7CommercialReview() {
   const currencySymbol = currency === "USD" ? "$" : "KSh";
 
   // Calculate monthly rent
-  const monthlyRent = pricingModel === "per_sqm" && rentPerSqm && sizeSqm 
-    ? rentPerSqm * sizeSqm 
-    : rentPerSqm || 0;
+  const monthlyRent =
+    pricingModel === "per_sqm" && rentPerSqm && sizeSqm
+      ? rentPerSqm * sizeSqm
+      : rentPerSqm || 0;
 
   // Format date
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Not set";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-KE", { 
-      day: "numeric", 
-      month: "long", 
-      year: "numeric" 
+    return date.toLocaleDateString("en-KE", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     });
   };
 
@@ -150,14 +157,14 @@ export function Step7CommercialReview() {
     const sizeLabel = sizeSqm ? `${sizeSqm} sqm` : "";
     const subtypeLabel = getSubtypeLabel();
     const typeLabel = subtypeLabel || commercialTypeLabel;
-    
+
     let generatedTitle = `${sizeLabel} ${typeLabel}`.trim();
-    
-    if (areaLabel && (generatedTitle.length + areaLabel.length + 4) <= 80) {
+
+    if (areaLabel && generatedTitle.length + areaLabel.length + 4 <= 80) {
       generatedTitle += ` in ${areaLabel}`;
     }
 
-    if (fitoutLevel && (generatedTitle.length + 15) <= 80) {
+    if (fitoutLevel && generatedTitle.length + 15 <= 80) {
       const fitoutLabels: Record<string, string> = {
         shell: "Shell & Core",
         warm_shell: "Warm Shell",
@@ -166,7 +173,7 @@ export function Step7CommercialReview() {
       };
       generatedTitle += ` - ${fitoutLabels[fitoutLevel] || fitoutLevel}`;
     }
-    
+
     return generatedTitle.slice(0, 80);
   };
 
@@ -175,12 +182,16 @@ export function Step7CommercialReview() {
     const parts: string[] = [];
     const subtypeLabel = getSubtypeLabel();
     const typeLabel = subtypeLabel || commercialTypeLabel;
-    
+
     // Opening sentence with size and type
     if (sizeSqm) {
-      parts.push(`This ${sizeSqm} sqm ${typeLabel.toLowerCase()} is available for rent${areaLabel ? ` in ${areaLabel}` : ""}.`);
+      parts.push(
+        `This ${sizeSqm} sqm ${typeLabel.toLowerCase()} is available for rent${areaLabel ? ` in ${areaLabel}` : ""}.`,
+      );
     } else {
-      parts.push(`This ${typeLabel.toLowerCase()} is available for rent${areaLabel ? ` in ${areaLabel}` : ""}.`);
+      parts.push(
+        `This ${typeLabel.toLowerCase()} is available for rent${areaLabel ? ` in ${areaLabel}` : ""}.`,
+      );
     }
 
     // Fitout and floor level
@@ -191,93 +202,153 @@ export function Step7CommercialReview() {
       fully_fitted: "fully fitted and ready for occupancy",
     };
     if (fitoutLevel && fitoutLabels[fitoutLevel]) {
-      parts.push(`The space is ${fitoutLabels[fitoutLevel]}${floorLevel ? ` and located on ${floorLevel}` : ""}.`);
+      parts.push(
+        `The space is ${fitoutLabels[fitoutLevel]}${floorLevel ? ` and located on ${floorLevel}` : ""}.`,
+      );
     } else if (floorLevel) {
       parts.push(`Located on ${floorLevel}.`);
     }
 
     // Commercial-specific details based on type
     const details: string[] = [];
-    
+
     if (commercialType === "office") {
-      if (commercial.workstationCapacity) details.push(`capacity for ${commercial.workstationCapacity} workstations`);
-      if (commercial.privateOffices > 0) details.push(`${commercial.privateOffices} private office${commercial.privateOffices > 1 ? 's' : ''}`);
-      if (commercial.meetingRooms > 0) details.push(`${commercial.meetingRooms} meeting room${commercial.meetingRooms > 1 ? 's' : ''}`);
+      if (commercial.workstationCapacity)
+        details.push(
+          `capacity for ${commercial.workstationCapacity} workstations`,
+        );
+      if (commercial.privateOffices > 0)
+        details.push(
+          `${commercial.privateOffices} private office${commercial.privateOffices > 1 ? "s" : ""}`,
+        );
+      if (commercial.meetingRooms > 0)
+        details.push(
+          `${commercial.meetingRooms} meeting room${commercial.meetingRooms > 1 ? "s" : ""}`,
+        );
       if (commercial.hasReception) details.push("dedicated reception area");
       if (commercial.hasFiberReady) details.push("fiber-ready connectivity");
     } else if (commercialType === "retail") {
-      if (commercial.frontageWidthM) details.push(`${commercial.frontageWidthM}m street frontage`);
+      if (commercial.frontageWidthM)
+        details.push(`${commercial.frontageWidthM}m street frontage`);
       if (commercial.hasDisplayWindows) details.push("display windows");
-      if (commercial.footTraffic === "high" || commercial.footTraffic === "very_high") details.push("high foot traffic location");
+      if (
+        commercial.footTraffic === "high" ||
+        commercial.footTraffic === "very_high"
+      )
+        details.push("high foot traffic location");
     } else if (commercialType === "food_beverage") {
-      if (commercial.seatingCapacity) details.push(`seating for ${commercial.seatingCapacity} guests`);
-      if (commercial.kitchenAreaSqm) details.push(`${commercial.kitchenAreaSqm} sqm kitchen`);
+      if (commercial.seatingCapacity)
+        details.push(`seating for ${commercial.seatingCapacity} guests`);
+      if (commercial.kitchenAreaSqm)
+        details.push(`${commercial.kitchenAreaSqm} sqm kitchen`);
       if (commercial.exhaustSystem) details.push("commercial exhaust system");
       if (commercial.outdoorSeating) details.push("outdoor seating available");
     } else if (commercialType === "warehouse") {
-      if (commercial.warehouseAreaSqm) details.push(`${commercial.warehouseAreaSqm} sqm warehouse space`);
-      if (commercial.clearHeightM) details.push(`${commercial.clearHeightM}m clear height`);
-      if (commercial.loadingDocks > 0) details.push(`${commercial.loadingDocks} loading dock${commercial.loadingDocks > 1 ? 's' : ''}`);
+      if (commercial.warehouseAreaSqm)
+        details.push(`${commercial.warehouseAreaSqm} sqm warehouse space`);
+      if (commercial.clearHeightM)
+        details.push(`${commercial.clearHeightM}m clear height`);
+      if (commercial.loadingDocks > 0)
+        details.push(
+          `${commercial.loadingDocks} loading dock${commercial.loadingDocks > 1 ? "s" : ""}`,
+        );
       if (commercial.coldStorage) details.push("cold storage facilities");
     } else if (commercialType === "automotive") {
-      if (commercial.workBays > 0) details.push(`${commercial.workBays} work bay${commercial.workBays > 1 ? 's' : ''}`);
-      if (commercial.vehicleLiftCount > 0) details.push(`${commercial.vehicleLiftCount} vehicle lift${commercial.vehicleLiftCount > 1 ? 's' : ''}`);
-      if (commercial.carWashType) details.push(`${commercial.carWashType.replace('_', ' ')} car wash`);
+      if (commercial.workBays > 0)
+        details.push(
+          `${commercial.workBays} work bay${commercial.workBays > 1 ? "s" : ""}`,
+        );
+      if (commercial.vehicleLiftCount > 0)
+        details.push(
+          `${commercial.vehicleLiftCount} vehicle lift${commercial.vehicleLiftCount > 1 ? "s" : ""}`,
+        );
+      if (commercial.carWashType)
+        details.push(`${commercial.carWashType.replace("_", " ")} car wash`);
       if (commercial.inspectionPit) details.push("inspection pit");
-      if (commercial.parkingSpacesCount && commercial.parkingSpacesCount > 0) details.push(`parking for ${commercial.parkingSpacesCount} vehicles`);
-      if (commercial.evChargingStations > 0) details.push(`${commercial.evChargingStations} EV charging station${commercial.evChargingStations > 1 ? 's' : ''}`);
+      if (commercial.parkingSpacesCount && commercial.parkingSpacesCount > 0)
+        details.push(`parking for ${commercial.parkingSpacesCount} vehicles`);
+      if (commercial.evChargingStations > 0)
+        details.push(
+          `${commercial.evChargingStations} EV charging station${commercial.evChargingStations > 1 ? "s" : ""}`,
+        );
     } else if (commercialType === "commercial_land") {
-      if (commercial.plotSizeSqm) details.push(`${commercial.plotSizeSqm} sqm plot`);
-      if (commercial.zoningType) details.push(`${commercial.zoningType.replace('_', ' ')} zoning`);
-      if (commercial.roadFrontageM) details.push(`${commercial.roadFrontageM}m road frontage`);
+      if (commercial.plotSizeSqm)
+        details.push(`${commercial.plotSizeSqm} sqm plot`);
+      if (commercial.zoningType)
+        details.push(`${commercial.zoningType.replace("_", " ")} zoning`);
+      if (commercial.roadFrontageM)
+        details.push(`${commercial.roadFrontageM}m road frontage`);
       if (commercial.hasUtilities) details.push("utilities available");
       if (commercial.isTitled) details.push("titled property");
       if (commercial.isFenced) details.push("fully fenced");
     } else if (commercialType === "hospitality") {
       if (commercial.roomCount) details.push(`${commercial.roomCount} rooms`);
-      if (commercial.eventCapacitySeated) details.push(`capacity for ${commercial.eventCapacitySeated} guests`);
+      if (commercial.eventCapacitySeated)
+        details.push(`capacity for ${commercial.eventCapacitySeated} guests`);
       if (commercial.hasConferenceRooms) details.push("conference facilities");
     } else if (commercialType === "healthcare") {
-      if (commercial.consultationRooms > 0) details.push(`${commercial.consultationRooms} consultation rooms`);
-      if (commercial.treatmentRooms > 0) details.push(`${commercial.treatmentRooms} treatment rooms`);
-      if (commercial.wheelchairAccessible) details.push("wheelchair accessible");
+      if (commercial.consultationRooms > 0)
+        details.push(`${commercial.consultationRooms} consultation rooms`);
+      if (commercial.treatmentRooms > 0)
+        details.push(`${commercial.treatmentRooms} treatment rooms`);
+      if (commercial.wheelchairAccessible)
+        details.push("wheelchair accessible");
     } else if (commercialType === "educational") {
-      if (commercial.classroomCount > 0) details.push(`${commercial.classroomCount} classrooms`);
-      if (commercial.totalStudentCapacity) details.push(`capacity for ${commercial.totalStudentCapacity} students`);
+      if (commercial.classroomCount > 0)
+        details.push(`${commercial.classroomCount} classrooms`);
+      if (commercial.totalStudentCapacity)
+        details.push(
+          `capacity for ${commercial.totalStudentCapacity} students`,
+        );
       if (commercial.hasComputerLab) details.push("computer lab");
     } else if (commercialType === "specialized") {
       // Specialized subtypes
       if (commercialSubtype === "data_center") {
-        if (commercial.rackCapacity) details.push(`${commercial.rackCapacity} rack capacity`);
-        if (commercial.powerCapacityKva) details.push(`${commercial.powerCapacityKva} kVA power`);
-        if (commercial.uptimeTier) details.push(`Tier ${commercial.uptimeTier.replace('tier_', '')} uptime`);
+        if (commercial.rackCapacity)
+          details.push(`${commercial.rackCapacity} rack capacity`);
+        if (commercial.powerCapacityKva)
+          details.push(`${commercial.powerCapacityKva} kVA power`);
+        if (commercial.uptimeTier)
+          details.push(
+            `Tier ${commercial.uptimeTier.replace("tier_", "")} uptime`,
+          );
       } else if (commercialSubtype === "gym_fitness") {
-        if (commercial.gymFloorSqm) details.push(`${commercial.gymFloorSqm} sqm main floor`);
-        if (commercial.lockerRooms > 0) details.push(`${commercial.lockerRooms} locker rooms`);
+        if (commercial.gymFloorSqm)
+          details.push(`${commercial.gymFloorSqm} sqm main floor`);
+        if (commercial.lockerRooms > 0)
+          details.push(`${commercial.lockerRooms} locker rooms`);
         if (commercial.swimmingPool) details.push("swimming pool");
       } else if (commercialSubtype === "salon_spa") {
-        if (commercial.stylingStations > 0) details.push(`${commercial.stylingStations} styling stations`);
-        if (commercial.treatmentRoomsSpa > 0) details.push(`${commercial.treatmentRoomsSpa} treatment rooms`);
+        if (commercial.stylingStations > 0)
+          details.push(`${commercial.stylingStations} styling stations`);
+        if (commercial.treatmentRoomsSpa > 0)
+          details.push(`${commercial.treatmentRoomsSpa} treatment rooms`);
       } else if (commercialSubtype === "bank_branch") {
-        if (commercial.tellerCounterPositions > 0) details.push(`${commercial.tellerCounterPositions} teller positions`);
+        if (commercial.tellerCounterPositions > 0)
+          details.push(`${commercial.tellerCounterPositions} teller positions`);
         if (commercial.vaultRoom) details.push("vault room");
-        if (commercial.atmLocations > 0) details.push(`${commercial.atmLocations} ATM locations`);
+        if (commercial.atmLocations > 0)
+          details.push(`${commercial.atmLocations} ATM locations`);
       }
     }
 
     if (details.length > 0) {
-      parts.push(`Features include ${details.slice(0, -1).join(', ')}${details.length > 1 ? ` and ${details[details.length - 1]}` : details[0]}.`);
+      parts.push(
+        `Features include ${details.slice(0, -1).join(", ")}${details.length > 1 ? ` and ${details[details.length - 1]}` : details[0]}.`,
+      );
     }
 
     // Amenities
     if (selectedAmenities.length > 0) {
       const amenityList = selectedAmenities.slice(0, 5);
-      parts.push(`Building amenities include ${amenityList.join(', ')}.`);
+      parts.push(`Building amenities include ${amenityList.join(", ")}.`);
     }
 
     // Pricing info
     if (monthlyRent > 0) {
-      parts.push(`Monthly rent is ${currencySymbol} ${formatAmount(monthlyRent)}${serviceChargeMonthly ? ` plus ${currencySymbol} ${formatAmount(serviceChargeMonthly)} service charge` : ""}.`);
+      parts.push(
+        `Monthly rent is ${currencySymbol} ${formatAmount(monthlyRent)}${serviceChargeMonthly ? ` plus ${currencySymbol} ${formatAmount(serviceChargeMonthly)} service charge` : ""}.`,
+      );
     }
 
     // Lease terms
@@ -293,7 +364,7 @@ export function Step7CommercialReview() {
     // Closing
     parts.push("Contact us to schedule a viewing.");
 
-    return parts.join(' ');
+    return parts.join(" ");
   };
 
   // Auto-generate title if empty
@@ -310,24 +381,28 @@ export function Step7CommercialReview() {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           {content.header.title}
         </h2>
-        <p className="text-gray-500">
-          {content.header.subtitle}
-        </p>
+        <p className="text-gray-500">{content.header.subtitle}</p>
       </div>
 
       <div className="space-y-6">
         {/* Title & Description */}
         <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900">{content.title.sectionLabel}</h3>
+            <h3 className="font-semibold text-gray-900">
+              {content.title.sectionLabel}
+            </h3>
           </div>
-          
+
           <div className="p-5 space-y-5">
             {/* Title */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-medium text-gray-700">
-                  {content.title.label} <span className="text-orange-500">*</span>
+                <label
+                  htmlFor="listingTitle"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  {content.title.label}{" "}
+                  <span className="text-orange-500">*</span>
                 </label>
                 <button
                   type="button"
@@ -338,6 +413,7 @@ export function Step7CommercialReview() {
                 </button>
               </div>
               <input
+                id="listingTitle"
                 type="text"
                 value={title}
                 onChange={(e) => updateFormData({ title: e.target.value })}
@@ -349,10 +425,14 @@ export function Step7CommercialReview() {
                 <span className="text-xs text-gray-500">
                   {content.title.helper}
                 </span>
-                <span className={cn(
-                  "text-xs",
-                  (title?.length || 0) > 70 ? "text-orange-500" : "text-gray-400"
-                )}>
+                <span
+                  className={cn(
+                    "text-xs",
+                    (title?.length || 0) > 70
+                      ? "text-orange-500"
+                      : "text-gray-400",
+                  )}
+                >
                   {title?.length || 0}/80
                 </span>
               </div>
@@ -361,20 +441,29 @@ export function Step7CommercialReview() {
             {/* Description */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-medium text-gray-700">
-                  {content.description.label} <span className="text-orange-500">*</span>
+                <label
+                  htmlFor="listingDescription"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  {content.description.label}{" "}
+                  <span className="text-orange-500">*</span>
                 </label>
                 <button
                   type="button"
-                  onClick={() => updateFormData({ description: generateDescription() })}
+                  onClick={() =>
+                    updateFormData({ description: generateDescription() })
+                  }
                   className="text-xs text-teal-600 hover:text-teal-700 font-medium"
                 >
                   Auto-generate
                 </button>
               </div>
               <textarea
+                id="listingDescription"
                 value={description}
-                onChange={(e) => updateFormData({ description: e.target.value })}
+                onChange={(e) =>
+                  updateFormData({ description: e.target.value })
+                }
                 rows={5}
                 placeholder={content.description.placeholder}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
@@ -383,10 +472,14 @@ export function Step7CommercialReview() {
                 <span className="text-xs text-gray-500">
                   Minimum 50 characters
                 </span>
-                <span className={cn(
-                  "text-xs",
-                  (description?.length || 0) < 50 ? "text-orange-500" : "text-gray-400"
-                )}>
+                <span
+                  className={cn(
+                    "text-xs",
+                    (description?.length || 0) < 50
+                      ? "text-orange-500"
+                      : "text-gray-400",
+                  )}
+                >
                   {description?.length || 0} characters
                 </span>
               </div>
@@ -399,7 +492,7 @@ export function Step7CommercialReview() {
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
             <h3 className="font-semibold text-gray-900">Preview</h3>
           </div>
-          
+
           <div className="p-5">
             <div className="bg-gray-50 rounded-xl overflow-hidden">
               {/* Property Image */}
@@ -428,7 +521,7 @@ export function Step7CommercialReview() {
                 <h4 className="font-semibold text-gray-900 text-lg mb-2 line-clamp-2">
                   {title || "Your listing title will appear here"}
                 </h4>
-                
+
                 <div className="flex items-center gap-2 text-gray-500 text-sm mb-3">
                   <MapPin className="w-4 h-4" />
                   <span>{address || areaLabel || "Location not set"}</span>
@@ -439,11 +532,11 @@ export function Step7CommercialReview() {
                     <Maximize className="w-4 h-4" />
                     <span>{sizeSqm ? `${sizeSqm} sqm` : "Size not set"}</span>
                   </div>
+                  {fitoutLevel && <span className="text-gray-400">|</span>}
                   {fitoutLevel && (
-                    <span className="text-gray-400">|</span>
-                  )}
-                  {fitoutLevel && (
-                    <span className="capitalize">{fitoutLevel.replace("_", " ")}</span>
+                    <span className="capitalize">
+                      {fitoutLevel.replace("_", " ")}
+                    </span>
                   )}
                 </div>
 
@@ -455,7 +548,8 @@ export function Step7CommercialReview() {
                     <span className="text-gray-500 text-sm">/month</span>
                     {serviceChargeMonthly && serviceChargeMonthly > 0 && (
                       <span className="text-xs text-gray-500 block">
-                        + {currencySymbol} {formatAmount(serviceChargeMonthly)} service charge
+                        + {currencySymbol} {formatAmount(serviceChargeMonthly)}{" "}
+                        service charge
                       </span>
                     )}
                   </div>
@@ -470,7 +564,7 @@ export function Step7CommercialReview() {
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Listing Summary</h3>
           </div>
-          
+
           <div className="divide-y divide-gray-100">
             {/* Space Details */}
             <SummaryRow
@@ -493,7 +587,13 @@ export function Step7CommercialReview() {
             />
             <SummaryRow
               label="Fit-out Level"
-              value={fitoutLevel ? fitoutLevel.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase()) : "Not specified"}
+              value={
+                fitoutLevel
+                  ? fitoutLevel
+                      .replace("_", " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase())
+                  : "Not specified"
+              }
               stepIndex={3}
               onEdit={() => goToStep(3)}
             />
@@ -505,9 +605,10 @@ export function Step7CommercialReview() {
             />
             <SummaryRow
               label="Building Amenities"
-              value={selectedAmenities.length > 0 
-                ? `${selectedAmenities.slice(0, 3).join(", ")}${selectedAmenities.length > 3 ? ` +${selectedAmenities.length - 3} more` : ""}`
-                : "None selected"
+              value={
+                selectedAmenities.length > 0
+                  ? `${selectedAmenities.slice(0, 3).join(", ")}${selectedAmenities.length > 3 ? ` +${selectedAmenities.length - 3} more` : ""}`
+                  : "None selected"
               }
               stepIndex={4}
               onEdit={() => goToStep(4)}
@@ -526,7 +627,11 @@ export function Step7CommercialReview() {
             />
             <SummaryRow
               label="Service Charge"
-              value={serviceChargeMonthly ? `${currencySymbol} ${formatAmount(serviceChargeMonthly)}/month` : "Not specified"}
+              value={
+                serviceChargeMonthly
+                  ? `${currencySymbol} ${formatAmount(serviceChargeMonthly)}/month`
+                  : "Not specified"
+              }
               stepIndex={6}
               onEdit={() => goToStep(6)}
             />
@@ -538,13 +643,19 @@ export function Step7CommercialReview() {
             />
             <SummaryRow
               label="Minimum Lease"
-              value={minLeaseMonths ? `${minLeaseMonths} months` : "Not specified"}
+              value={
+                minLeaseMonths ? `${minLeaseMonths} months` : "Not specified"
+              }
               stepIndex={6}
               onEdit={() => goToStep(6)}
             />
             <SummaryRow
               label="Rent Escalation"
-              value={rentEscalationPercent ? `${rentEscalationPercent}% annually` : "None"}
+              value={
+                rentEscalationPercent
+                  ? `${rentEscalationPercent}% annually`
+                  : "None"
+              }
               stepIndex={6}
               onEdit={() => goToStep(6)}
             />
@@ -558,7 +669,10 @@ export function Step7CommercialReview() {
         </section>
 
         {/* Validation Warnings */}
-        {(!title || title.length < 10 || !description || description.length < 50) && (
+        {(!title ||
+          title.length < 10 ||
+          !description ||
+          description.length < 50) && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex gap-3">
             <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-orange-700">

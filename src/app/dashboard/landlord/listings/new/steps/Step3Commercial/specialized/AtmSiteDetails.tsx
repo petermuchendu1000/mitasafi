@@ -1,6 +1,6 @@
 /**
  * ATM Site Details
- * 
+ *
  * Specialized form for standalone ATM locations and kiosks.
  * Captures security, accessibility, and site characteristics.
  */
@@ -17,7 +17,10 @@ import {
   CheckboxInput,
   ButtonGroup,
 } from "./field-configs";
-import { isFieldRequired, validateRequiredFields } from "../../../required-fields-config";
+import {
+  isFieldRequired,
+  validateRequiredFields,
+} from "../../../required-fields-config";
 
 const FOOT_TRAFFIC_OPTIONS: { id: string; label: string }[] = [
   { id: "low", label: "Low" },
@@ -33,12 +36,20 @@ export function AtmSiteDetails() {
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
-  const isRequired = (field: keyof typeof commercial) => 
+  const isRequired = (field: keyof typeof commercial) =>
     isFieldRequired(field, commercialType, commercialSubtype);
 
   useEffect(() => {
-    const errors = validateRequiredFields(commercial, commercialType, commercialSubtype);
-    setValidation(3, { isValid: Object.keys(errors).length === 0, errors, touched: {} });
+    const errors = validateRequiredFields(
+      commercial,
+      commercialType,
+      commercialSubtype,
+    );
+    setValidation(3, {
+      isValid: Object.keys(errors).length === 0,
+      errors,
+      touched: {},
+    });
   }, [commercial, commercialType, commercialSubtype, setValidation]);
 
   const update = (data: Partial<typeof commercial>) => {
@@ -47,8 +58,8 @@ export function AtmSiteDetails() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader 
-        title="ATM Site Specifications" 
+      <PageHeader
+        title="ATM Site Specifications"
         description="Location, security, and accessibility features"
       />
 
@@ -57,16 +68,28 @@ export function AtmSiteDetails() {
         <FormSection title="Location Characteristics">
           <div className="space-y-4">
             <div>
-              <FieldLabel label="Foot Traffic Level" required />
+              <FieldLabel
+                id="atm-site-foot-traffic-level"
+                label="Foot Traffic Level"
+                required
+              />
               <ButtonGroup
+                labelledBy="atm-site-foot-traffic-level"
                 options={FOOT_TRAFFIC_OPTIONS}
                 value={commercial.footTrafficLevel || null}
-                onChange={(v) => update({ footTrafficLevel: v as FootTrafficLevel })}
+                onChange={(v) =>
+                  update({ footTrafficLevel: v as FootTrafficLevel })
+                }
               />
             </div>
             <div>
-              <FieldLabel label="Nearby Landmarks" description="e.g., Mall, Hospital, University" />
+              <FieldLabel
+                htmlFor="atm-site-nearby-landmarks"
+                label="Nearby Landmarks"
+                description="e.g., Mall, Hospital, University"
+              />
               <TextInput
+                id="atm-site-nearby-landmarks"
                 value={commercial.nearbyLandmarks || ""}
                 onChange={(v) => update({ nearbyLandmarks: v })}
                 placeholder="e.g., Next to Westgate Mall entrance"

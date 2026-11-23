@@ -349,10 +349,17 @@ export function Step4CommercialAmenities() {
           <div className="p-5 space-y-4">
             {/* Minimum Lease Term */}
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
+              <div
+                id="minimumLeaseTermLabel"
+                className="text-sm font-medium text-gray-700 mb-2 block"
+              >
                 Minimum Lease Term
-              </label>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="minimumLeaseTermLabel"
+                className="grid grid-cols-3 sm:grid-cols-5 gap-2"
+              >
                 {[
                   { id: "monthly", label: "Monthly" },
                   { id: "6_months", label: "6 Months" },

@@ -1,6 +1,6 @@
 /**
  * Data Center Details
- * 
+ *
  * Specialized form for data center / colocation facilities.
  * Captures critical infrastructure specifications.
  */
@@ -19,7 +19,10 @@ import {
   CheckboxInput,
   ButtonGroup,
 } from "./field-configs";
-import { isFieldRequired, validateRequiredFields } from "../../../required-fields-config";
+import {
+  isFieldRequired,
+  validateRequiredFields,
+} from "../../../required-fields-config";
 
 const UPTIME_TIERS = [
   { id: "tier_1" as const, label: "Tier 1", description: "99.67%" },
@@ -46,12 +49,20 @@ export function DataCenterDetails() {
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
-  const isRequired = (field: keyof typeof commercial) => 
+  const isRequired = (field: keyof typeof commercial) =>
     isFieldRequired(field, commercialType, commercialSubtype);
 
   useEffect(() => {
-    const errors = validateRequiredFields(commercial, commercialType, commercialSubtype);
-    setValidation(3, { isValid: Object.keys(errors).length === 0, errors, touched: {} });
+    const errors = validateRequiredFields(
+      commercial,
+      commercialType,
+      commercialSubtype,
+    );
+    setValidation(3, {
+      isValid: Object.keys(errors).length === 0,
+      errors,
+      touched: {},
+    });
   }, [commercial, commercialType, commercialSubtype, setValidation]);
 
   const update = (data: Partial<typeof commercial>) => {
@@ -68,8 +79,8 @@ export function DataCenterDetails() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader 
-        title="Data Center Specifications" 
+      <PageHeader
+        title="Data Center Specifications"
         description="Infrastructure and capacity details for your data center facility"
       />
 
@@ -78,8 +89,13 @@ export function DataCenterDetails() {
         <FormSection title="Space & Capacity">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel label="Floor Area" required />
+              <FieldLabel
+                htmlFor="data-center-floor-area"
+                label="Floor Area"
+                required
+              />
               <NumberInput
+                id="data-center-floor-area"
                 value={commercial.sizeSqm}
                 onChange={(v) => update({ sizeSqm: v })}
                 placeholder="e.g., 1000"
@@ -88,8 +104,14 @@ export function DataCenterDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Rack Capacity" required description="Total rack units available" />
+              <FieldLabel
+                id="data-center-rack-capacity"
+                label="Rack Capacity"
+                required
+                description="Total rack units available"
+              />
               <CounterInput
+                labelledBy="data-center-rack-capacity"
                 value={commercial.rackCapacity || 0}
                 onChange={(v) => update({ rackCapacity: v })}
                 min={0}
@@ -102,8 +124,14 @@ export function DataCenterDetails() {
         {/* Uptime & Reliability */}
         <FormSection title="Uptime & Reliability">
           <div>
-            <FieldLabel label="Uptime Tier" required description="TIA-942 data center tier classification" />
+            <FieldLabel
+              id="data-center-uptime-tier"
+              label="Uptime Tier"
+              required
+              description="TIA-942 data center tier classification"
+            />
             <ButtonGroup
+              labelledBy="data-center-uptime-tier"
               value={commercial.uptimeTier}
               onChange={(v) => update({ uptimeTier: v })}
               options={UPTIME_TIERS}
@@ -116,8 +144,13 @@ export function DataCenterDetails() {
         <FormSection title="Power Infrastructure">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel label="Power Capacity" required />
+              <FieldLabel
+                htmlFor="data-center-power-capacity"
+                label="Power Capacity"
+                required
+              />
               <NumberInput
+                id="data-center-power-capacity"
                 value={commercial.powerCapacityKva}
                 onChange={(v) => update({ powerCapacityKva: v })}
                 placeholder="e.g., 500"
@@ -125,8 +158,13 @@ export function DataCenterDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Power Redundancy" description="N+1, 2N, 2N+1" />
+              <FieldLabel
+                htmlFor="data-center-power-redundancy"
+                label="Power Redundancy"
+                description="N+1, 2N, 2N+1"
+              />
               <TextInput
+                id="data-center-power-redundancy"
                 value={commercial.powerRedundancy || ""}
                 onChange={(v) => update({ powerRedundancy: v })}
                 placeholder="e.g., 2N"
@@ -139,16 +177,25 @@ export function DataCenterDetails() {
         <FormSection title="Cooling & Fire Suppression">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel label="Cooling Type" required />
+              <FieldLabel
+                htmlFor="data-center-cooling-type"
+                label="Cooling Type"
+                required
+              />
               <TextInput
+                id="data-center-cooling-type"
                 value={commercial.coolingType || ""}
                 onChange={(v) => update({ coolingType: v })}
                 placeholder="e.g., CRAC, In-row, Chilled water"
               />
             </div>
             <div>
-              <FieldLabel label="Fire Suppression" />
+              <FieldLabel
+                htmlFor="data-center-fire-suppression"
+                label="Fire Suppression"
+              />
               <TextInput
+                id="data-center-fire-suppression"
                 value={commercial.fireSuppressionType || ""}
                 onChange={(v) => update({ fireSuppressionType: v })}
                 placeholder="e.g., FM200, Novec 1230"
@@ -163,7 +210,9 @@ export function DataCenterDetails() {
             {CONNECTIVITY_OPTIONS.map((opt) => (
               <CheckboxInput
                 key={opt.id}
-                checked={(commercial.networkConnectivity || []).includes(opt.id)}
+                checked={(commercial.networkConnectivity || []).includes(
+                  opt.id,
+                )}
                 onChange={() => toggleConnectivity(opt.id)}
                 label={opt.label}
               />
@@ -174,8 +223,12 @@ export function DataCenterDetails() {
         {/* Physical Security */}
         <FormSection title="Physical Security">
           <div>
-            <FieldLabel label="Security Level" />
+            <FieldLabel
+              id="data-center-security-level"
+              label="Security Level"
+            />
             <ButtonGroup
+              labelledBy="data-center-security-level"
               value={commercial.physicalSecurityLevel}
               onChange={(v) => update({ physicalSecurityLevel: v })}
               options={SECURITY_LEVELS}

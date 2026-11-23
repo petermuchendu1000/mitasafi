@@ -1,6 +1,6 @@
 /**
  * Recording Studio Details
- * 
+ *
  * Specialized form for audio recording studios.
  * Captures acoustic and technical specifications.
  */
@@ -18,19 +18,30 @@ import {
   TextInput,
   CheckboxInput,
 } from "./field-configs";
-import { isFieldRequired, validateRequiredFields } from "../../../required-fields-config";
+import {
+  isFieldRequired,
+  validateRequiredFields,
+} from "../../../required-fields-config";
 
 export function RecordingStudioDetails() {
   const { state, updateFormData, setValidation } = useWizard();
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
-  const isRequired = (field: keyof typeof commercial) => 
+  const isRequired = (field: keyof typeof commercial) =>
     isFieldRequired(field, commercialType, commercialSubtype);
 
   useEffect(() => {
-    const errors = validateRequiredFields(commercial, commercialType, commercialSubtype);
-    setValidation(3, { isValid: Object.keys(errors).length === 0, errors, touched: {} });
+    const errors = validateRequiredFields(
+      commercial,
+      commercialType,
+      commercialSubtype,
+    );
+    setValidation(3, {
+      isValid: Object.keys(errors).length === 0,
+      errors,
+      touched: {},
+    });
   }, [commercial, commercialType, commercialSubtype, setValidation]);
 
   const update = (data: Partial<typeof commercial>) => {
@@ -39,8 +50,8 @@ export function RecordingStudioDetails() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader 
-        title="Recording Studio Specifications" 
+      <PageHeader
+        title="Recording Studio Specifications"
         description="Audio production facility details and acoustic features"
       />
 
@@ -49,8 +60,13 @@ export function RecordingStudioDetails() {
         <FormSection title="Space Layout">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel label="Total Area" required />
+              <FieldLabel
+                htmlFor="recording-studio-total-area"
+                label="Total Area"
+                required
+              />
               <NumberInput
+                id="recording-studio-total-area"
                 value={commercial.sizeSqm}
                 onChange={(v) => update({ sizeSqm: v })}
                 placeholder="e.g., 150"
@@ -59,8 +75,13 @@ export function RecordingStudioDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Ceiling Height" description="Important for acoustics" />
+              <FieldLabel
+                htmlFor="recording-studio-ceiling-height"
+                label="Ceiling Height"
+                description="Important for acoustics"
+              />
               <NumberInput
+                id="recording-studio-ceiling-height"
                 value={commercial.ceilingHeightStudios}
                 onChange={(v) => update({ ceilingHeightStudios: v })}
                 placeholder="e.g., 3.5"
@@ -71,8 +92,14 @@ export function RecordingStudioDetails() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <div>
-              <FieldLabel label="Studio Rooms" required description="Main recording spaces" />
+              <FieldLabel
+                id="recording-studio-studio-rooms"
+                label="Studio Rooms"
+                required
+                description="Main recording spaces"
+              />
               <CounterInput
+                labelledBy="recording-studio-studio-rooms"
                 value={commercial.studioRoomCount || 0}
                 onChange={(v) => update({ studioRoomCount: v })}
                 min={0}
@@ -80,8 +107,13 @@ export function RecordingStudioDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Isolation Booths" description="Vocal/instrument booths" />
+              <FieldLabel
+                id="recording-studio-isolation-booths"
+                label="Isolation Booths"
+                description="Vocal/instrument booths"
+              />
               <CounterInput
+                labelledBy="recording-studio-isolation-booths"
                 value={commercial.isoBoothCount || 0}
                 onChange={(v) => update({ isoBoothCount: v })}
                 min={0}
@@ -118,8 +150,13 @@ export function RecordingStudioDetails() {
         {/* Flooring */}
         <FormSection title="Flooring & Infrastructure">
           <div>
-            <FieldLabel label="Flooring Type" description="Floating floor, concrete, wood, etc." />
+            <FieldLabel
+              htmlFor="recording-studio-flooring-type"
+              label="Flooring Type"
+              description="Floating floor, concrete, wood, etc."
+            />
             <TextInput
+              id="recording-studio-flooring-type"
               value={commercial.flooringType || ""}
               onChange={(v) => update({ flooringType: v })}
               placeholder="e.g., Floating hardwood floor"
@@ -130,8 +167,12 @@ export function RecordingStudioDetails() {
         {/* Parking */}
         <FormSection title="Access & Parking">
           <div>
-            <FieldLabel label="Parking Spaces" />
+            <FieldLabel
+              id="recording-studio-parking-spaces"
+              label="Parking Spaces"
+            />
             <CounterInput
+              labelledBy="recording-studio-parking-spaces"
               value={commercial.parkingSpacesCount || 0}
               onChange={(v) => update({ parkingSpacesCount: v })}
               min={0}

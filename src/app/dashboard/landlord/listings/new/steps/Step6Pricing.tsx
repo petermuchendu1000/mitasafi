@@ -219,13 +219,17 @@ export function Step6Pricing() {
           <div className="p-5 space-y-6">
             {/* Rent Amount */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="rentAmount"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Rent Amount <span className="text-orange-500">*</span>
               </label>
               <div className="flex">
                 {/* Currency Selector */}
                 <div className="relative">
                   <select
+                    aria-label="Currency"
                     value={currency}
                     onChange={(e) => updateFields({ currency: e.target.value })}
                     className={cn(
@@ -245,6 +249,7 @@ export function Step6Pricing() {
 
                 {/* Amount Input */}
                 <input
+                  id="rentAmount"
                   type="text"
                   inputMode="numeric"
                   value={rentInputValue}
@@ -266,14 +271,21 @@ export function Step6Pricing() {
 
             {/* What's Included/Not Included */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div
+                id="whatSIncludedInRentLabel"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 What&apos;s included in rent?
-              </label>
+              </div>
               <p className="text-xs text-gray-500 mb-3">
                 Select utilities that are included. Unselected items will be
                 paid separately by tenant.
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div
+                role="group"
+                aria-labelledby="whatSIncludedInRentLabel"
+                className="grid grid-cols-2 sm:grid-cols-3 gap-2"
+              >
                 {UTILITY_OPTIONS.map((item) => {
                   const isIncluded = (rentIncludes || []).includes(item.label);
                   return (
@@ -315,12 +327,19 @@ export function Step6Pricing() {
           <div className="p-5 space-y-6">
             {/* Security Deposit */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div
+                id="securityDepositLabel"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Security Deposit
-              </label>
+              </div>
 
               {/* Deposit Months */}
-              <div className="grid grid-cols-4 gap-2 mb-3">
+              <div
+                role="group"
+                aria-labelledby="securityDepositLabel"
+                className="grid grid-cols-4 gap-2 mb-3"
+              >
                 {[1, 2, 3].map((months) => (
                   <button
                     key={months}
@@ -387,7 +406,10 @@ export function Step6Pricing() {
 
             {/* Agent/Service Fee */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="agentServiceFee"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Agent/Service Fee
                 <span className="text-gray-400 font-normal ml-1">
                   (Optional)
@@ -395,6 +417,7 @@ export function Step6Pricing() {
               </label>
               <div className="flex gap-3">
                 <input
+                  id="agentServiceFee"
                   type="text"
                   inputMode="numeric"
                   value={agentFee ? formatAmount(agentFee) : ""}
@@ -448,12 +471,12 @@ export function Step6Pricing() {
             {/* Custom Fees */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">
+                <div className="block text-sm font-medium text-gray-700">
                   Other Fees
                   <span className="text-gray-400 font-normal ml-1">
                     (Optional)
                   </span>
-                </label>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowAddFee(true)}
@@ -645,10 +668,17 @@ export function Step6Pricing() {
           <div className="p-5 space-y-6">
             {/* Lease Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div
+                id="leaseTypeLabel"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Lease Type
-              </label>
-              <div className="grid grid-cols-3 gap-2">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="leaseTypeLabel"
+                className="grid grid-cols-3 gap-2"
+              >
                 {LEASE_TERMS.map((term) => (
                   <button
                     key={term.id}
@@ -678,11 +708,15 @@ export function Step6Pricing() {
             {/* Min Lease Duration */}
             {leaseTerm === "fixed" && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="minimumLeaseDuration"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Minimum Lease Duration
                 </label>
                 <div className="relative w-48">
                   <select
+                    id="minimumLeaseDuration"
                     value={minLeaseDuration || 12}
                     onChange={(e) =>
                       updateFields({
@@ -707,10 +741,17 @@ export function Step6Pricing() {
 
             {/* Available From */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div
+                id="availableFromLabel"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Available From <span className="text-orange-500">*</span>
-              </label>
-              <div className="flex gap-3">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="availableFromLabel"
+                className="flex gap-3"
+              >
                 <button
                   type="button"
                   onClick={() => updateFields({ availableFrom: today })}

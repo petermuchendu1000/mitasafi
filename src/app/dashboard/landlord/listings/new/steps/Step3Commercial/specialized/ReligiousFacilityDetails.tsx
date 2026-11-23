@@ -1,6 +1,6 @@
 /**
  * Religious Facility Details
- * 
+ *
  * Specialized form for churches, mosques, temples, and religious centers.
  * Captures worship spaces, community facilities, and religious amenities.
  */
@@ -17,19 +17,30 @@ import {
   CounterInput,
   CheckboxInput,
 } from "./field-configs";
-import { isFieldRequired, validateRequiredFields } from "../../../required-fields-config";
+import {
+  isFieldRequired,
+  validateRequiredFields,
+} from "../../../required-fields-config";
 
 export function ReligiousFacilityDetails() {
   const { state, updateFormData, setValidation } = useWizard();
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
-  const isRequired = (field: keyof typeof commercial) => 
+  const isRequired = (field: keyof typeof commercial) =>
     isFieldRequired(field, commercialType, commercialSubtype);
 
   useEffect(() => {
-    const errors = validateRequiredFields(commercial, commercialType, commercialSubtype);
-    setValidation(3, { isValid: Object.keys(errors).length === 0, errors, touched: {} });
+    const errors = validateRequiredFields(
+      commercial,
+      commercialType,
+      commercialSubtype,
+    );
+    setValidation(3, {
+      isValid: Object.keys(errors).length === 0,
+      errors,
+      touched: {},
+    });
   }, [commercial, commercialType, commercialSubtype, setValidation]);
 
   const update = (data: Partial<typeof commercial>) => {
@@ -38,8 +49,8 @@ export function ReligiousFacilityDetails() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader 
-        title="Religious Facility Specifications" 
+      <PageHeader
+        title="Religious Facility Specifications"
         description="Worship spaces, community areas, and facilities"
       />
 
@@ -48,8 +59,13 @@ export function ReligiousFacilityDetails() {
         <FormSection title="Main Worship Space">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel label="Worship Hall Capacity" required />
+              <FieldLabel
+                htmlFor="religious-facility-worship-hall-capacity"
+                label="Worship Hall Capacity"
+                required
+              />
               <NumberInput
+                id="religious-facility-worship-hall-capacity"
                 value={commercial.worshipHallCapacity}
                 onChange={(v) => update({ worshipHallCapacity: v })}
                 placeholder="e.g., 500"
@@ -58,8 +74,13 @@ export function ReligiousFacilityDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Prayer Hall Area" required />
+              <FieldLabel
+                htmlFor="religious-facility-prayer-hall-area"
+                label="Prayer Hall Area"
+                required
+              />
               <NumberInput
+                id="religious-facility-prayer-hall-area"
                 value={commercial.prayerHallSqm}
                 onChange={(v) => update({ prayerHallSqm: v })}
                 placeholder="e.g., 300"
@@ -120,8 +141,12 @@ export function ReligiousFacilityDetails() {
         {/* Administrative Spaces */}
         <FormSection title="Administrative Spaces">
           <div>
-            <FieldLabel label="Office Rooms" />
+            <FieldLabel
+              id="religious-facility-office-rooms"
+              label="Office Rooms"
+            />
             <CounterInput
+              labelledBy="religious-facility-office-rooms"
               value={commercial.officeRoomsReligious || 0}
               onChange={(v) => update({ officeRoomsReligious: v })}
               min={0}
@@ -133,8 +158,12 @@ export function ReligiousFacilityDetails() {
         {/* Parking */}
         <FormSection title="Parking & Access">
           <div>
-            <FieldLabel label="Parking Capacity" />
+            <FieldLabel
+              id="religious-facility-parking-capacity"
+              label="Parking Capacity"
+            />
             <CounterInput
+              labelledBy="religious-facility-parking-capacity"
               value={commercial.parkingCapacityReligious || 0}
               onChange={(v) => update({ parkingCapacityReligious: v })}
               min={0}

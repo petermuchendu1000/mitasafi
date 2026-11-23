@@ -1,13 +1,13 @@
 /**
  * Commercial Land Details
- * 
+ *
  * Captures land-specific information:
  * - Plot size and dimensions
  * - Zoning and permitted uses
  * - Utilities and access
- * 
+ *
  * Design: Clean, professional. Teal primary, orange accents.
- * 
+ *
  * REFACTORED: Uses useCommercialForm hook for standardized state/validation
  */
 
@@ -46,7 +46,9 @@ export function CommercialLandDetails() {
           {isBillboard ? "Billboard Site Details" : "Commercial Land Details"}
         </h2>
         <p className="text-gray-500">
-          {isBillboard ? "Billboard location and specifications" : "Plot size, zoning, and utilities"}
+          {isBillboard
+            ? "Billboard location and specifications"
+            : "Plot size, zoning, and utilities"}
         </p>
       </div>
 
@@ -60,18 +62,27 @@ export function CommercialLandDetails() {
           <div className="p-5 space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Size (Square Meters) {isRequired("plotSizeSqm") && <span className="text-orange-500">*</span>}
+                <label
+                  htmlFor="size2"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Size (Square Meters){" "}
+                  {isRequired("plotSizeSqm") && (
+                    <span className="text-orange-500">*</span>
+                  )}
                 </label>
                 <div className="relative">
                   <input
+                    id="size2"
                     type="number"
                     value={commercial.plotSizeSqm || ""}
                     onChange={(e) => {
                       const sqm = parseFloat(e.target.value) || null;
-                      updateCommercial({ 
+                      updateCommercial({
                         plotSizeSqm: sqm,
-                        plotSizeAcres: sqm ? parseFloat((sqm / 4047).toFixed(2)) : null
+                        plotSizeAcres: sqm
+                          ? parseFloat((sqm / 4047).toFixed(2))
+                          : null,
                       });
                     }}
                     placeholder="e.g., 2000"
@@ -84,19 +95,23 @@ export function CommercialLandDetails() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="size"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Size (Acres)
                 </label>
                 <div className="relative">
                   <input
+                    id="size"
                     type="number"
                     step="0.01"
                     value={commercial.plotSizeAcres || ""}
                     onChange={(e) => {
                       const acres = parseFloat(e.target.value) || null;
-                      updateCommercial({ 
+                      updateCommercial({
                         plotSizeAcres: acres,
-                        plotSizeSqm: acres ? Math.round(acres * 4047) : null
+                        plotSizeSqm: acres ? Math.round(acres * 4047) : null,
                       });
                     }}
                     placeholder="e.g., 0.5"
@@ -110,15 +125,23 @@ export function CommercialLandDetails() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="roadFrontage"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Road Frontage
               </label>
               <div className="relative">
                 <input
+                  id="roadFrontage"
                   type="number"
                   step="0.1"
                   value={commercial.roadFrontageM || ""}
-                  onChange={(e) => updateCommercial({ roadFrontageM: parseFloat(e.target.value) || null })}
+                  onChange={(e) =>
+                    updateCommercial({
+                      roadFrontageM: parseFloat(e.target.value) || null,
+                    })
+                  }
                   placeholder="e.g., 30"
                   className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
@@ -138,49 +161,73 @@ export function CommercialLandDetails() {
 
           <div className="p-5 space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div
+                id="zoningTypeLabel"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Zoning Type <span className="text-orange-500">*</span>
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="zoningTypeLabel"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+              >
                 {ZONING_TYPES.map((zone) => (
                   <button
                     key={zone.id}
                     type="button"
-                    onClick={() => updateCommercial({ zoningType: zone.id as ZoningType })}
+                    onClick={() =>
+                      updateCommercial({ zoningType: zone.id as ZoningType })
+                    }
                     className={cn(
                       "p-3 rounded-lg border-2 text-left transition-all",
                       commercial.zoningType === zone.id
                         ? "border-teal-600 bg-teal-50"
-                        : "border-gray-200 hover:border-gray-300"
+                        : "border-gray-200 hover:border-gray-300",
                     )}
                   >
-                    <span className={cn(
-                      "block text-sm font-medium",
-                      commercial.zoningType === zone.id ? "text-teal-700" : "text-gray-900"
-                    )}>
+                    <span
+                      className={cn(
+                        "block text-sm font-medium",
+                        commercial.zoningType === zone.id
+                          ? "text-teal-700"
+                          : "text-gray-900",
+                      )}
+                    >
                       {zone.label}
                     </span>
-                    <span className="text-xs text-gray-500">{zone.description}</span>
+                    <span className="text-xs text-gray-500">
+                      {zone.description}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div
+                id="titleTypeLabel"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Title Type
-              </label>
-              <div className="flex flex-wrap gap-3">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="titleTypeLabel"
+                className="flex flex-wrap gap-3"
+              >
                 {TITLE_TYPES.map((title) => (
                   <button
                     key={title.id}
                     type="button"
-                    onClick={() => updateCommercial({ titleType: title.id as TitleType })}
+                    onClick={() =>
+                      updateCommercial({ titleType: title.id as TitleType })
+                    }
                     className={cn(
                       "px-4 py-2.5 rounded-lg border-2 text-sm font-medium transition-all",
                       commercial.titleType === title.id
                         ? "border-teal-600 bg-teal-50 text-teal-700"
-                        : "border-gray-200 hover:border-gray-300 text-gray-700"
+                        : "border-gray-200 hover:border-gray-300 text-gray-700",
                     )}
                   >
                     {title.label}
@@ -194,13 +241,15 @@ export function CommercialLandDetails() {
                 "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
                 commercial.isTitled
                   ? "border-teal-600 bg-teal-50"
-                  : "border-gray-200 hover:border-gray-300"
+                  : "border-gray-200 hover:border-gray-300",
               )}
             >
               <input
                 type="checkbox"
                 checked={commercial.isTitled || false}
-                onChange={(e) => updateCommercial({ isTitled: e.target.checked })}
+                onChange={(e) =>
+                  updateCommercial({ isTitled: e.target.checked })
+                }
                 className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
               />
               <span className="text-sm font-medium text-gray-700">
@@ -214,20 +263,33 @@ export function CommercialLandDetails() {
         {isDevelopmentPlot && (
           <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Development Specifications</h3>
+              <h3 className="font-semibold text-gray-900">
+                Development Specifications
+              </h3>
             </div>
 
             <div className="p-5 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Maximum Plot Ratio {isRequired("maxPlotRatio") && <span className="text-orange-500">*</span>}
+                <label
+                  htmlFor="maximumPlotRatio"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Maximum Plot Ratio{" "}
+                  {isRequired("maxPlotRatio") && (
+                    <span className="text-orange-500">*</span>
+                  )}
                 </label>
                 <div className="relative">
                   <input
+                    id="maximumPlotRatio"
                     type="number"
                     step="0.1"
                     value={commercial.maxPlotRatio || ""}
-                    onChange={(e) => updateCommercial({ maxPlotRatio: parseFloat(e.target.value) || null })}
+                    onChange={(e) =>
+                      updateCommercial({
+                        maxPlotRatio: parseFloat(e.target.value) || null,
+                      })
+                    }
                     placeholder="e.g., 2.5"
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
@@ -243,7 +305,9 @@ export function CommercialLandDetails() {
         {/* Utilities & Features */}
         <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900">Utilities & Features</h3>
+            <h3 className="font-semibold text-gray-900">
+              Utilities & Features
+            </h3>
           </div>
 
           <div className="p-5 space-y-5">
@@ -253,13 +317,15 @@ export function CommercialLandDetails() {
                   "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
                   commercial.hasUtilities
                     ? "border-teal-600 bg-teal-50"
-                    : "border-gray-200 hover:border-gray-300"
+                    : "border-gray-200 hover:border-gray-300",
                 )}
               >
                 <input
                   type="checkbox"
                   checked={commercial.hasUtilities || false}
-                  onChange={(e) => updateCommercial({ hasUtilities: e.target.checked })}
+                  onChange={(e) =>
+                    updateCommercial({ hasUtilities: e.target.checked })
+                  }
                   className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                 />
                 <span className="text-sm font-medium text-gray-700">
@@ -272,13 +338,15 @@ export function CommercialLandDetails() {
                   "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
                   commercial.isFenced
                     ? "border-teal-600 bg-teal-50"
-                    : "border-gray-200 hover:border-gray-300"
+                    : "border-gray-200 hover:border-gray-300",
                 )}
               >
                 <input
                   type="checkbox"
                   checked={commercial.isFenced || false}
-                  onChange={(e) => updateCommercial({ isFenced: e.target.checked })}
+                  onChange={(e) =>
+                    updateCommercial({ isFenced: e.target.checked })
+                  }
                   className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                 />
                 <span className="text-sm font-medium text-gray-700">
@@ -289,13 +357,21 @@ export function CommercialLandDetails() {
 
             {commercial.titleType === "leasehold" && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="remainingLeaseYears"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Remaining Lease Years
                 </label>
                 <input
+                  id="remainingLeaseYears"
                   type="number"
                   value={commercial.leaseRemainingYears || ""}
-                  onChange={(e) => updateCommercial({ leaseRemainingYears: parseInt(e.target.value) || null })}
+                  onChange={(e) =>
+                    updateCommercial({
+                      leaseRemainingYears: parseInt(e.target.value) || null,
+                    })
+                  }
                   placeholder="e.g., 50"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
@@ -308,32 +384,52 @@ export function CommercialLandDetails() {
         {isBillboard && (
           <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Billboard Specifications</h3>
+              <h3 className="font-semibold text-gray-900">
+                Billboard Specifications
+              </h3>
             </div>
 
             <div className="p-5 space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Billboard Size {isRequired("billboardSize") && <span className="text-orange-500">*</span>}
+                  <label
+                    htmlFor="billboardSize"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Billboard Size{" "}
+                    {isRequired("billboardSize") && (
+                      <span className="text-orange-500">*</span>
+                    )}
                   </label>
                   <input
+                    id="billboardSize"
                     type="text"
                     value={commercial.billboardSize || ""}
-                    onChange={(e) => updateCommercial({ billboardSize: e.target.value })}
+                    onChange={(e) =>
+                      updateCommercial({ billboardSize: e.target.value })
+                    }
                     placeholder="e.g., 12m x 6m"
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Billboard Facing {isRequired("billboardFacing") && <span className="text-orange-500">*</span>}
+                  <label
+                    htmlFor="billboardFacing"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Billboard Facing{" "}
+                    {isRequired("billboardFacing") && (
+                      <span className="text-orange-500">*</span>
+                    )}
                   </label>
                   <input
+                    id="billboardFacing"
                     type="text"
                     value={commercial.billboardFacing || ""}
-                    onChange={(e) => updateCommercial({ billboardFacing: e.target.value })}
+                    onChange={(e) =>
+                      updateCommercial({ billboardFacing: e.target.value })
+                    }
                     placeholder="e.g., East-bound traffic"
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
@@ -341,13 +437,24 @@ export function CommercialLandDetails() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Daily Impressions {isRequired("dailyImpressions") && <span className="text-orange-500">*</span>}
+                <label
+                  htmlFor="dailyImpressions"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Daily Impressions{" "}
+                  {isRequired("dailyImpressions") && (
+                    <span className="text-orange-500">*</span>
+                  )}
                 </label>
                 <input
+                  id="dailyImpressions"
                   type="number"
                   value={commercial.dailyImpressions || ""}
-                  onChange={(e) => updateCommercial({ dailyImpressions: parseInt(e.target.value) || null })}
+                  onChange={(e) =>
+                    updateCommercial({
+                      dailyImpressions: parseInt(e.target.value) || null,
+                    })
+                  }
                   placeholder="e.g., 50000"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
@@ -359,13 +466,17 @@ export function CommercialLandDetails() {
                     "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
                     commercial.billboardIlluminated
                       ? "border-teal-600 bg-teal-50"
-                      : "border-gray-200 hover:border-gray-300"
+                      : "border-gray-200 hover:border-gray-300",
                   )}
                 >
                   <input
                     type="checkbox"
                     checked={commercial.billboardIlluminated || false}
-                    onChange={(e) => updateCommercial({ billboardIlluminated: e.target.checked })}
+                    onChange={(e) =>
+                      updateCommercial({
+                        billboardIlluminated: e.target.checked,
+                      })
+                    }
                     className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                   />
                   <span className="text-sm font-medium text-gray-700">
@@ -378,13 +489,15 @@ export function CommercialLandDetails() {
                     "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
                     commercial.billboardDigital
                       ? "border-teal-600 bg-teal-50"
-                      : "border-gray-200 hover:border-gray-300"
+                      : "border-gray-200 hover:border-gray-300",
                   )}
                 >
                   <input
                     type="checkbox"
                     checked={commercial.billboardDigital || false}
-                    onChange={(e) => updateCommercial({ billboardDigital: e.target.checked })}
+                    onChange={(e) =>
+                      updateCommercial({ billboardDigital: e.target.checked })
+                    }
                     className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                   />
                   <span className="text-sm font-medium text-gray-700">

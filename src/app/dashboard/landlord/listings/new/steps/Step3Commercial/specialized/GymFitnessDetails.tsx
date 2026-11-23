@@ -1,6 +1,6 @@
 /**
  * Gym & Fitness Center Details
- * 
+ *
  * Specialized form for gyms, fitness centers, and sports facilities.
  * Captures equipment zones, amenities, and specialized fitness features.
  */
@@ -18,7 +18,10 @@ import {
   CheckboxInput,
   ButtonGroup,
 } from "./field-configs";
-import { isFieldRequired, validateRequiredFields } from "../../../required-fields-config";
+import {
+  isFieldRequired,
+  validateRequiredFields,
+} from "../../../required-fields-config";
 
 const FLOORING_OPTIONS: { id: string; label: string }[] = [
   { id: "rubber", label: "Rubber Flooring" },
@@ -33,12 +36,20 @@ export function GymFitnessDetails() {
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
-  const isRequired = (field: keyof typeof commercial) => 
+  const isRequired = (field: keyof typeof commercial) =>
     isFieldRequired(field, commercialType, commercialSubtype);
 
   useEffect(() => {
-    const errors = validateRequiredFields(commercial, commercialType, commercialSubtype);
-    setValidation(3, { isValid: Object.keys(errors).length === 0, errors, touched: {} });
+    const errors = validateRequiredFields(
+      commercial,
+      commercialType,
+      commercialSubtype,
+    );
+    setValidation(3, {
+      isValid: Object.keys(errors).length === 0,
+      errors,
+      touched: {},
+    });
   }, [commercial, commercialType, commercialSubtype, setValidation]);
 
   const update = (data: Partial<typeof commercial>) => {
@@ -47,8 +58,8 @@ export function GymFitnessDetails() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader 
-        title="Gym & Fitness Specifications" 
+      <PageHeader
+        title="Gym & Fitness Specifications"
         description="Training zones, equipment areas, and facilities"
       />
 
@@ -57,8 +68,13 @@ export function GymFitnessDetails() {
         <FormSection title="Training Zones">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel label="Total Gym Floor" required />
+              <FieldLabel
+                htmlFor="gym-fitness-total-gym-floor"
+                label="Total Gym Floor"
+                required
+              />
               <NumberInput
+                id="gym-fitness-total-gym-floor"
                 value={commercial.gymFloorSqm}
                 onChange={(v) => update({ gymFloorSqm: v })}
                 placeholder="e.g., 500"
@@ -67,8 +83,12 @@ export function GymFitnessDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Cardio Zone" />
+              <FieldLabel
+                htmlFor="gym-fitness-cardio-zone"
+                label="Cardio Zone"
+              />
               <NumberInput
+                id="gym-fitness-cardio-zone"
                 value={commercial.cardioZoneSqm}
                 onChange={(v) => update({ cardioZoneSqm: v })}
                 placeholder="e.g., 100"
@@ -76,8 +96,12 @@ export function GymFitnessDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Weights Zone" />
+              <FieldLabel
+                htmlFor="gym-fitness-weights-zone"
+                label="Weights Zone"
+              />
               <NumberInput
+                id="gym-fitness-weights-zone"
                 value={commercial.weightsZoneSqm}
                 onChange={(v) => update({ weightsZoneSqm: v })}
                 placeholder="e.g., 150"
@@ -126,8 +150,13 @@ export function GymFitnessDetails() {
         <FormSection title="Locker & Shower Facilities">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <FieldLabel label="Locker Rooms" required />
+              <FieldLabel
+                id="gym-fitness-locker-rooms"
+                label="Locker Rooms"
+                required
+              />
               <CounterInput
+                labelledBy="gym-fitness-locker-rooms"
                 value={commercial.lockerRooms || 0}
                 onChange={(v) => update({ lockerRooms: v })}
                 min={0}
@@ -135,8 +164,13 @@ export function GymFitnessDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Shower Units" required />
+              <FieldLabel
+                id="gym-fitness-shower-units"
+                label="Shower Units"
+                required
+              />
               <CounterInput
+                labelledBy="gym-fitness-shower-units"
                 value={commercial.showerCount || 0}
                 onChange={(v) => update({ showerCount: v })}
                 min={0}
@@ -164,8 +198,9 @@ export function GymFitnessDetails() {
           </div>
           {commercial.swimmingPool && (
             <div className="mt-4 pl-4 border-l-2 border-teal-200">
-              <FieldLabel label="Pool Lanes" />
+              <FieldLabel id="gym-fitness-pool-lanes" label="Pool Lanes" />
               <CounterInput
+                labelledBy="gym-fitness-pool-lanes"
                 value={commercial.poolLaneCount || 0}
                 onChange={(v) => update({ poolLaneCount: v })}
                 min={1}
@@ -178,8 +213,12 @@ export function GymFitnessDetails() {
         {/* Parking */}
         <FormSection title="Parking">
           <div>
-            <FieldLabel label="Parking Spaces" />
+            <FieldLabel
+              id="gym-fitness-parking-spaces"
+              label="Parking Spaces"
+            />
             <CounterInput
+              labelledBy="gym-fitness-parking-spaces"
               value={commercial.parkingSpacesCount || 0}
               onChange={(v) => update({ parkingSpacesCount: v })}
               min={0}

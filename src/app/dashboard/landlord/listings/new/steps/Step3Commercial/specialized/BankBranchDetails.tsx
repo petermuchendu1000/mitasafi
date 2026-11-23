@@ -1,6 +1,6 @@
 /**
  * Bank Branch Details
- * 
+ *
  * Specialized form for bank branches and financial service centers.
  * Captures secure facilities, customer service areas, and banking infrastructure.
  */
@@ -17,19 +17,30 @@ import {
   CounterInput,
   CheckboxInput,
 } from "./field-configs";
-import { isFieldRequired, validateRequiredFields } from "../../../required-fields-config";
+import {
+  isFieldRequired,
+  validateRequiredFields,
+} from "../../../required-fields-config";
 
 export function BankBranchDetails() {
   const { state, updateFormData, setValidation } = useWizard();
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
-  const isRequired = (field: keyof typeof commercial) => 
+  const isRequired = (field: keyof typeof commercial) =>
     isFieldRequired(field, commercialType, commercialSubtype);
 
   useEffect(() => {
-    const errors = validateRequiredFields(commercial, commercialType, commercialSubtype);
-    setValidation(3, { isValid: Object.keys(errors).length === 0, errors, touched: {} });
+    const errors = validateRequiredFields(
+      commercial,
+      commercialType,
+      commercialSubtype,
+    );
+    setValidation(3, {
+      isValid: Object.keys(errors).length === 0,
+      errors,
+      touched: {},
+    });
   }, [commercial, commercialType, commercialSubtype, setValidation]);
 
   const update = (data: Partial<typeof commercial>) => {
@@ -38,8 +49,8 @@ export function BankBranchDetails() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader 
-        title="Bank Branch Specifications" 
+      <PageHeader
+        title="Bank Branch Specifications"
         description="Banking facilities, security features, and customer areas"
       />
 
@@ -48,8 +59,13 @@ export function BankBranchDetails() {
         <FormSection title="Space Dimensions">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel label="Total Area" required />
+              <FieldLabel
+                htmlFor="bank-branch-total-area"
+                label="Total Area"
+                required
+              />
               <NumberInput
+                id="bank-branch-total-area"
                 value={commercial.sizeSqm}
                 onChange={(v) => update({ sizeSqm: v })}
                 placeholder="e.g., 400"
@@ -58,8 +74,13 @@ export function BankBranchDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Customer Service Area" required />
+              <FieldLabel
+                htmlFor="bank-branch-customer-service-area"
+                label="Customer Service Area"
+                required
+              />
               <NumberInput
+                id="bank-branch-customer-service-area"
                 value={commercial.customerServiceArea}
                 onChange={(v) => update({ customerServiceArea: v })}
                 placeholder="e.g., 150"
@@ -73,8 +94,13 @@ export function BankBranchDetails() {
         <FormSection title="Teller & Service Counters">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
-              <FieldLabel label="Teller Positions" required />
+              <FieldLabel
+                id="bank-branch-teller-positions"
+                label="Teller Positions"
+                required
+              />
               <CounterInput
+                labelledBy="bank-branch-teller-positions"
                 value={commercial.tellerCounterPositions || 0}
                 onChange={(v) => update({ tellerCounterPositions: v })}
                 min={0}
@@ -82,8 +108,12 @@ export function BankBranchDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Private Offices" />
+              <FieldLabel
+                id="bank-branch-private-offices"
+                label="Private Offices"
+              />
               <CounterInput
+                labelledBy="bank-branch-private-offices"
                 value={commercial.privateOfficeBanking || 0}
                 onChange={(v) => update({ privateOfficeBanking: v })}
                 min={0}
@@ -91,8 +121,12 @@ export function BankBranchDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="ATM Locations" />
+              <FieldLabel
+                id="bank-branch-atm-locations"
+                label="ATM Locations"
+              />
               <CounterInput
+                labelledBy="bank-branch-atm-locations"
                 value={commercial.atmLocations || 0}
                 onChange={(v) => update({ atmLocations: v })}
                 min={0}
@@ -132,8 +166,12 @@ export function BankBranchDetails() {
           </div>
           {commercial.vaultRoom && (
             <div className="mt-4 pl-4 border-l-2 border-teal-200">
-              <FieldLabel label="Vault Room Size" />
+              <FieldLabel
+                htmlFor="bank-branch-vault-room-size"
+                label="Vault Room Size"
+              />
               <NumberInput
+                id="bank-branch-vault-room-size"
                 value={commercial.vaultRoomSqm}
                 onChange={(v) => update({ vaultRoomSqm: v })}
                 placeholder="e.g., 25"
@@ -165,8 +203,12 @@ export function BankBranchDetails() {
         <FormSection title="Accessibility & Parking">
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <FieldLabel label="Customer Parking" />
+              <FieldLabel
+                id="bank-branch-customer-parking"
+                label="Customer Parking"
+              />
               <CounterInput
+                labelledBy="bank-branch-customer-parking"
                 value={commercial.customerParkingSpaces || 0}
                 onChange={(v) => update({ customerParkingSpaces: v })}
                 min={0}

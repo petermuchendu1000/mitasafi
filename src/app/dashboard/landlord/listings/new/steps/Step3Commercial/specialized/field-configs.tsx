@@ -1,6 +1,6 @@
 /**
  * Shared Field Configuration Types & Components
- * 
+ *
  * Provides reusable form field primitives for specialized spaces.
  * Enables configuration-driven form generation with type safety.
  */
@@ -13,12 +13,12 @@ import type { CommercialFormData } from "../../../commercial-types";
 // FIELD CONFIGURATION TYPES
 // =============================================================================
 
-export type FieldType = 
-  | "number" 
-  | "text" 
-  | "counter" 
-  | "checkbox" 
-  | "select" 
+export type FieldType =
+  | "number"
+  | "text"
+  | "counter"
+  | "checkbox"
+  | "select"
   | "multi-select"
   | "button-group";
 
@@ -62,11 +62,11 @@ export interface MultiSelectFieldConfig extends BaseFieldConfig {
   options: { id: string; label: string }[];
 }
 
-export type FieldConfig = 
-  | NumberFieldConfig 
-  | TextFieldConfig 
-  | CounterFieldConfig 
-  | CheckboxFieldConfig 
+export type FieldConfig =
+  | NumberFieldConfig
+  | TextFieldConfig
+  | CounterFieldConfig
+  | CheckboxFieldConfig
   | SelectFieldConfig
   | MultiSelectFieldConfig;
 
@@ -83,6 +83,8 @@ export interface SectionConfig {
 // =============================================================================
 
 interface NumberInputProps {
+  /** Pairs with <FieldLabel htmlFor> so the label actually names this input. */
+  id?: string;
   value: number | null;
   onChange: (value: number | null) => void;
   placeholder?: string;
@@ -92,18 +94,20 @@ interface NumberInputProps {
   required?: boolean;
 }
 
-export function NumberInput({ 
-  value, 
-  onChange, 
-  placeholder, 
+export function NumberInput({
+  id,
+  value,
+  onChange,
+  placeholder,
   unit,
   min,
   max,
-  required 
+  required,
 }: NumberInputProps) {
   return (
     <div className="relative">
       <input
+        id={id}
         type="number"
         value={value ?? ""}
         onChange={(e) => {
@@ -118,7 +122,7 @@ export function NumberInput({
         className={cn(
           "w-full px-4 py-3 rounded-lg border border-gray-300",
           "focus:outline-none focus:ring-2 focus:ring-teal-500",
-          unit && "pr-16"
+          unit && "pr-16",
         )}
       />
       {unit && (
@@ -131,6 +135,8 @@ export function NumberInput({
 }
 
 interface CounterInputProps {
+  /** id of the <FieldLabel id=…> caption that names this group. */
+  labelledBy?: string;
   value: number;
   onChange: (value: number) => void;
   min?: number;
@@ -138,22 +144,27 @@ interface CounterInputProps {
   label?: string;
 }
 
-export function CounterInput({ 
-  value, 
-  onChange, 
-  min = 0, 
+export function CounterInput({
+  labelledBy,
+  value,
+  onChange,
+  min = 0,
   max = 100,
-  label 
+  label,
 }: CounterInputProps) {
   return (
-    <div className="flex items-center gap-3">
+    <div
+      role={labelledBy ? "group" : undefined}
+      aria-labelledby={labelledBy}
+      className="flex items-center gap-3"
+    >
       <button
         type="button"
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={value <= min}
         className={cn(
           "w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center",
-          "hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          "hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors",
         )}
       >
         <Minus className="w-4 h-4 text-gray-600" />
@@ -167,7 +178,7 @@ export function CounterInput({
         disabled={value >= max}
         className={cn(
           "w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center",
-          "hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          "hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors",
         )}
       >
         <Plus className="w-4 h-4 text-gray-600" />
@@ -184,14 +195,19 @@ interface CheckboxInputProps {
   description?: string;
 }
 
-export function CheckboxInput({ checked, onChange, label, description }: CheckboxInputProps) {
+export function CheckboxInput({
+  checked,
+  onChange,
+  label,
+  description,
+}: CheckboxInputProps) {
   return (
     <label
       className={cn(
         "flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
         checked
           ? "border-teal-600 bg-teal-50"
-          : "border-gray-200 hover:border-gray-300"
+          : "border-gray-200 hover:border-gray-300",
       )}
     >
       <input
@@ -211,25 +227,32 @@ export function CheckboxInput({ checked, onChange, label, description }: Checkbo
 }
 
 interface ButtonGroupProps<T extends string> {
+  /** id of the <FieldLabel id=…> caption that names this group. */
+  labelledBy?: string;
   value: T | null;
   onChange: (value: T) => void;
   options: { id: T; label: string; description?: string }[];
   columns?: 2 | 3 | 4;
 }
 
-export function ButtonGroup<T extends string>({ 
-  value, 
-  onChange, 
+export function ButtonGroup<T extends string>({
+  labelledBy,
+  value,
+  onChange,
   options,
-  columns = 4 
+  columns = 4,
 }: ButtonGroupProps<T>) {
   return (
-    <div className={cn(
-      "grid gap-3",
-      columns === 2 && "grid-cols-2",
-      columns === 3 && "grid-cols-3",
-      columns === 4 && "grid-cols-2 sm:grid-cols-4"
-    )}>
+    <div
+      role={labelledBy ? "group" : undefined}
+      aria-labelledby={labelledBy}
+      className={cn(
+        "grid gap-3",
+        columns === 2 && "grid-cols-2",
+        columns === 3 && "grid-cols-3",
+        columns === 4 && "grid-cols-2 sm:grid-cols-4",
+      )}
+    >
       {options.map((option) => (
         <button
           key={option.id}
@@ -239,13 +262,15 @@ export function ButtonGroup<T extends string>({
             "p-3 rounded-lg border-2 text-left transition-all",
             value === option.id
               ? "border-teal-600 bg-teal-50"
-              : "border-gray-200 hover:border-gray-300"
+              : "border-gray-200 hover:border-gray-300",
           )}
         >
-          <span className={cn(
-            "block text-sm font-medium",
-            value === option.id ? "text-teal-700" : "text-gray-900"
-          )}>
+          <span
+            className={cn(
+              "block text-sm font-medium",
+              value === option.id ? "text-teal-700" : "text-gray-900",
+            )}
+          >
             {option.label}
           </span>
           {option.description && (
@@ -258,14 +283,22 @@ export function ButtonGroup<T extends string>({
 }
 
 interface TextInputProps {
+  /** Pairs with <FieldLabel htmlFor>. */
+  id?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
 }
 
-export function TextInput({ value, onChange, placeholder }: TextInputProps) {
+export function TextInput({
+  id,
+  value,
+  onChange,
+  placeholder,
+}: TextInputProps) {
   return (
     <input
+      id={id}
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -285,7 +318,11 @@ interface FormSectionProps {
   children: React.ReactNode;
 }
 
-export function FormSection({ title, description, children }: FormSectionProps) {
+export function FormSection({
+  title,
+  description,
+  children,
+}: FormSectionProps) {
   return (
     <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
@@ -294,9 +331,7 @@ export function FormSection({ title, description, children }: FormSectionProps) 
           <p className="text-sm text-gray-500 mt-0.5">{description}</p>
         )}
       </div>
-      <div className="p-5 space-y-5">
-        {children}
-      </div>
+      <div className="p-5 space-y-5">{children}</div>
     </section>
   );
 }
@@ -306,18 +341,50 @@ export function FormSection({ title, description, children }: FormSectionProps) 
 // =============================================================================
 
 interface FieldLabelProps {
+  /** id of the control this names — renders a real <label htmlFor>. */
+  htmlFor?: string;
+  /** For a group of buttons, which cannot be the target of a <label>:
+      renders a caption <div id> for the group's aria-labelledby. */
+  id?: string;
   label: string;
   required?: boolean;
   description?: string;
 }
 
-export function FieldLabel({ label, required, description }: FieldLabelProps) {
+/**
+ * Every use of this rendered a bare <label> with no `for`. A label that points
+ * at nothing is decoration: not announced as the field's name, and clicking it
+ * focuses nothing. 45 call sites across the specialized commercial forms were
+ * affected. It now renders a <label> ONLY when given something to point at,
+ * and a plain caption otherwise.
+ */
+export function FieldLabel({
+  htmlFor,
+  id,
+  label,
+  required,
+  description,
+}: FieldLabelProps) {
+  const text = (
+    <>
+      {label}
+      {required && <span className="text-orange-500 ml-0.5">*</span>}
+    </>
+  );
   return (
     <div className="mb-2">
-      <label className="block text-sm font-medium text-gray-700">
-        {label}
-        {required && <span className="text-orange-500 ml-0.5">*</span>}
-      </label>
+      {htmlFor ? (
+        <label
+          htmlFor={htmlFor}
+          className="block text-sm font-medium text-gray-700"
+        >
+          {text}
+        </label>
+      ) : (
+        <div id={id} className="block text-sm font-medium text-gray-700">
+          {text}
+        </div>
+      )}
       {description && (
         <p className="text-xs text-gray-500 mt-0.5">{description}</p>
       )}

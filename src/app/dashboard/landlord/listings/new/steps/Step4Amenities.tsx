@@ -339,11 +339,18 @@ export function Step4Amenities() {
           <div className="p-5 space-y-6">
             {/* Pet Policy - Enhanced */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+              <div
+                id="petPolicyLabel"
+                className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3"
+              >
                 <PawPrint className="w-4 h-4" />
                 Pet Policy
-              </label>
-              <div className="grid grid-cols-2 gap-2">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="petPolicyLabel"
+                className="grid grid-cols-2 gap-2"
+              >
                 {PET_POLICY_OPTIONS.map((option) => (
                   <button
                     key={option.id}
@@ -372,11 +379,18 @@ export function Step4Amenities() {
 
             {/* Smoking Policy - Enhanced */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+              <div
+                id="smokingPolicyLabel"
+                className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3"
+              >
                 <Cigarette className="w-4 h-4" />
                 Smoking Policy
-              </label>
-              <div className="grid grid-cols-3 gap-2">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="smokingPolicyLabel"
+                className="grid grid-cols-3 gap-2"
+              >
                 {SMOKING_POLICY_OPTIONS.map((option) => (
                   <button
                     key={option.id}
@@ -442,10 +456,17 @@ export function Step4Amenities() {
           <div className="p-5 space-y-5">
             {/* Water Reliability */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div
+                id="waterSupplyReliabilityLabel"
+                className="block text-sm font-medium text-gray-700 mb-3"
+              >
                 Water Supply Reliability
-              </label>
-              <div className="grid grid-cols-3 gap-2">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="waterSupplyReliabilityLabel"
+                className="grid grid-cols-3 gap-2"
+              >
                 {WATER_RELIABILITY_OPTIONS.map((option) => (
                   <button
                     key={option.id}
@@ -496,11 +517,18 @@ export function Step4Amenities() {
 
             {/* Backup Power */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+              <div
+                id="backupPowerLabel"
+                className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3"
+              >
                 <Zap className="w-4 h-4" />
                 Backup Power
-              </label>
-              <div className="grid grid-cols-3 gap-2">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="backupPowerLabel"
+                className="grid grid-cols-3 gap-2"
+              >
                 {BACKUP_POWER_OPTIONS.map((option) => (
                   <button
                     key={option.id}
@@ -550,10 +578,17 @@ export function Step4Amenities() {
           <div className="p-5 space-y-5">
             {/* Security Guard */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div
+                id="securityGuardsLabel"
+                className="block text-sm font-medium text-gray-700 mb-3"
+              >
                 Security Guards
-              </label>
-              <div className="grid grid-cols-3 gap-2">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="securityGuardsLabel"
+                className="grid grid-cols-3 gap-2"
+              >
                 {SECURITY_GUARD_OPTIONS.map((option) => (
                   <button
                     key={option.id}
@@ -586,10 +621,17 @@ export function Step4Amenities() {
 
             {/* CCTV */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div
+                id="cctvCamerasLabel"
+                className="block text-sm font-medium text-gray-700 mb-3"
+              >
                 CCTV Cameras
-              </label>
-              <div className="grid grid-cols-3 gap-2">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="cctvCamerasLabel"
+                className="grid grid-cols-3 gap-2"
+              >
                 {CCTV_OPTIONS.map((option) => (
                   <button
                     key={option.id}
@@ -620,10 +662,17 @@ export function Step4Amenities() {
 
             {/* Access Control */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div
+                id="accessControlLabel"
+                className="block text-sm font-medium text-gray-700 mb-3"
+              >
                 Access Control
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="accessControlLabel"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-2"
+              >
                 {ACCESS_CONTROL_OPTIONS.map((option) => (
                   <button
                     key={option.id}
@@ -696,10 +745,17 @@ export function Step4Amenities() {
             {/* ISP Options */}
             {internetReady && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <div
+                  id="availableIspsLabel"
+                  className="block text-sm font-medium text-gray-700 mb-3"
+                >
                   Available ISPs (select all that apply)
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                </div>
+                <div
+                  role="group"
+                  aria-labelledby="availableIspsLabel"
+                  className="grid grid-cols-2 sm:grid-cols-4 gap-2"
+                >
                   {ISP_OPTIONS.map((isp) => {
                     const isSelected = (availableIsps || []).includes(isp.id);
                     return (

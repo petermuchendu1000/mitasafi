@@ -1,6 +1,6 @@
 /**
  * Photo Studio Details
- * 
+ *
  * Specialized form for photography studios.
  * Captures lighting, backdrop, and facility features.
  */
@@ -17,19 +17,30 @@ import {
   CounterInput,
   CheckboxInput,
 } from "./field-configs";
-import { isFieldRequired, validateRequiredFields } from "../../../required-fields-config";
+import {
+  isFieldRequired,
+  validateRequiredFields,
+} from "../../../required-fields-config";
 
 export function PhotoStudioDetails() {
   const { state, updateFormData, setValidation } = useWizard();
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
-  const isRequired = (field: keyof typeof commercial) => 
+  const isRequired = (field: keyof typeof commercial) =>
     isFieldRequired(field, commercialType, commercialSubtype);
 
   useEffect(() => {
-    const errors = validateRequiredFields(commercial, commercialType, commercialSubtype);
-    setValidation(3, { isValid: Object.keys(errors).length === 0, errors, touched: {} });
+    const errors = validateRequiredFields(
+      commercial,
+      commercialType,
+      commercialSubtype,
+    );
+    setValidation(3, {
+      isValid: Object.keys(errors).length === 0,
+      errors,
+      touched: {},
+    });
   }, [commercial, commercialType, commercialSubtype, setValidation]);
 
   const update = (data: Partial<typeof commercial>) => {
@@ -38,8 +49,8 @@ export function PhotoStudioDetails() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader 
-        title="Photo Studio Specifications" 
+      <PageHeader
+        title="Photo Studio Specifications"
         description="Photography space features and facilities"
       />
 
@@ -48,8 +59,13 @@ export function PhotoStudioDetails() {
         <FormSection title="Space Dimensions">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel label="Total Area" required />
+              <FieldLabel
+                htmlFor="photo-studio-total-area"
+                label="Total Area"
+                required
+              />
               <NumberInput
+                id="photo-studio-total-area"
                 value={commercial.sizeSqm}
                 onChange={(v) => update({ sizeSqm: v })}
                 placeholder="e.g., 200"
@@ -58,8 +74,14 @@ export function PhotoStudioDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Ceiling Height" required description="Higher is better for lighting" />
+              <FieldLabel
+                htmlFor="photo-studio-ceiling-height"
+                label="Ceiling Height"
+                required
+                description="Higher is better for lighting"
+              />
               <NumberInput
+                id="photo-studio-ceiling-height"
                 value={commercial.ceilingHeightStudios}
                 onChange={(v) => update({ ceilingHeightStudios: v })}
                 placeholder="e.g., 4.5"
@@ -132,8 +154,12 @@ export function PhotoStudioDetails() {
         {/* Parking */}
         <FormSection title="Access & Parking">
           <div>
-            <FieldLabel label="Parking Spaces" />
+            <FieldLabel
+              id="photo-studio-parking-spaces"
+              label="Parking Spaces"
+            />
             <CounterInput
+              labelledBy="photo-studio-parking-spaces"
               value={commercial.parkingSpacesCount || 0}
               onChange={(v) => update({ parkingSpacesCount: v })}
               min={0}

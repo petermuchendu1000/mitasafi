@@ -1,6 +1,6 @@
 /**
  * Salon & Spa Details
- * 
+ *
  * Specialized form for beauty salons, spas, and wellness centers.
  * Captures treatment rooms, stations, and specialized equipment.
  */
@@ -17,19 +17,30 @@ import {
   CounterInput,
   CheckboxInput,
 } from "./field-configs";
-import { isFieldRequired, validateRequiredFields } from "../../../required-fields-config";
+import {
+  isFieldRequired,
+  validateRequiredFields,
+} from "../../../required-fields-config";
 
 export function SalonSpaDetails() {
   const { state, updateFormData, setValidation } = useWizard();
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
-  const isRequired = (field: keyof typeof commercial) => 
+  const isRequired = (field: keyof typeof commercial) =>
     isFieldRequired(field, commercialType, commercialSubtype);
 
   useEffect(() => {
-    const errors = validateRequiredFields(commercial, commercialType, commercialSubtype);
-    setValidation(3, { isValid: Object.keys(errors).length === 0, errors, touched: {} });
+    const errors = validateRequiredFields(
+      commercial,
+      commercialType,
+      commercialSubtype,
+    );
+    setValidation(3, {
+      isValid: Object.keys(errors).length === 0,
+      errors,
+      touched: {},
+    });
   }, [commercial, commercialType, commercialSubtype, setValidation]);
 
   const update = (data: Partial<typeof commercial>) => {
@@ -38,8 +49,8 @@ export function SalonSpaDetails() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader 
-        title="Salon & Spa Specifications" 
+      <PageHeader
+        title="Salon & Spa Specifications"
         description="Treatment rooms, styling stations, and facilities"
       />
 
@@ -48,8 +59,13 @@ export function SalonSpaDetails() {
         <FormSection title="Space Dimensions">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel label="Total Area" required />
+              <FieldLabel
+                htmlFor="salon-spa-total-area"
+                label="Total Area"
+                required
+              />
               <NumberInput
+                id="salon-spa-total-area"
                 value={commercial.sizeSqm}
                 onChange={(v) => update({ sizeSqm: v })}
                 placeholder="e.g., 150"
@@ -58,8 +74,12 @@ export function SalonSpaDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Waiting Area" />
+              <FieldLabel
+                htmlFor="salon-spa-waiting-area"
+                label="Waiting Area"
+              />
               <NumberInput
+                id="salon-spa-waiting-area"
                 value={commercial.waitingAreaCapacitySalon}
                 onChange={(v) => update({ waitingAreaCapacitySalon: v })}
                 placeholder="e.g., 8"
@@ -73,8 +93,13 @@ export function SalonSpaDetails() {
         <FormSection title="Salon Stations">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
-              <FieldLabel label="Styling Stations" required />
+              <FieldLabel
+                id="salon-spa-styling-stations"
+                label="Styling Stations"
+                required
+              />
               <CounterInput
+                labelledBy="salon-spa-styling-stations"
                 value={commercial.stylingStations || 0}
                 onChange={(v) => update({ stylingStations: v })}
                 min={0}
@@ -82,8 +107,13 @@ export function SalonSpaDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Wash Basins" required />
+              <FieldLabel
+                id="salon-spa-wash-basins"
+                label="Wash Basins"
+                required
+              />
               <CounterInput
+                labelledBy="salon-spa-wash-basins"
                 value={commercial.washBasins || 0}
                 onChange={(v) => update({ washBasins: v })}
                 min={0}
@@ -91,8 +121,12 @@ export function SalonSpaDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Mani/Pedi Stations" />
+              <FieldLabel
+                id="salon-spa-mani-pedi-stations"
+                label="Mani/Pedi Stations"
+              />
               <CounterInput
+                labelledBy="salon-spa-mani-pedi-stations"
                 value={commercial.manicurePedicureStations || 0}
                 onChange={(v) => update({ manicurePedicureStations: v })}
                 min={0}
@@ -106,8 +140,12 @@ export function SalonSpaDetails() {
         <FormSection title="Treatment Rooms">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <FieldLabel label="Treatment Rooms" />
+              <FieldLabel
+                id="salon-spa-treatment-rooms"
+                label="Treatment Rooms"
+              />
               <CounterInput
+                labelledBy="salon-spa-treatment-rooms"
                 value={commercial.treatmentRoomsSpa || 0}
                 onChange={(v) => update({ treatmentRoomsSpa: v })}
                 min={0}
@@ -115,8 +153,12 @@ export function SalonSpaDetails() {
               />
             </div>
             <div>
-              <FieldLabel label="Treatment Beds" />
+              <FieldLabel
+                id="salon-spa-treatment-beds"
+                label="Treatment Beds"
+              />
               <CounterInput
+                labelledBy="salon-spa-treatment-beds"
                 value={commercial.treatmentBeds || 0}
                 onChange={(v) => update({ treatmentBeds: v })}
                 min={0}
@@ -165,8 +207,9 @@ export function SalonSpaDetails() {
         {/* Parking */}
         <FormSection title="Parking">
           <div>
-            <FieldLabel label="Parking Spaces" />
+            <FieldLabel id="salon-spa-parking-spaces" label="Parking Spaces" />
             <CounterInput
+              labelledBy="salon-spa-parking-spaces"
               value={commercial.parkingSpacesCount || 0}
               onChange={(v) => update({ parkingSpacesCount: v })}
               min={0}

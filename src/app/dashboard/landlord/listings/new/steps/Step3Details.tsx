@@ -104,10 +104,17 @@ export function Step3Details() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Bedrooms */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div
+                  id="bedroomsLabel"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Bedrooms <span className="text-orange-500">*</span>
-                </label>
-                <div className="flex items-center gap-4">
+                </div>
+                <div
+                  role="group"
+                  aria-labelledby="bedroomsLabel"
+                  className="flex items-center gap-4"
+                >
                   <button
                     type="button"
                     onClick={decrementBedrooms}
@@ -158,10 +165,17 @@ export function Step3Details() {
 
               {/* Bathrooms */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div
+                  id="bathroomsLabel"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Bathrooms <span className="text-orange-500">*</span>
-                </label>
-                <div className="flex items-center gap-4">
+                </div>
+                <div
+                  role="group"
+                  aria-labelledby="bathroomsLabel"
+                  className="flex items-center gap-4"
+                >
                   <button
                     type="button"
                     onClick={decrementBathrooms}
@@ -203,7 +217,10 @@ export function Step3Details() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Size */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="propertySize"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Property Size
                   <span className="text-gray-400 font-normal ml-1">
                     (Optional)
@@ -211,6 +228,7 @@ export function Step3Details() {
                 </label>
                 <div className="flex">
                   <input
+                    id="propertySize"
                     type="number"
                     value={sizeSqft || ""}
                     onChange={(e) =>
@@ -248,7 +266,10 @@ export function Step3Details() {
 
               {/* Floor Level */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="floorLevel"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Floor Level
                   <span className="text-gray-400 font-normal ml-1">
                     (Optional)
@@ -256,6 +277,7 @@ export function Step3Details() {
                 </label>
                 <div className="relative">
                   <select
+                    id="floorLevel"
                     value={floorLevel}
                     onChange={(e) =>
                       updateFields({ floorLevel: e.target.value })
@@ -289,10 +311,17 @@ export function Step3Details() {
           <div className="p-5 space-y-6">
             {/* Condition */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div
+                id="overallConditionLabel"
+                className="block text-sm font-medium text-gray-700 mb-3"
+              >
                 Overall Condition <span className="text-orange-500">*</span>
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              </div>
+              <div
+                role="group"
+                aria-labelledby="overallConditionLabel"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+              >
                 {CONDITIONS.map((c) => (
                   <button
                     key={c.id}
@@ -317,13 +346,17 @@ export function Step3Details() {
             {/* Year Built & Last Renovated */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="yearBuilt"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Year Built
                   <span className="text-gray-400 font-normal ml-1">
                     (Optional)
                   </span>
                 </label>
                 <input
+                  id="yearBuilt"
                   type="number"
                   value={yearBuilt || ""}
                   onChange={(e) =>
@@ -345,13 +378,17 @@ export function Step3Details() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="lastRenovated"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Last Renovated
                   <span className="text-gray-400 font-normal ml-1">
                     (Optional)
                   </span>
                 </label>
                 <input
+                  id="lastRenovated"
                   type="number"
                   value={lastRenovated || ""}
                   onChange={(e) =>
