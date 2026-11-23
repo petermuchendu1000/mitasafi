@@ -246,3 +246,23 @@ export function createBooleanStore(
     ...options,
   });
 }
+
+/**
+ * A boolean flag in sessionStorage, one store per key, memoised.
+ *
+ * useSyncExternalStore resubscribes whenever the functions it is handed change
+ * identity, so a store has to outlive a render. Stores for keys that are only known at
+ * runtime — "has the inquiry modal for THIS listing been dismissed" — cannot be
+ * declared at module scope, so they are cached by key here instead. Calling this twice
+ * with the same key returns the same object, which is what makes it safe to call
+ * during render.
+ */
+const sessionFlagStores = new Map<string, LocalStore<boolean>>();
+
+export function sessionFlagStore(key: string): LocalStore<boolean> {
+  const existing = sessionFlagStores.get(key);
+  if (existing) return existing;
+  const store = createBooleanStore(key, { session: true });
+  sessionFlagStores.set(key, store);
+  return store;
+}

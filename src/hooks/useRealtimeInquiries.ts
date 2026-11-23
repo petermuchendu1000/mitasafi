@@ -120,13 +120,14 @@ export function useRealtimeInquiries(
   // Subscribe to realtime inquiries
   useEffect(() => {
     if (!enabled) {
-      // Clean up if disabled
+      // Clean up if disabled. The two setStates that used to follow — setIsConnected
+      // (the reported one) and setStatus("disconnected") — are gone: while disabled,
+      // both values are constants, so they are derived at the return below instead of
+      // being written here. See the note there.
       if (channelRef.current) {
         channelRef.current.unsubscribe();
         channelRef.current = null;
       }
-      setIsConnected(false);
-      setStatus("disconnected");
       return;
     }
 
@@ -318,9 +319,16 @@ export function useRealtimeInquiries(
     };
   }, []);
 
+  // Derived, not written by the effect's disabled branch.
+  //
+  // While `enabled` is false this hook is not subscribed to anything, so "connected"
+  // and the connection status are not facts to be discovered — they are known. The
+  // effect used to write them, one commit after the render in which enabled had
+  // already flipped, so a consumer rendering a connection indicator showed the stale
+  // "connected" state for a frame on the way down.
   return {
-    isConnected,
-    status,
+    isConnected: enabled ? isConnected : false,
+    status: enabled ? status : "disconnected",
     error,
     newInquiriesCount,
     resetCount,

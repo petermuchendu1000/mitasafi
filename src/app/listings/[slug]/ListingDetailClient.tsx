@@ -13,6 +13,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { sessionFlagStore } from "@/lib/browser-storage/local-store";
+import { useLocalStore } from "@/lib/browser-storage/useLocalStore";
 import {
   ArrowLeft,
   Share2,
@@ -97,7 +99,8 @@ export function ListingDetailClient({
 }: ListingDetailClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [inquiryOpen, setInquiryOpen] = useState(false);
+  // An explicit open from one of the Contact buttons, as opposed to the URL flag.
+  const [inquiryOpenedByUser, setInquiryOpenedByUser] = useState(false);
   const [unavailableModalOpen, setUnavailableModalOpen] = useState(false);
 
   // Subscribed, not sampled at mount. This page renders THREE readers of the saved key at
@@ -123,30 +126,50 @@ export function ListingDetailClient({
     }
   }, [isUnavailable]);
 
-  // Auto-open inquiry modal when returning from signup
-  // Track dismissed state to prevent re-opening on browser back
-  useEffect(() => {
-    const dismissedKey = `inquiry-dismissed-${listing.id}`;
-    const wasDismissed = sessionStorage.getItem(dismissedKey);
+  // Whether the inquiry modal is open is DERIVED from the URL, the dismissal flag and
+  // an explicit open, rather than written into state by an effect.
+  //
+  // The effect this replaces read ?openInquiry=true and sessionStorage and then called
+  // setInquiryOpenedByUser(true) — the reported setState — so a visitor returning from signup
+  // got one painted frame of the page without the modal before it appeared.
+  //
+  // sessionStorage cannot be read during render directly: the server has none, so the
+  // server and the hydration render would disagree. sessionFlagStore goes through
+  // useSyncExternalStore, whose server snapshot is false, so both sides render the
+  // same markup and the real value is applied immediately after hydration.
+  const inquiryDismissed = useLocalStore(
+    sessionFlagStore(`inquiry-dismissed-${listing.id}`),
+  );
+  const urlWantsInquiry =
+    searchParams.get("openInquiry") === "true" && isAuthenticated;
+  const inquiryOpen =
+    inquiryOpenedByUser || (urlWantsInquiry && !inquiryDismissed);
 
-    if (
-      searchParams.get("openInquiry") === "true" &&
-      isAuthenticated &&
-      !wasDismissed
-    ) {
-      setInquiryOpen(true);
-      // Clean up URL without triggering navigation
-      const url = new URL(window.location.href);
-      url.searchParams.delete("openInquiry");
-      window.history.replaceState({}, "", url.pathname);
-    }
-  }, [searchParams, isAuthenticated, listing.id]);
+  // Clean the ?openInquiry flag out of the address bar.
+  //
+  // BUG FIXED HERE, and it is not the lint finding: this built a URL with the
+  // parameter removed and then called
+  //     window.history.replaceState({}, "", url.pathname)
+  // passing only the PATH. Every other query parameter went with it — so arriving at
+  // /listings/x?openInquiry=true&ref=whatsapp&utm_source=newsletter silently dropped
+  // ref and utm_source from the address bar, and from anything that later read them.
+  // url.search is now carried through.
+  //
+  // No setState here, and none needed: the modal's visibility no longer depends on
+  // this running.
+  useEffect(() => {
+    if (!urlWantsInquiry) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("openInquiry");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+  }, [urlWantsInquiry]);
 
   // Handle modal close - track dismissal to prevent re-open on back
   const handleInquiryClose = () => {
-    setInquiryOpen(false);
-    // Mark as dismissed so browser back doesn't reopen it
-    sessionStorage.setItem(`inquiry-dismissed-${listing.id}`, "true");
+    setInquiryOpenedByUser(false);
+    // Mark as dismissed so browser back doesn't reopen it. Writing through the store
+    // notifies, so the derived value above updates in the same tick.
+    sessionFlagStore(`inquiry-dismissed-${listing.id}`).write(true);
   };
 
   const handleShare = async () => {
@@ -367,12 +390,12 @@ export function ListingDetailClient({
                   onContact={
                     isUnavailable
                       ? () => setUnavailableModalOpen(true)
-                      : () => setInquiryOpen(true)
+                      : () => setInquiryOpenedByUser(true)
                   }
                   onScheduleViewing={
                     isUnavailable
                       ? () => setUnavailableModalOpen(true)
-                      : () => setInquiryOpen(true)
+                      : () => setInquiryOpenedByUser(true)
                   }
                   isAuthenticated={isAuthenticated}
                   isUnavailable={isUnavailable}
@@ -410,12 +433,12 @@ export function ListingDetailClient({
                   onContact={
                     isUnavailable
                       ? () => setUnavailableModalOpen(true)
-                      : () => setInquiryOpen(true)
+                      : () => setInquiryOpenedByUser(true)
                   }
                   onScheduleViewing={
                     isUnavailable
                       ? () => setUnavailableModalOpen(true)
-                      : () => setInquiryOpen(true)
+                      : () => setInquiryOpenedByUser(true)
                   }
                   isAuthenticated={isAuthenticated}
                   isUnavailable={isUnavailable}
@@ -467,7 +490,7 @@ export function ListingDetailClient({
               </button>
             ) : (
               <button
-                onClick={() => setInquiryOpen(true)}
+                onClick={() => setInquiryOpenedByUser(true)}
                 className="bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 text-white font-semibold py-3 px-6 rounded-xl flex items-center gap-2 transition-all shadow-md"
               >
                 <MessageCircle className="w-5 h-5" />

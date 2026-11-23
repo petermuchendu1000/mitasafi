@@ -153,14 +153,15 @@ export function useRealtimeListingStatus(
 
   // Subscribe to realtime listing status changes
   useEffect(() => {
-    // Don't subscribe if no listings to monitor
+    // Don't subscribe if no listings to monitor. The two setStates that used to follow
+    // — setIsConnected (the reported one) and setStatus(...) — are gone: when there is
+    // nothing to subscribe to, both values are constants, so they are derived at the
+    // return below instead of being written here. See the note there.
     if (!enabled || listingIds.length === 0) {
       if (channelRef.current) {
         channelRef.current.unsubscribe();
         channelRef.current = null;
       }
-      setIsConnected(false);
-      setStatus(listingIds.length === 0 ? "idle" : "disconnected");
       return;
     }
 
@@ -305,9 +306,22 @@ export function useRealtimeListingStatus(
     };
   }, [enabled, listingIdsKey, autoNotify]);
 
+  // Derived, not written by the effect's inactive branch.
+  //
+  // With nothing to monitor this hook holds no subscription, so "connected" is not a
+  // fact to be discovered. The effect wrote it one commit after the render in which
+  // listingIds had already emptied, and app/saved/page.tsx renders a Wifi / WifiOff
+  // indicator straight off this value — so removing your last saved property showed
+  // "Live updates" for a frame before switching to "Offline".
+  const isActive = enabled && listingIds.length > 0;
+
   return {
-    isConnected,
-    status,
+    isConnected: isActive ? isConnected : false,
+    status: isActive
+      ? status
+      : listingIds.length === 0
+        ? "idle"
+        : "disconnected",
     error,
     recentChanges,
     clearChanges,

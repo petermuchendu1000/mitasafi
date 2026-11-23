@@ -241,4 +241,75 @@ describe("PaymentForm polling lifecycle", () => {
     // Terminal status must not schedule another tick.
     expect(deferred.calls).toHaveLength(1);
   });
+
+  /**
+   * The timeout branch, which moved when the polling chain was brought inside the
+   * effect. It used to be the first thing pollStatus() did, so "run attempt N" and
+   * "notice there is no attempt N left" were one function, and reporting a timeout
+   * meant calling the poller and having it immediately refuse. It is now the
+   * scheduler's decision.
+   *
+   * Two things must hold across that move: the number of requests is unchanged at
+   * MAX_POLL_ATTEMPTS, and the message appears as soon as the attempt after the last
+   * one would have been booked rather than 3 seconds later.
+   */
+  it("stops after exactly MAX_POLL_ATTEMPTS requests and says so", async () => {
+    render(
+      <PaymentForm
+        bookingId="b1"
+        amount={5000}
+        defaultPhone="0712345678"
+        pendingPaymentId="pay-timeout"
+      />,
+    );
+
+    // Attempt 0 fires on mount; drive 59 more.
+    for (let i = 0; i < 60; i += 1) {
+      expect(deferred.inFlight).toBe(true);
+      await deferred.settle(PENDING_BODY);
+      if (i < 59) {
+        await act(async () => {
+          jest.advanceTimersByTime(POLL_INTERVAL_MS);
+        });
+      }
+    }
+
+    expect(deferred.calls.length).toBe(60);
+
+    // No 61st request is booked, and the message is already on screen — not waiting
+    // another interval to be told.
+    expect(
+      screen.getByText(/taking longer than expected/i),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(POLL_INTERVAL_MS * 3);
+    });
+    expect(deferred.calls.length).toBe(60);
+  });
+
+  it("every request names the payment the chain was started for", async () => {
+    render(
+      <PaymentForm
+        bookingId="b1"
+        amount={5000}
+        defaultPhone="0712345678"
+        pendingPaymentId="pay-xyz"
+      />,
+    );
+
+    for (let i = 0; i < 3; i += 1) {
+      await deferred.settle(PENDING_BODY);
+      await act(async () => {
+        jest.advanceTimersByTime(POLL_INTERVAL_MS);
+      });
+    }
+
+    // paymentId is captured by the effect's closure now rather than passed down the
+    // chain as an argument, so this pins that the closure is the right one.
+    expect(deferred.calls.length).toBeGreaterThan(1);
+    for (const url of deferred.calls) {
+      expect(url).toContain("paymentId=pay-xyz");
+    }
+  });
 });

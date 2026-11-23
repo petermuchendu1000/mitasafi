@@ -89,6 +89,20 @@ const STATUS_CONFIG = {
   },
 };
 
+/**
+ * Fetch the landlord's inquiries. No React state: the two callers decide what to do
+ * with the result, which is what lets the mount effect own a cancellable copy without
+ * duplicating the request.
+ */
+async function loadInquiries(): Promise<Inquiry[]> {
+  const response = await fetch("/api/landlord/inquiries");
+  if (!response.ok) {
+    throw new Error("Failed to fetch inquiries");
+  }
+  const data = await response.json();
+  return data.inquiries || [];
+}
+
 export default function InquiriesPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -155,12 +169,7 @@ export default function InquiriesPage() {
       setIsRefreshing(true);
     }
     try {
-      const response = await fetch("/api/landlord/inquiries");
-      if (!response.ok) {
-        throw new Error("Failed to fetch inquiries");
-      }
-      const data = await response.json();
-      setInquiries(data.inquiries || []);
+      setInquiries(await loadInquiries());
       setLastRefresh(new Date());
       setError(null);
     } catch (err) {
@@ -171,9 +180,52 @@ export default function InquiriesPage() {
     }
   }, []);
 
-  // Initial fetch
+  /**
+   * The first load, owned by the effect that performs it.
+   *
+   * This used to be a bare `fetchInquiries()` in the effect body, which is what
+   * react-hooks/set-state-in-effect reported. Two things are different now, and only
+   * one of them is about the lint rule.
+   *
+   * The substantive one: this request had no cancellation. A landlord who opened the
+   * page and navigated away before it returned had setInquiries, setLastRefresh and
+   * setIsLoading all fire against an unmounted component — the same class of defect
+   * the payment form's polling chain had. The `cancelled` flag the cleanup sets is
+   * checked after the await, which is the only place it can be checked usefully:
+   * while a request is in flight there is nothing else to cancel.
+   *
+   * The HTTP call itself lives in loadInquiries(), outside the component, so the
+   * polling and manual-refresh paths above share it rather than duplicating it.
+   *
+   * NOT done, deliberately: wrapping the old `fetchInquiries()` call in an inner async
+   * IIFE also silences the rule, and changes nothing whatsoever about when state is
+   * written. Checked directly against the rule. That is laundering a warning rather
+   * than answering it.
+   */
   useEffect(() => {
-    fetchInquiries();
+    let cancelled = false;
+
+    async function loadFirstPage() {
+      try {
+        const list = await loadInquiries();
+        if (cancelled) return;
+        setInquiries(list);
+        setLastRefresh(new Date());
+        setError(null);
+      } catch (err) {
+        if (cancelled) return;
+        setError(
+          err instanceof Error ? err.message : "Failed to load inquiries",
+        );
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
+      }
+    }
+
+    void loadFirstPage();
 
     // Request notification permission for browser notifications
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -181,7 +233,11 @@ export default function InquiriesPage() {
         Notification.requestPermission();
       }
     }
-  }, [fetchInquiries]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Polling fallback: refresh every 30 seconds when realtime isn't connected
   // This ensures data stays fresh even if WebSocket connection fails
