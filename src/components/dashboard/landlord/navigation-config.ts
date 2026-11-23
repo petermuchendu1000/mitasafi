@@ -1,9 +1,9 @@
 /**
  * Sidebar Navigation Configuration
- * 
+ *
  * Defines all navigation sections and items for the landlord dashboard.
  * Centralized configuration makes it easy to modify navigation structure.
- * 
+ *
  * TERMINOLOGY:
  * - "Listings" = Public advertising flow (single units for rent)
  * - "My Properties" = Private management flow (buildings with multiple units)
@@ -91,14 +91,14 @@ export const landlordNavSections: NavSection[] = [
       {
         id: "all-properties",
         label: "All Properties",
-        href: "/dashboard/landlord/properties",
+        href: "/dashboard/landlord/buildings",
         icon: Building2,
         description: "Manage your properties and units",
       },
       {
         id: "add-property",
         label: "Add Property",
-        href: "/dashboard/landlord/properties/new",
+        href: "/dashboard/landlord/buildings/new",
         icon: Home,
         description: "Register a new property to manage",
       },

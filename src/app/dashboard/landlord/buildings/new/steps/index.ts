@@ -1,6 +1,6 @@
 /**
  * Building Wizard Steps
- * 
+ *
  * Barrel export for all building wizard step components.
  */
 

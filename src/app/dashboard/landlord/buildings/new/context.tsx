@@ -1,16 +1,16 @@
 /**
  * Building Wizard Context
- * 
+ *
  * Provides centralized state management for the multi-step building wizard.
  * Uses React Context with useReducer for predictable state updates.
  */
 
 "use client";
 
-import { 
-  createContext, 
-  useContext, 
-  useReducer, 
+import {
+  createContext,
+  useContext,
+  useReducer,
   useCallback,
   type ReactNode,
   type Dispatch,
@@ -32,7 +32,10 @@ type WizardAction =
   | { type: "NEXT_STEP" }
   | { type: "PREV_STEP" }
   | { type: "UPDATE_FORM_DATA"; payload: Partial<BuildingFormData> }
-  | { type: "SET_VALIDATION"; payload: { step: number; validation: StepValidation } }
+  | {
+      type: "SET_VALIDATION";
+      payload: { step: number; validation: StepValidation };
+    }
   | { type: "SET_FIELD_TOUCHED"; payload: { step: number; field: string } }
   | { type: "SET_SAVING"; payload: boolean }
   | { type: "SET_SUBMITTING"; payload: boolean }
@@ -40,7 +43,10 @@ type WizardAction =
   | { type: "SET_LAST_SAVED"; payload: string }
   | { type: "SAVE_SUCCESS"; payload: { draftId: string; savedAt: Date } }
   | { type: "RESET_FORM" }
-  | { type: "LOAD_DRAFT"; payload: { formData: BuildingFormData; draftId: string } };
+  | {
+      type: "LOAD_DRAFT";
+      payload: { formData: BuildingFormData; draftId: string };
+    };
 
 // =============================================================================
 // INITIAL STATE
@@ -232,9 +238,12 @@ export function WizardProvider({ children }: WizardProviderProps) {
     dispatch({ type: "SET_FIELD_TOUCHED", payload: { step, field } });
   }, []);
 
-  const isStepValid = useCallback((step: number) => {
-    return state.validation[step]?.isValid ?? false;
-  }, [state.validation]);
+  const isStepValid = useCallback(
+    (step: number) => {
+      return state.validation[step]?.isValid ?? false;
+    },
+    [state.validation],
+  );
 
   const canProceed = useCallback(() => {
     return isStepValid(state.currentStep);
@@ -253,9 +262,7 @@ export function WizardProvider({ children }: WizardProviderProps) {
   };
 
   return (
-    <WizardContext.Provider value={value}>
-      {children}
-    </WizardContext.Provider>
+    <WizardContext.Provider value={value}>{children}</WizardContext.Provider>
   );
 }
 

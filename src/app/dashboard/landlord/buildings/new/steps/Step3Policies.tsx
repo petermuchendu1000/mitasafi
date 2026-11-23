@@ -1,6 +1,6 @@
 /**
  * Step 3: Building Policies
- * 
+ *
  * Collects building rules and regulations:
  * - Pet policy
  * - Smoking policy
@@ -14,7 +14,7 @@
 
 import { useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { 
+import {
   Scale,
   PawPrint,
   Cigarette,
@@ -24,7 +24,7 @@ import {
   DoorOpen,
 } from "lucide-react";
 import { useWizard } from "../context";
-import { 
+import {
   type StepValidation,
   PET_POLICY_OPTIONS,
   SMOKING_POLICY_OPTIONS,
@@ -46,15 +46,15 @@ export function Step3Policies() {
 
   useEffect(() => {
     const stepValidation = validate();
-    dispatch({ 
-      type: "SET_VALIDATION", 
-      payload: { step: 3, validation: stepValidation } 
+    dispatch({
+      type: "SET_VALIDATION",
+      payload: { step: 3, validation: stepValidation },
     });
   }, [formData, validate, dispatch]);
 
   const updatePolicies = (key: string, value: unknown) => {
     updateFormData({
-      policies: { ...formData.policies, [key]: value }
+      policies: { ...formData.policies, [key]: value },
     });
   };
 
@@ -73,10 +73,13 @@ export function Step3Policies() {
         <div className="flex gap-3">
           <Scale className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm text-blue-800 font-medium">Why policies matter</p>
+            <p className="text-sm text-blue-800 font-medium">
+              Why policies matter
+            </p>
             <p className="text-sm text-blue-700 mt-1">
-              Clear policies help attract the right tenants and prevent conflicts.
-              These will be shown to potential tenants when viewing your property.
+              Clear policies help attract the right tenants and prevent
+              conflicts. These will be shown to potential tenants when viewing
+              your property.
             </p>
           </div>
         </div>
@@ -86,7 +89,9 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <PawPrint className="w-5 h-5 text-amber-600" />
-          <label className="text-sm font-semibold text-gray-900">Pet Policy</label>
+          <label className="text-sm font-semibold text-gray-900">
+            Pet Policy
+          </label>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {PET_POLICY_OPTIONS.map((option) => (
@@ -99,7 +104,7 @@ export function Step3Policies() {
                 "transition-all",
                 formData.policies.pets === option.id
                   ? "border-teal-600 bg-teal-50 text-teal-700"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300",
               )}
             >
               {option.label}
@@ -112,7 +117,9 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Cigarette className="w-5 h-5 text-red-500" />
-          <label className="text-sm font-semibold text-gray-900">Smoking Policy</label>
+          <label className="text-sm font-semibold text-gray-900">
+            Smoking Policy
+          </label>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {SMOKING_POLICY_OPTIONS.map((option) => (
@@ -125,7 +132,7 @@ export function Step3Policies() {
                 "transition-all",
                 formData.policies.smoking === option.id
                   ? "border-teal-600 bg-teal-50 text-teal-700"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300",
               )}
             >
               {option.label}
@@ -138,10 +145,13 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Briefcase className="w-5 h-5 text-indigo-600" />
-          <label className="text-sm font-semibold text-gray-900">Home Business Use</label>
+          <label className="text-sm font-semibold text-gray-900">
+            Home Business Use
+          </label>
         </div>
         <p className="text-sm text-gray-500">
-          Can tenants run a business from their unit? (e.g., work from home, online business)
+          Can tenants run a business from their unit? (e.g., work from home,
+          online business)
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {BUSINESS_POLICY_OPTIONS.map((option) => (
@@ -154,7 +164,7 @@ export function Step3Policies() {
                 "transition-all",
                 formData.policies.business_use === option.id
                   ? "border-teal-600 bg-teal-50 text-teal-700"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300",
               )}
             >
               {option.label}
@@ -167,7 +177,9 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Home className="w-5 h-5 text-pink-600" />
-          <label className="text-sm font-semibold text-gray-900">Short-term Rentals (Airbnb)</label>
+          <label className="text-sm font-semibold text-gray-900">
+            Short-term Rentals (Airbnb)
+          </label>
         </div>
         <p className="text-sm text-gray-500">
           Can tenants sublet on Airbnb or other short-term rental platforms?
@@ -181,7 +193,7 @@ export function Step3Policies() {
               "transition-all",
               formData.policies.airbnb === true
                 ? "border-teal-600 bg-teal-50 text-teal-700"
-                : "border-gray-200 text-gray-600 hover:border-gray-300"
+                : "border-gray-200 text-gray-600 hover:border-gray-300",
             )}
           >
             Allowed
@@ -194,7 +206,7 @@ export function Step3Policies() {
               "transition-all",
               formData.policies.airbnb === false
                 ? "border-teal-600 bg-teal-50 text-teal-700"
-                : "border-gray-200 text-gray-600 hover:border-gray-300"
+                : "border-gray-200 text-gray-600 hover:border-gray-300",
             )}
           >
             Not Allowed
@@ -206,7 +218,9 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Clock className="w-5 h-5 text-violet-600" />
-          <label className="text-sm font-semibold text-gray-900">Quiet Hours</label>
+          <label className="text-sm font-semibold text-gray-900">
+            Quiet Hours
+          </label>
           <span className="text-xs text-gray-400">(optional)</span>
         </div>
         <input
@@ -218,7 +232,7 @@ export function Step3Policies() {
             "block w-full max-w-sm px-4 py-3 rounded-xl border",
             "text-gray-900 placeholder:text-gray-400",
             "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
-            "border-gray-200 hover:border-gray-300"
+            "border-gray-200 hover:border-gray-300",
           )}
         />
         <p className="text-xs text-gray-500">
@@ -230,12 +244,16 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <DoorOpen className="w-5 h-5 text-cyan-600" />
-          <label className="text-sm font-semibold text-gray-900">Access Instructions</label>
+          <label className="text-sm font-semibold text-gray-900">
+            Access Instructions
+          </label>
           <span className="text-xs text-gray-400">(optional)</span>
         </div>
         <textarea
           value={formData.access_instructions || ""}
-          onChange={(e) => updateFormData({ access_instructions: e.target.value })}
+          onChange={(e) =>
+            updateFormData({ access_instructions: e.target.value })
+          }
           rows={3}
           placeholder="e.g. Use the back gate after 10pm. Visitors must register at the security desk."
           className={cn(
@@ -243,7 +261,7 @@ export function Step3Policies() {
             "text-gray-900 placeholder:text-gray-400",
             "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
             "border-gray-200 hover:border-gray-300",
-            "resize-none"
+            "resize-none",
           )}
         />
         <p className="text-xs text-gray-500">

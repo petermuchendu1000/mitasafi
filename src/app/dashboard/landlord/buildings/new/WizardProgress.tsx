@@ -1,6 +1,6 @@
 /**
  * Building Wizard Progress Bar
- * 
+ *
  * Visual indicator showing current step and progress through the wizard.
  * Follows MitaSafi brand colors with teal accents.
  */
@@ -24,7 +24,8 @@ export function WizardProgress() {
           {WIZARD_STEPS.map((step, index) => {
             const isCompleted = currentStep > step.number;
             const isCurrent = currentStep === step.number;
-            const isClickable = step.number < currentStep || validation[step.number]?.isValid;
+            const isClickable =
+              step.number < currentStep || validation[step.number]?.isValid;
 
             return (
               <div key={step.number} className="flex items-center flex-1">
@@ -34,7 +35,7 @@ export function WizardProgress() {
                   disabled={!isClickable}
                   className={cn(
                     "flex flex-col items-center gap-2 group",
-                    isClickable ? "cursor-pointer" : "cursor-default"
+                    isClickable ? "cursor-pointer" : "cursor-default",
                   )}
                 >
                   <div
@@ -42,12 +43,14 @@ export function WizardProgress() {
                       "w-10 h-10 rounded-full flex items-center justify-center",
                       "text-sm font-semibold transition-all duration-200",
                       "border-2",
-                      isCompleted 
-                        ? "bg-teal-600 border-teal-600 text-white" 
+                      isCompleted
+                        ? "bg-teal-600 border-teal-600 text-white"
                         : isCurrent
-                        ? "bg-white border-teal-600 text-teal-600 ring-4 ring-teal-100"
-                        : "bg-white border-gray-200 text-gray-400",
-                      isClickable && !isCurrent && "group-hover:border-teal-400 group-hover:text-teal-600"
+                          ? "bg-white border-teal-600 text-teal-600 ring-4 ring-teal-100"
+                          : "bg-white border-gray-200 text-gray-400",
+                      isClickable &&
+                        !isCurrent &&
+                        "group-hover:border-teal-400 group-hover:text-teal-600",
                     )}
                   >
                     {isCompleted ? (
@@ -60,12 +63,14 @@ export function WizardProgress() {
                     <span
                       className={cn(
                         "text-xs font-medium transition-colors block",
-                        isCurrent 
-                          ? "text-teal-600" 
-                          : isCompleted 
-                          ? "text-gray-700"
-                          : "text-gray-400",
-                        isClickable && !isCurrent && "group-hover:text-teal-600"
+                        isCurrent
+                          ? "text-teal-600"
+                          : isCompleted
+                            ? "text-gray-700"
+                            : "text-gray-400",
+                        isClickable &&
+                          !isCurrent &&
+                          "group-hover:text-teal-600",
                       )}
                     >
                       {step.title}
@@ -79,7 +84,9 @@ export function WizardProgress() {
                     <div
                       className={cn(
                         "h-full rounded-full transition-colors duration-300",
-                        currentStep > step.number ? "bg-teal-600" : "bg-gray-200"
+                        currentStep > step.number
+                          ? "bg-teal-600"
+                          : "bg-gray-200",
                       )}
                     />
                   </div>

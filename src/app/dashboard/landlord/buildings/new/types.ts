@@ -1,6 +1,6 @@
 /**
  * Building Wizard Types
- * 
+ *
  * Comprehensive type definitions for the building creation flow.
  * These types ensure type safety across all wizard steps.
  */
@@ -10,24 +10,71 @@
 // =============================================================================
 
 export const BUILDING_TYPES = [
-  { id: "apartment", label: "Apartment Building", icon: "building", description: "Multi-story building with individual units" },
-  { id: "flat_block", label: "Flat Block", icon: "building2", description: "Smaller apartment building (4-20 units)" },
-  { id: "townhouse_complex", label: "Townhouse Complex", icon: "warehouse", description: "Multiple townhouses in gated compound" },
-  { id: "gated_community", label: "Gated Community", icon: "shield", description: "Large development with multiple buildings" },
-  { id: "student_hostel", label: "Student Hostel", icon: "users", description: "Dormitory-style accommodation" },
-  { id: "mixed_use", label: "Mixed-Use Building", icon: "store", description: "Ground floor commercial, upper residential" },
-  { id: "other", label: "Other", icon: "more-horizontal", description: "Other multi-unit property" },
+  {
+    id: "apartment",
+    label: "Apartment Building",
+    icon: "building",
+    description: "Multi-story building with individual units",
+  },
+  {
+    id: "flat_block",
+    label: "Flat Block",
+    icon: "building2",
+    description: "Smaller apartment building (4-20 units)",
+  },
+  {
+    id: "townhouse_complex",
+    label: "Townhouse Complex",
+    icon: "warehouse",
+    description: "Multiple townhouses in gated compound",
+  },
+  {
+    id: "gated_community",
+    label: "Gated Community",
+    icon: "shield",
+    description: "Large development with multiple buildings",
+  },
+  {
+    id: "student_hostel",
+    label: "Student Hostel",
+    icon: "users",
+    description: "Dormitory-style accommodation",
+  },
+  {
+    id: "mixed_use",
+    label: "Mixed-Use Building",
+    icon: "store",
+    description: "Ground floor commercial, upper residential",
+  },
+  {
+    id: "other",
+    label: "Other",
+    icon: "more-horizontal",
+    description: "Other multi-unit property",
+  },
 ] as const;
 
-export type BuildingType = typeof BUILDING_TYPES[number]["id"];
+export type BuildingType = (typeof BUILDING_TYPES)[number]["id"];
 
 export const MANAGEMENT_TYPES = [
-  { id: "self", label: "Self-Managed", description: "You manage the building directly" },
-  { id: "caretaker", label: "Caretaker", description: "On-site caretaker handles day-to-day" },
-  { id: "property_manager", label: "Property Manager", description: "Professional management company" },
+  {
+    id: "self",
+    label: "Self-Managed",
+    description: "You manage the building directly",
+  },
+  {
+    id: "caretaker",
+    label: "Caretaker",
+    description: "On-site caretaker handles day-to-day",
+  },
+  {
+    id: "property_manager",
+    label: "Property Manager",
+    description: "Professional management company",
+  },
 ] as const;
 
-export type ManagementType = typeof MANAGEMENT_TYPES[number]["id"];
+export type ManagementType = (typeof MANAGEMENT_TYPES)[number]["id"];
 
 // Security options
 export const SECURITY_GUARD_OPTIONS = [
@@ -244,22 +291,22 @@ export interface BuildingFormData {
   year_built?: number;
   plot_number?: string;
   landmarks?: string;
-  
+
   // Step 2: Amenities
   security_features: SecurityFeatures;
   water_power: WaterPowerFeatures;
   parking: ParkingFeatures;
   common_facilities: CommonFacilities;
   services: BuildingServices;
-  
+
   // Step 3: Policies
   policies: BuildingPolicies;
   access_instructions?: string;
-  
+
   // Step 4: Photos
   photos: string[];
   cover_photo?: string;
-  
+
   // Step 5: Financials
   service_charge?: number;
   service_charge_includes: string[];
@@ -334,20 +381,20 @@ export const DEFAULT_FORM_DATA: BuildingFormData = {
   address: "",
   area: "",
   city: "Nairobi",
-  
+
   // Step 2
   security_features: DEFAULT_SECURITY_FEATURES,
   water_power: DEFAULT_WATER_POWER,
   parking: DEFAULT_PARKING,
   common_facilities: DEFAULT_COMMON_FACILITIES,
   services: DEFAULT_SERVICES,
-  
+
   // Step 3
   policies: DEFAULT_POLICIES,
-  
+
   // Step 4
   photos: [],
-  
+
   // Step 5
   service_charge_includes: [],
   collection_via_mitasafi: true,
@@ -383,7 +430,11 @@ export interface WizardState {
 
 export const WIZARD_STEPS = [
   { number: 1, title: "Basics", description: "Building name, type & location" },
-  { number: 2, title: "Amenities", description: "Security, water, power, facilities" },
+  {
+    number: 2,
+    title: "Amenities",
+    description: "Security, water, power, facilities",
+  },
   { number: 3, title: "Policies", description: "Rules and regulations" },
   { number: 4, title: "Photos", description: "Building images" },
   { number: 5, title: "Financials", description: "Fees, payment collection" },

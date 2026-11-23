@@ -1,6 +1,6 @@
 /**
  * Unit Detail Page
- * 
+ *
  * Shows unit information, current tenant, lease details, and payment history.
  * Allows managing tenant, recording payments, and updating unit status.
  */
@@ -52,7 +52,8 @@ const mockUnit = {
   rent_amount: 35000,
   deposit_amount: 35000,
   features: ["balcony", "ensuite", "fitted_kitchen", "water_heater"],
-  description: "Spacious 2-bedroom apartment with natural lighting and a nice balcony view.",
+  description:
+    "Spacious 2-bedroom apartment with natural lighting and a nice balcony view.",
   status: "occupied" as UnitStatus,
   photos: [
     { url: "/images/properties/unit-1.jpg" },
@@ -121,7 +122,10 @@ const mockPayments = [
   },
 ];
 
-const statusConfig: Record<UnitStatus, { label: string; color: string; bgColor: string; textColor: string }> = {
+const statusConfig: Record<
+  UnitStatus,
+  { label: string; color: string; bgColor: string; textColor: string }
+> = {
   occupied: {
     label: "Occupied",
     color: "bg-green-500",
@@ -142,9 +146,20 @@ const statusConfig: Record<UnitStatus, { label: string; color: string; bgColor: 
   },
 };
 
-const paymentStatusConfig: Record<PaymentStatus, { label: string; color: string; bgColor: string }> = {
-  confirmed: { label: "Confirmed", color: "text-green-600", bgColor: "bg-green-50" },
-  pending: { label: "Pending", color: "text-yellow-600", bgColor: "bg-yellow-50" },
+const paymentStatusConfig: Record<
+  PaymentStatus,
+  { label: string; color: string; bgColor: string }
+> = {
+  confirmed: {
+    label: "Confirmed",
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+  },
+  pending: {
+    label: "Pending",
+    color: "text-yellow-600",
+    bgColor: "bg-yellow-50",
+  },
   failed: { label: "Failed", color: "text-red-600", bgColor: "bg-red-50" },
 };
 
@@ -178,7 +193,8 @@ export default function UnitDetailPage({
   // Calculate days until lease ends
   const daysUntilLeaseEnd = lease
     ? Math.ceil(
-        (new Date(lease.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+        (new Date(lease.end_date).getTime() - new Date().getTime()) /
+          (1000 * 60 * 60 * 24),
       )
     : null;
 
@@ -205,25 +221,33 @@ export default function UnitDetailPage({
                 <div
                   className={cn(
                     "w-10 h-10 rounded-lg flex items-center justify-center",
-                    statusConfig[unit.status].bgColor
+                    statusConfig[unit.status].bgColor,
                   )}
                 >
-                  <Home className={cn("w-5 h-5", statusConfig[unit.status].textColor)} />
+                  <Home
+                    className={cn(
+                      "w-5 h-5",
+                      statusConfig[unit.status].textColor,
+                    )}
+                  />
                 </div>
                 <div>
-                  <h1 className="text-xl font-semibold text-gray-900">Unit {unit.unit_number}</h1>
+                  <h1 className="text-xl font-semibold text-gray-900">
+                    Unit {unit.unit_number}
+                  </h1>
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
                         "px-2 py-0.5 text-xs font-medium rounded-full",
                         statusConfig[unit.status].bgColor,
-                        statusConfig[unit.status].textColor
+                        statusConfig[unit.status].textColor,
                       )}
                     >
                       {statusConfig[unit.status].label}
                     </span>
                     <span className="text-sm text-gray-500">
-                      {unit.bedrooms} BR • {unit.bathrooms} BA • Floor {unit.floor}
+                      {unit.bedrooms} BR • {unit.bathrooms} BA • Floor{" "}
+                      {unit.floor}
                     </span>
                   </div>
                 </div>
@@ -253,7 +277,7 @@ export default function UnitDetailPage({
                   "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors",
                   activeTab === tab.id
                     ? "border-teal-500 text-teal-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
                 )}
               >
                 {tab.label}
@@ -263,7 +287,7 @@ export default function UnitDetailPage({
                       "ml-1.5 px-1.5 py-0.5 text-xs rounded-full",
                       activeTab === tab.id
                         ? "bg-teal-100 text-teal-700"
-                        : "bg-gray-100 text-gray-600"
+                        : "bg-gray-100 text-gray-600",
                     )}
                   >
                     {tab.count}
@@ -321,7 +345,9 @@ export default function UnitDetailPage({
               {/* Tenant Card */}
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Current Tenant</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Current Tenant
+                  </h2>
                   {!tenant && (
                     <Link
                       href={`/dashboard/landlord/buildings/${buildingId}/units/${unitId}/add-tenant`}
@@ -376,27 +402,34 @@ export default function UnitDetailPage({
                         <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                           <Calendar className="w-4 h-4" />
                           <span>
-                            Lease: {new Date(lease.start_date).toLocaleDateString("en-KE")} →{" "}
-                            {new Date(lease.end_date).toLocaleDateString("en-KE")}
+                            Lease:{" "}
+                            {new Date(lease.start_date).toLocaleDateString(
+                              "en-KE",
+                            )}{" "}
+                            →{" "}
+                            {new Date(lease.end_date).toLocaleDateString(
+                              "en-KE",
+                            )}
                           </span>
                         </div>
-                        {daysUntilLeaseEnd !== null && daysUntilLeaseEnd <= 90 && (
-                          <div
-                            className={cn(
-                              "flex items-center gap-2 px-3 py-2 rounded-lg text-sm",
-                              daysUntilLeaseEnd <= 30
-                                ? "bg-red-50 text-red-700"
-                                : "bg-yellow-50 text-yellow-700"
-                            )}
-                          >
-                            <Clock className="w-4 h-4" />
-                            <span>
-                              {daysUntilLeaseEnd <= 0
-                                ? "Lease expired!"
-                                : `Lease expires in ${daysUntilLeaseEnd} days`}
-                            </span>
-                          </div>
-                        )}
+                        {daysUntilLeaseEnd !== null &&
+                          daysUntilLeaseEnd <= 90 && (
+                            <div
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm",
+                                daysUntilLeaseEnd <= 30
+                                  ? "bg-red-50 text-red-700"
+                                  : "bg-yellow-50 text-yellow-700",
+                              )}
+                            >
+                              <Clock className="w-4 h-4" />
+                              <span>
+                                {daysUntilLeaseEnd <= 0
+                                  ? "Lease expired!"
+                                  : `Lease expires in ${daysUntilLeaseEnd} days`}
+                              </span>
+                            </div>
+                          )}
                       </div>
                     )}
                   </>
@@ -421,7 +454,9 @@ export default function UnitDetailPage({
               {tenant && payments.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900">Recent Payments</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Recent Payments
+                    </h2>
                     <button
                       onClick={() => setActiveTab("payments")}
                       className="text-sm text-teal-600 hover:text-teal-700 font-medium"
@@ -441,9 +476,13 @@ export default function UnitDetailPage({
                             <CheckCircle className="w-5 h-5 text-green-600" />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{payment.month}</p>
+                            <p className="font-medium text-gray-900">
+                              {payment.month}
+                            </p>
                             <p className="text-sm text-gray-500">
-                              {new Date(payment.payment_date).toLocaleDateString("en-KE")}
+                              {new Date(
+                                payment.payment_date,
+                              ).toLocaleDateString("en-KE")}
                             </p>
                           </div>
                         </div>
@@ -451,7 +490,9 @@ export default function UnitDetailPage({
                           <p className="font-semibold text-gray-900">
                             KES {payment.amount.toLocaleString()}
                           </p>
-                          <p className="text-xs text-gray-500 uppercase">{payment.payment_method}</p>
+                          <p className="text-xs text-gray-500 uppercase">
+                            {payment.payment_method}
+                          </p>
                         </div>
                       </div>
                     ))}
@@ -464,7 +505,9 @@ export default function UnitDetailPage({
             <div className="space-y-6">
               {/* Unit Details */}
               <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Unit Details</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Unit Details
+                </h2>
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -475,19 +518,27 @@ export default function UnitDetailPage({
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Floor</span>
-                    <span className="font-medium text-gray-900">{unit.floor}</span>
+                    <span className="font-medium text-gray-900">
+                      {unit.floor}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Bedrooms</span>
-                    <span className="font-medium text-gray-900">{unit.bedrooms}</span>
+                    <span className="font-medium text-gray-900">
+                      {unit.bedrooms}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Bathrooms</span>
-                    <span className="font-medium text-gray-900">{unit.bathrooms}</span>
+                    <span className="font-medium text-gray-900">
+                      {unit.bathrooms}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Size</span>
-                    <span className="font-medium text-gray-900">{unit.size_sqft} sq ft</span>
+                    <span className="font-medium text-gray-900">
+                      {unit.size_sqft} sq ft
+                    </span>
                   </div>
                 </div>
               </div>
@@ -495,7 +546,9 @@ export default function UnitDetailPage({
               {/* Features */}
               {unit.features.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Features</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                    Features
+                  </h2>
 
                   <div className="flex flex-wrap gap-2">
                     {unit.features.map((feature) => (
@@ -512,7 +565,9 @@ export default function UnitDetailPage({
 
               {/* Quick Actions */}
               <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Quick Actions
+                </h2>
 
                 <div className="space-y-2">
                   {tenant && (
@@ -563,7 +618,9 @@ export default function UnitDetailPage({
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Payment History</h2>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Payment History
+                </h2>
                 <button
                   onClick={() => setShowAddPaymentModal(true)}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors"
@@ -577,28 +634,42 @@ export default function UnitDetailPage({
             {payments.length > 0 ? (
               <div className="divide-y divide-gray-100">
                 {payments.map((payment) => (
-                  <div key={payment.id} className="p-4 flex items-center justify-between">
+                  <div
+                    key={payment.id}
+                    className="p-4 flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-4">
                       <div
                         className={cn(
                           "w-10 h-10 rounded-lg flex items-center justify-center",
-                          paymentStatusConfig[payment.status].bgColor
+                          paymentStatusConfig[payment.status].bgColor,
                         )}
                       >
                         {payment.status === "confirmed" ? (
                           <CheckCircle
-                            className={cn("w-5 h-5", paymentStatusConfig[payment.status].color)}
+                            className={cn(
+                              "w-5 h-5",
+                              paymentStatusConfig[payment.status].color,
+                            )}
                           />
                         ) : (
                           <Clock
-                            className={cn("w-5 h-5", paymentStatusConfig[payment.status].color)}
+                            className={cn(
+                              "w-5 h-5",
+                              paymentStatusConfig[payment.status].color,
+                            )}
                           />
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{payment.month}</p>
+                        <p className="font-medium text-gray-900">
+                          {payment.month}
+                        </p>
                         <p className="text-sm text-gray-500">
-                          Paid {new Date(payment.payment_date).toLocaleDateString("en-KE")}
+                          Paid{" "}
+                          {new Date(payment.payment_date).toLocaleDateString(
+                            "en-KE",
+                          )}
                         </p>
                       </div>
                     </div>
@@ -607,7 +678,8 @@ export default function UnitDetailPage({
                         KES {payment.amount.toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {payment.payment_method.toUpperCase()} • {payment.reference}
+                        {payment.payment_method.toUpperCase()} •{" "}
+                        {payment.reference}
                       </p>
                     </div>
                   </div>
@@ -625,8 +697,12 @@ export default function UnitDetailPage({
         {activeTab === "documents" && (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Documents</h3>
-            <p className="text-gray-500">Lease agreements and documents coming soon.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Documents
+            </h3>
+            <p className="text-gray-500">
+              Lease agreements and documents coming soon.
+            </p>
           </div>
         )}
       </main>
@@ -635,8 +711,12 @@ export default function UnitDetailPage({
       {showAddPaymentModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Record Payment</h3>
-            <p className="text-gray-500 mb-6">Payment recording form coming soon...</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Record Payment
+            </h3>
+            <p className="text-gray-500 mb-6">
+              Payment recording form coming soon...
+            </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowAddPaymentModal(false)}

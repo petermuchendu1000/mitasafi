@@ -1,6 +1,6 @@
 /**
  * Step 2: Building Amenities
- * 
+ *
  * Collects building-wide amenities:
  * - Security features
  * - Water & power infrastructure
@@ -13,7 +13,7 @@
 
 import { useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { 
+import {
   Shield,
   Droplets,
   Zap,
@@ -23,7 +23,7 @@ import {
   Check,
 } from "lucide-react";
 import { useWizard } from "../context";
-import { 
+import {
   type StepValidation,
   SECURITY_GUARD_OPTIONS,
   CCTV_OPTIONS,
@@ -56,47 +56,47 @@ export function Step2Amenities() {
 
   useEffect(() => {
     const stepValidation = validate();
-    dispatch({ 
-      type: "SET_VALIDATION", 
-      payload: { step: 2, validation: stepValidation } 
+    dispatch({
+      type: "SET_VALIDATION",
+      payload: { step: 2, validation: stepValidation },
     });
   }, [formData, validate, dispatch]);
 
   // Helper to update nested objects
   const updateSecurityFeatures = (key: string, value: unknown) => {
     updateFormData({
-      security_features: { ...formData.security_features, [key]: value }
+      security_features: { ...formData.security_features, [key]: value },
     });
   };
 
   const updateWaterPower = (key: string, value: unknown) => {
     updateFormData({
-      water_power: { ...formData.water_power, [key]: value }
+      water_power: { ...formData.water_power, [key]: value },
     });
   };
 
   const updateParking = (key: string, value: unknown) => {
     updateFormData({
-      parking: { ...formData.parking, [key]: value }
+      parking: { ...formData.parking, [key]: value },
     });
   };
 
   const updateCommonFacilities = (key: string, value: boolean) => {
     updateFormData({
-      common_facilities: { ...formData.common_facilities, [key]: value }
+      common_facilities: { ...formData.common_facilities, [key]: value },
     });
   };
 
   const updateServices = (key: string, value: unknown) => {
     updateFormData({
-      services: { ...formData.services, [key]: value }
+      services: { ...formData.services, [key]: value },
     });
   };
 
   const toggleISP = (isp: string) => {
     const current = formData.services.available_isps || [];
     const updated = current.includes(isp)
-      ? current.filter(i => i !== isp)
+      ? current.filter((i) => i !== isp)
       : [...current, isp];
     updateServices("available_isps", updated);
   };
@@ -115,7 +115,9 @@ export function Step2Amenities() {
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Shield className="w-5 h-5 text-teal-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Security Features</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Security Features
+          </h3>
         </div>
 
         {/* Toggle Features */}
@@ -129,18 +131,27 @@ export function Step2Amenities() {
             <button
               key={item.key}
               type="button"
-              onClick={() => updateSecurityFeatures(item.key, !formData.security_features[item.key as keyof typeof formData.security_features])}
+              onClick={() =>
+                updateSecurityFeatures(
+                  item.key,
+                  !formData.security_features[
+                    item.key as keyof typeof formData.security_features
+                  ],
+                )
+              }
               className={cn(
                 "flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2",
                 "transition-all text-sm font-medium",
-                formData.security_features[item.key as keyof typeof formData.security_features]
+                formData.security_features[
+                  item.key as keyof typeof formData.security_features
+                ]
                   ? "border-teal-600 bg-teal-50 text-teal-700"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300",
               )}
             >
-              {formData.security_features[item.key as keyof typeof formData.security_features] && (
-                <Check className="w-4 h-4" />
-              )}
+              {formData.security_features[
+                item.key as keyof typeof formData.security_features
+              ] && <Check className="w-4 h-4" />}
               {item.label}
             </button>
           ))}
@@ -154,11 +165,15 @@ export function Step2Amenities() {
             </label>
             <select
               value={formData.security_features.security_guards}
-              onChange={(e) => updateSecurityFeatures("security_guards", e.target.value)}
+              onChange={(e) =>
+                updateSecurityFeatures("security_guards", e.target.value)
+              }
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {SECURITY_GUARD_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -173,7 +188,9 @@ export function Step2Amenities() {
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {CCTV_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -184,11 +201,15 @@ export function Step2Amenities() {
             </label>
             <select
               value={formData.security_features.access_control}
-              onChange={(e) => updateSecurityFeatures("access_control", e.target.value)}
+              onChange={(e) =>
+                updateSecurityFeatures("access_control", e.target.value)
+              }
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {ACCESS_CONTROL_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -213,7 +234,9 @@ export function Step2Amenities() {
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {WATER_SOURCE_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -224,11 +247,15 @@ export function Step2Amenities() {
             </label>
             <select
               value={formData.water_power.water_storage}
-              onChange={(e) => updateWaterPower("water_storage", e.target.value)}
+              onChange={(e) =>
+                updateWaterPower("water_storage", e.target.value)
+              }
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {WATER_STORAGE_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -239,11 +266,15 @@ export function Step2Amenities() {
             </label>
             <select
               value={formData.water_power.water_reliability}
-              onChange={(e) => updateWaterPower("water_reliability", e.target.value)}
+              onChange={(e) =>
+                updateWaterPower("water_reliability", e.target.value)
+              }
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {WATER_RELIABILITY_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -254,11 +285,15 @@ export function Step2Amenities() {
             </label>
             <select
               value={formData.water_power.backup_generator}
-              onChange={(e) => updateWaterPower("backup_generator", e.target.value)}
+              onChange={(e) =>
+                updateWaterPower("backup_generator", e.target.value)
+              }
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {GENERATOR_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -270,11 +305,15 @@ export function Step2Amenities() {
               </label>
               <select
                 value={formData.water_power.generator_fuel || "shared"}
-                onChange={(e) => updateWaterPower("generator_fuel", e.target.value)}
+                onChange={(e) =>
+                  updateWaterPower("generator_fuel", e.target.value)
+                }
                 className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 {GENERATOR_FUEL_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -290,7 +329,9 @@ export function Step2Amenities() {
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {SOLAR_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -315,7 +356,9 @@ export function Step2Amenities() {
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {PARKING_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -332,7 +375,9 @@ export function Step2Amenities() {
                   className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
                   {PARKING_ALLOCATION_OPTIONS.map((opt) => (
-                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -345,7 +390,12 @@ export function Step2Amenities() {
                   type="number"
                   min="0"
                   value={formData.parking.total_spaces || ""}
-                  onChange={(e) => updateParking("total_spaces", e.target.value ? parseInt(e.target.value) : undefined)}
+                  onChange={(e) =>
+                    updateParking(
+                      "total_spaces",
+                      e.target.value ? parseInt(e.target.value) : undefined,
+                    )
+                  }
                   placeholder="e.g. 30"
                   className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
@@ -359,7 +409,12 @@ export function Step2Amenities() {
                   type="number"
                   min="0"
                   value={formData.parking.visitor_spaces || ""}
-                  onChange={(e) => updateParking("visitor_spaces", e.target.value ? parseInt(e.target.value) : undefined)}
+                  onChange={(e) =>
+                    updateParking(
+                      "visitor_spaces",
+                      e.target.value ? parseInt(e.target.value) : undefined,
+                    )
+                  }
                   placeholder="e.g. 5"
                   className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
@@ -372,12 +427,14 @@ export function Step2Amenities() {
           <div className="flex gap-4">
             <button
               type="button"
-              onClick={() => updateParking("motorcycle", !formData.parking.motorcycle)}
+              onClick={() =>
+                updateParking("motorcycle", !formData.parking.motorcycle)
+              }
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm",
                 formData.parking.motorcycle
                   ? "border-teal-600 bg-teal-50 text-teal-700"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300",
               )}
             >
               {formData.parking.motorcycle && <Check className="w-4 h-4" />}
@@ -386,12 +443,14 @@ export function Step2Amenities() {
 
             <button
               type="button"
-              onClick={() => updateParking("ev_charging", !formData.parking.ev_charging)}
+              onClick={() =>
+                updateParking("ev_charging", !formData.parking.ev_charging)
+              }
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm",
                 formData.parking.ev_charging
                   ? "border-teal-600 bg-teal-50 text-teal-700"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300",
               )}
             >
               {formData.parking.ev_charging && <Check className="w-4 h-4" />}
@@ -405,7 +464,9 @@ export function Step2Amenities() {
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Dumbbell className="w-5 h-5 text-orange-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Common Facilities</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Common Facilities
+          </h3>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -424,22 +485,35 @@ export function Step2Amenities() {
             <button
               key={item.key}
               type="button"
-              onClick={() => updateCommonFacilities(item.key, !formData.common_facilities[item.key as keyof typeof formData.common_facilities])}
+              onClick={() =>
+                updateCommonFacilities(
+                  item.key,
+                  !formData.common_facilities[
+                    item.key as keyof typeof formData.common_facilities
+                  ],
+                )
+              }
               className={cn(
                 "flex flex-col items-center gap-1 px-3 py-3 rounded-xl border-2",
                 "transition-all text-sm",
-                formData.common_facilities[item.key as keyof typeof formData.common_facilities]
+                formData.common_facilities[
+                  item.key as keyof typeof formData.common_facilities
+                ]
                   ? "border-teal-600 bg-teal-50"
-                  : "border-gray-200 hover:border-gray-300"
+                  : "border-gray-200 hover:border-gray-300",
               )}
             >
               <span className="text-2xl">{item.emoji}</span>
-              <span className={cn(
-                "text-xs font-medium text-center",
-                formData.common_facilities[item.key as keyof typeof formData.common_facilities]
-                  ? "text-teal-700"
-                  : "text-gray-600"
-              )}>
+              <span
+                className={cn(
+                  "text-xs font-medium text-center",
+                  formData.common_facilities[
+                    item.key as keyof typeof formData.common_facilities
+                  ]
+                    ? "text-teal-700"
+                    : "text-gray-600",
+                )}
+              >
                 {item.label}
               </span>
             </button>
@@ -451,7 +525,9 @@ export function Step2Amenities() {
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Wifi className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Services & Connectivity</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Services & Connectivity
+          </h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -465,7 +541,9 @@ export function Step2Amenities() {
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {GARBAGE_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -480,7 +558,9 @@ export function Step2Amenities() {
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {GAS_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -490,12 +570,17 @@ export function Step2Amenities() {
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={() => updateServices("internet_ready", !formData.services.internet_ready)}
+            onClick={() =>
+              updateServices(
+                "internet_ready",
+                !formData.services.internet_ready,
+              )
+            }
             className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm",
               formData.services.internet_ready
                 ? "border-teal-600 bg-teal-50 text-teal-700"
-                : "border-gray-200 text-gray-600 hover:border-gray-300"
+                : "border-gray-200 text-gray-600 hover:border-gray-300",
             )}
           >
             {formData.services.internet_ready && <Check className="w-4 h-4" />}
@@ -504,15 +589,22 @@ export function Step2Amenities() {
 
           <button
             type="button"
-            onClick={() => updateServices("caretaker_onsite", !formData.services.caretaker_onsite)}
+            onClick={() =>
+              updateServices(
+                "caretaker_onsite",
+                !formData.services.caretaker_onsite,
+              )
+            }
             className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm",
               formData.services.caretaker_onsite
                 ? "border-teal-600 bg-teal-50 text-teal-700"
-                : "border-gray-200 text-gray-600 hover:border-gray-300"
+                : "border-gray-200 text-gray-600 hover:border-gray-300",
             )}
           >
-            {formData.services.caretaker_onsite && <Check className="w-4 h-4" />}
+            {formData.services.caretaker_onsite && (
+              <Check className="w-4 h-4" />
+            )}
             Caretaker On-site
           </button>
         </div>
@@ -533,7 +625,7 @@ export function Step2Amenities() {
                     "px-3 py-1.5 rounded-full text-sm border-2 transition-all",
                     formData.services.available_isps.includes(isp.id)
                       ? "border-teal-600 bg-teal-50 text-teal-700"
-                      : "border-gray-200 text-gray-600 hover:border-gray-300"
+                      : "border-gray-200 text-gray-600 hover:border-gray-300",
                   )}
                 >
                   {isp.label}

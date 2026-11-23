@@ -1,6 +1,6 @@
 /**
  * Building Detail Page
- * 
+ *
  * Shows building overview, units grid, and quick actions.
  * This is the main management hub for a single building.
  */
@@ -178,7 +178,16 @@ const mockUnits = [
   },
 ];
 
-const statusConfig: Record<UnitStatus, { label: string; color: string; bgColor: string; textColor: string; icon: React.ReactNode }> = {
+const statusConfig: Record<
+  UnitStatus,
+  {
+    label: string;
+    color: string;
+    bgColor: string;
+    textColor: string;
+    icon: React.ReactNode;
+  }
+> = {
   occupied: {
     label: "Occupied",
     color: "bg-green-500",
@@ -202,9 +211,16 @@ const statusConfig: Record<UnitStatus, { label: string; color: string; bgColor: 
   },
 };
 
-const rentStatusConfig: Record<RentStatus, { label: string; color: string; bgColor: string }> = {
+const rentStatusConfig: Record<
+  RentStatus,
+  { label: string; color: string; bgColor: string }
+> = {
   paid: { label: "Paid", color: "text-green-600", bgColor: "bg-green-50" },
-  pending: { label: "Pending", color: "text-yellow-600", bgColor: "bg-yellow-50" },
+  pending: {
+    label: "Pending",
+    color: "text-yellow-600",
+    bgColor: "bg-yellow-50",
+  },
   overdue: { label: "Overdue", color: "text-red-600", bgColor: "bg-red-50" },
 };
 
@@ -218,13 +234,18 @@ export default function BuildingDetailPage({
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<TabType>("units");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [filterStatus, setFilterStatus] = useState<"all" | "occupied" | "vacant" | "maintenance">("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "occupied" | "vacant" | "maintenance"
+  >("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Filter units
   const filteredUnits = mockUnits.filter((unit) => {
     if (filterStatus !== "all" && unit.status !== filterStatus) return false;
-    if (searchQuery && !unit.unit_number.toLowerCase().includes(searchQuery.toLowerCase())) {
+    if (
+      searchQuery &&
+      !unit.unit_number.toLowerCase().includes(searchQuery.toLowerCase())
+    ) {
       return false;
     }
     return true;
@@ -240,13 +261,20 @@ export default function BuildingDetailPage({
       .filter((u) => u.status === "occupied")
       .reduce((sum, u) => sum + u.rent_amount, 0),
     occupancyRate: Math.round(
-      (mockUnits.filter((u) => u.status === "occupied").length / mockUnits.length) * 100
+      (mockUnits.filter((u) => u.status === "occupied").length /
+        mockUnits.length) *
+        100,
     ),
   };
 
   const tabs = [
     { id: "units" as const, label: "Units", icon: Grid3X3, count: stats.total },
-    { id: "tenants" as const, label: "Tenants", icon: Users, count: stats.occupied },
+    {
+      id: "tenants" as const,
+      label: "Tenants",
+      icon: Users,
+      count: stats.occupied,
+    },
     { id: "finances" as const, label: "Finances", icon: Wallet },
     { id: "maintenance" as const, label: "Maintenance", icon: Settings },
   ];
@@ -265,7 +293,9 @@ export default function BuildingDetailPage({
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">{mockBuilding.name}</h1>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  {mockBuilding.name}
+                </h1>
                 <p className="text-sm text-gray-500 flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5" />
                   {mockBuilding.address.area}
@@ -296,7 +326,7 @@ export default function BuildingDetailPage({
                   "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
                   activeTab === tab.id
                     ? "border-teal-500 text-teal-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
                 )}
               >
                 <tab.icon className="w-4 h-4" />
@@ -307,7 +337,7 @@ export default function BuildingDetailPage({
                       "px-1.5 py-0.5 text-xs rounded-full",
                       activeTab === tab.id
                         ? "bg-teal-100 text-teal-700"
-                        : "bg-gray-100 text-gray-600"
+                        : "bg-gray-100 text-gray-600",
                     )}
                   >
                     {tab.count}
@@ -326,19 +356,27 @@ export default function BuildingDetailPage({
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
               <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <p className="text-sm text-gray-500 mb-1">Occupancy Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.occupancyRate}%</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.occupancyRate}%
+                </p>
               </div>
               <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <p className="text-sm text-gray-500 mb-1">Occupied</p>
-                <p className="text-2xl font-bold text-green-600">{stats.occupied}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {stats.occupied}
+                </p>
               </div>
               <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <p className="text-sm text-gray-500 mb-1">Vacant</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.vacant}</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {stats.vacant}
+                </p>
               </div>
               <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <p className="text-sm text-gray-500 mb-1">Maintenance</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.maintenance}</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {stats.maintenance}
+                </p>
               </div>
               <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <p className="text-sm text-gray-500 mb-1">Monthly Revenue</p>
@@ -365,20 +403,24 @@ export default function BuildingDetailPage({
 
                 {/* Status Filter */}
                 <div className="flex items-center gap-2">
-                  {["all", "occupied", "vacant", "maintenance"].map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => setFilterStatus(status as typeof filterStatus)}
-                      className={cn(
-                        "px-3 py-2 text-sm rounded-lg transition-colors capitalize",
-                        filterStatus === status
-                          ? "bg-teal-50 text-teal-700 font-medium"
-                          : "text-gray-600 hover:bg-gray-100"
-                      )}
-                    >
-                      {status}
-                    </button>
-                  ))}
+                  {["all", "occupied", "vacant", "maintenance"].map(
+                    (status) => (
+                      <button
+                        key={status}
+                        onClick={() =>
+                          setFilterStatus(status as typeof filterStatus)
+                        }
+                        className={cn(
+                          "px-3 py-2 text-sm rounded-lg transition-colors capitalize",
+                          filterStatus === status
+                            ? "bg-teal-50 text-teal-700 font-medium"
+                            : "text-gray-600 hover:bg-gray-100",
+                        )}
+                      >
+                        {status}
+                      </button>
+                    ),
+                  )}
                 </div>
 
                 {/* View Toggle */}
@@ -387,7 +429,9 @@ export default function BuildingDetailPage({
                     onClick={() => setViewMode("grid")}
                     className={cn(
                       "p-2 rounded-md transition-colors",
-                      viewMode === "grid" ? "bg-white shadow-sm" : "text-gray-500 hover:text-gray-700"
+                      viewMode === "grid"
+                        ? "bg-white shadow-sm"
+                        : "text-gray-500 hover:text-gray-700",
                     )}
                   >
                     <Grid3X3 className="w-4 h-4" />
@@ -396,7 +440,9 @@ export default function BuildingDetailPage({
                     onClick={() => setViewMode("list")}
                     className={cn(
                       "p-2 rounded-md transition-colors",
-                      viewMode === "list" ? "bg-white shadow-sm" : "text-gray-500 hover:text-gray-700"
+                      viewMode === "list"
+                        ? "bg-white shadow-sm"
+                        : "text-gray-500 hover:text-gray-700",
                     )}
                   >
                     <List className="w-4 h-4" />
@@ -429,23 +475,30 @@ export default function BuildingDetailPage({
                         <div
                           className={cn(
                             "w-10 h-10 rounded-lg flex items-center justify-center",
-                            statusConfig[unit.status].bgColor
+                            statusConfig[unit.status].bgColor,
                           )}
                         >
-                          <Home className={cn("w-5 h-5", statusConfig[unit.status].textColor)} />
+                          <Home
+                            className={cn(
+                              "w-5 h-5",
+                              statusConfig[unit.status].textColor,
+                            )}
+                          />
                         </div>
                         <div>
                           <h3 className="font-semibold text-gray-900 group-hover:text-teal-600 transition-colors">
                             {unit.unit_number}
                           </h3>
-                          <p className="text-xs text-gray-500">Floor {unit.floor}</p>
+                          <p className="text-xs text-gray-500">
+                            Floor {unit.floor}
+                          </p>
                         </div>
                       </div>
                       <span
                         className={cn(
                           "px-2 py-1 text-xs font-medium rounded-full",
                           statusConfig[unit.status].bgColor,
-                          statusConfig[unit.status].textColor
+                          statusConfig[unit.status].textColor,
                         )}
                       >
                         {statusConfig[unit.status].label}
@@ -474,7 +527,7 @@ export default function BuildingDetailPage({
                           className={cn(
                             "px-2 py-1 text-xs font-medium rounded-full",
                             rentStatusConfig[unit.rent_status].bgColor,
-                            rentStatusConfig[unit.rent_status].color
+                            rentStatusConfig[unit.rent_status].color,
                           )}
                         >
                           {rentStatusConfig[unit.rent_status].label}
@@ -490,12 +543,18 @@ export default function BuildingDetailPage({
                             <Users className="w-4 h-4 text-gray-500" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-900">{unit.tenant.name}</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {unit.tenant.name}
+                            </p>
                             <p className="text-xs text-gray-500">
-                              Until {new Date(unit.lease_end!).toLocaleDateString("en-KE", {
-                                month: "short",
-                                year: "numeric",
-                              })}
+                              Until{" "}
+                              {new Date(unit.lease_end!).toLocaleDateString(
+                                "en-KE",
+                                {
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )}
                             </p>
                           </div>
                         </div>
@@ -543,14 +602,23 @@ export default function BuildingDetailPage({
                             <div
                               className={cn(
                                 "w-8 h-8 rounded-lg flex items-center justify-center",
-                                statusConfig[unit.status].bgColor
+                                statusConfig[unit.status].bgColor,
                               )}
                             >
-                              <Home className={cn("w-4 h-4", statusConfig[unit.status].textColor)} />
+                              <Home
+                                className={cn(
+                                  "w-4 h-4",
+                                  statusConfig[unit.status].textColor,
+                                )}
+                              />
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{unit.unit_number}</p>
-                              <p className="text-xs text-gray-500">Floor {unit.floor}</p>
+                              <p className="font-medium text-gray-900">
+                                {unit.unit_number}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Floor {unit.floor}
+                              </p>
                             </div>
                           </div>
                         </td>
@@ -562,7 +630,7 @@ export default function BuildingDetailPage({
                             className={cn(
                               "inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full",
                               statusConfig[unit.status].bgColor,
-                              statusConfig[unit.status].textColor
+                              statusConfig[unit.status].textColor,
                             )}
                           >
                             {statusConfig[unit.status].icon}
@@ -572,8 +640,12 @@ export default function BuildingDetailPage({
                         <td className="px-4 py-3 text-sm">
                           {unit.tenant ? (
                             <div>
-                              <p className="font-medium text-gray-900">{unit.tenant.name}</p>
-                              <p className="text-xs text-gray-500">{unit.tenant.phone}</p>
+                              <p className="font-medium text-gray-900">
+                                {unit.tenant.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {unit.tenant.phone}
+                              </p>
                             </div>
                           ) : (
                             <span className="text-gray-400">—</span>
@@ -588,7 +660,7 @@ export default function BuildingDetailPage({
                               className={cn(
                                 "px-2 py-1 text-xs font-medium rounded-full",
                                 rentStatusConfig[unit.rent_status].bgColor,
-                                rentStatusConfig[unit.rent_status].color
+                                rentStatusConfig[unit.rent_status].color,
                               )}
                             >
                               {rentStatusConfig[unit.rent_status].label}
@@ -609,7 +681,9 @@ export default function BuildingDetailPage({
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                   <Home className="w-8 h-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No units found</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No units found
+                </h3>
                 <p className="text-gray-500 mb-6">
                   {searchQuery || filterStatus !== "all"
                     ? "Try adjusting your search or filters"
@@ -630,9 +704,12 @@ export default function BuildingDetailPage({
         {activeTab === "tenants" && (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Tenant Management</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Tenant Management
+            </h3>
             <p className="text-gray-500">
-              View and manage tenants from the Units tab, or use the Tenants page for a full list.
+              View and manage tenants from the Units tab, or use the Tenants
+              page for a full list.
             </p>
           </div>
         )}
@@ -640,16 +717,24 @@ export default function BuildingDetailPage({
         {activeTab === "finances" && (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <Wallet className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Finances</h3>
-            <p className="text-gray-500">Financial overview and payment tracking coming soon.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Finances
+            </h3>
+            <p className="text-gray-500">
+              Financial overview and payment tracking coming soon.
+            </p>
           </div>
         )}
 
         {activeTab === "maintenance" && (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <Settings className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Maintenance</h3>
-            <p className="text-gray-500">Maintenance request tracking coming soon.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Maintenance
+            </h3>
+            <p className="text-gray-500">
+              Maintenance request tracking coming soon.
+            </p>
           </div>
         )}
       </main>

@@ -1,6 +1,6 @@
 /**
  * Step 1: Building Basics
- * 
+ *
  * Collects basic building information:
  * - Building name
  * - Building type
@@ -13,9 +13,9 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 // Google Maps types are in src/types/global.d.ts
-import { 
-  Building2, 
-  MapPin, 
+import {
+  Building2,
+  MapPin,
   Calendar,
   Layers,
   Hash,
@@ -28,17 +28,24 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { useWizard } from "../context";
-import { 
-  BUILDING_TYPES, 
+import {
+  BUILDING_TYPES,
   type BuildingType,
   type StepValidation,
 } from "../types";
 
 // Type for Google Places Autocomplete instance
-type GoogleAutocomplete = ReturnType<NonNullable<typeof window.google>["maps"]["places"]["Autocomplete"]["prototype"]["constructor"]> | null;
+type GoogleAutocomplete = ReturnType<
+  NonNullable<
+    typeof window.google
+  >["maps"]["places"]["Autocomplete"]["prototype"]["constructor"]
+> | null;
 
 // Icon mapping for building types
-const BUILDING_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const BUILDING_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   building: Building,
   building2: Building2,
   warehouse: Warehouse,
@@ -59,18 +66,23 @@ export function Step1Basics() {
   useEffect(() => {
     const initAutocomplete = () => {
       if (!window.google?.maps?.places || !addressInputRef.current) return;
-      
+
       setIsGoogleLoaded(true);
-      
+
       const autocomplete = new window.google.maps.places.Autocomplete(
         addressInputRef.current,
         {
           componentRestrictions: { country: "ke" },
           types: ["establishment", "geocode"],
-          fields: ["formatted_address", "geometry", "name", "address_components"],
-        }
+          fields: [
+            "formatted_address",
+            "geometry",
+            "name",
+            "address_components",
+          ],
+        },
       );
-      
+
       autocompleteRef.current = autocomplete as unknown as GoogleAutocomplete;
 
       autocomplete.addListener("place_changed", () => {
@@ -80,15 +92,24 @@ export function Step1Basics() {
         // Extract area from address components
         let area = "";
         let city = "Nairobi";
-        
-        place.address_components?.forEach((component: { long_name: string; short_name: string; types: string[] }) => {
-          if (component.types.includes("sublocality") || component.types.includes("neighborhood")) {
-            area = component.long_name;
-          }
-          if (component.types.includes("locality")) {
-            city = component.long_name;
-          }
-        });
+
+        place.address_components?.forEach(
+          (component: {
+            long_name: string;
+            short_name: string;
+            types: string[];
+          }) => {
+            if (
+              component.types.includes("sublocality") ||
+              component.types.includes("neighborhood")
+            ) {
+              area = component.long_name;
+            }
+            if (component.types.includes("locality")) {
+              city = component.long_name;
+            }
+          },
+        );
 
         updateFormData({
           address: place.formatted_address || "",
@@ -120,7 +141,9 @@ export function Step1Basics() {
 
     return () => {
       if (autocompleteRef.current && window.google?.maps?.event) {
-        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        window.google.maps.event.clearInstanceListeners(
+          autocompleteRef.current,
+        );
       }
     };
   }, [updateFormData, formData.area]);
@@ -155,14 +178,21 @@ export function Step1Basics() {
   // Update validation on form changes
   useEffect(() => {
     const stepValidation = validate();
-    dispatch({ 
-      type: "SET_VALIDATION", 
-      payload: { step: 1, validation: stepValidation } 
+    dispatch({
+      type: "SET_VALIDATION",
+      payload: { step: 1, validation: stepValidation },
     });
-  }, [formData.name, formData.building_type, formData.address, formData.area, validate, dispatch]);
+  }, [
+    formData.name,
+    formData.building_type,
+    formData.address,
+    formData.area,
+    validate,
+    dispatch,
+  ]);
 
   const currentValidation = validation[1] || { errors: {}, touched: {} };
-  const showError = (field: string) => 
+  const showError = (field: string) =>
     currentValidation.touched[field] && currentValidation.errors[field];
 
   return (
@@ -195,14 +225,16 @@ export function Step1Basics() {
               "text-gray-900 placeholder:text-gray-400",
               "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
               "transition-colors",
-              showError("name") 
-                ? "border-red-300 bg-red-50" 
-                : "border-gray-200 hover:border-gray-300"
+              showError("name")
+                ? "border-red-300 bg-red-50"
+                : "border-gray-200 hover:border-gray-300",
             )}
           />
         </div>
         {showError("name") && (
-          <p className="mt-1.5 text-sm text-red-600">{currentValidation.errors.name}</p>
+          <p className="mt-1.5 text-sm text-red-600">
+            {currentValidation.errors.name}
+          </p>
         )}
       </div>
 
@@ -215,7 +247,7 @@ export function Step1Basics() {
           {BUILDING_TYPES.map((type) => {
             const Icon = BUILDING_ICONS[type.icon] || Building2;
             const isSelected = formData.building_type === type.id;
-            
+
             return (
               <button
                 key={type.id}
@@ -230,20 +262,26 @@ export function Step1Basics() {
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
                   isSelected
                     ? "border-teal-600 bg-teal-50"
-                    : "border-gray-200 hover:border-teal-300 hover:bg-gray-50"
+                    : "border-gray-200 hover:border-teal-300 hover:bg-gray-50",
                 )}
               >
-                <div className={cn(
-                  "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center",
-                  isSelected ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-600"
-                )}>
+                <div
+                  className={cn(
+                    "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center",
+                    isSelected
+                      ? "bg-teal-600 text-white"
+                      : "bg-gray-100 text-gray-600",
+                  )}
+                >
                   <Icon className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={cn(
-                    "font-medium",
-                    isSelected ? "text-teal-900" : "text-gray-900"
-                  )}>
+                  <p
+                    className={cn(
+                      "font-medium",
+                      isSelected ? "text-teal-900" : "text-gray-900",
+                    )}
+                  >
                     {type.label}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
@@ -255,7 +293,9 @@ export function Step1Basics() {
           })}
         </div>
         {showError("building_type") && (
-          <p className="mt-2 text-sm text-red-600">{currentValidation.errors.building_type}</p>
+          <p className="mt-2 text-sm text-red-600">
+            {currentValidation.errors.building_type}
+          </p>
         )}
       </div>
 
@@ -280,9 +320,9 @@ export function Step1Basics() {
               "text-gray-900 placeholder:text-gray-400",
               "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
               "transition-colors",
-              showError("address") 
-                ? "border-red-300 bg-red-50" 
-                : "border-gray-200 hover:border-gray-300"
+              showError("address")
+                ? "border-red-300 bg-red-50"
+                : "border-gray-200 hover:border-gray-300",
             )}
           />
         </div>
@@ -292,7 +332,9 @@ export function Step1Basics() {
           </p>
         )}
         {showError("address") && (
-          <p className="mt-1.5 text-sm text-red-600">{currentValidation.errors.address}</p>
+          <p className="mt-1.5 text-sm text-red-600">
+            {currentValidation.errors.address}
+          </p>
         )}
       </div>
 
@@ -316,14 +358,16 @@ export function Step1Basics() {
               "text-gray-900 placeholder:text-gray-400",
               "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
               "transition-colors",
-              showError("area") 
-                ? "border-red-300 bg-red-50" 
-                : "border-gray-200 hover:border-gray-300"
+              showError("area")
+                ? "border-red-300 bg-red-50"
+                : "border-gray-200 hover:border-gray-300",
             )}
           />
         </div>
         {showError("area") && (
-          <p className="mt-1.5 text-sm text-red-600">{currentValidation.errors.area}</p>
+          <p className="mt-1.5 text-sm text-red-600">
+            {currentValidation.errors.area}
+          </p>
         )}
       </div>
 
@@ -343,13 +387,19 @@ export function Step1Basics() {
               min="1"
               max="100"
               value={formData.total_floors || ""}
-              onChange={(e) => updateFormData({ total_floors: e.target.value ? parseInt(e.target.value) : undefined })}
+              onChange={(e) =>
+                updateFormData({
+                  total_floors: e.target.value
+                    ? parseInt(e.target.value)
+                    : undefined,
+                })
+              }
               placeholder="e.g. 10"
               className={cn(
                 "block w-full pl-10 pr-4 py-3 rounded-xl border",
                 "text-gray-900 placeholder:text-gray-400",
                 "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
-                "border-gray-200 hover:border-gray-300"
+                "border-gray-200 hover:border-gray-300",
               )}
             />
           </div>
@@ -369,13 +419,19 @@ export function Step1Basics() {
               min="1"
               max="1000"
               value={formData.total_units || ""}
-              onChange={(e) => updateFormData({ total_units: e.target.value ? parseInt(e.target.value) : undefined })}
+              onChange={(e) =>
+                updateFormData({
+                  total_units: e.target.value
+                    ? parseInt(e.target.value)
+                    : undefined,
+                })
+              }
               placeholder="e.g. 24"
               className={cn(
                 "block w-full pl-10 pr-4 py-3 rounded-xl border",
                 "text-gray-900 placeholder:text-gray-400",
                 "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
-                "border-gray-200 hover:border-gray-300"
+                "border-gray-200 hover:border-gray-300",
               )}
             />
           </div>
@@ -395,13 +451,19 @@ export function Step1Basics() {
               min="1900"
               max={new Date().getFullYear()}
               value={formData.year_built || ""}
-              onChange={(e) => updateFormData({ year_built: e.target.value ? parseInt(e.target.value) : undefined })}
+              onChange={(e) =>
+                updateFormData({
+                  year_built: e.target.value
+                    ? parseInt(e.target.value)
+                    : undefined,
+                })
+              }
               placeholder="e.g. 2020"
               className={cn(
                 "block w-full pl-10 pr-4 py-3 rounded-xl border",
                 "text-gray-900 placeholder:text-gray-400",
                 "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
-                "border-gray-200 hover:border-gray-300"
+                "border-gray-200 hover:border-gray-300",
               )}
             />
           </div>
@@ -411,7 +473,8 @@ export function Step1Basics() {
       {/* Landmarks (optional) */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Nearby Landmarks <span className="text-gray-400 text-xs">(optional)</span>
+          Nearby Landmarks{" "}
+          <span className="text-gray-400 text-xs">(optional)</span>
         </label>
         <input
           type="text"
@@ -422,7 +485,7 @@ export function Step1Basics() {
             "block w-full px-4 py-3 rounded-xl border",
             "text-gray-900 placeholder:text-gray-400",
             "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
-            "border-gray-200 hover:border-gray-300"
+            "border-gray-200 hover:border-gray-300",
           )}
         />
         <p className="mt-1.5 text-xs text-gray-500">

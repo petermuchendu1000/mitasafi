@@ -208,7 +208,7 @@ describe("JSX entity escapes are textually identical to the raw characters", () 
       "app/dashboard/landlord/listings/new/steps/Step4Amenities.tsx",
       "app/dashboard/landlord/listings/new/steps/Step4CommercialAmenities.tsx",
       "app/dashboard/landlord/listings/new/steps/Step6Pricing.tsx",
-      "app/dashboard/landlord/properties/[id]/units/[unitId]/add-tenant/page.tsx",
+      "app/dashboard/landlord/buildings/[id]/units/[unitId]/add-tenant/page.tsx",
       "components/listings/InquiryModal.tsx",
     ];
 

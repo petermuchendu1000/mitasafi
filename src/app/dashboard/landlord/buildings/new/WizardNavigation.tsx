@@ -1,6 +1,6 @@
 /**
  * Building Wizard Navigation
- * 
+ *
  * Bottom navigation bar with Back/Continue buttons.
  * Handles step validation and progression logic.
  */
@@ -17,7 +17,10 @@ interface WizardNavigationProps {
   onSave?: () => Promise<void>;
 }
 
-export function WizardNavigation({ onSaveDraft, onSave }: WizardNavigationProps) {
+export function WizardNavigation({
+  onSaveDraft,
+  onSave,
+}: WizardNavigationProps) {
   const { state, nextStep, prevStep, canProceed } = useWizard();
   const { currentStep, isSaving, isSubmitting, isDirty, lastSaved } = state;
 
@@ -30,7 +33,7 @@ export function WizardNavigation({ onSaveDraft, onSave }: WizardNavigationProps)
       nextStep();
     }
   };
-  
+
   const handleBack = () => {
     prevStep();
   };
@@ -59,7 +62,7 @@ export function WizardNavigation({ onSaveDraft, onSave }: WizardNavigationProps)
                 "inline-flex items-center gap-2 px-4 py-2.5 rounded-lg",
                 "text-gray-600 hover:text-gray-900 hover:bg-gray-100",
                 "transition-colors text-sm font-medium",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
               )}
             >
               <ArrowLeft className="w-4 h-4" />
@@ -76,7 +79,7 @@ export function WizardNavigation({ onSaveDraft, onSave }: WizardNavigationProps)
               className={cn(
                 "inline-flex items-center gap-2 px-3 py-1.5 rounded-md",
                 "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
-                "transition-colors text-xs font-medium"
+                "transition-colors text-xs font-medium",
               )}
             >
               <Save className="w-3.5 h-3.5" />
@@ -108,7 +111,7 @@ export function WizardNavigation({ onSaveDraft, onSave }: WizardNavigationProps)
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
                 canContinue && !isSubmitting
                   ? "bg-teal-600 text-white hover:bg-teal-700"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed",
               )}
             >
               {isSubmitting ? (
@@ -133,7 +136,7 @@ export function WizardNavigation({ onSaveDraft, onSave }: WizardNavigationProps)
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
                 canContinue
                   ? "bg-teal-600 text-white hover:bg-teal-700"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed",
               )}
             >
               Continue
@@ -151,14 +154,14 @@ function formatRelativeTime(date: Date): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
-  
+
   if (diffMins < 1) return "just now";
   if (diffMins === 1) return "1 min ago";
   if (diffMins < 60) return `${diffMins} mins ago`;
-  
+
   const diffHours = Math.floor(diffMins / 60);
   if (diffHours === 1) return "1 hour ago";
   if (diffHours < 24) return `${diffHours} hours ago`;
-  
+
   return date.toLocaleDateString();
 }
