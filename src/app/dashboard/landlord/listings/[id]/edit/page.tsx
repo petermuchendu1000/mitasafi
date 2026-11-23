@@ -177,7 +177,9 @@ function WizardContent({
       </div>
 
       {/* Header with Progress */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
+      {/* top-16, not top-0 — see the note on the create wizard, which carried
+          the identical line. 16 = 4rem = 64px = the shell header's h-16. */}
+      <header className="sticky top-16 z-40 bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <WizardProgress />
         </div>

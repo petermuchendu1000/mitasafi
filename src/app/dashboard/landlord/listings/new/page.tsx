@@ -143,7 +143,13 @@ function WizardContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header with Progress */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
+      {/* top-16, not top-0: the shell's own header is `sticky top-0 z-30 h-16`,
+          so an inner header pinned to 0 lands on top of it. Measured before the
+          change: 64px of overlap, and because this one is z-40 it won the stack
+          and hid the search, notifications and sidebar toggle entirely once
+          scrolled. 16 = 4rem = 64px, matching the shell header's h-16 — if that
+          height ever changes, this offset has to change with it. */}
+      <header className="sticky top-16 z-40 bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <WizardProgress />
         </div>
