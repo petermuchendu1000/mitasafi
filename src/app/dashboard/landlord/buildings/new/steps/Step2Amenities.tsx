@@ -160,10 +160,14 @@ export function Step2Amenities() {
         {/* Dropdown Selects */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="bld-security-guards"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Security Guards
             </label>
             <select
+              id="bld-security-guards"
               value={formData.security_features.security_guards}
               onChange={(e) =>
                 updateSecurityFeatures("security_guards", e.target.value)
@@ -179,10 +183,14 @@ export function Step2Amenities() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="bld-cctv-coverage"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               CCTV Coverage
             </label>
             <select
+              id="bld-cctv-coverage"
               value={formData.security_features.cctv}
               onChange={(e) => updateSecurityFeatures("cctv", e.target.value)}
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -196,10 +204,14 @@ export function Step2Amenities() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="bld-access-control"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Access Control
             </label>
             <select
+              id="bld-access-control"
               value={formData.security_features.access_control}
               onChange={(e) =>
                 updateSecurityFeatures("access_control", e.target.value)
@@ -225,10 +237,14 @@ export function Step2Amenities() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="bld-water-source"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Water Source
             </label>
             <select
+              id="bld-water-source"
               value={formData.water_power.water_source}
               onChange={(e) => updateWaterPower("water_source", e.target.value)}
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -242,10 +258,14 @@ export function Step2Amenities() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="bld-water-storage"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Water Storage
             </label>
             <select
+              id="bld-water-storage"
               value={formData.water_power.water_storage}
               onChange={(e) =>
                 updateWaterPower("water_storage", e.target.value)
@@ -261,10 +281,14 @@ export function Step2Amenities() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="bld-water-reliability"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Water Reliability
             </label>
             <select
+              id="bld-water-reliability"
               value={formData.water_power.water_reliability}
               onChange={(e) =>
                 updateWaterPower("water_reliability", e.target.value)
@@ -280,10 +304,14 @@ export function Step2Amenities() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="bld-backup-generator"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Backup Generator
             </label>
             <select
+              id="bld-backup-generator"
               value={formData.water_power.backup_generator}
               onChange={(e) =>
                 updateWaterPower("backup_generator", e.target.value)
@@ -300,10 +328,14 @@ export function Step2Amenities() {
 
           {formData.water_power.backup_generator !== "none" && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="bld-generator-fuel-cost"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Generator Fuel Cost
               </label>
               <select
+                id="bld-generator-fuel-cost"
                 value={formData.water_power.generator_fuel || "shared"}
                 onChange={(e) =>
                   updateWaterPower("generator_fuel", e.target.value)
@@ -320,10 +352,14 @@ export function Step2Amenities() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="bld-solar-power"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Solar Power
             </label>
             <select
+              id="bld-solar-power"
               value={formData.water_power.solar}
               onChange={(e) => updateWaterPower("solar", e.target.value)}
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -347,10 +383,14 @@ export function Step2Amenities() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="bld-parking-type"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Parking Type
             </label>
             <select
+              id="bld-parking-type"
               value={formData.parking.type}
               onChange={(e) => updateParking("type", e.target.value)}
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -366,10 +406,14 @@ export function Step2Amenities() {
           {formData.parking.type !== "none" && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="bld-parking-allocation"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Parking Allocation
                 </label>
                 <select
+                  id="bld-parking-allocation"
                   value={formData.parking.allocation}
                   onChange={(e) => updateParking("allocation", e.target.value)}
                   className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -383,10 +427,14 @@ export function Step2Amenities() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="bld-total-parking-spaces"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Total Parking Spaces
                 </label>
                 <input
+                  id="bld-total-parking-spaces"
                   type="number"
                   min="0"
                   value={formData.parking.total_spaces || ""}
@@ -402,10 +450,14 @@ export function Step2Amenities() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="bld-visitor-spaces"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Visitor Spaces
                 </label>
                 <input
+                  id="bld-visitor-spaces"
                   type="number"
                   min="0"
                   value={formData.parking.visitor_spaces || ""}
@@ -532,10 +584,14 @@ export function Step2Amenities() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="bld-garbage-collection"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Garbage Collection
             </label>
             <select
+              id="bld-garbage-collection"
               value={formData.services.garbage}
               onChange={(e) => updateServices("garbage", e.target.value)}
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -549,10 +605,14 @@ export function Step2Amenities() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="bld-gas-infrastructure"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Gas Infrastructure
             </label>
             <select
+              id="bld-gas-infrastructure"
               value={formData.services.gas}
               onChange={(e) => updateServices("gas", e.target.value)}
               className="block w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -612,10 +672,20 @@ export function Step2Amenities() {
         {/* ISP Selection */}
         {formData.services.internet_ready && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* Not a <label>: these are toggle buttons, not a form control,
+                so a <label> here would point at nothing. A named group is
+                what actually gets announced. */}
+            <div
+              id="bld-isps-label"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Available Internet Providers
-            </label>
-            <div className="flex flex-wrap gap-2">
+            </div>
+            <div
+              role="group"
+              aria-labelledby="bld-isps-label"
+              className="flex flex-wrap gap-2"
+            >
               {ISP_OPTIONS.map((isp) => (
                 <button
                   key={isp.id}

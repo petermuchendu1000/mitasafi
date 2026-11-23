@@ -89,11 +89,18 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <PawPrint className="w-5 h-5 text-amber-600" />
-          <label className="text-sm font-semibold text-gray-900">
+          <div
+            id="bld-pets-label"
+            className="text-sm font-semibold text-gray-900"
+          >
             Pet Policy
-          </label>
+          </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div
+          role="group"
+          aria-labelledby="bld-pets-label"
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+        >
           {PET_POLICY_OPTIONS.map((option) => (
             <button
               key={option.id}
@@ -117,11 +124,18 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Cigarette className="w-5 h-5 text-red-500" />
-          <label className="text-sm font-semibold text-gray-900">
+          <div
+            id="bld-smoking-label"
+            className="text-sm font-semibold text-gray-900"
+          >
             Smoking Policy
-          </label>
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div
+          role="group"
+          aria-labelledby="bld-smoking-label"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+        >
           {SMOKING_POLICY_OPTIONS.map((option) => (
             <button
               key={option.id}
@@ -145,15 +159,22 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Briefcase className="w-5 h-5 text-indigo-600" />
-          <label className="text-sm font-semibold text-gray-900">
+          <div
+            id="bld-business-use-label"
+            className="text-sm font-semibold text-gray-900"
+          >
             Home Business Use
-          </label>
+          </div>
         </div>
         <p className="text-sm text-gray-500">
           Can tenants run a business from their unit? (e.g., work from home,
           online business)
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div
+          role="group"
+          aria-labelledby="bld-business-use-label"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+        >
           {BUSINESS_POLICY_OPTIONS.map((option) => (
             <button
               key={option.id}
@@ -177,14 +198,21 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Home className="w-5 h-5 text-pink-600" />
-          <label className="text-sm font-semibold text-gray-900">
+          <div
+            id="bld-airbnb-label"
+            className="text-sm font-semibold text-gray-900"
+          >
             Short-term Rentals (Airbnb)
-          </label>
+          </div>
         </div>
         <p className="text-sm text-gray-500">
           Can tenants sublet on Airbnb or other short-term rental platforms?
         </p>
-        <div className="grid grid-cols-2 gap-3 max-w-sm">
+        <div
+          role="group"
+          aria-labelledby="bld-airbnb-label"
+          className="grid grid-cols-2 gap-3 max-w-sm"
+        >
           <button
             type="button"
             onClick={() => updatePolicies("airbnb", true)}
@@ -218,12 +246,16 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Clock className="w-5 h-5 text-violet-600" />
-          <label className="text-sm font-semibold text-gray-900">
+          <label
+            htmlFor="bld-quiet-hours"
+            className="text-sm font-semibold text-gray-900"
+          >
             Quiet Hours
           </label>
           <span className="text-xs text-gray-400">(optional)</span>
         </div>
         <input
+          id="bld-quiet-hours"
           type="text"
           value={formData.policies.quiet_hours || ""}
           onChange={(e) => updatePolicies("quiet_hours", e.target.value)}
@@ -244,12 +276,16 @@ export function Step3Policies() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <DoorOpen className="w-5 h-5 text-cyan-600" />
-          <label className="text-sm font-semibold text-gray-900">
+          <label
+            htmlFor="bld-access-instructions"
+            className="text-sm font-semibold text-gray-900"
+          >
             Access Instructions
           </label>
           <span className="text-xs text-gray-400">(optional)</span>
         </div>
         <textarea
+          id="bld-access-instructions"
           value={formData.access_instructions || ""}
           onChange={(e) =>
             updateFormData({ access_instructions: e.target.value })

@@ -207,7 +207,10 @@ export function Step1Basics() {
 
       {/* Building Name */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label
+          htmlFor="bld-name"
+          className="block text-sm font-medium text-gray-700 mb-2"
+        >
           Building Name <span className="text-red-500">*</span>
         </label>
         <div className="relative">
@@ -215,6 +218,7 @@ export function Step1Basics() {
             <Building2 className="h-5 w-5 text-gray-400" />
           </div>
           <input
+            id="bld-name"
             type="text"
             value={formData.name}
             onChange={(e) => updateFormData({ name: e.target.value })}
@@ -240,10 +244,20 @@ export function Step1Basics() {
 
       {/* Building Type */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
+        {/* Not a <label>: these are buttons, not a form control, and a
+            <label> with no control to point at names nothing. A named group
+            is the shape that actually gets announced. */}
+        <div
+          id="bld-type-label"
+          className="block text-sm font-medium text-gray-700 mb-3"
+        >
           Building Type <span className="text-red-500">*</span>
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        </div>
+        <div
+          role="group"
+          aria-labelledby="bld-type-label"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+        >
           {BUILDING_TYPES.map((type) => {
             const Icon = BUILDING_ICONS[type.icon] || Building2;
             const isSelected = formData.building_type === type.id;
@@ -301,7 +315,10 @@ export function Step1Basics() {
 
       {/* Address */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label
+          htmlFor="bld-address"
+          className="block text-sm font-medium text-gray-700 mb-2"
+        >
           Address <span className="text-red-500">*</span>
         </label>
         <div className="relative">
@@ -309,6 +326,7 @@ export function Step1Basics() {
             <Search className="h-5 w-5 text-gray-400" />
           </div>
           <input
+            id="bld-address"
             ref={addressInputRef}
             type="text"
             value={formData.address}
@@ -340,7 +358,10 @@ export function Step1Basics() {
 
       {/* Area */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label
+          htmlFor="bld-area"
+          className="block text-sm font-medium text-gray-700 mb-2"
+        >
           Area / Neighborhood <span className="text-red-500">*</span>
         </label>
         <div className="relative">
@@ -348,6 +369,7 @@ export function Step1Basics() {
             <MapPin className="h-5 w-5 text-gray-400" />
           </div>
           <input
+            id="bld-area"
             type="text"
             value={formData.area}
             onChange={(e) => updateFormData({ area: e.target.value })}
@@ -375,7 +397,10 @@ export function Step1Basics() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Floors */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            htmlFor="bld-floors"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
             Total Floors
           </label>
           <div className="relative">
@@ -383,6 +408,7 @@ export function Step1Basics() {
               <Layers className="h-5 w-5 text-gray-400" />
             </div>
             <input
+              id="bld-floors"
               type="number"
               min="1"
               max="100"
@@ -407,7 +433,10 @@ export function Step1Basics() {
 
         {/* Total Units */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            htmlFor="bld-units"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
             Total Units
           </label>
           <div className="relative">
@@ -415,6 +444,7 @@ export function Step1Basics() {
               <Hash className="h-5 w-5 text-gray-400" />
             </div>
             <input
+              id="bld-units"
               type="number"
               min="1"
               max="1000"
@@ -439,7 +469,10 @@ export function Step1Basics() {
 
         {/* Year Built */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            htmlFor="bld-year"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
             Year Built
           </label>
           <div className="relative">
@@ -447,6 +480,7 @@ export function Step1Basics() {
               <Calendar className="h-5 w-5 text-gray-400" />
             </div>
             <input
+              id="bld-year"
               type="number"
               min="1900"
               max={new Date().getFullYear()}
@@ -472,11 +506,15 @@ export function Step1Basics() {
 
       {/* Landmarks (optional) */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label
+          htmlFor="bld-landmarks"
+          className="block text-sm font-medium text-gray-700 mb-2"
+        >
           Nearby Landmarks{" "}
           <span className="text-gray-400 text-xs">(optional)</span>
         </label>
         <input
+          id="bld-landmarks"
           type="text"
           value={formData.landmarks || ""}
           onChange={(e) => updateFormData({ landmarks: e.target.value })}

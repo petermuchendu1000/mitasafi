@@ -129,10 +129,18 @@ export function Step5Financials() {
 
       {/* Management Type */}
       <div className="space-y-3">
-        <label className="block text-sm font-semibold text-gray-900">
+        {/* Buttons, not a control: a named group rather than a <label>. */}
+        <div
+          id="bld-management-type-label"
+          className="block text-sm font-semibold text-gray-900"
+        >
           How do you manage this building?
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        </div>
+        <div
+          role="group"
+          aria-labelledby="bld-management-type-label"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+        >
           {MANAGEMENT_TYPES.map((type) => {
             const isSelected = formData.management_type === type.id;
             const Icon =
@@ -189,7 +197,10 @@ export function Step5Financials() {
       {/* Service Charge */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <label className="block text-sm font-semibold text-gray-900">
+          <label
+            htmlFor="bld-service-charge"
+            className="block text-sm font-semibold text-gray-900"
+          >
             Monthly Service Charge
           </label>
           <span className="text-xs text-gray-500">(optional)</span>
@@ -200,6 +211,7 @@ export function Step5Financials() {
             KSh
           </span>
           <input
+            id="bld-service-charge"
             type="text"
             inputMode="numeric"
             value={serviceChargeDisplay}
@@ -220,10 +232,17 @@ export function Step5Financials() {
         {/* Service Charge Includes */}
         {formData.service_charge && formData.service_charge > 0 && (
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">
+            <div
+              id="bld-service-charge-includes-label"
+              className="block text-sm font-medium text-gray-700"
+            >
               Service charge includes:
-            </label>
-            <div className="flex flex-wrap gap-2">
+            </div>
+            <div
+              role="group"
+              aria-labelledby="bld-service-charge-includes-label"
+              className="flex flex-wrap gap-2"
+            >
               {SERVICE_CHARGE_INCLUDES_OPTIONS.map((item) => (
                 <button
                   key={item.id}
@@ -249,11 +268,18 @@ export function Step5Financials() {
 
       {/* Payment Collection */}
       <div className="space-y-4">
-        <label className="block text-sm font-semibold text-gray-900">
+        <div
+          id="bld-rent-collection-label"
+          className="block text-sm font-semibold text-gray-900"
+        >
           Rent Collection
-        </label>
+        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div
+          role="group"
+          aria-labelledby="bld-rent-collection-label"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+        >
           <button
             type="button"
             onClick={() => updateFormData({ collection_via_mitasafi: true })}
@@ -357,10 +383,14 @@ export function Step5Financials() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="bld-paybill-number"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Paybill Number
                 </label>
                 <input
+                  id="bld-paybill-number"
                   type="text"
                   value={formData.bank_details.mpesa_paybill || ""}
                   onChange={(e) =>
@@ -373,10 +403,14 @@ export function Step5Financials() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="bld-account-number-till"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Account Number / Till
                 </label>
                 <input
+                  id="bld-account-number-till"
                   type="text"
                   value={formData.bank_details.mpesa_account || ""}
                   onChange={(e) =>
@@ -400,10 +434,14 @@ export function Step5Financials() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="bld-bank-name"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Bank Name
                 </label>
                 <input
+                  id="bld-bank-name"
                   type="text"
                   value={formData.bank_details.bank_name || ""}
                   onChange={(e) =>
@@ -415,10 +453,14 @@ export function Step5Financials() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="bld-account-name"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Account Name
                 </label>
                 <input
+                  id="bld-account-name"
                   type="text"
                   value={formData.bank_details.account_name || ""}
                   onChange={(e) =>
@@ -430,10 +472,14 @@ export function Step5Financials() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="bld-account-number"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Account Number
                 </label>
                 <input
+                  id="bld-account-number"
                   type="text"
                   value={formData.bank_details.account_number || ""}
                   onChange={(e) =>
