@@ -116,6 +116,17 @@ export interface RentStatusInput {
   period: { year: number; month: number };
   /** The day to judge it on, in Nairobi. */
   today: CivilDate;
+  /**
+   * When the tenancy began, if it began during this period.
+   *
+   * A tenant who moved in on the 23rd does not owe rent that was "due on the
+   * 5th" of that same month — there was no tenancy on the 5th. Without this,
+   * every mid-month move-in is marked overdue on day one and the landlord's
+   * brand-new tenant appears in arrears. Measured: a lease starting 23 Nov
+   * with rent due on the 5th rendered "Paid · 13d late" on the day it was
+   * created.
+   */
+  leaseStart?: CivilDate | null;
 }
 
 export interface RentStatusResult {
@@ -142,11 +153,24 @@ export function rentStatusForPeriod(input: RentStatusInput): RentStatusResult {
   const balance = Math.max(0, due - paid);
 
   const lastDay = daysInMonth(input.period.year, input.period.month);
-  const dueDate: CivilDate = {
+  let dueDate: CivilDate = {
     year: input.period.year,
     month: input.period.month,
     day: Math.min(Math.max(1, Math.trunc(input.rentDueDay)), lastDay),
   };
+
+  // A tenancy that began part-way through this month cannot have owed rent
+  // before it began. See the note on `leaseStart`.
+  const start = input.leaseStart;
+  if (
+    start &&
+    start.year === input.period.year &&
+    start.month === input.period.month &&
+    compareCivil(start, dueDate) > 0
+  ) {
+    dueDate = start;
+  }
+
   const graceEndsOn = addDays(dueDate, Math.max(0, input.gracePeriodDays));
 
   const pastGrace = compareCivil(input.today, graceEndsOn) > 0;

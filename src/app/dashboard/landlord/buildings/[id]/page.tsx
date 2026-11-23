@@ -351,6 +351,7 @@ export default async function BuildingDetailPage({
         amountPaid: paid,
         period: currentPeriod,
         today,
+        leaseStart: civilFromISO(live.start_date),
       });
       rent = {
         status: r.status,

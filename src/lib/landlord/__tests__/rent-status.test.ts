@@ -260,6 +260,94 @@ describe("rent status: the grace boundary", () => {
   });
 });
 
+describe("a tenancy that starts part-way through the month", () => {
+  // MEASURED BEFORE THIS: a lease created on 23 Nov with rent due on the 5th
+  // rendered "Paid · 13d late" the moment it was created. There was no
+  // tenancy on the 5th, so nothing was owed then.
+
+  it("does not owe rent from before it began", () => {
+    const r = rentStatusForPeriod({
+      monthlyRent: 92500,
+      rentDueDay: 5,
+      gracePeriodDays: 5,
+      amountPaid: 0,
+      period: NOV,
+      today: { year: 2026, month: 11, day: 23 },
+      leaseStart: { year: 2026, month: 11, day: 23 },
+    });
+    expect(r.dueDate).toEqual({ year: 2026, month: 11, day: 23 });
+    expect(r.status).toBe("pending");
+    expect(r.daysLate).toBe(0);
+  });
+
+  it("still uses the lease's day when the tenancy began before it", () => {
+    const r = rentStatusForPeriod({
+      monthlyRent: 92500,
+      rentDueDay: 5,
+      gracePeriodDays: 5,
+      amountPaid: 0,
+      period: NOV,
+      today: { year: 2026, month: 11, day: 23 },
+      leaseStart: { year: 2026, month: 11, day: 1 },
+    });
+    expect(r.dueDate.day).toBe(5);
+    expect(r.status).toBe("overdue");
+  });
+
+  it("ignores a lease start in an EARLIER month", () => {
+    // Only the first month of a tenancy gets this treatment; by December the
+    // 5th is the 5th.
+    const r = rentStatusForPeriod({
+      monthlyRent: 92500,
+      rentDueDay: 5,
+      gracePeriodDays: 5,
+      amountPaid: 0,
+      period: { year: 2026, month: 12 },
+      today: { year: 2026, month: 12, day: 20 },
+      leaseStart: { year: 2026, month: 11, day: 23 },
+    });
+    expect(r.dueDate).toEqual({ year: 2026, month: 12, day: 5 });
+    expect(r.status).toBe("overdue");
+  });
+
+  it("goes overdue once the grace from the start date runs out", () => {
+    const r = rentStatusForPeriod({
+      monthlyRent: 92500,
+      rentDueDay: 5,
+      gracePeriodDays: 5,
+      amountPaid: 0,
+      period: NOV,
+      today: { year: 2026, month: 11, day: 29 },
+      leaseStart: { year: 2026, month: 11, day: 23 },
+    });
+    expect(r.graceEndsOn).toEqual({ year: 2026, month: 11, day: 28 });
+    expect(r.status).toBe("overdue");
+    expect(r.daysLate).toBe(1);
+  });
+
+  it("behaves exactly as before when no lease start is given", () => {
+    const without = rentStatusForPeriod({
+      monthlyRent: 85000,
+      rentDueDay: 5,
+      gracePeriodDays: 5,
+      amountPaid: 0,
+      period: NOV,
+      today: { year: 2026, month: 11, day: 23 },
+    });
+    const withNull = rentStatusForPeriod({
+      monthlyRent: 85000,
+      rentDueDay: 5,
+      gracePeriodDays: 5,
+      amountPaid: 0,
+      period: NOV,
+      today: { year: 2026, month: 11, day: 23 },
+      leaseStart: null,
+    });
+    expect(without.status).toBe("overdue");
+    expect(withNull).toEqual(without);
+  });
+});
+
 describe("rent status: the due day inside the month", () => {
   it("clamps a due day past the end of February", () => {
     const r = rentStatusForPeriod({

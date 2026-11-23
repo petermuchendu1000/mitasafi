@@ -22,6 +22,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   nairobiToday,
   rentStatusForPeriod,
+  civilFromISO,
   leaseCoversPeriod,
   recentPeriods,
 } from "@/lib/landlord/rent-status";
@@ -152,6 +153,7 @@ export default async function LandlordRentPage() {
         amountPaid: paid,
         period,
         today,
+        leaseStart: civilFromISO(l.start_date),
       });
       return {
         leaseId: l.id,
