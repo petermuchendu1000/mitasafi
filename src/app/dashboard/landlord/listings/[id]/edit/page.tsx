@@ -13,6 +13,7 @@ import { useState, useEffect } from "react";
 import { WizardProvider, useWizard } from "../../new/context";
 import { WizardProgress } from "../../new/WizardProgress";
 import { WizardNavigation } from "../../new/WizardNavigation";
+import { StepValidationSummary } from "../../new/StepValidationSummary";
 import { useToast, SuccessModal } from "@/components/ui";
 import {
   saveDraft,
@@ -193,6 +194,7 @@ function WizardContent({
           nested=1. The className is unchanged, so nothing moves on screen. */}
       <div className="py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
+          <StepValidationSummary />
           {StepComponent && <StepComponent />}
         </div>
       </div>

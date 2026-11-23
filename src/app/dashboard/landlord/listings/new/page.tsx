@@ -13,6 +13,7 @@ import { useState } from "react";
 import { WizardProvider, useWizard } from "./context";
 import { WizardProgress } from "./WizardProgress";
 import { WizardNavigation } from "./WizardNavigation";
+import { StepValidationSummary } from "./StepValidationSummary";
 import { useToast, SuccessModal } from "@/components/ui";
 import { saveDraft, publishListing } from "./listing-service";
 import { useSuccessModalContent } from "./useWizardContent";
@@ -161,6 +162,7 @@ function WizardContent() {
           line. Measured at runtime: 2 <main>, nested=1. className unchanged. */}
       <div className="py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
+          <StepValidationSummary />
           {StepComponent && <StepComponent />}
         </div>
       </div>
