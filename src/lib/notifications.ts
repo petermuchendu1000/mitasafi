@@ -1,6 +1,6 @@
 /**
  * Notifications System
- * 
+ *
  * Handles notifications for saved listing status changes.
  * Stores in localStorage and provides utilities for managing notifications.
  */
@@ -27,7 +27,7 @@ export function getNotifications(): Notification[] {
     const notifications = JSON.parse(stored) as Notification[];
     // Only keep notifications from the last 7 days
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return notifications.filter(n => n.timestamp > weekAgo);
+    return notifications.filter((n) => n.timestamp > weekAgo);
   } catch {
     return [];
   }
@@ -36,7 +36,9 @@ export function getNotifications(): Notification[] {
 /**
  * Add a new notification
  */
-export function addNotification(notification: Omit<Notification, "id" | "read">): void {
+export function addNotification(
+  notification: Omit<Notification, "id" | "read">,
+): void {
   if (typeof window === "undefined") return;
   const notifications = getNotifications();
   const newNotification: Notification = {
@@ -57,8 +59,8 @@ export function addNotification(notification: Omit<Notification, "id" | "read">)
 export function markAsRead(notificationId: string): void {
   if (typeof window === "undefined") return;
   const notifications = getNotifications();
-  const updated = notifications.map(n => 
-    n.id === notificationId ? { ...n, read: true } : n
+  const updated = notifications.map((n) =>
+    n.id === notificationId ? { ...n, read: true } : n,
   );
   localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated));
   window.dispatchEvent(new CustomEvent("notificationsChanged"));
@@ -70,7 +72,7 @@ export function markAsRead(notificationId: string): void {
 export function markAllAsRead(): void {
   if (typeof window === "undefined") return;
   const notifications = getNotifications();
-  const updated = notifications.map(n => ({ ...n, read: true }));
+  const updated = notifications.map((n) => ({ ...n, read: true }));
   localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated));
   window.dispatchEvent(new CustomEvent("notificationsChanged"));
 }
@@ -88,7 +90,7 @@ export function clearAllNotifications(): void {
  * Get unread count
  */
 export function getUnreadCount(): number {
-  return getNotifications().filter(n => !n.read).length;
+  return getNotifications().filter((n) => !n.read).length;
 }
 
 /**
@@ -114,7 +116,7 @@ export function getNotificationMessage(notification: Notification): string {
  */
 export function getRelativeTime(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  
+
   if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;

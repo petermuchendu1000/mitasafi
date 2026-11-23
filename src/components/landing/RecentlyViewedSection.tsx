@@ -11,7 +11,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Container } from "@/components/ui";
-import { useRecentlyViewed, type RecentlyViewedProvider } from "@/hooks/useRecentlyViewed";
+import {
+  useRecentlyViewed,
+  type RecentlyViewedProvider,
+} from "@/hooks/useRecentlyViewed";
 import { Star, ChevronRight, Clock, X, ArrowRight } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -62,7 +65,9 @@ function ProviderCard({ provider, onRemove }: ProviderCardProps) {
               {provider.business_name}
             </h3>
             {provider.tagline && (
-              <p className="text-sm text-gray-500 truncate">{provider.tagline}</p>
+              <p className="text-sm text-gray-500 truncate">
+                {provider.tagline}
+              </p>
             )}
           </div>
         </div>
@@ -150,7 +155,7 @@ export function RecentlyViewedSection() {
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4">
             {/* Clear All */}
             {showClearConfirm ? (
@@ -200,7 +205,7 @@ export function RecentlyViewedSection() {
                 <ProviderCard provider={provider} onRemove={removeProvider} />
               </div>
             ))}
-            
+
             {/* Browse More Card */}
             <Link
               href="/services/browse"
@@ -211,7 +216,9 @@ export function RecentlyViewedSection() {
               </div>
               <div className="text-center">
                 <p className="font-semibold text-brand-900">Browse More</p>
-                <p className="text-sm text-brand-600">700+ services available</p>
+                <p className="text-sm text-brand-600">
+                  700+ services available
+                </p>
               </div>
             </Link>
           </div>
