@@ -66,9 +66,26 @@ export interface ListingInsertData {
   available_now: boolean;
   payment_methods: string[];
   rent_includes: string[];
-  status: "draft" | "active";
+  /** Omitted entirely when an edit must not change the listing's status. */
+  status?: "draft" | "active";
   published_at?: string;
 }
+
+/**
+ * What a save should do to `status`.
+ *
+ *   "draft"     set it to draft  — a new draft, or a draft staying a draft
+ *   "active"    set it to active — publishing
+ *   "preserve"  leave it alone   — an edit of a listing that is already live,
+ *                                  paused or rented
+ *
+ * "preserve" exists because this service was written for the CREATE wizard,
+ * where every save is either a draft or a publish. The EDIT page reuses it with
+ * the listing's own id as `existingDraftId`, so "draft" there meant UPDATE ...
+ * SET status='draft' on a live listing — silently unpublishing it while the
+ * toast said "Your listing has been updated".
+ */
+export type StatusIntent = "draft" | "active" | "preserve";
 
 export interface PublishResult {
   success: boolean;
@@ -86,7 +103,7 @@ export interface PublishResult {
 function transformFormDataToInsert(
   formData: PropertyFormData,
   userId: string,
-  status: "draft" | "active",
+  intent: StatusIntent,
 ): ListingInsertData {
   const photos = (formData.photos || [])
     .filter(
@@ -159,8 +176,15 @@ function transformFormDataToInsert(
     available_now: formData.availableNow,
     payment_methods: formData.paymentMethods,
     rent_includes: formData.rentIncludes,
-    status,
-    ...(status === "active" && { published_at: new Date().toISOString() }),
+    // Omitted when preserving, so the UPDATE does not mention the column at all.
+    ...(intent === "preserve" ? {} : { status: intent }),
+    // Stamped only when actually publishing. The defect this fixes was an edit
+    // of a LIVE listing resetting the date, and that is handled by the intent
+    // being "preserve" — which omits this key with status. A separate
+    // "don't overwrite an existing date" guard was tried here and a mutation
+    // run proved it dead: no case reaches this line with intent "active" AND a
+    // prior date except re-publishing a draft, where stamping now is right.
+    ...(intent === "active" ? { published_at: new Date().toISOString() } : {}),
   };
 }
 
@@ -174,6 +198,12 @@ function transformFormDataToInsert(
 export async function saveDraft(
   formData: PropertyFormData,
   existingDraftId?: string | null,
+  /**
+   * Set by the EDIT page. Without it this writes status='draft', which on an
+   * existing live listing unpublishes it. The CREATE wizard passes nothing and
+   * keeps its original behaviour.
+   */
+  options?: { preserveStatus?: boolean },
 ): Promise<PublishResult> {
   const supabase = createClient();
 
@@ -186,7 +216,11 @@ export async function saveDraft(
       return { success: false, error: "You must be logged in to save a draft" };
     }
 
-    const insertData = transformFormDataToInsert(formData, user.id, "draft");
+    const insertData = transformFormDataToInsert(
+      formData,
+      user.id,
+      options?.preserveStatus ? "preserve" : "draft",
+    );
 
     if (existingDraftId) {
       // Update existing draft
@@ -228,6 +262,16 @@ export async function saveDraft(
 export async function publishListing(
   formData: PropertyFormData,
   existingDraftId?: string | null,
+  /**
+   * Set by the EDIT page, which knows the row it loaded.
+   *
+   * `currentStatus` is what the button means: on the edit page it reads
+   * "Update Listing", and updating a PAUSED listing must not quietly resume
+   * it. Only a draft is actually being published. The CREATE wizard passes
+   * nothing, so a new listing still goes active.
+   *
+   */
+  options?: { currentStatus?: string | null },
 ): Promise<PublishResult> {
   const supabase = createClient();
 
@@ -289,7 +333,14 @@ export async function publishListing(
       return { success: false, error: "Please select a location/area" };
     }
 
-    const insertData = transformFormDataToInsert(formData, user.id, "active");
+    // A listing that is already live, paused or rented keeps its status; only a
+    // draft (or a brand-new listing) is being published by this button.
+    const intent: StatusIntent =
+      options?.currentStatus && options.currentStatus !== "draft"
+        ? "preserve"
+        : "active";
+
+    const insertData = transformFormDataToInsert(formData, user.id, intent);
 
     if (existingDraftId) {
       // Publish existing draft
@@ -329,8 +380,28 @@ export async function publishListing(
 /**
  * Get listing by ID
  */
+/**
+ * Load a listing for its OWNER to edit.
+ *
+ * The landlord filter is the point of this function. Without it, the view
+ * returns any row the underlying public read policy admits — and the public
+ * detail page at src/lib/listings/get-listing.ts reads this same view with no
+ * owner filter precisely because it must see other people's listings. So an
+ * unfiltered read here meant /dashboard/landlord/listings/<any id>/edit would
+ * load a stranger's listing into the edit form. The sibling detail page
+ * ([id]/page.tsx, a different function of the same name) has always carried
+ * this filter; this one did not.
+ *
+ * The write paths were never exposed — saveDraft and publishListing both carry
+ * .eq("landlord_id", user.id) — so this closes a read, not a write.
+ */
 export async function getListing(listingId: string) {
   const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in to open a listing.");
 
   // listings_public: see 20260340000000. The owner branch returns the real
   // address and coordinates, which the edit form needs.
@@ -338,6 +409,7 @@ export async function getListing(listingId: string) {
     .from("listings_public")
     .select("*")
     .eq("id", listingId)
+    .eq("landlord_id", user.id)
     .single();
 
   if (error) throw error;

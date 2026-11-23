@@ -1,6 +1,6 @@
 /**
  * Edit Property Page
- * 
+ *
  * Multi-step wizard for editing an existing property listing.
  * Loads the existing listing data and pre-populates the form.
  */
@@ -14,7 +14,11 @@ import { WizardProvider, useWizard } from "../../new/context";
 import { WizardProgress } from "../../new/WizardProgress";
 import { WizardNavigation } from "../../new/WizardNavigation";
 import { useToast, SuccessModal } from "@/components/ui";
-import { saveDraft, publishListing, getListing } from "../../new/listing-service";
+import {
+  saveDraft,
+  publishListing,
+  getListing,
+} from "../../new/listing-service";
 import { useSuccessModalContent } from "../../new/useWizardContent";
 import { transformListingToFormData } from "./transform-listing";
 import type { PropertyFormData } from "../../new/types";
@@ -59,7 +63,16 @@ const COMMERCIAL_STEPS: Record<number, React.ComponentType> = {
   7: Step7CommercialReview,
 };
 
-function WizardContent() {
+function WizardContent({
+  currentStatus,
+}: {
+  /**
+   * The status the listing had when it was loaded. Both save buttons need it:
+   * "Save draft" must not change it at all, and "Update Listing" must only
+   * publish something that is still a draft.
+   */
+  currentStatus: string | null;
+}) {
   const router = useRouter();
   const { state, dispatch } = useWizard();
   const { currentStep, formData, draftId } = state;
@@ -67,8 +80,10 @@ function WizardContent() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [publishedListingId, setPublishedListingId] = useState<string | null>(null);
-  
+  const [publishedListingId, setPublishedListingId] = useState<string | null>(
+    null,
+  );
+
   // Select step component based on listing category
   const isCommercial = formData.listingCategory === "commercial";
   const STEP_COMPONENTS = isCommercial ? COMMERCIAL_STEPS : RESIDENTIAL_STEPS;
@@ -78,10 +93,14 @@ function WizardContent() {
   const handleSaveDraft = async () => {
     setIsSavingDraft(true);
     dispatch({ type: "SET_SAVING", payload: true });
-    
+
     try {
-      const result = await saveDraft(formData, draftId);
-      
+      // preserveStatus: this is an edit, not a draft-vs-publish decision. Without
+      // it the update writes status='draft' and unpublishes a live listing.
+      const result = await saveDraft(formData, draftId, {
+        preserveStatus: true,
+      });
+
       if (result.success && result.listingId) {
         dispatch({ type: "SET_LAST_SAVED", payload: new Date().toISOString() });
         dispatch({ type: "SET_DIRTY", payload: false });
@@ -102,10 +121,12 @@ function WizardContent() {
   const handlePublish = async () => {
     setIsPublishing(true);
     dispatch({ type: "SET_SUBMITTING", payload: true });
-    
+
     try {
-      const result = await publishListing(formData, draftId);
-      
+      const result = await publishListing(formData, draftId, {
+        currentStatus,
+      });
+
       if (result.success && result.listingId) {
         setPublishedListingId(result.listingId);
         setShowSuccessModal(true);
@@ -129,10 +150,12 @@ function WizardContent() {
 
   // Get dynamic success modal content based on listing type
   const successContent = useSuccessModalContent();
-  
+
   // Truncate title for header display
-  const displayTitle = formData.title 
-    ? (formData.title.length > 40 ? formData.title.slice(0, 40) + "..." : formData.title)
+  const displayTitle = formData.title
+    ? formData.title.length > 40
+      ? formData.title.slice(0, 40) + "..."
+      : formData.title
     : "Untitled Listing";
 
   return (
@@ -140,7 +163,7 @@ function WizardContent() {
       {/* Context Header - Shows which listing is being edited */}
       <div className="bg-gray-900 text-white py-2 px-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <Link 
+          <Link
             href="/dashboard/landlord/listings"
             className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
           >
@@ -168,7 +191,7 @@ function WizardContent() {
       </main>
 
       {/* Bottom Navigation */}
-      <WizardNavigation 
+      <WizardNavigation
         onSaveDraft={handleSaveDraft}
         onPublish={handlePublish}
       />
@@ -177,8 +200,12 @@ function WizardContent() {
       <SuccessModal
         isOpen={showSuccessModal}
         onClose={handleSuccessClose}
-        title="Listing updated! ✅"
-        message="Your changes have been saved and are now live."
+        title="Listing updated"
+        message={
+          currentStatus === "active" || currentStatus === "draft"
+            ? "Your changes have been saved and are live."
+            : `Your changes have been saved. This listing is still ${currentStatus ?? "unpublished"} — publish it from the listing page when you are ready.`
+        }
         primaryAction={{
           label: "View My Listings",
           href: "/dashboard/landlord/listings",
@@ -203,19 +230,21 @@ function EditPageLoader({ listingId }: EditPageLoaderProps) {
   const { error: showError } = useToast();
   const [loading, setLoading] = useState(true);
   const [listingData, setListingData] = useState<PropertyFormData | null>(null);
+  const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadListing() {
       try {
-        const listing = await getListing(listingId) as ListingRow | null;
-        
+        const listing = (await getListing(listingId)) as ListingRow | null;
+
         if (!listing) {
           setErrorMessage("Listing not found");
           return;
         }
 
         const formData = transformListingToFormData(listing);
+        setCurrentStatus(listing.status ?? null);
         setListingData(formData);
       } catch (err) {
         console.error("Error loading listing:", err);
@@ -250,7 +279,8 @@ function EditPageLoader({ listingId }: EditPageLoaderProps) {
             {errorMessage || "Listing not found"}
           </h1>
           <p className="text-gray-600 mb-6">
-            The listing you&apos;re trying to edit could not be found or you don&apos;t have permission to edit it.
+            The listing you&apos;re trying to edit could not be found or you
+            don&apos;t have permission to edit it.
           </p>
           <button
             onClick={() => router.push("/dashboard/landlord/listings")}
@@ -264,13 +294,13 @@ function EditPageLoader({ listingId }: EditPageLoaderProps) {
   }
 
   return (
-    <WizardProvider 
-      initialData={listingData} 
+    <WizardProvider
+      initialData={listingData}
       draftId={listingId}
       isEditMode={true}
       initialStep={7}
     >
-      <WizardContent />
+      <WizardContent currentStatus={currentStatus} />
     </WizardProvider>
   );
 }

@@ -82,12 +82,17 @@ async function getListing(id: string): Promise<ListingDetail | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Fetch listing owned by this user
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // Fetch listing owned by this user.
+  //
   // listings_public rather than listings: the raw location columns are no
   // longer granted to client roles (20260340000000). The landlord branch of
   // the view returns their own address and coordinates unmasked, so this page
   // is unchanged in what it shows.
+  //
+  // The disable below used to sit ABOVE this comment block, so "next line"
+  // meant the comment and the `any` went unsuppressed — eslint reported both
+  // "Unused eslint-disable directive" and "Unexpected any" at once.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("listings_public")
     .select("*")
@@ -164,10 +169,27 @@ async function getListing(id: string): Promise<ListingDetail | null> {
 // HELPERS
 // =============================================================================
 
+/**
+ * Money, without letting a bad currency code take the page down.
+ *
+ * listings.currency is TEXT with DEFAULT 'KES' and NO CHECK constraint
+ * (verified against the deployed contract). Intl.NumberFormat accepts any
+ * three ASCII letters — measured: "KSH", "Ksh" and "kes" all format — but
+ * THROWS RangeError on anything else, e.g. "shillings". This is a server
+ * component, so an unguarded throw is a 500 for the whole page.
+ *
+ * No product path can currently store a bad value: the only writer is the
+ * wizard, whose CURRENCY_OPTIONS are exactly KES and USD. This is a guard
+ * against the column being unconstrained, not a fix for something users are
+ * hitting today.
+ */
 function formatCurrency(amount: number, currency: string = "KES"): string {
+  const code = /^[A-Za-z]{3}$/.test(currency.trim())
+    ? currency.trim().toUpperCase()
+    : "KES";
   return new Intl.NumberFormat("en-KE", {
     style: "currency",
-    currency,
+    currency: code,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
