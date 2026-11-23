@@ -1,12 +1,12 @@
 /**
  * Phone Verification Form
- * 
+ *
  * Client component handling the phone verification flow:
  * 1. Enter/confirm phone number
  * 2. Send OTP
  * 3. Enter OTP code
  * 4. Verify and proceed
- * 
+ *
  * Uses optimistic UI and handles all edge cases.
  */
 
@@ -28,7 +28,7 @@ type Step = "phone" | "otp" | "success";
 function formatKenyanPhone(value: string): string {
   // Remove all non-digits
   const digits = value.replace(/\D/g, "");
-  
+
   // Handle different input formats
   if (digits.startsWith("254")) {
     // Already has country code
@@ -40,7 +40,7 @@ function formatKenyanPhone(value: string): string {
     // Just the number without 0
     return "+254" + digits;
   }
-  
+
   return digits ? "+" + digits : "";
 }
 
@@ -60,12 +60,17 @@ function formatPhoneDisplay(phone: string): string {
   return phone;
 }
 
-export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificationFormProps) {
+export function PhoneVerificationForm({
+  initialPhone,
+  userId,
+}: PhoneVerificationFormProps) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("phone");
-  const [phone, setPhone] = useState(initialPhone ? formatKenyanPhone(initialPhone) : "");
+  const [phone, setPhone] = useState(
+    initialPhone ? formatKenyanPhone(initialPhone) : "",
+  );
   const [displayPhone, setDisplayPhone] = useState(
-    initialPhone ? formatPhoneDisplay(formatKenyanPhone(initialPhone)) : ""
+    initialPhone ? formatPhoneDisplay(formatKenyanPhone(initialPhone)) : "",
   );
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +79,7 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
   const [canResend, setCanResend] = useState(false);
   // DEV MODE: Show OTP when SMS is disabled
   const [devOtp, setDevOtp] = useState<string | null>(null);
-  
+
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Countdown timer for resend
@@ -93,7 +98,7 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
     // Allow only digits, +, and spaces for display
     const cleaned = value.replace(/[^\d+\s]/g, "");
     setDisplayPhone(cleaned);
-    
+
     // Store clean version
     const formatted = formatKenyanPhone(cleaned);
     setPhone(formatted);
@@ -103,17 +108,17 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
   // Handle phone submission
   const handleSendOTP = async () => {
     setError(null);
-    
+
     if (!isValidKenyanPhone(phone)) {
       setError("Please enter a valid Kenyan phone number (e.g., 0712 345 678)");
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
       const result = await sendPhoneOTP(phone, userId);
-      
+
       if (result.success) {
         setStep("otp");
         setCountdown(60); // 60 second countdown
@@ -138,19 +143,19 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
   const handleOtpChange = (index: number, value: string) => {
     // Only allow single digit
     const digit = value.replace(/\D/g, "").slice(-1);
-    
+
     const newOtp = [...otp];
     newOtp[index] = digit;
     setOtp(newOtp);
     setError(null);
-    
+
     // Auto-advance to next input
     if (digit && index < 5) {
       otpRefs.current[index + 1]?.focus();
     }
-    
+
     // Auto-submit when all digits entered
-    if (digit && index === 5 && newOtp.every(d => d)) {
+    if (digit && index === 5 && newOtp.every((d) => d)) {
       handleVerifyOTP(newOtp.join(""));
     }
   };
@@ -158,8 +163,11 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
   // Handle OTP paste
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    
+    const pastedData = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+
     if (pastedData.length === 6) {
       const newOtp = pastedData.split("");
       setOtp(newOtp);
@@ -177,47 +185,50 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
   };
 
   // Handle OTP verification
-  const handleVerifyOTP = useCallback(async (code: string) => {
-    if (code.length !== 6) return;
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const result = await verifyPhoneOTP(code, phone, userId);
-      
-      if (result.success) {
-        setStep("success");
-        // Redirect after brief success message
-        setTimeout(() => {
-          router.push("/dashboard/provider");
-          router.refresh();
-        }, 1500);
-      } else {
-        setError(result.error || "Invalid verification code");
-        // Clear OTP on error
-        setOtp(["", "", "", "", "", ""]);
-        otpRefs.current[0]?.focus();
+  const handleVerifyOTP = useCallback(
+    async (code: string) => {
+      if (code.length !== 6) return;
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const result = await verifyPhoneOTP(code, phone, userId);
+
+        if (result.success) {
+          setStep("success");
+          // Redirect after brief success message
+          setTimeout(() => {
+            router.push("/dashboard/provider");
+            router.refresh();
+          }, 1500);
+        } else {
+          setError(result.error || "Invalid verification code");
+          // Clear OTP on error
+          setOtp(["", "", "", "", "", ""]);
+          otpRefs.current[0]?.focus();
+        }
+      } catch (err) {
+        setError("Verification failed. Please try again.");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      setError("Verification failed. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [phone, userId, router]);
+    },
+    [phone, userId, router],
+  );
 
   // Handle resend
   const handleResend = async () => {
     if (!canResend) return;
-    
+
     setIsLoading(true);
     setError(null);
     setOtp(["", "", "", "", "", ""]);
     setDevOtp(null);
-    
+
     try {
       const result = await sendPhoneOTP(phone, userId);
-      
+
       if (result.success) {
         setCountdown(60);
         setCanResend(false);
@@ -242,7 +253,10 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
       <div className="space-y-5">
         {/* Phone Input */}
         <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label
+            htmlFor="phone"
+            className="block text-sm font-medium text-gray-700 mb-1.5"
+          >
             Phone Number
           </label>
           <input
@@ -264,9 +278,7 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
         </div>
 
         {/* Error Message */}
-        {error && (
-          <p className="text-sm text-red-600">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         {/* Submit Button */}
         <button
@@ -274,9 +286,10 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
           disabled={isLoading || !phone}
           className={`
             w-full py-2.5 rounded-lg font-medium transition-colors
-            ${isLoading || !phone
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-teal-600 text-white hover:bg-teal-700"
+            ${
+              isLoading || !phone
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-teal-600 text-white hover:bg-teal-700"
             }
           `}
         >
@@ -300,7 +313,10 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
         {/* Phone Display */}
         <div className="text-center">
           <p className="text-sm text-gray-600">
-            Code sent to <span className="font-medium text-gray-900">{formatPhoneDisplay(phone)}</span>
+            Code sent to{" "}
+            <span className="font-medium text-gray-900">
+              {formatPhoneDisplay(phone)}
+            </span>
           </p>
           <button
             onClick={() => setStep("phone")}
@@ -313,8 +329,12 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
         {/* DEV MODE: Show OTP for testing */}
         {devOtp && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
-            <p className="text-xs text-amber-600 font-medium">DEV MODE - SMS DISABLED</p>
-            <p className="text-lg font-mono font-bold text-amber-800 tracking-wider mt-1">{devOtp}</p>
+            <p className="text-xs text-amber-600 font-medium">
+              DEV MODE - SMS DISABLED
+            </p>
+            <p className="text-lg font-mono font-bold text-amber-800 tracking-wider mt-1">
+              {devOtp}
+            </p>
           </div>
         )}
 
@@ -323,7 +343,9 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
           {otp.map((digit, index) => (
             <input
               key={index}
-              ref={(el) => { otpRefs.current[index] = el; }}
+              ref={(el) => {
+                otpRefs.current[index] = el;
+              }}
               type="text"
               inputMode="numeric"
               maxLength={1}
@@ -343,19 +365,18 @@ export function PhoneVerificationForm({ initialPhone, userId }: PhoneVerificatio
         </div>
 
         {/* Error Message */}
-        {error && (
-          <p className="text-sm text-red-600 text-center">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-600 text-center">{error}</p>}
 
         {/* Verify Button */}
         <button
           onClick={() => handleVerifyOTP(otp.join(""))}
-          disabled={isLoading || otp.some(d => !d)}
+          disabled={isLoading || otp.some((d) => !d)}
           className={`
             w-full py-2.5 rounded-lg font-medium transition-colors
-            ${isLoading || otp.some(d => !d)
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-teal-600 text-white hover:bg-teal-700"
+            ${
+              isLoading || otp.some((d) => !d)
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-teal-600 text-white hover:bg-teal-700"
             }
           `}
         >

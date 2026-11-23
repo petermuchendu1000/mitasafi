@@ -67,7 +67,7 @@ export function useRecentlyViewed() {
         const cutoff = Date.now() - EXPIRY_DAYS * 24 * 60 * 60 * 1000;
         const valid = parsed.filter((p) => p.viewedAt > cutoff);
         setProviders(valid);
-        
+
         // Clean up storage if items were removed
         if (valid.length !== parsed.length) {
           localStorage.setItem(PROVIDERS_KEY, JSON.stringify(valid));
@@ -81,7 +81,7 @@ export function useRecentlyViewed() {
         const cutoff = Date.now() - EXPIRY_DAYS * 24 * 60 * 60 * 1000;
         const valid = parsed.filter((s) => s.viewedAt > cutoff);
         setServices(valid);
-        
+
         if (valid.length !== parsed.length) {
           localStorage.setItem(SERVICES_KEY, JSON.stringify(valid));
         }
@@ -94,56 +94,62 @@ export function useRecentlyViewed() {
   }, []);
 
   // Add provider to recently viewed
-  const addProvider = useCallback((provider: Omit<RecentlyViewedProvider, "viewedAt">) => {
-    if (typeof window === "undefined") return;
+  const addProvider = useCallback(
+    (provider: Omit<RecentlyViewedProvider, "viewedAt">) => {
+      if (typeof window === "undefined") return;
 
-    setProviders((prev) => {
-      // Remove if already exists
-      const filtered = prev.filter((p) => p.id !== provider.id);
-      
-      // Add to beginning with timestamp
-      const updated = [
-        { ...provider, viewedAt: Date.now() },
-        ...filtered,
-      ].slice(0, MAX_ITEMS);
-      
-      // Persist
-      try {
-        localStorage.setItem(PROVIDERS_KEY, JSON.stringify(updated));
-      } catch (error) {
-        console.error("Error saving recently viewed providers:", error);
-      }
-      
-      return updated;
-    });
-  }, []);
+      setProviders((prev) => {
+        // Remove if already exists
+        const filtered = prev.filter((p) => p.id !== provider.id);
+
+        // Add to beginning with timestamp
+        const updated = [
+          { ...provider, viewedAt: Date.now() },
+          ...filtered,
+        ].slice(0, MAX_ITEMS);
+
+        // Persist
+        try {
+          localStorage.setItem(PROVIDERS_KEY, JSON.stringify(updated));
+        } catch (error) {
+          console.error("Error saving recently viewed providers:", error);
+        }
+
+        return updated;
+      });
+    },
+    [],
+  );
 
   // Add service to recently viewed
-  const addService = useCallback((service: Omit<RecentlyViewedService, "viewedAt">) => {
-    if (typeof window === "undefined") return;
+  const addService = useCallback(
+    (service: Omit<RecentlyViewedService, "viewedAt">) => {
+      if (typeof window === "undefined") return;
 
-    setServices((prev) => {
-      const filtered = prev.filter((s) => s.id !== service.id);
-      
-      const updated = [
-        { ...service, viewedAt: Date.now() },
-        ...filtered,
-      ].slice(0, MAX_ITEMS);
-      
-      try {
-        localStorage.setItem(SERVICES_KEY, JSON.stringify(updated));
-      } catch (error) {
-        console.error("Error saving recently viewed services:", error);
-      }
-      
-      return updated;
-    });
-  }, []);
+      setServices((prev) => {
+        const filtered = prev.filter((s) => s.id !== service.id);
+
+        const updated = [
+          { ...service, viewedAt: Date.now() },
+          ...filtered,
+        ].slice(0, MAX_ITEMS);
+
+        try {
+          localStorage.setItem(SERVICES_KEY, JSON.stringify(updated));
+        } catch (error) {
+          console.error("Error saving recently viewed services:", error);
+        }
+
+        return updated;
+      });
+    },
+    [],
+  );
 
   // Clear all
   const clearAll = useCallback(() => {
     if (typeof window === "undefined") return;
-    
+
     setProviders([]);
     setServices([]);
     localStorage.removeItem(PROVIDERS_KEY);
@@ -153,7 +159,7 @@ export function useRecentlyViewed() {
   // Remove single provider
   const removeProvider = useCallback((providerId: string) => {
     if (typeof window === "undefined") return;
-    
+
     setProviders((prev) => {
       const updated = prev.filter((p) => p.id !== providerId);
       localStorage.setItem(PROVIDERS_KEY, JSON.stringify(updated));
@@ -164,7 +170,7 @@ export function useRecentlyViewed() {
   // Remove single service
   const removeService = useCallback((serviceId: string) => {
     if (typeof window === "undefined") return;
-    
+
     setServices((prev) => {
       const updated = prev.filter((s) => s.id !== serviceId);
       localStorage.setItem(SERVICES_KEY, JSON.stringify(updated));
@@ -189,38 +195,46 @@ export function useRecentlyViewed() {
 // STANDALONE FUNCTIONS (for use outside React)
 // =============================================================================
 
-export function trackProviderView(provider: Omit<RecentlyViewedProvider, "viewedAt">) {
+export function trackProviderView(
+  provider: Omit<RecentlyViewedProvider, "viewedAt">,
+) {
   if (typeof window === "undefined") return;
-  
+
   try {
     const stored = localStorage.getItem(PROVIDERS_KEY);
-    const existing = stored ? (JSON.parse(stored) as RecentlyViewedProvider[]) : [];
-    
+    const existing = stored
+      ? (JSON.parse(stored) as RecentlyViewedProvider[])
+      : [];
+
     const filtered = existing.filter((p) => p.id !== provider.id);
-    const updated = [
-      { ...provider, viewedAt: Date.now() },
-      ...filtered,
-    ].slice(0, MAX_ITEMS);
-    
+    const updated = [{ ...provider, viewedAt: Date.now() }, ...filtered].slice(
+      0,
+      MAX_ITEMS,
+    );
+
     localStorage.setItem(PROVIDERS_KEY, JSON.stringify(updated));
   } catch (error) {
     console.error("Error tracking provider view:", error);
   }
 }
 
-export function trackServiceView(service: Omit<RecentlyViewedService, "viewedAt">) {
+export function trackServiceView(
+  service: Omit<RecentlyViewedService, "viewedAt">,
+) {
   if (typeof window === "undefined") return;
-  
+
   try {
     const stored = localStorage.getItem(SERVICES_KEY);
-    const existing = stored ? (JSON.parse(stored) as RecentlyViewedService[]) : [];
-    
+    const existing = stored
+      ? (JSON.parse(stored) as RecentlyViewedService[])
+      : [];
+
     const filtered = existing.filter((s) => s.id !== service.id);
-    const updated = [
-      { ...service, viewedAt: Date.now() },
-      ...filtered,
-    ].slice(0, MAX_ITEMS);
-    
+    const updated = [{ ...service, viewedAt: Date.now() }, ...filtered].slice(
+      0,
+      MAX_ITEMS,
+    );
+
     localStorage.setItem(SERVICES_KEY, JSON.stringify(updated));
   } catch (error) {
     console.error("Error tracking service view:", error);

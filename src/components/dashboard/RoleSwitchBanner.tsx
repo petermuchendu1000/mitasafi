@@ -15,7 +15,10 @@ const NEW_ROLES_STORAGE_KEY = "mitasafi_newly_added_roles";
 const MAX_BANNER_VIEWS_PER_SESSION = 3;
 
 // Role display configuration
-const roleDisplayConfig: Record<UserRole, { label: string; icon: typeof Home; dashboardLabel: string }> = {
+const roleDisplayConfig: Record<
+  UserRole,
+  { label: string; icon: typeof Home; dashboardLabel: string }
+> = {
   tenant: {
     label: "Tenant",
     icon: Home,
@@ -33,11 +36,14 @@ const roleDisplayConfig: Record<UserRole, { label: string; icon: typeof Home; da
   },
 };
 
-function RoleSwitchBannerInner({ currentViewRole, allRoles }: RoleSwitchBannerProps) {
+function RoleSwitchBannerInner({
+  currentViewRole,
+  allRoles,
+}: RoleSwitchBannerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const newRole = searchParams.get("newRole") as UserRole | null;
-  
+
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
@@ -50,7 +56,7 @@ function RoleSwitchBannerInner({ currentViewRole, allRoles }: RoleSwitchBannerPr
     // Store the newly added role in localStorage (for badge persistence)
     const newRolesData = localStorage.getItem(NEW_ROLES_STORAGE_KEY);
     let newlyAddedRoles: Record<string, { addedAt: string }> = {};
-    
+
     try {
       if (newRolesData) {
         newlyAddedRoles = JSON.parse(newRolesData);
@@ -58,21 +64,24 @@ function RoleSwitchBannerInner({ currentViewRole, allRoles }: RoleSwitchBannerPr
     } catch {
       // Invalid data
     }
-    
+
     // Mark this role as newly added if not already
     if (!newlyAddedRoles[newRole]) {
       newlyAddedRoles[newRole] = { addedAt: new Date().toISOString() };
-      localStorage.setItem(NEW_ROLES_STORAGE_KEY, JSON.stringify(newlyAddedRoles));
+      localStorage.setItem(
+        NEW_ROLES_STORAGE_KEY,
+        JSON.stringify(newlyAddedRoles),
+      );
     }
 
     // Get session-based view tracking
     // Use sessionStorage for per-login tracking (clears when browser closes or new session)
     const sessionKey = `${BANNER_STORAGE_KEY}_${newRole}`;
     const sessionData = sessionStorage.getItem(sessionKey);
-    
+
     let viewCount = 0;
     let dismissed = false;
-    
+
     if (sessionData) {
       try {
         const parsed = JSON.parse(sessionData);
@@ -92,10 +101,13 @@ function RoleSwitchBannerInner({ currentViewRole, allRoles }: RoleSwitchBannerPr
     // Show banner and increment view count (up to MAX per session)
     if (viewCount < MAX_BANNER_VIEWS_PER_SESSION) {
       setIsVisible(true);
-      sessionStorage.setItem(sessionKey, JSON.stringify({
-        viewCount: viewCount + 1,
-        dismissed: false,
-      }));
+      sessionStorage.setItem(
+        sessionKey,
+        JSON.stringify({
+          viewCount: viewCount + 1,
+          dismissed: false,
+        }),
+      );
     } else {
       // After max views this session, stop showing automatically
       setIsVisible(false);
@@ -104,12 +116,12 @@ function RoleSwitchBannerInner({ currentViewRole, allRoles }: RoleSwitchBannerPr
 
   const handleDismiss = () => {
     if (!newRole) return;
-    
+
     // Mark as dismissed for this session
     const sessionKey = `${BANNER_STORAGE_KEY}_${newRole}`;
     const sessionData = sessionStorage.getItem(sessionKey);
     let viewCount = 0;
-    
+
     if (sessionData) {
       try {
         const parsed = JSON.parse(sessionData);
@@ -118,28 +130,33 @@ function RoleSwitchBannerInner({ currentViewRole, allRoles }: RoleSwitchBannerPr
         // Invalid data
       }
     }
-    
-    sessionStorage.setItem(sessionKey, JSON.stringify({
-      viewCount,
-      dismissed: true,
-    }));
-    
+
+    sessionStorage.setItem(
+      sessionKey,
+      JSON.stringify({
+        viewCount,
+        dismissed: true,
+      }),
+    );
+
     setIsDismissed(true);
-    
+
     // Clean URL by removing newRole param
     const params = new URLSearchParams(searchParams.toString());
     params.delete("newRole");
-    const newUrl = params.toString() ? `/dashboard?${params.toString()}` : "/dashboard";
+    const newUrl = params.toString()
+      ? `/dashboard?${params.toString()}`
+      : "/dashboard";
     router.replace(newUrl, { scroll: false });
   };
 
   const handleSwitchRole = () => {
     if (!newRole) return;
-    
+
     // Navigate to role-specific dashboard view
     // For now, we'll use a query param; later this can be a proper route
     router.push(`/dashboard?activeRole=${newRole}`);
-    
+
     // Also dismiss the banner
     handleDismiss();
   };
@@ -165,7 +182,8 @@ function RoleSwitchBannerInner({ currentViewRole, allRoles }: RoleSwitchBannerPr
                 You&apos;re now a {roleConfig.label}!
               </p>
               <p className="text-xs sm:text-sm text-white/80 hidden sm:block">
-                Switch to your {roleConfig.label.toLowerCase()} dashboard to get started
+                Switch to your {roleConfig.label.toLowerCase()} dashboard to get
+                started
               </p>
             </div>
           </div>
@@ -177,7 +195,9 @@ function RoleSwitchBannerInner({ currentViewRole, allRoles }: RoleSwitchBannerPr
               className="flex items-center gap-2 px-4 py-2 bg-white text-brand-700 rounded-lg font-semibold text-sm hover:bg-white/90 transition-colors"
             >
               <RoleIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">View {roleConfig.dashboardLabel}</span>
+              <span className="hidden sm:inline">
+                View {roleConfig.dashboardLabel}
+              </span>
               <span className="sm:hidden">Switch</span>
               <ArrowRight className="w-4 h-4" />
             </button>

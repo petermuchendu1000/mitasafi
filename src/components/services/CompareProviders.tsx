@@ -1,12 +1,12 @@
 /**
  * Compare Providers Feature
- * 
+ *
  * Allows users to compare up to 3 service providers side-by-side.
  * Consists of:
  * - CompareBar: Floating bar showing selected providers
  * - CompareModal: Full comparison view in a modal
  * - CompareProvider: React context for state management
- * 
+ *
  * Uses React Context with localStorage persistence.
  */
 
@@ -20,9 +20,23 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import { X, Scale, Star, CheckCircle, XCircle, MapPin, Clock, Zap } from "lucide-react";
+import {
+  X,
+  Scale,
+  Star,
+  CheckCircle,
+  XCircle,
+  MapPin,
+  Clock,
+  Zap,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatServicePrice, formatRating, TIER_CONFIG, getCategoryById } from "@/lib/constants";
+import {
+  formatServicePrice,
+  formatRating,
+  TIER_CONFIG,
+  getCategoryById,
+} from "@/lib/constants";
 import type { ServiceProviderCardData } from "@/types/service-providers";
 
 // =============================================================================
@@ -42,10 +56,14 @@ const CompareContext = createContext<CompareContextValue | null>(null);
 const STORAGE_KEY = "mitasafi-compare-providers";
 const MAX_PROVIDERS = 3;
 
-export function CompareProvidersProvider({ children }: { children: ReactNode }) {
+export function CompareProvidersProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [providers, setProviders] = useState<ServiceProviderCardData[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
-  
+
   // Load from localStorage on mount
   useEffect(() => {
     try {
@@ -61,7 +79,7 @@ export function CompareProvidersProvider({ children }: { children: ReactNode }) 
     }
     setIsHydrated(true);
   }, []);
-  
+
   // Persist to localStorage on change
   useEffect(() => {
     if (isHydrated) {
@@ -72,33 +90,36 @@ export function CompareProvidersProvider({ children }: { children: ReactNode }) 
       }
     }
   }, [providers, isHydrated]);
-  
-  const addProvider = useCallback((provider: ServiceProviderCardData): boolean => {
-    let added = false;
-    setProviders((prev) => {
-      if (prev.length >= MAX_PROVIDERS) return prev;
-      if (prev.some((p) => p.id === provider.id)) return prev;
-      added = true;
-      return [...prev, provider];
-    });
-    return added;
-  }, []);
-  
+
+  const addProvider = useCallback(
+    (provider: ServiceProviderCardData): boolean => {
+      let added = false;
+      setProviders((prev) => {
+        if (prev.length >= MAX_PROVIDERS) return prev;
+        if (prev.some((p) => p.id === provider.id)) return prev;
+        added = true;
+        return [...prev, provider];
+      });
+      return added;
+    },
+    [],
+  );
+
   const removeProvider = useCallback((providerId: string) => {
     setProviders((prev) => prev.filter((p) => p.id !== providerId));
   }, []);
-  
+
   const clearAll = useCallback(() => {
     setProviders([]);
   }, []);
-  
+
   const isInCompare = useCallback(
     (providerId: string): boolean => {
       return providers.some((p) => p.id === providerId);
     },
-    [providers]
+    [providers],
   );
-  
+
   return (
     <CompareContext.Provider
       value={{
@@ -117,7 +138,9 @@ export function CompareProvidersProvider({ children }: { children: ReactNode }) 
 export function useCompareProviders(): CompareContextValue {
   const context = useContext(CompareContext);
   if (!context) {
-    throw new Error("useCompareProviders must be used within CompareProvidersProvider");
+    throw new Error(
+      "useCompareProviders must be used within CompareProvidersProvider",
+    );
   }
   return context;
 }
@@ -133,9 +156,9 @@ interface CompareBarProps {
 export function CompareBar({ className }: CompareBarProps) {
   const { providers, removeProvider, clearAll } = useCompareProviders();
   const [showModal, setShowModal] = useState(false);
-  
+
   if (providers.length === 0) return null;
-  
+
   return (
     <>
       {/* Floating Bar */}
@@ -145,7 +168,7 @@ export function CompareBar({ className }: CompareBarProps) {
           "bg-white rounded-2xl shadow-xl border border-gray-200",
           "px-4 py-3 flex items-center gap-4",
           "animate-in slide-in-from-bottom-4 duration-300",
-          className
+          className,
         )}
       >
         {/* Provider Avatars */}
@@ -160,14 +183,18 @@ export function CompareBar({ className }: CompareBarProps) {
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
-                      e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                      e.currentTarget.nextElementSibling?.classList.remove(
+                        "hidden",
+                      );
                     }}
                   />
                 ) : null}
-                <div className={cn(
-                  "w-full h-full flex items-center justify-center bg-brand-100 text-brand-600 font-semibold",
-                  provider.logo_url && "hidden"
-                )}>
+                <div
+                  className={cn(
+                    "w-full h-full flex items-center justify-center bg-brand-100 text-brand-600 font-semibold",
+                    provider.logo_url && "hidden",
+                  )}
+                >
                   {provider.business_name.charAt(0)}
                 </div>
               </div>
@@ -179,7 +206,7 @@ export function CompareBar({ className }: CompareBarProps) {
               </button>
             </div>
           ))}
-          
+
           {/* Empty slots */}
           {Array.from({ length: 3 - providers.length }).map((_, i) => (
             <div
@@ -190,12 +217,15 @@ export function CompareBar({ className }: CompareBarProps) {
             </div>
           ))}
         </div>
-        
+
         {/* Compare Count */}
         <div className="text-sm text-gray-600">
-          <span className="font-semibold text-gray-900">{providers.length}</span> of 3
+          <span className="font-semibold text-gray-900">
+            {providers.length}
+          </span>{" "}
+          of 3
         </div>
-        
+
         {/* Actions */}
         <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
           <button
@@ -205,13 +235,13 @@ export function CompareBar({ className }: CompareBarProps) {
               "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors",
               providers.length >= 2
                 ? "bg-brand-600 text-white hover:bg-brand-700"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed",
             )}
           >
             <Scale className="w-4 h-4" />
             Compare
           </button>
-          
+
           <button
             onClick={clearAll}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -221,10 +251,13 @@ export function CompareBar({ className }: CompareBarProps) {
           </button>
         </div>
       </div>
-      
+
       {/* Comparison Modal */}
       {showModal && (
-        <CompareModal providers={providers} onClose={() => setShowModal(false)} />
+        <CompareModal
+          providers={providers}
+          onClose={() => setShowModal(false)}
+        />
       )}
     </>
   );
@@ -244,7 +277,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      
+
       {/* Modal */}
       <div className="relative min-h-screen flex items-start justify-center p-4 pt-16">
         <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden">
@@ -263,7 +296,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
               <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
-          
+
           {/* Content */}
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -271,7 +304,10 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
                 <tr>
                   <th className="text-left p-4 bg-gray-50 w-48 sticky left-0" />
                   {providers.map((provider) => (
-                    <th key={provider.id} className="p-4 bg-gray-50 min-w-[250px]">
+                    <th
+                      key={provider.id}
+                      className="p-4 bg-gray-50 min-w-[250px]"
+                    >
                       <ProviderHeader provider={provider} />
                     </th>
                   ))}
@@ -294,7 +330,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
                     </td>
                   ))}
                 </CompareRow>
-                
+
                 {/* Starting Price */}
                 <CompareRow label="Starting Price">
                   {providers.map((p) => (
@@ -305,7 +341,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
                     </td>
                   ))}
                 </CompareRow>
-                
+
                 {/* Verified */}
                 <CompareRow label="Verified">
                   {providers.map((p) => (
@@ -324,7 +360,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
                     </td>
                   ))}
                 </CompareRow>
-                
+
                 {/* Jobs Completed */}
                 <CompareRow label="Jobs Completed">
                   {providers.map((p) => (
@@ -335,7 +371,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
                     </td>
                   ))}
                 </CompareRow>
-                
+
                 {/* Response Time */}
                 <CompareRow label="Avg Response">
                   {providers.map((p) => (
@@ -353,7 +389,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
                     </td>
                   ))}
                 </CompareRow>
-                
+
                 {/* Instant Booking */}
                 <CompareRow label="Instant Booking">
                   {providers.map((p) => (
@@ -369,7 +405,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
                     </td>
                   ))}
                 </CompareRow>
-                
+
                 {/* Service Areas */}
                 <CompareRow label="Service Areas">
                   {providers.map((p) => (
@@ -392,7 +428,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
                     </td>
                   ))}
                 </CompareRow>
-                
+
                 {/* Categories */}
                 <CompareRow label="Services">
                   {providers.map((p) => (
@@ -406,7 +442,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
                               className={cn(
                                 "px-2 py-0.5 text-xs rounded",
                                 catInfo?.bgColor || "bg-gray-100",
-                                catInfo?.textColor || "text-gray-600"
+                                catInfo?.textColor || "text-gray-600",
                               )}
                             >
                               {catInfo?.name || categoryId}
@@ -422,7 +458,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
                     </td>
                   ))}
                 </CompareRow>
-                
+
                 {/* Tier */}
                 <CompareRow label="Membership">
                   {providers.map((p) => {
@@ -435,7 +471,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
                             className={cn(
                               "inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium",
                               tierInfo.bgColor,
-                              tierInfo.color
+                              tierInfo.color,
                             )}
                           >
                             {tierInfo.badge}
@@ -450,7 +486,7 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
               </tbody>
             </table>
           </div>
-          
+
           {/* Footer Actions */}
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
             <div className="flex justify-end gap-3">
@@ -475,14 +511,14 @@ function CompareModal({ providers, onClose }: CompareModalProps) {
 function ProviderHeader({ provider }: { provider: ServiceProviderCardData }) {
   const tier = provider.tier || "free";
   const tierInfo = TIER_CONFIG[tier];
-  
+
   return (
     <div className="flex flex-col items-center text-center">
       {/* Logo */}
       <div
         className={cn(
           "w-16 h-16 rounded-xl overflow-hidden mb-3 border-2",
-          tierInfo.borderColor
+          tierInfo.borderColor,
         )}
       >
         {provider.logo_url ? (
@@ -496,19 +532,21 @@ function ProviderHeader({ provider }: { provider: ServiceProviderCardData }) {
             }}
           />
         ) : null}
-        <div className={cn(
-          "w-full h-full flex items-center justify-center bg-brand-100 text-brand-600 font-bold text-xl",
-          provider.logo_url && "hidden"
-        )}>
+        <div
+          className={cn(
+            "w-full h-full flex items-center justify-center bg-brand-100 text-brand-600 font-bold text-xl",
+            provider.logo_url && "hidden",
+          )}
+        >
           {provider.business_name.charAt(0)}
         </div>
       </div>
-      
+
       {/* Name */}
       <h3 className="font-semibold text-gray-900 line-clamp-1">
         {provider.business_name}
       </h3>
-      
+
       {/* View Profile */}
       <a
         href={`/services/provider/${provider.id}`}
@@ -552,10 +590,11 @@ export function CompareButton({
   className,
   variant = "icon",
 }: CompareButtonProps) {
-  const { addProvider, removeProvider, isInCompare, providers } = useCompareProviders();
+  const { addProvider, removeProvider, isInCompare, providers } =
+    useCompareProviders();
   const isSelected = isInCompare(provider.id);
   const isFull = providers.length >= 3 && !isSelected;
-  
+
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
@@ -566,9 +605,9 @@ export function CompareButton({
         addProvider(provider);
       }
     },
-    [isSelected, isFull, provider, addProvider, removeProvider]
+    [isSelected, isFull, provider, addProvider, removeProvider],
   );
-  
+
   if (variant === "icon") {
     return (
       <button
@@ -579,23 +618,23 @@ export function CompareButton({
           isSelected
             ? "bg-brand-100 text-brand-600"
             : isFull
-            ? "bg-gray-100 text-gray-300 cursor-not-allowed"
-            : "bg-gray-100 text-gray-600 hover:bg-brand-50 hover:text-brand-600",
-          className
+              ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+              : "bg-gray-100 text-gray-600 hover:bg-brand-50 hover:text-brand-600",
+          className,
         )}
         title={
           isSelected
             ? "Remove from compare"
             : isFull
-            ? "Compare list full (max 3)"
-            : "Add to compare"
+              ? "Compare list full (max 3)"
+              : "Add to compare"
         }
       >
         <Scale className="w-5 h-5" />
       </button>
     );
   }
-  
+
   return (
     <button
       onClick={handleClick}
@@ -605,9 +644,9 @@ export function CompareButton({
         isSelected
           ? "bg-brand-100 text-brand-700"
           : isFull
-          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-          : "bg-gray-100 text-gray-700 hover:bg-brand-50 hover:text-brand-600",
-        className
+            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+            : "bg-gray-100 text-gray-700 hover:bg-brand-50 hover:text-brand-600",
+        className,
       )}
     >
       <Scale className="w-4 h-4" />

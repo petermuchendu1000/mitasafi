@@ -1,10 +1,10 @@
 /**
  * Save Search Button Component
- * 
+ *
  * Prominent button for saving search criteria as an alert.
  * - One click for logged-in users (auto-saves with user email)
  * - Opens modal for guests (captures email/phone)
- * 
+ *
  * High-value lead capture at moment of intent.
  */
 
@@ -48,28 +48,29 @@ function formatCriteriaLabel(criteria: SearchCriteria): string {
   if (criteria.query && criteria.query.trim()) {
     return criteria.query.trim();
   }
-  
+
   const parts: string[] = [];
-  
+
   if (criteria.bedroomsMin) {
     parts.push(`${criteria.bedroomsMin}+ bedroom`);
   }
-  
+
   if (criteria.propertyTypes && criteria.propertyTypes.length > 0) {
-    const types = criteria.propertyTypes.map(t => 
-      t.charAt(0).toUpperCase() + t.slice(1).toLowerCase().replace(/_/g, " ")
+    const types = criteria.propertyTypes.map(
+      (t) =>
+        t.charAt(0).toUpperCase() + t.slice(1).toLowerCase().replace(/_/g, " "),
     );
     parts.push(types.join(", "));
   }
-  
+
   if (criteria.areas && criteria.areas.length > 0) {
     parts.push(`in ${criteria.areas.slice(0, 2).join(", ")}`);
   }
-  
+
   if (criteria.priceMax) {
     parts.push(`under KES ${(criteria.priceMax / 1000).toFixed(0)}K`);
   }
-  
+
   return parts.join(" ") || "All new listings";
 }
 
@@ -96,10 +97,15 @@ export function SaveSearchButton({
   // Handle successful alert creation (from modal or quick save)
   const handleSuccess = () => {
     // Mark as saved in localStorage
-    const savedSearches = JSON.parse(localStorage.getItem("mitasafi_saved_searches") || "[]");
+    const savedSearches = JSON.parse(
+      localStorage.getItem("mitasafi_saved_searches") || "[]",
+    );
     savedSearches.push(JSON.stringify(searchCriteria));
-    localStorage.setItem("mitasafi_saved_searches", JSON.stringify(savedSearches));
-    
+    localStorage.setItem(
+      "mitasafi_saved_searches",
+      JSON.stringify(savedSearches),
+    );
+
     setIsSaved(true);
     success("You'll be notified when new listings match");
   };
@@ -110,9 +116,11 @@ export function SaveSearchButton({
   // Check if this search is already saved (for logged-in users)
   useEffect(() => {
     if (!isAuthenticated || !userId) return;
-    
+
     // Check localStorage for saved search hash
-    const savedSearches = JSON.parse(localStorage.getItem("mitasafi_saved_searches") || "[]");
+    const savedSearches = JSON.parse(
+      localStorage.getItem("mitasafi_saved_searches") || "[]",
+    );
     const searchHash = JSON.stringify(searchCriteria);
     setIsSaved(savedSearches.includes(searchHash));
   }, [searchCriteria, isAuthenticated, userId]);
@@ -176,10 +184,8 @@ export function SaveSearchButton({
           disabled={isSaving || isSaved}
           className={cn(
             "inline-flex items-center gap-1.5 text-sm font-medium transition-colors",
-            isSaved
-              ? "text-green-600"
-              : "text-gray-600 hover:text-gray-900",
-            className
+            isSaved ? "text-green-600" : "text-gray-600 hover:text-gray-900",
+            className,
           )}
         >
           {isSaving ? (
@@ -211,10 +217,12 @@ export function SaveSearchButton({
   if (variant === "banner") {
     return (
       <>
-        <div className={cn(
-          "flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200",
-          className
-        )}>
+        <div
+          className={cn(
+            "flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200",
+            className,
+          )}
+        >
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Bell className="w-4 h-4 text-gray-400" />
             <span>Get notified when new properties match this search</span>
@@ -226,7 +234,7 @@ export function SaveSearchButton({
               "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
               isSaved
                 ? "bg-green-100 text-green-700"
-                : "bg-gray-900 text-white hover:bg-gray-800"
+                : "bg-gray-900 text-white hover:bg-gray-800",
             )}
           >
             {isSaving ? (
@@ -268,7 +276,7 @@ export function SaveSearchButton({
           isSaved
             ? "bg-green-100 text-green-700 border border-green-200"
             : "bg-cta-500 hover:bg-cta-600 text-white",
-          className
+          className,
         )}
       >
         {isSaving ? (
