@@ -309,10 +309,18 @@ export function useRealtimeListingStatus(
   // Derived, not written by the effect's inactive branch.
   //
   // With nothing to monitor this hook holds no subscription, so "connected" is not a
-  // fact to be discovered. The effect wrote it one commit after the render in which
-  // listingIds had already emptied, and app/saved/page.tsx renders a Wifi / WifiOff
-  // indicator straight off this value — so removing your last saved property showed
-  // "Live updates" for a frame before switching to "Offline".
+  // fact to be discovered; it is known at render time. The effect used to write it one
+  // commit later, which is the extra render the rule reports.
+  //
+  // CORRECTION, recorded because the first version of this comment claimed otherwise:
+  // that extra commit is NOT user-visible in either consumer today. app/saved/page.tsx
+  // wraps its Wifi / WifiOff indicator in `listingIdsToMonitor.length > 0` — the same
+  // condition that deactivates this hook — so the whole indicator is removed in the
+  // very commit the list empties, and the stale "Live updates" frame never appears.
+  // The inquiries page does render its indicator ungated, but it never passes
+  // enabled: false, so it never reaches the inactive branch at all. This change buys
+  // one fewer commit and a value that cannot disagree with itself; it does not fix a
+  // visible defect, and saying it did would have been wrong.
   const isActive = enabled && listingIds.length > 0;
 
   return {

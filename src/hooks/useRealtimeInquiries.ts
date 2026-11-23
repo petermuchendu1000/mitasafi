@@ -322,10 +322,16 @@ export function useRealtimeInquiries(
   // Derived, not written by the effect's disabled branch.
   //
   // While `enabled` is false this hook is not subscribed to anything, so "connected"
-  // and the connection status are not facts to be discovered — they are known. The
-  // effect used to write them, one commit after the render in which enabled had
-  // already flipped, so a consumer rendering a connection indicator showed the stale
-  // "connected" state for a frame on the way down.
+  // and the connection status are known at render time rather than discovered. The
+  // effect used to write them one commit later, which is the extra render the rule
+  // reports.
+  //
+  // CORRECTION, recorded because the first version of this comment claimed otherwise:
+  // no consumer can see that extra commit today. The only caller
+  // (app/dashboard/inquiries/page.tsx) never passes enabled: false, so the disabled
+  // branch is unreachable from the application as it stands. This change buys one
+  // fewer commit and removes a value that could disagree with itself; it does not fix
+  // a visible defect.
   return {
     isConnected: enabled ? isConnected : false,
     status: enabled ? status : "disconnected",
