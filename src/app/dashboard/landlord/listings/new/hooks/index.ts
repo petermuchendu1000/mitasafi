@@ -1,19 +1,28 @@
 /**
  * Shared Hooks
- * 
+ *
  * Centralized exports for all wizard hooks.
  */
 
 // Commercial hooks
 export { useCommercialForm, useCommercialSubtype } from "./useCommercialForm";
-export type { UseCommercialFormReturn, UseCommercialSubtypeReturn } from "./useCommercialForm";
+export type {
+  UseCommercialFormReturn,
+  UseCommercialSubtypeReturn,
+} from "./useCommercialForm";
 
 // Residential hooks
 export { useResidentialForm, usePropertyType } from "./useResidentialForm";
-export type { UseResidentialFormReturn, UsePropertyTypeReturn } from "./useResidentialForm";
+export type {
+  UseResidentialFormReturn,
+  UsePropertyTypeReturn,
+} from "./useResidentialForm";
 
 // Optimized validation hooks
-export { useOptimizedValidation, useCachedValidation } from "./useOptimizedValidation";
+export {
+  useOptimizedValidation,
+  useCachedValidation,
+} from "./useOptimizedValidation";
 
 // Availability hooks
 export {
@@ -47,6 +56,5 @@ export {
   useDataRecovery,
   useGracefulDegradation,
   useOnlineStatus,
-  useOperationQueue,
   useReliableFetch,
 } from "./useReliability";

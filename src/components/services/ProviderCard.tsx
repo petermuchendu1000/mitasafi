@@ -1,15 +1,15 @@
 /**
  * Provider Card Component
- * 
+ *
  * Psychology-Optimized Design for Maximum Conversion
- * 
+ *
  * Design Principles:
  * 1. PRICE & RATING are #1 and #2 decision factors - always visible
  * 2. LOCATION confirms relevance - binary filter
  * 3. RESPONSE TIME & JOBS COMPLETED enable comparison without clicking
  * 4. VERIFIED reduces perceived risk - authority bias
  * 5. Minimal clutter - every element must help ELIMINATE or CHOOSE
- * 
+ *
  * Information Hierarchy:
  * - Tier 1 (Deal-breakers): Price, Rating+Count, Location, Availability
  * - Tier 2 (Differentiators): Verified, Jobs, Response Time, Instant Booking
@@ -18,14 +18,11 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import {
-  formatServicePrice,
-  getCategoryById,
-} from "@/lib/constants";
+import { formatServicePrice, getCategoryById } from "@/lib/constants";
 import { useAnalytics } from "@/lib/analytics/use-analytics";
 import { getResponseTimeLabel } from "@/types/service-providers";
 import type { ServiceProviderCardData } from "@/types/service-providers";
@@ -52,13 +49,16 @@ interface ProviderCardProps {
  * Format price for card display.
  * Clean, scannable: "KES 5,000" or "Get Quote"
  */
-function formatCardPrice(price: number | null, priceType: string | null): string {
+function formatCardPrice(
+  price: number | null,
+  priceType: string | null,
+): string {
   if (price === null || price === undefined || priceType === "quote_only") {
     return "Get Quote";
   }
   return formatServicePrice(
     price,
-    (priceType as "fixed" | "hourly" | "per_sqm" | "quote_only") || "fixed"
+    (priceType as "fixed" | "hourly" | "per_sqm" | "quote_only") || "fixed",
   );
 }
 
@@ -66,21 +66,29 @@ function formatCardPrice(price: number | null, priceType: string | null): string
 // SUB-COMPONENTS
 // =============================================================================
 
-
-
 // =============================================================================
 // CATEGORY PLACEHOLDER — soft background with category initial
 // =============================================================================
 
-function CategoryPlaceholder({ categoryId, businessName }: { categoryId?: string; businessName?: string }) {
+function CategoryPlaceholder({
+  categoryId,
+  businessName,
+}: {
+  categoryId?: string;
+  businessName?: string;
+}) {
   const category = categoryId ? getCategoryById(categoryId) : null;
   const bg = category?.bgColor || "bg-gray-100";
   const text = category?.textColor || "text-gray-400";
-  const initial = (businessName || category?.shortName || "S").charAt(0).toUpperCase();
+  const initial = (businessName || category?.shortName || "S")
+    .charAt(0)
+    .toUpperCase();
 
   return (
     <div className={cn("w-full h-full flex items-center justify-center", bg)}>
-      <span className={cn("text-4xl font-bold opacity-30 select-none", text)}>{initial}</span>
+      <span className={cn("text-4xl font-bold opacity-30 select-none", text)}>
+        {initial}
+      </span>
     </div>
   );
 }
@@ -101,7 +109,7 @@ export function ProviderCard({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const { track } = useAnalytics();
-  
+
   // =============================================
   // EVENT HANDLERS
   // =============================================
@@ -114,46 +122,80 @@ export function ProviderCard({
       tier: provider.tier,
       variant,
     });
-  }, [track, provider.id, provider.business_name, provider.rating_average, provider.tier, variant]);
-  
-  const handleSaveClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onSaveToggle?.(provider.id);
-  }, [provider.id, onSaveToggle]);
-  
+  }, [
+    track,
+    provider.id,
+    provider.business_name,
+    provider.rating_average,
+    provider.tier,
+    variant,
+  ]);
+
+  const handleSaveClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onSaveToggle?.(provider.id);
+    },
+    [provider.id, onSaveToggle],
+  );
+
   // =============================================
   // DERIVED DATA
   // =============================================
-  
+
   // Tier — for badge logic
   const isEnterprise = provider.tier === "enterprise";
   const isPremium = provider.tier === "premium";
 
   const carouselImages = (provider.service_image_urls || [])
-    .filter((url): url is string => typeof url === "string" && url.trim().length > 0)
+    .filter(
+      (url): url is string => typeof url === "string" && url.trim().length > 0,
+    )
     .slice(0, 3)
     .map((url, index) => ({ url, index }));
 
   const visibleCarouselImages = carouselImages.filter(
-    (image) => !imageErrorIndexes.includes(image.index)
+    (image) => !imageErrorIndexes.includes(image.index),
   );
-  const activeCarouselImage = visibleCarouselImages[activeImageIndex] ?? null;
-  const hasCarousel = visibleCarouselImages.length > 0;
+
+  // The index CLAMPED to what is currently visible, derived rather than corrected
+  // afterwards by an effect.
+  //
+  // activeImageIndex is state the user moves with the arrows. The list it indexes
+  // shrinks underneath it whenever an image fails to load (handleImageError adds its
+  // index to imageErrorIndexes). The effect below used to notice the index had fallen
+  // off the end and reset it to 0 — one render later. In that render
+  // `visibleCarouselImages[activeImageIndex]` was undefined, so activeCarouselImage
+  // was null and the card drew the CategoryPlaceholder: a provider's photo was
+  // replaced by a big grey letter for a frame before snapping back to the first image.
+  // The dots agreed with nothing in that render either, since none matched the index.
+  //
+  // Reading through a clamp instead makes the out-of-range state unobservable, so it
+  // no longer matters that activeImageIndex is briefly stale.
+  const safeImageIndex =
+    activeImageIndex < visibleCarouselImages.length ? activeImageIndex : 0;
+  const activeCarouselImage = visibleCarouselImages[safeImageIndex] ?? null;
+  // hasCarousel used to live here too. Its only reader was the clamping effect, and
+  // `activeCarouselImage !== null` already says the same thing to the render, so it
+  // went with the effect rather than being left behind as a dead local.
   const hasMultipleImages = visibleCarouselImages.length > 1;
-  
+
   // Primary category for placeholder fallback
   const primaryCategory = provider.categories?.[0];
-  
+
   // Location: "Westlands, Kilimani +3"
-  const areaDisplay = provider.service_areas?.length > 0
-    ? provider.service_areas.slice(0, 2).join(", ") + 
-      (provider.service_areas.length > 2 ? ` +${provider.service_areas.length - 2}` : "")
-    : null;
-  
+  const areaDisplay =
+    provider.service_areas?.length > 0
+      ? provider.service_areas.slice(0, 2).join(", ") +
+        (provider.service_areas.length > 2
+          ? ` +${provider.service_areas.length - 2}`
+          : "")
+      : null;
+
   // Price display
   const priceDisplay = formatCardPrice(provider.min_price, provider.price_type);
-  
+
   // Availability
   const isAvailable = provider.is_available !== false;
   const canInstantBook = provider.instant_booking && isAvailable;
@@ -166,34 +208,39 @@ export function ProviderCard({
       ? "bg-brand-500/95 text-white"
       : "";
 
-  useEffect(() => {
-    if (!hasCarousel) {
-      if (activeImageIndex !== 0) setActiveImageIndex(0);
-      return;
-    }
+  // The arrows step from the CLAMPED index, not from the raw state.
+  //
+  // These used the setState updater form, whose `prev` is the unclamped value. With a
+  // stale index of 2 over a list that had shrunk to 2 entries, "previous" went to 1 —
+  // skipping the image the user was looking at — and "next" went to 3, off the end
+  // again. Stepping from safeImageIndex is both correct and simpler to read.
+  const goToPreviousImage = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!hasMultipleImages) return;
+      setActiveImageIndex(
+        safeImageIndex === 0
+          ? visibleCarouselImages.length - 1
+          : safeImageIndex - 1,
+      );
+    },
+    [hasMultipleImages, safeImageIndex, visibleCarouselImages.length],
+  );
 
-    if (activeImageIndex > visibleCarouselImages.length - 1) {
-      setActiveImageIndex(0);
-    }
-  }, [activeImageIndex, hasCarousel, visibleCarouselImages.length]);
-
-  const goToPreviousImage = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!hasMultipleImages) return;
-    setActiveImageIndex((prev) =>
-      prev === 0 ? visibleCarouselImages.length - 1 : prev - 1
-    );
-  }, [hasMultipleImages, visibleCarouselImages.length]);
-
-  const goToNextImage = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!hasMultipleImages) return;
-    setActiveImageIndex((prev) =>
-      prev === visibleCarouselImages.length - 1 ? 0 : prev + 1
-    );
-  }, [hasMultipleImages, visibleCarouselImages.length]);
+  const goToNextImage = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!hasMultipleImages) return;
+      setActiveImageIndex(
+        safeImageIndex === visibleCarouselImages.length - 1
+          ? 0
+          : safeImageIndex + 1,
+      );
+    },
+    [hasMultipleImages, safeImageIndex, visibleCarouselImages.length],
+  );
 
   const goToImage = useCallback((e: React.MouseEvent, index: number) => {
     e.preventDefault();
@@ -220,9 +267,9 @@ export function ProviderCard({
       className={cn(
         "absolute top-3 right-3 h-8 px-3 flex items-center justify-center rounded-full shadow-sm transition-all duration-200 backdrop-blur-sm text-xs font-semibold",
         isHovered ? "opacity-100" : "opacity-0",
-        isSaved 
-          ? "bg-cta-500 text-white" 
-          : "bg-white/90 text-gray-500 hover:text-cta-500 hover:bg-white"
+        isSaved
+          ? "bg-cta-500 text-white"
+          : "bg-white/90 text-gray-500 hover:text-cta-500 hover:bg-white",
       )}
       title={isSaved ? "Saved" : "Save for later"}
     >
@@ -239,7 +286,7 @@ export function ProviderCard({
   // Matches Fiverr/Thumbtack/TaskRabbit pattern: one contextual label, not a service list.
   // Multi-service detail belongs on the provider detail page, not the browse card.
   const categoryLabel = primaryCategory
-    ? getCategoryById(primaryCategory)?.shortName ?? null
+    ? (getCategoryById(primaryCategory)?.shortName ?? null)
     : null;
 
   // =============================================
@@ -252,7 +299,7 @@ export function ProviderCard({
         className={cn(
           "group relative bg-white rounded-xl overflow-hidden transition-all duration-200",
           "shadow-soft hover:shadow-medium hover:-translate-y-0.5",
-          className
+          className,
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -276,7 +323,10 @@ export function ProviderCard({
                 onError={handleImageError}
               />
             ) : (
-              <CategoryPlaceholder categoryId={primaryCategory} businessName={provider.business_name} />
+              <CategoryPlaceholder
+                categoryId={primaryCategory}
+                businessName={provider.business_name}
+              />
             )}
 
             {hasMultipleImages && (
@@ -310,9 +360,9 @@ export function ProviderCard({
                     aria-label={`View image ${index + 1}`}
                     className={cn(
                       "h-1.5 rounded-full transition-all",
-                      index === activeImageIndex
+                      index === safeImageIndex
                         ? "w-4 bg-white"
-                        : "w-1.5 bg-white/70"
+                        : "w-1.5 bg-white/70",
                     )}
                   />
                 ))}
@@ -321,10 +371,12 @@ export function ProviderCard({
 
             {badgeLabel && (
               <div className="absolute top-2 left-2">
-                <span className={cn(
-                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-sm backdrop-blur-sm",
-                  badgeClass
-                )}>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-sm backdrop-blur-sm",
+                    badgeClass,
+                  )}
+                >
                   {badgeLabel}
                 </span>
               </div>
@@ -356,10 +408,13 @@ export function ProviderCard({
 
             {/* Price + Rating */}
             <div className="flex items-center justify-between mt-auto min-w-0">
-              <span className="text-base font-bold text-gray-900 flex-shrink-0">{priceDisplay}</span>
+              <span className="text-base font-bold text-gray-900 flex-shrink-0">
+                {priceDisplay}
+              </span>
               {provider.rating_average != null && (
                 <span className="text-sm text-gray-600">
-                  {provider.rating_average.toFixed(1)} <span className="text-amber-500">★</span>
+                  {provider.rating_average.toFixed(1)}{" "}
+                  <span className="text-amber-500">★</span>
                 </span>
               )}
             </div>
@@ -383,7 +438,7 @@ export function ProviderCard({
         "shadow-soft hover:shadow-medium hover:-translate-y-0.5",
         // Featured gets a subtle top accent bar via ring
         isFeatured && "ring-1 ring-brand-200",
-        className
+        className,
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -409,7 +464,10 @@ export function ProviderCard({
               onError={handleImageError}
             />
           ) : (
-            <CategoryPlaceholder categoryId={primaryCategory} businessName={provider.business_name} />
+            <CategoryPlaceholder
+              categoryId={primaryCategory}
+              businessName={provider.business_name}
+            />
           )}
 
           {hasMultipleImages && (
@@ -443,30 +501,32 @@ export function ProviderCard({
                   aria-label={`View image ${index + 1}`}
                   className={cn(
                     "h-1.5 rounded-full transition-all",
-                    index === activeImageIndex
+                    index === safeImageIndex
                       ? "w-5 bg-white"
-                      : "w-1.5 bg-white/70"
+                      : "w-1.5 bg-white/70",
                   )}
                 />
               ))}
             </div>
           )}
-          
+
           {/* TOP-LEFT: Single badge (never stack) */}
           {badgeLabel && (
             <div className="absolute top-3 left-3">
-              <span className={cn(
-                "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm backdrop-blur-sm",
-                badgeClass
-              )}>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm backdrop-blur-sm",
+                  badgeClass,
+                )}
+              >
                 {badgeLabel}
               </span>
             </div>
           )}
-          
+
           {/* TOP-RIGHT: Save action */}
           {SaveButton}
-          
+
           {/* BOTTOM-LEFT: Instant booking indicator */}
           {canInstantBook && (
             <div className="absolute bottom-3 left-3">
@@ -475,7 +535,7 @@ export function ProviderCard({
               </span>
             </div>
           )}
-          
+
           {/* BOTTOM-LEFT: Unavailable (overrides instant indicator) */}
           {!isAvailable && (
             <div className="absolute bottom-3 left-3">
@@ -485,12 +545,11 @@ export function ProviderCard({
             </div>
           )}
         </div>
-        
+
         {/* ============================================= */}
         {/* CONTENT                                      */}
         {/* ============================================= */}
         <div className="p-4 flex flex-col flex-1">
-          
           {/* ROW 1: Name (smaller) + Verified badge right */}
           <div className="flex items-center gap-1.5 mb-1">
             <h3 className="text-sm font-medium text-gray-900 leading-tight group-hover:text-brand-700 transition-colors line-clamp-1 flex-1 min-w-0">
@@ -511,25 +570,34 @@ export function ProviderCard({
             {provider.rating_average != null && provider.rating_average > 0 && (
               <span className="flex items-center gap-0.5">
                 <span className="text-amber-500">★</span>
-                <span className="font-semibold text-gray-700">{provider.rating_average.toFixed(1)}</span>
+                <span className="font-semibold text-gray-700">
+                  {provider.rating_average.toFixed(1)}
+                </span>
                 {provider.rating_count != null && provider.rating_count > 0 && (
-                  <span className="text-gray-400">({provider.rating_count})</span>
+                  <span className="text-gray-400">
+                    ({provider.rating_count})
+                  </span>
                 )}
               </span>
             )}
             {provider.response_time_minutes != null && (
               <>
-                {provider.rating_average != null && provider.rating_average > 0 && (
-                  <span className="text-gray-300">·</span>
-                )}
-                <span>{getResponseTimeLabel(provider.response_time_minutes)}</span>
+                {provider.rating_average != null &&
+                  provider.rating_average > 0 && (
+                    <span className="text-gray-300">·</span>
+                  )}
+                <span>
+                  {getResponseTimeLabel(provider.response_time_minutes)}
+                </span>
               </>
             )}
           </div>
-          
+
           {/* ROW 4: Price + Location — anchored to bottom */}
           <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
-            <span className="text-sm font-bold text-gray-900">{priceDisplay}</span>
+            <span className="text-sm font-bold text-gray-900">
+              {priceDisplay}
+            </span>
             {areaDisplay && (
               <span className="text-xs text-gray-400 min-w-0 truncate ml-2">
                 {areaDisplay}
@@ -551,7 +619,7 @@ export function ProviderCardSkeleton() {
     <div className="bg-white rounded-xl shadow-soft overflow-hidden animate-pulse">
       {/* Image skeleton — 16:9 */}
       <div className="aspect-video bg-gray-200" />
-      
+
       {/* Content skeleton */}
       <div className="p-4 space-y-2.5">
         {/* Row 1: Name + verified */}
@@ -559,13 +627,13 @@ export function ProviderCardSkeleton() {
           <div className="h-4 bg-gray-200 rounded w-2/3" />
           <div className="h-3 bg-gray-200 rounded w-14" />
         </div>
-        
+
         {/* Row 2: Tagline */}
         <div className="h-3 bg-gray-200 rounded w-full" />
-        
+
         {/* Row 3: Rating + response */}
         <div className="h-3 bg-gray-200 rounded w-40" />
-        
+
         {/* Row 4: Price + Location */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <div className="h-4 bg-gray-200 rounded w-20" />

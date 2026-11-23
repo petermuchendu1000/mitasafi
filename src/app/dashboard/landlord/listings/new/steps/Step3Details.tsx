@@ -1,9 +1,9 @@
 /**
  * Step 3: Property Details
- * 
+ *
  * Captures physical specifications: bedrooms, bathrooms, size,
  * condition, and furnishing level.
- * 
+ *
  * OPTIMIZED: Cleaner copy, teal accent colors for selection states
  * REFACTORED: Uses useResidentialForm hook for standardized validation
  */
@@ -14,9 +14,9 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Minus, Plus, ChevronDown } from "lucide-react";
 import { useResidentialForm, usePropertyType } from "../hooks";
-import { 
-  CONDITIONS, 
-  FURNISHING_OPTIONS, 
+import {
+  CONDITIONS,
+  FURNISHING_OPTIONS,
   FLOOR_LEVELS,
   type PropertyCondition,
   type FurnishingType,
@@ -27,10 +27,10 @@ export function Step3Details() {
   // Use shared hook for standardized state management & validation
   const { formData, updateFields, isRequired } = useResidentialForm(3);
   const { propertyType, hasFixedBedrooms } = usePropertyType();
-  
-  const { 
-    bedrooms, 
-    bathrooms, 
+
+  const {
+    bedrooms,
+    bathrooms,
     sizeSqft,
     sizeUnit,
     floorLevel,
@@ -43,18 +43,18 @@ export function Step3Details() {
 
   // Determine if bedrooms are editable based on property type
   const isBedroomEditable = !hasFixedBedrooms;
-  
+
   // Current year for validation (memoized)
   const currentYear = useMemo(() => getCurrentYear(), []);
 
   // Note: Validation is now handled automatically by useResidentialForm hook
 
   const handleNumberChange = (
-    field: string, 
-    value: number, 
-    min: number, 
+    field: string,
+    value: number,
+    min: number,
     max: number,
-    step: number = 1
+    step: number = 1,
   ) => {
     const newValue = Math.max(min, Math.min(max, value));
     updateFields({ [field]: newValue });
@@ -88,7 +88,7 @@ export function Step3Details() {
           Tell us about the unit
         </h2>
         <p className="text-gray-500">
-          Size, condition, and what's included
+          Size, condition, and what&apos;s included
         </p>
       </div>
 
@@ -98,7 +98,7 @@ export function Step3Details() {
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Basics</h3>
           </div>
-          
+
           <div className="p-5 space-y-6">
             {/* Bedrooms & Bathrooms Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -116,23 +116,25 @@ export function Step3Details() {
                       "w-10 h-10 rounded-lg border flex items-center justify-center transition-colors",
                       isBedroomEditable && bedrooms > 0
                         ? "border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400"
-                        : "border-gray-200 text-gray-300 cursor-not-allowed"
+                        : "border-gray-200 text-gray-300 cursor-not-allowed",
                     )}
                   >
                     <Minus className="w-4 h-4" />
                   </button>
-                  
-                  <div className={cn(
-                    "flex-1 text-center py-2.5 rounded-lg border",
-                    isBedroomEditable 
-                      ? "border-gray-300 bg-white"
-                      : "border-gray-200 bg-gray-50"
-                  )}>
+
+                  <div
+                    className={cn(
+                      "flex-1 text-center py-2.5 rounded-lg border",
+                      isBedroomEditable
+                        ? "border-gray-300 bg-white"
+                        : "border-gray-200 bg-gray-50",
+                    )}
+                  >
                     <span className="text-lg font-semibold text-gray-900">
                       {bedrooms === 0 ? "Studio" : bedrooms}
                     </span>
                   </div>
-                  
+
                   <button
                     type="button"
                     onClick={incrementBedrooms}
@@ -141,7 +143,7 @@ export function Step3Details() {
                       "w-10 h-10 rounded-lg border flex items-center justify-center transition-colors",
                       isBedroomEditable && bedrooms < 20
                         ? "border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400"
-                        : "border-gray-200 text-gray-300 cursor-not-allowed"
+                        : "border-gray-200 text-gray-300 cursor-not-allowed",
                     )}
                   >
                     <Plus className="w-4 h-4" />
@@ -168,18 +170,18 @@ export function Step3Details() {
                       "w-10 h-10 rounded-lg border flex items-center justify-center transition-colors",
                       bathrooms > 1
                         ? "border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400"
-                        : "border-gray-200 text-gray-300 cursor-not-allowed"
+                        : "border-gray-200 text-gray-300 cursor-not-allowed",
                     )}
                   >
                     <Minus className="w-4 h-4" />
                   </button>
-                  
+
                   <div className="flex-1 text-center py-2.5 rounded-lg border border-gray-300 bg-white">
                     <span className="text-lg font-semibold text-gray-900">
                       {bathrooms}
                     </span>
                   </div>
-                  
+
                   <button
                     type="button"
                     onClick={incrementBathrooms}
@@ -188,7 +190,7 @@ export function Step3Details() {
                       "w-10 h-10 rounded-lg border flex items-center justify-center transition-colors",
                       bathrooms < 10
                         ? "border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400"
-                        : "border-gray-200 text-gray-300 cursor-not-allowed"
+                        : "border-gray-200 text-gray-300 cursor-not-allowed",
                     )}
                   >
                     <Plus className="w-4 h-4" />
@@ -203,31 +205,39 @@ export function Step3Details() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Property Size
-                  <span className="text-gray-400 font-normal ml-1">(Optional)</span>
+                  <span className="text-gray-400 font-normal ml-1">
+                    (Optional)
+                  </span>
                 </label>
                 <div className="flex">
                   <input
                     type="number"
                     value={sizeSqft || ""}
-                    onChange={(e) => updateFields({ 
-                      sizeSqft: e.target.value ? parseInt(e.target.value) : null 
-                    })}
+                    onChange={(e) =>
+                      updateFields({
+                        sizeSqft: e.target.value
+                          ? parseInt(e.target.value)
+                          : null,
+                      })
+                    }
                     placeholder="e.g., 1200"
                     className={cn(
                       "flex-1 px-4 py-2.5 rounded-l-lg border border-r-0 border-gray-300 bg-white",
                       "text-gray-900 placeholder:text-gray-400",
-                      "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent focus:z-10"
+                      "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent focus:z-10",
                     )}
                   />
                   <select
                     value={sizeUnit}
-                    onChange={(e) => updateFields({ 
-                      sizeUnit: e.target.value as "sqft" | "sqm" 
-                    })}
+                    onChange={(e) =>
+                      updateFields({
+                        sizeUnit: e.target.value as "sqft" | "sqm",
+                      })
+                    }
                     className={cn(
                       "px-3 py-2.5 rounded-r-lg border border-gray-300 bg-gray-50",
                       "text-gray-700 font-medium",
-                      "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
                     )}
                   >
                     <option value="sqft">sq ft</option>
@@ -240,21 +250,27 @@ export function Step3Details() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Floor Level
-                  <span className="text-gray-400 font-normal ml-1">(Optional)</span>
+                  <span className="text-gray-400 font-normal ml-1">
+                    (Optional)
+                  </span>
                 </label>
                 <div className="relative">
                   <select
                     value={floorLevel}
-                    onChange={(e) => updateFields({ floorLevel: e.target.value })}
+                    onChange={(e) =>
+                      updateFields({ floorLevel: e.target.value })
+                    }
                     className={cn(
                       "w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white appearance-none",
                       "text-gray-900",
-                      "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
                     )}
                   >
                     <option value="">Select floor</option>
                     {FLOOR_LEVELS.map((level) => (
-                      <option key={level} value={level}>{level}</option>
+                      <option key={level} value={level}>
+                        {level}
+                      </option>
                     ))}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
@@ -269,7 +285,7 @@ export function Step3Details() {
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Property Condition</h3>
           </div>
-          
+
           <div className="p-5 space-y-6">
             {/* Condition */}
             <div>
@@ -281,13 +297,15 @@ export function Step3Details() {
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => updateFields({ condition: c.id as PropertyCondition })}
+                    onClick={() =>
+                      updateFields({ condition: c.id as PropertyCondition })
+                    }
                     className={cn(
                       "px-4 py-3 rounded-lg border-2 text-center transition-all",
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2",
                       condition === c.id
                         ? "border-teal-600 bg-teal-50 text-teal-700"
-                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300",
                     )}
                   >
                     <span className="block font-medium text-sm">{c.label}</span>
@@ -301,21 +319,27 @@ export function Step3Details() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Year Built
-                  <span className="text-gray-400 font-normal ml-1">(Optional)</span>
+                  <span className="text-gray-400 font-normal ml-1">
+                    (Optional)
+                  </span>
                 </label>
                 <input
                   type="number"
                   value={yearBuilt || ""}
-                  onChange={(e) => updateFields({ 
-                    yearBuilt: e.target.value ? parseInt(e.target.value) : null 
-                  })}
+                  onChange={(e) =>
+                    updateFields({
+                      yearBuilt: e.target.value
+                        ? parseInt(e.target.value)
+                        : null,
+                    })
+                  }
                   placeholder="e.g., 2015"
                   min={1900}
                   max={currentYear}
                   className={cn(
                     "w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white",
                     "text-gray-900 placeholder:text-gray-400",
-                    "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
                   )}
                 />
               </div>
@@ -323,21 +347,27 @@ export function Step3Details() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Last Renovated
-                  <span className="text-gray-400 font-normal ml-1">(Optional)</span>
+                  <span className="text-gray-400 font-normal ml-1">
+                    (Optional)
+                  </span>
                 </label>
                 <input
                   type="number"
                   value={lastRenovated || ""}
-                  onChange={(e) => updateFields({ 
-                    lastRenovated: e.target.value ? parseInt(e.target.value) : null 
-                  })}
+                  onChange={(e) =>
+                    updateFields({
+                      lastRenovated: e.target.value
+                        ? parseInt(e.target.value)
+                        : null,
+                    })
+                  }
                   placeholder="e.g., 2022"
                   min={yearBuilt || 1900}
                   max={currentYear}
                   className={cn(
                     "w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white",
                     "text-gray-900 placeholder:text-gray-400",
-                    "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
                   )}
                 />
               </div>
@@ -350,26 +380,30 @@ export function Step3Details() {
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Furnishing</h3>
           </div>
-          
+
           <div className="p-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {FURNISHING_OPTIONS.map((opt) => (
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => updateFields({ furnishing: opt.id as FurnishingType })}
+                  onClick={() =>
+                    updateFields({ furnishing: opt.id as FurnishingType })
+                  }
                   className={cn(
                     "px-4 py-4 rounded-lg border-2 text-left transition-all",
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2",
                     furnishing === opt.id
                       ? "border-teal-600 bg-teal-50"
-                      : "border-gray-200 bg-white hover:border-gray-300"
+                      : "border-gray-200 bg-white hover:border-gray-300",
                   )}
                 >
-                  <span className={cn(
-                    "block font-medium",
-                    furnishing === opt.id ? "text-teal-700" : "text-gray-900"
-                  )}>
+                  <span
+                    className={cn(
+                      "block font-medium",
+                      furnishing === opt.id ? "text-teal-700" : "text-gray-900",
+                    )}
+                  >
                     {opt.label}
                   </span>
                   <span className="text-xs text-gray-500 mt-0.5 block">

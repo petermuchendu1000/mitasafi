@@ -10,8 +10,15 @@
 // - Optionally saving the new location for future use
 // =============================================================================
 
-import { useState, useEffect } from "react";
-import { MapPin, Plus, Home, Briefcase, Building2, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import {
+  MapPin,
+  Plus,
+  Home,
+  Briefcase,
+  Building2,
+  ChevronDown,
+} from "lucide-react";
 import { NAIROBI_AREAS } from "@/lib/constants";
 import type { LocationType } from "@/types/bookings";
 
@@ -54,16 +61,21 @@ export function LocationPicker({
   value,
   onChange,
 }: LocationPickerProps) {
-  const [mode, setMode] = useState<"saved" | "new">(
-    savedLocations.length > 0 ? "saved" : "new"
+  // What the user last chose. Only meaningful while there are saved locations.
+  const [preferredMode, setPreferredMode] = useState<"saved" | "new">(
+    savedLocations.length > 0 ? "saved" : "new",
   );
 
-  // If no saved locations, force "new" mode
-  useEffect(() => {
-    if (savedLocations.length === 0) {
-      setMode("new");
-    }
-  }, [savedLocations.length]);
+  // Derived, not synchronised by an effect.
+  //
+  // This used to be plain state forced to "new" from a useEffect whenever
+  // savedLocations emptied. That left one render in between where the state still
+  // said "saved" and the list was already empty — and in that render NEITHER branch
+  // below draws anything, because the saved list is guarded by
+  // `savedLocations.length > 0` and the new-address form by `mode === "new"`. The
+  // user saw an empty panel until the effect landed. Deriving removes the gap: there
+  // is no render in which the two disagree.
+  const mode = savedLocations.length === 0 ? "new" : preferredMode;
 
   function handleSelectSaved(locId: string) {
     const loc = savedLocations.find((l) => l.id === locId);
@@ -79,7 +91,7 @@ export function LocationPicker({
 
   function handleFieldChange(
     field: keyof LocationData,
-    fieldValue: string | boolean
+    fieldValue: string | boolean,
   ) {
     onChange({ ...value, locationId: undefined, [field]: fieldValue });
   }
@@ -91,7 +103,7 @@ export function LocationPicker({
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setMode("saved")}
+            onClick={() => setPreferredMode("saved")}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors ${
               mode === "saved"
                 ? "border-teal-600 bg-teal-50 text-teal-700"
@@ -104,7 +116,7 @@ export function LocationPicker({
           <button
             type="button"
             onClick={() => {
-              setMode("new");
+              setPreferredMode("new");
               onChange({
                 ...value,
                 locationId: undefined,
@@ -188,7 +200,7 @@ export function LocationPicker({
               htmlFor="loc-address2"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Floor / unit  (optional)
+              Floor / unit (optional)
             </label>
             <input
               id="loc-address2"
@@ -241,7 +253,11 @@ export function LocationPicker({
                 [
                   { value: "home", label: "Home", icon: Home },
                   { value: "office", label: "Office", icon: Briefcase },
-                  { value: "public_place", label: "Public Place", icon: Building2 },
+                  {
+                    value: "public_place",
+                    label: "Public Place",
+                    icon: Building2,
+                  },
                   { value: "other", label: "Other", icon: MapPin },
                 ] as const
               ).map((opt) => (
@@ -273,9 +289,7 @@ export function LocationPicker({
             <textarea
               id="loc-access"
               value={value.accessNotes}
-              onChange={(e) =>
-                handleFieldChange("accessNotes", e.target.value)
-              }
+              onChange={(e) => handleFieldChange("accessNotes", e.target.value)}
               placeholder="e.g. Gate code 1234, ask for the watchman at the blue gate"
               rows={2}
               className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"

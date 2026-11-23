@@ -1,16 +1,16 @@
 /**
  * Listings Grid Component
- * 
+ *
  * Grid layout for displaying property listings with pagination.
  * Supports empty states, loading states, and view count.
  * Uses shared compact ListingCard component (Fiverr-style).
- * 
+ *
  * Features:
  * - Auto-refresh every 30 seconds for fresh listing data
  * - Refresh on window focus (when user returns to tab)
  * - Low inventory banner when few results in area
  * - Save search functionality for logged-in and guest users
- * 
+ *
  * Design: 70% teal, 30% orange accents
  */
 
@@ -19,7 +19,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { ListingCard, ListingCardSkeleton, type ListingCardData } from "@/components/shared";
+import {
+  ListingCard,
+  ListingCardSkeleton,
+  type ListingCardData,
+} from "@/components/shared";
 import { LowInventoryBanner } from "./LowInventoryBanner";
 import { SaveSearchButton } from "./SaveSearchButton";
 import { cn } from "@/lib/utils";
@@ -103,7 +107,12 @@ export function ListingsGrid({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [lastRefresh, setLastRefresh] = useState(Date.now());
+  // Lazy initialiser, not `useState(Date.now())`. The argument form evaluates Date.now()
+  // on EVERY render and discards all but the first result — an impure call during render
+  // (react-hooks/purity) for a value that is only ever used from mount. The initial state
+  // is identical either way: the mount timestamp, compared at :151 to decide whether a
+  // window-focus event is recent enough to skip a refresh.
+  const [lastRefresh, setLastRefresh] = useState(() => Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Build search criteria from current URL params
@@ -113,7 +122,7 @@ export function ListingsGrid({
   const beds = searchParams.get("beds");
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
-  
+
   const searchCriteria = {
     areas: area ? [area] : undefined,
     propertyTypes: propertyType ? [propertyType] : undefined,
@@ -124,7 +133,14 @@ export function ListingsGrid({
   };
 
   // Check if there are active filters
-  const hasActiveFilters = !!(area || propertyType || beds || minPrice || maxPrice || searchQuery);
+  const hasActiveFilters = !!(
+    area ||
+    propertyType ||
+    beds ||
+    minPrice ||
+    maxPrice ||
+    searchQuery
+  );
 
   // Check for low inventory
   const isLowInventory = total > 0 && total < LOW_INVENTORY_THRESHOLD;
@@ -215,7 +231,8 @@ export function ListingsGrid({
       {/* Results Count & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <p className="text-sm text-gray-700">
-          Showing <span className="font-bold text-gray-900">{listings.length}</span> of{" "}
+          Showing{" "}
+          <span className="font-bold text-gray-900">{listings.length}</span> of{" "}
           <span className="font-bold text-gray-900">{total}</span> properties
           {totalPages > 1 && (
             <span className="text-gray-500 hidden sm:inline ml-2">
@@ -223,7 +240,7 @@ export function ListingsGrid({
             </span>
           )}
         </p>
-        
+
         {/* Save Search Button - shows when there are active filters */}
         {hasActiveFilters && (
           <SaveSearchButton
@@ -264,7 +281,7 @@ export function ListingsGrid({
 // Empty State Component
 function EmptyState({ userAuth }: { userAuth?: UserAuthInfo }) {
   const searchParams = useSearchParams();
-  
+
   // Build search criteria from URL params
   const area = searchParams.get("area");
   const propertyType = searchParams.get("type");
@@ -272,7 +289,7 @@ function EmptyState({ userAuth }: { userAuth?: UserAuthInfo }) {
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
   const searchQuery = searchParams.get("q");
-  
+
   const searchCriteria = {
     areas: area ? [area] : undefined,
     propertyTypes: propertyType ? [propertyType] : undefined,
@@ -283,10 +300,18 @@ function EmptyState({ userAuth }: { userAuth?: UserAuthInfo }) {
   };
 
   // Check if any filters are applied
-  const hasFilters = !!(area || propertyType || beds || minPrice || maxPrice || searchQuery);
+  const hasFilters = !!(
+    area ||
+    propertyType ||
+    beds ||
+    minPrice ||
+    maxPrice ||
+    searchQuery
+  );
 
   // Build a human-readable description of what they searched for
-  const searchDescription = searchQuery || buildSearchDescription(searchCriteria);
+  const searchDescription =
+    searchQuery || buildSearchDescription(searchCriteria);
 
   return (
     <div className="text-center py-16">
@@ -297,16 +322,14 @@ function EmptyState({ userAuth }: { userAuth?: UserAuthInfo }) {
         No properties found
       </h3>
       <p className="text-gray-600 max-w-md mx-auto mb-2">
-        {hasFilters 
+        {hasFilters
           ? `We couldn't find any "${searchDescription}" right now.`
-          : "We couldn't find any properties matching your criteria."
-        }
+          : "We couldn't find any properties matching your criteria."}
       </p>
       <p className="text-sm text-gray-500 max-w-md mx-auto mb-8">
-        {hasFilters 
+        {hasFilters
           ? "New properties are listed daily. Get notified when one matches your search."
-          : "Try different filters or get notified when new properties are listed."
-        }
+          : "Try different filters or get notified when new properties are listed."}
       </p>
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
         {hasFilters && (
@@ -341,14 +364,14 @@ function buildSearchDescription(criteria: {
   priceMax?: number;
 }): string {
   const parts: string[] = [];
-  
+
   if (criteria.bedroomsMin) {
     parts.push(`${criteria.bedroomsMin}+ bedroom`);
   }
-  
+
   if (criteria.propertyTypes && criteria.propertyTypes.length > 0) {
     // Format property type nicely (e.g., "bedsitter" -> "bedsitters")
-    const types = criteria.propertyTypes.map(t => {
+    const types = criteria.propertyTypes.map((t) => {
       const formatted = t.toLowerCase().replace(/_/g, " ");
       return formatted.endsWith("s") ? formatted : `${formatted}s`;
     });
@@ -356,15 +379,15 @@ function buildSearchDescription(criteria: {
   } else {
     parts.push("properties");
   }
-  
+
   if (criteria.areas && criteria.areas.length > 0) {
     parts.push(`in ${criteria.areas.join(" or ")}`);
   }
-  
+
   if (criteria.priceMax) {
     parts.push(`under KES ${(criteria.priceMax / 1000).toFixed(0)}K`);
   }
-  
+
   return parts.join(" ");
 }
 
@@ -379,7 +402,7 @@ function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
   // Generate page numbers to show
   const getPageNumbers = () => {
     const pages: (number | "...")[] = [];
-    
+
     if (totalPages <= 7) {
       // Show all pages
       for (let i = 1; i <= totalPages; i++) {
@@ -388,24 +411,28 @@ function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
     } else {
       // Always show first page
       pages.push(1);
-      
+
       if (page > 3) {
         pages.push("...");
       }
-      
+
       // Show pages around current
-      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+      for (
+        let i = Math.max(2, page - 1);
+        i <= Math.min(totalPages - 1, page + 1);
+        i++
+      ) {
         pages.push(i);
       }
-      
+
       if (page < totalPages - 2) {
         pages.push("...");
       }
-      
+
       // Always show last page
       pages.push(totalPages);
     }
-    
+
     return pages;
   };
 
@@ -419,7 +446,7 @@ function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
           "inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
           page === 1
             ? "text-gray-300 cursor-not-allowed"
-            : "text-gray-700 hover:bg-gray-100"
+            : "text-gray-700 hover:bg-gray-100",
         )}
       >
         <ChevronLeft className="w-4 h-4" />
@@ -428,7 +455,7 @@ function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
 
       {/* Page Numbers */}
       <div className="flex items-center gap-1">
-        {getPageNumbers().map((pageNum, index) => (
+        {getPageNumbers().map((pageNum, index) =>
           pageNum === "..." ? (
             <span key={`dots-${index}`} className="px-3 py-2 text-gray-400">
               ...
@@ -441,13 +468,13 @@ function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
                 "min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                 pageNum === page
                   ? "bg-brand-600 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
+                  : "text-gray-700 hover:bg-gray-100",
               )}
             >
               {pageNum}
             </button>
-          )
-        ))}
+          ),
+        )}
       </div>
 
       {/* Next */}
@@ -458,7 +485,7 @@ function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
           "inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
           page === totalPages
             ? "text-gray-300 cursor-not-allowed"
-            : "text-gray-700 hover:bg-gray-100"
+            : "text-gray-700 hover:bg-gray-100",
         )}
       >
         <span className="hidden sm:inline">Next</span>

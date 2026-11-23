@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
@@ -42,22 +42,46 @@ const SCROLL_THRESHOLD = 100;
 // COMPONENT
 // =============================================================================
 
+/**
+ * The scroll position is an external store, so it is read as one.
+ *
+ * The effect used to call handleScroll() in its own body to seed the initial value,
+ * which is the reported setState: a page refreshed mid-scroll painted the transparent
+ * navbar first and the solid one a commit later.
+ *
+ * Being straight about what this does and does not fix: it does NOT remove that
+ * second paint. The server cannot know the scroll position, so useSyncExternalStore
+ * renders getServerSnapshot (false) during hydration and only then reads the real
+ * value — exactly two renders, as before. What it removes is the setState in the
+ * effect, the hand-rolled initial read, and the asymmetry risk in add/remove; the
+ * subscription is now described once and torn down by the same code that made it.
+ *
+ * The snapshot is a BOOLEAN. useSyncExternalStore compares snapshots with Object.is
+ * during render, so returning window.scrollY itself would re-render on every pixel;
+ * a primitive derived at the threshold changes only when the navbar's appearance does.
+ */
+function subscribeToScroll(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("scroll", onChange, { passive: true });
+  return () => window.removeEventListener("scroll", onChange);
+}
+
+function getIsScrolled(): boolean {
+  return window.scrollY > SCROLL_THRESHOLD;
+}
+
+/** No scroll position on the server; render the top-of-page navbar. */
+function getIsScrolledOnServer(): boolean {
+  return false;
+}
+
 export function ServicesNavbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
+  const isScrolled = useSyncExternalStore(
+    subscribeToScroll,
+    getIsScrolled,
+    getIsScrolledOnServer,
+  );
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // ── Scroll listener ──────────────────────────────────────────────────────
-  const handleScroll = useCallback(() => {
-    setIsScrolled(window.scrollY > SCROLL_THRESHOLD);
-  }, []);
-
-  useEffect(() => {
-    // Check initial scroll position (e.g., after page refresh mid-scroll)
-    handleScroll();
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
 
   // ── Lock body scroll when mobile menu is open ────────────────────────────
   useEffect(() => {
@@ -88,7 +112,7 @@ export function ServicesNavbar() {
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         isScrolled
           ? "bg-white/95 backdrop-blur-md shadow-soft"
-          : "bg-transparent"
+          : "bg-transparent",
       )}
       role="banner"
     >
@@ -121,7 +145,7 @@ export function ServicesNavbar() {
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
                   isScrolled
                     ? "text-gray-700 hover:text-brand-600 hover:bg-gray-100"
-                    : "text-white/90 hover:text-white hover:bg-white/10"
+                    : "text-white/90 hover:text-white hover:bg-white/10",
                 )}
               >
                 {label}
@@ -138,7 +162,7 @@ export function ServicesNavbar() {
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
                 isScrolled
                   ? "text-gray-700 hover:text-brand-600 hover:bg-gray-100"
-                  : "text-white/90 hover:text-white hover:bg-white/10"
+                  : "text-white/90 hover:text-white hover:bg-white/10",
               )}
             >
               {AUTH_LINKS.login.label}
@@ -150,7 +174,7 @@ export function ServicesNavbar() {
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
                 isScrolled
                   ? "bg-cta-600 text-white hover:bg-cta-700 focus-visible:ring-cta-500"
-                  : "bg-white text-cta-700 hover:bg-white/90 focus-visible:ring-white"
+                  : "bg-white text-cta-700 hover:bg-white/90 focus-visible:ring-white",
               )}
             >
               {AUTH_LINKS.signup.label}
@@ -165,7 +189,7 @@ export function ServicesNavbar() {
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
               isScrolled
                 ? "text-gray-700 hover:bg-gray-100"
-                : "text-white hover:bg-white/10"
+                : "text-white hover:bg-white/10",
             )}
             onClick={() => setIsMobileMenuOpen(true)}
             aria-label="Open navigation menu"
@@ -175,19 +199,19 @@ export function ServicesNavbar() {
             <span
               className={cn(
                 "block w-5 h-0.5 rounded-full transition-colors",
-                isScrolled ? "bg-gray-700" : "bg-white"
+                isScrolled ? "bg-gray-700" : "bg-white",
               )}
             />
             <span
               className={cn(
                 "block w-5 h-0.5 rounded-full mt-1.5 transition-colors",
-                isScrolled ? "bg-gray-700" : "bg-white"
+                isScrolled ? "bg-gray-700" : "bg-white",
               )}
             />
             <span
               className={cn(
                 "block w-5 h-0.5 rounded-full mt-1.5 transition-colors",
-                isScrolled ? "bg-gray-700" : "bg-white"
+                isScrolled ? "bg-gray-700" : "bg-white",
               )}
             />
           </button>
@@ -220,7 +244,10 @@ export function ServicesNavbar() {
               aria-label="Close navigation menu"
             >
               {/* × close character — no Lucide icon */}
-              <span className="text-2xl font-light leading-none" aria-hidden="true">
+              <span
+                className="text-2xl font-light leading-none"
+                aria-hidden="true"
+              >
                 ×
               </span>
             </button>

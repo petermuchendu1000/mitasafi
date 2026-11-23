@@ -1,29 +1,29 @@
 /**
  * Unavailable Listing Modal
- * 
+ *
  * Shown when a user's saved listing becomes unavailable (rented/paused/archived).
  * Captures leads by offering:
  * 1. Notification when THIS listing becomes available again (waitlist)
  * 2. Alerts for SIMILAR listings in the same area
  * 3. Display of similar available listings
- * 
+ *
  * This is a HIGH-VALUE lead capture moment - the user had intent for a specific property.
  */
 
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { 
-  X, 
-  Bell, 
-  Mail, 
+import {
+  X,
+  Bell,
+  Mail,
   Loader2,
   CheckCircle,
   AlertCircle,
   Home,
   MapPin,
   Clock,
-  ArrowRight
+  ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -93,37 +93,62 @@ function formatPrice(amount: number, currency = "KES"): string {
 }
 
 // Status messages
-function getStatusMessage(status: string): { title: string; description: string; icon: "rented" | "paused" } {
+function getStatusMessage(status: string): {
+  title: string;
+  description: string;
+  icon: "rented" | "paused";
+} {
   switch (status) {
     case "rented":
       return {
         title: "This property has been rented",
-        description: "Someone else got there first, but don't worry - we can help you find similar options.",
+        description:
+          "Someone else got there first, but don't worry - we can help you find similar options.",
         icon: "rented",
       };
     case "paused":
       return {
         title: "This property is temporarily unavailable",
-        description: "The landlord has paused this listing. It may become available again soon.",
+        description:
+          "The landlord has paused this listing. It may become available again soon.",
         icon: "paused",
       };
     case "archived":
       return {
         title: "This listing has been removed",
-        description: "The landlord has taken down this listing, but we have similar properties.",
+        description:
+          "The landlord has taken down this listing, but we have similar properties.",
         icon: "rented",
       };
     default:
       return {
         title: "This property is no longer available",
-        description: "But we can notify you when similar properties become available.",
+        description:
+          "But we can notify you when similar properties become available.",
         icon: "rented",
       };
   }
 }
 
-export function UnavailableListingModal({
-  isOpen,
+/**
+ * The modal is MOUNTED only while it is open.
+ *
+ * It already rendered nothing when closed, so it stayed mounted holding the previous
+ * session's state, and an effect reset that state whenever isOpen went true. The
+ * effect is the reported setState, and because it runs after the first open render,
+ * reopening the modal after a successful waitlist join painted one frame of the
+ * "You're on the list" success panel before the form appeared.
+ *
+ * Gating the mount puts the defaults in useState initialisers, which run before paint.
+ * Every value the old effect reset was reset unconditionally, so unmounting preserves
+ * nothing that was being preserved before.
+ */
+export function UnavailableListingModal(props: UnavailableListingModalProps) {
+  if (!props.isOpen) return null;
+  return <UnavailableListingModalContent {...props} />;
+}
+
+function UnavailableListingModalContent({
   onClose,
   listing,
   similarListings = [],
@@ -133,45 +158,35 @@ export function UnavailableListingModal({
   userPhone,
 }: UnavailableListingModalProps) {
   const [activeTab, setActiveTab] = useState<"waitlist" | "similar">(
-    listing.status === "paused" ? "waitlist" : "similar"
+    listing.status === "paused" ? "waitlist" : "similar",
   );
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState(userEmail || "");
+  const [phone, setPhone] = useState(
+    userPhone ? formatPhone(userPhone.replace("+254", "")) : "",
+  );
   const [wantsSimilar, setWantsSimilar] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const emailInputRef = useRef<HTMLInputElement>(null);
 
-  // Pre-fill from user profile
+  // Focus the email input on mount, which is now the same thing as "when the modal
+  // opens". The timer is cleared on unmount, which the old version did not do.
   useEffect(() => {
-    if (isOpen) {
-      setEmail(userEmail || "");
-      setPhone(userPhone ? formatPhone(userPhone.replace("+254", "")) : "");
-      setIsSuccess(false);
-      setError(null);
-    }
-  }, [isOpen, userEmail, userPhone]);
+    if (isAuthenticated) return;
+    const timer = setTimeout(() => emailInputRef.current?.focus(), 100);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated]);
 
-  // Focus email input when modal opens
+  // Prevent body scroll for as long as this component exists. The `else` branch that
+  // cleared the style when closed is gone: unmounting runs the cleanup.
   useEffect(() => {
-    if (isOpen && !isAuthenticated && emailInputRef.current) {
-      setTimeout(() => emailInputRef.current?.focus(), 100);
-    }
-  }, [isOpen, isAuthenticated]);
-
-  // Prevent body scroll
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isOpen]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,14 +273,12 @@ export function UnavailableListingModal({
     }
   };
 
-  if (!isOpen) return null;
-
   const statusInfo = getStatusMessage(listing.status);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -280,7 +293,7 @@ export function UnavailableListingModal({
           >
             <X className="w-5 h-5" />
           </button>
-          
+
           <div className="flex gap-4">
             {/* Listing thumbnail */}
             <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-700">
@@ -297,10 +310,14 @@ export function UnavailableListingModal({
                 </div>
               )}
               {/* Status badge */}
-              <div className={cn(
-                "absolute inset-0 flex items-center justify-center",
-                listing.status === "rented" ? "bg-red-500/80" : "bg-yellow-500/80"
-              )}>
+              <div
+                className={cn(
+                  "absolute inset-0 flex items-center justify-center",
+                  listing.status === "rented"
+                    ? "bg-red-500/80"
+                    : "bg-yellow-500/80",
+                )}
+              >
                 {listing.status === "rented" ? (
                   <span className="text-xs font-bold">RENTED</span>
                 ) : (
@@ -308,7 +325,7 @@ export function UnavailableListingModal({
                 )}
               </div>
             </div>
-            
+
             {/* Listing info */}
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold truncate">{listing.title}</h3>
@@ -342,12 +359,11 @@ export function UnavailableListingModal({
                 You&apos;re on the list!
               </h3>
               <p className="text-gray-600 mb-6 max-w-xs mx-auto">
-                {listing.status === "paused" 
+                {listing.status === "paused"
                   ? "We'll notify you when this property becomes available again."
-                  : "We'll notify you when similar properties become available."
-                }
+                  : "We'll notify you when similar properties become available."}
               </p>
-              
+
               {/* Similar listings CTA */}
               {similarListings.length > 0 && (
                 <div className="bg-gray-50 rounded-xl p-4 text-left">
@@ -378,7 +394,9 @@ export function UnavailableListingModal({
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{similar.title}</p>
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {similar.title}
+                          </p>
                           <p className="text-sm text-gray-600">
                             {formatPrice(similar.rent_amount, similar.currency)}
                           </p>
@@ -389,7 +407,7 @@ export function UnavailableListingModal({
                   </div>
                 </div>
               )}
-              
+
               <button
                 onClick={onClose}
                 className="mt-6 bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 px-8 rounded-xl transition-colors"
@@ -410,7 +428,7 @@ export function UnavailableListingModal({
                       "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors",
                       activeTab === "waitlist"
                         ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-600 hover:text-gray-900"
+                        : "text-gray-600 hover:text-gray-900",
                     )}
                   >
                     <Clock className="w-4 h-4 inline mr-1" />
@@ -423,7 +441,7 @@ export function UnavailableListingModal({
                       "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors",
                       activeTab === "similar"
                         ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-600 hover:text-gray-900"
+                        : "text-gray-600 hover:text-gray-900",
                     )}
                   >
                     <Home className="w-4 h-4 inline mr-1" />
@@ -435,15 +453,26 @@ export function UnavailableListingModal({
               {/* Form description */}
               <div className="text-sm text-gray-600">
                 {listing.status === "paused" && activeTab === "waitlist" ? (
-                  <p>Enter your details and we&apos;ll notify you the moment this property becomes available again.</p>
+                  <p>
+                    Enter your details and we&apos;ll notify you the moment this
+                    property becomes available again.
+                  </p>
                 ) : (
-                  <p>Get notified when similar {listing.bedrooms ? `${listing.bedrooms} bedroom` : ""} properties in <strong>{listing.area}</strong> become available.</p>
+                  <p>
+                    Get notified when similar{" "}
+                    {listing.bedrooms ? `${listing.bedrooms} bedroom` : ""}{" "}
+                    properties in <strong>{listing.area}</strong> become
+                    available.
+                  </p>
                 )}
               </div>
 
               {/* Email field */}
               <div>
-                <label htmlFor="unavail-email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="unavail-email"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Email address <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -463,8 +492,12 @@ export function UnavailableListingModal({
 
               {/* Phone field (optional) */}
               <div>
-                <label htmlFor="unavail-phone" className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone <span className="text-gray-400">(optional, for SMS)</span>
+                <label
+                  htmlFor="unavail-phone"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Phone{" "}
+                  <span className="text-gray-400">(optional, for SMS)</span>
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">
@@ -491,8 +524,12 @@ export function UnavailableListingModal({
                     className="mt-0.5 w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
                   />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Also notify me about similar properties</p>
-                    <p className="text-xs text-gray-500">In case this one doesn&apos;t become available</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      Also notify me about similar properties
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      In case this one doesn&apos;t become available
+                    </p>
                   </div>
                 </label>
               )}
@@ -513,7 +550,7 @@ export function UnavailableListingModal({
                   "w-full py-4 rounded-xl font-semibold text-white transition-all",
                   "flex items-center justify-center gap-2",
                   "bg-gray-900 hover:bg-gray-800",
-                  "disabled:bg-gray-300"
+                  "disabled:bg-gray-300",
                 )}
               >
                 {isSubmitting ? (
@@ -539,7 +576,9 @@ export function UnavailableListingModal({
         {/* Similar listings preview (when not in success state) */}
         {!isSuccess && similarListings.length > 0 && (
           <div className="border-t bg-gray-50 p-4">
-            <p className="text-xs font-medium text-gray-500 uppercase mb-3">Similar Available Properties</p>
+            <p className="text-xs font-medium text-gray-500 uppercase mb-3">
+              Similar Available Properties
+            </p>
             <div className="flex gap-3 overflow-x-auto pb-2">
               {similarListings.slice(0, 4).map((similar) => (
                 <Link
@@ -563,8 +602,12 @@ export function UnavailableListingModal({
                       </div>
                     )}
                   </div>
-                  <p className="text-xs font-medium text-gray-900 truncate">{similar.area}</p>
-                  <p className="text-xs text-gray-600">{formatPrice(similar.rent_amount)}</p>
+                  <p className="text-xs font-medium text-gray-900 truncate">
+                    {similar.area}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {formatPrice(similar.rent_amount)}
+                  </p>
                 </Link>
               ))}
             </div>

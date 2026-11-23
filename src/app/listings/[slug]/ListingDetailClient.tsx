@@ -1,9 +1,9 @@
 /**
  * Listing Detail Client Component
- * 
+ *
  * Client-side wrapper for the listing detail page.
  * Handles interactivity like inquiry modal, navigation, etc.
- * 
+ *
  * Layout:
  * - Mobile: Stacked cards with sticky bottom CTA
  * - Desktop: 2-column with sticky sidebar
@@ -13,14 +13,16 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { 
-  ArrowLeft, 
-  Share2, 
+import { sessionFlagStore } from "@/lib/browser-storage/local-store";
+import { useLocalStore } from "@/lib/browser-storage/useLocalStore";
+import {
+  ArrowLeft,
+  Share2,
   Heart,
   MessageCircle,
   AlertTriangle,
   Clock,
-  Bell
+  Bell,
 } from "lucide-react";
 import { Navbar, Footer } from "@/components/landing";
 import { Container } from "@/components/ui";
@@ -34,8 +36,17 @@ import {
   SimilarListings,
 } from "@/components/listings";
 import { UnavailableListingModal } from "@/components/listings/UnavailableListingModal";
-import type { Listing, ListingCard, PriceBreakdown } from "@/lib/listings/types";
+import type {
+  Listing,
+  ListingCard,
+  PriceBreakdown,
+} from "@/lib/listings/types";
 import { cn } from "@/lib/utils";
+import {
+  addSavedListing,
+  removeSavedListing,
+} from "@/lib/saved-listings/store";
+import { useIsListingSaved } from "@/lib/saved-listings/useIsListingSaved";
 
 interface ListingDetailClientProps {
   listing: Listing;
@@ -51,12 +62,12 @@ interface ListingDetailClientProps {
 // Format relative time
 function formatRelativeTime(dateString: string | null): string {
   if (!dateString) return "";
-  
+
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays} days ago`;
@@ -88,10 +99,18 @@ export function ListingDetailClient({
 }: ListingDetailClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [inquiryOpen, setInquiryOpen] = useState(false);
+  // An explicit open from one of the Contact buttons, as opposed to the URL flag.
+  const [inquiryOpenedByUser, setInquiryOpenedByUser] = useState(false);
   const [unavailableModalOpen, setUnavailableModalOpen] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  
+
+  // Subscribed, not sampled at mount. This page renders THREE readers of the saved key at
+  // once — this heart, the Navbar count, and the SimilarListings cards — and this was the
+  // only one that did not listen. Measured in a browser before the change: a save made by
+  // any other component moved the Navbar badge to 1 while this heart stayed empty, and
+  // because handleSave then still believed the listing was unsaved, the next click on it
+  // appended a SECOND entry for the same id and the badge read 2.
+  const isSaved = useIsListingSaved(listing.id);
+
   // Check if listing is unavailable
   const isUnavailable = listing.status !== "active";
   const unavailableStatus = listing.status as "rented" | "paused" | "archived";
@@ -107,26 +126,50 @@ export function ListingDetailClient({
     }
   }, [isUnavailable]);
 
-  // Auto-open inquiry modal when returning from signup
-  // Track dismissed state to prevent re-opening on browser back
+  // Whether the inquiry modal is open is DERIVED from the URL, the dismissal flag and
+  // an explicit open, rather than written into state by an effect.
+  //
+  // The effect this replaces read ?openInquiry=true and sessionStorage and then called
+  // setInquiryOpenedByUser(true) — the reported setState — so a visitor returning from signup
+  // got one painted frame of the page without the modal before it appeared.
+  //
+  // sessionStorage cannot be read during render directly: the server has none, so the
+  // server and the hydration render would disagree. sessionFlagStore goes through
+  // useSyncExternalStore, whose server snapshot is false, so both sides render the
+  // same markup and the real value is applied immediately after hydration.
+  const inquiryDismissed = useLocalStore(
+    sessionFlagStore(`inquiry-dismissed-${listing.id}`),
+  );
+  const urlWantsInquiry =
+    searchParams.get("openInquiry") === "true" && isAuthenticated;
+  const inquiryOpen =
+    inquiryOpenedByUser || (urlWantsInquiry && !inquiryDismissed);
+
+  // Clean the ?openInquiry flag out of the address bar.
+  //
+  // BUG FIXED HERE, and it is not the lint finding: this built a URL with the
+  // parameter removed and then called
+  //     window.history.replaceState({}, "", url.pathname)
+  // passing only the PATH. Every other query parameter went with it — so arriving at
+  // /listings/x?openInquiry=true&ref=whatsapp&utm_source=newsletter silently dropped
+  // ref and utm_source from the address bar, and from anything that later read them.
+  // url.search is now carried through.
+  //
+  // No setState here, and none needed: the modal's visibility no longer depends on
+  // this running.
   useEffect(() => {
-    const dismissedKey = `inquiry-dismissed-${listing.id}`;
-    const wasDismissed = sessionStorage.getItem(dismissedKey);
-    
-    if (searchParams.get("openInquiry") === "true" && isAuthenticated && !wasDismissed) {
-      setInquiryOpen(true);
-      // Clean up URL without triggering navigation
-      const url = new URL(window.location.href);
-      url.searchParams.delete("openInquiry");
-      window.history.replaceState({}, "", url.pathname);
-    }
-  }, [searchParams, isAuthenticated, listing.id]);
+    if (!urlWantsInquiry) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("openInquiry");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+  }, [urlWantsInquiry]);
 
   // Handle modal close - track dismissal to prevent re-open on back
   const handleInquiryClose = () => {
-    setInquiryOpen(false);
-    // Mark as dismissed so browser back doesn't reopen it
-    sessionStorage.setItem(`inquiry-dismissed-${listing.id}`, "true");
+    setInquiryOpenedByUser(false);
+    // Mark as dismissed so browser back doesn't reopen it. Writing through the store
+    // notifies, so the derived value above updates in the same tick.
+    sessionFlagStore(`inquiry-dismissed-${listing.id}`).write(true);
   };
 
   const handleShare = async () => {
@@ -149,44 +192,16 @@ export function ListingDetailClient({
     }
   };
 
+  // Toggle saved state in local storage (works for everyone, syncs when logged in).
+  // addSavedListing is idempotent, so even a stale view cannot append a duplicate entry
+  // the way the previous read-push-write did.
   const handleSave = () => {
-    // Toggle saved state in local storage (works for everyone, syncs when logged in)
-    const STORAGE_KEY = "mitasafi_saved_listings";
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      if (isSaved) {
-        // Remove from saved
-        const updated = saved.filter((s: { listingId: string }) => s.listingId !== listing.id);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        setIsSaved(false);
-      } else {
-        // Add to saved with current status for change tracking
-        saved.push({ 
-          listingId: listing.id, 
-          savedAt: new Date().toISOString(),
-          lastKnownStatus: listing.status || "active"
-        });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-        setIsSaved(true);
-      }
-      // Dispatch event for navbar to update saved count
-      window.dispatchEvent(new CustomEvent("savedListingsChanged"));
-    } catch (e) {
-      console.error("Failed to save listing:", e);
+    if (isSaved) {
+      removeSavedListing(listing.id);
+    } else {
+      addSavedListing(listing.id, listing.status || "active");
     }
   };
-
-  // Initialize saved state from local storage
-  useEffect(() => {
-    const STORAGE_KEY = "mitasafi_saved_listings";
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      const isListingSaved = saved.some((s: { listingId: string }) => s.listingId === listing.id);
-      setIsSaved(isListingSaved);
-    } catch {
-      // Ignore parse errors
-    }
-  }, [listing.id]);
 
   // Safe back navigation - only goes back if previous page was internal
   const handleBack = () => {
@@ -197,7 +212,8 @@ export function ListingDetailClient({
     } else {
       // Check referrer to avoid going back to external sites
       const referrer = document.referrer;
-      const isInternalReferrer = referrer && referrer.includes(window.location.host);
+      const isInternalReferrer =
+        referrer && referrer.includes(window.location.host);
       if (isInternalReferrer) {
         router.back();
       } else {
@@ -209,7 +225,7 @@ export function ListingDetailClient({
   return (
     <>
       <Navbar />
-      
+
       <main className="min-h-screen bg-white pt-16 pb-24 md:pb-8">
         {/* Breadcrumb & Actions Bar */}
         <div className="border-b border-gray-100 sticky top-16 z-30 bg-white">
@@ -224,15 +240,19 @@ export function ListingDetailClient({
                   <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
                 <nav className="hidden sm:flex items-center gap-2 text-sm text-gray-500">
-                  <button 
+                  <button
                     onClick={() => router.replace("/properties")}
                     className="hover:text-brand-600 transition-colors"
                   >
                     Listings
                   </button>
                   <span>/</span>
-                  <button 
-                    onClick={() => router.replace(`/properties?area=${encodeURIComponent(listing.area)}`)}
+                  <button
+                    onClick={() =>
+                      router.replace(
+                        `/properties?area=${encodeURIComponent(listing.area)}`,
+                      )
+                    }
                     className="hover:text-brand-600 transition-colors"
                   >
                     {listing.area}
@@ -243,7 +263,7 @@ export function ListingDetailClient({
                   </span>
                 </nav>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleShare}
@@ -256,9 +276,9 @@ export function ListingDetailClient({
                   onClick={handleSave}
                   className={cn(
                     "p-2 rounded-full transition-colors",
-                    isSaved 
-                      ? "bg-error-50 text-error-500" 
-                      : "hover:bg-gray-100 text-gray-600"
+                    isSaved
+                      ? "bg-error-50 text-error-500"
+                      : "hover:bg-gray-100 text-gray-600",
                   )}
                   aria-label={isSaved ? "Remove from saved" : "Save listing"}
                 >
@@ -272,42 +292,52 @@ export function ListingDetailClient({
         <Container className="mt-4">
           {/* Unavailable Banner */}
           {isUnavailable && (
-            <div className={cn(
-              "rounded-xl p-4 mb-4 flex items-start gap-3",
-              unavailableStatus === "rented" ? "bg-red-50 border border-red-100" : "bg-yellow-50 border border-yellow-100"
-            )}>
+            <div
+              className={cn(
+                "rounded-xl p-4 mb-4 flex items-start gap-3",
+                unavailableStatus === "rented"
+                  ? "bg-red-50 border border-red-100"
+                  : "bg-yellow-50 border border-yellow-100",
+              )}
+            >
               {unavailableStatus === "rented" ? (
                 <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
               ) : (
                 <Clock className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               )}
               <div className="flex-1">
-                <p className={cn(
-                  "font-medium",
-                  unavailableStatus === "rented" ? "text-red-800" : "text-yellow-800"
-                )}>
-                  {unavailableStatus === "rented" 
-                    ? "This property has been rented" 
-                    : "This property is temporarily unavailable"
-                  }
+                <p
+                  className={cn(
+                    "font-medium",
+                    unavailableStatus === "rented"
+                      ? "text-red-800"
+                      : "text-yellow-800",
+                  )}
+                >
+                  {unavailableStatus === "rented"
+                    ? "This property has been rented"
+                    : "This property is temporarily unavailable"}
                 </p>
-                <p className={cn(
-                  "text-sm mt-1",
-                  unavailableStatus === "rented" ? "text-red-600" : "text-yellow-700"
-                )}>
+                <p
+                  className={cn(
+                    "text-sm mt-1",
+                    unavailableStatus === "rented"
+                      ? "text-red-600"
+                      : "text-yellow-700",
+                  )}
+                >
                   {unavailableStatus === "rented"
                     ? "Someone else got there first, but we can notify you about similar properties."
-                    : "The landlord has paused this listing. We can notify you when it's available again."
-                  }
+                    : "The landlord has paused this listing. We can notify you when it's available again."}
                 </p>
               </div>
               <button
                 onClick={() => setUnavailableModalOpen(true)}
                 className={cn(
                   "flex-shrink-0 font-medium text-sm py-2 px-4 rounded-lg flex items-center gap-2 transition-colors",
-                  unavailableStatus === "rented" 
-                    ? "bg-red-100 text-red-700 hover:bg-red-200" 
-                    : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                  unavailableStatus === "rented"
+                    ? "bg-red-100 text-red-700 hover:bg-red-200"
+                    : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
                 )}
               >
                 <Bell className="w-4 h-4" />
@@ -317,8 +347,8 @@ export function ListingDetailClient({
           )}
 
           {/* Photo Gallery */}
-          <ListingGallery 
-            photos={listing.photos} 
+          <ListingGallery
+            photos={listing.photos}
             title={listing.title}
             isVerified={listing.is_verified}
           />
@@ -357,8 +387,16 @@ export function ListingDetailClient({
                   price={priceBreakdown}
                   availableNow={listing.available_now}
                   availableFrom={listing.available_from}
-                  onContact={isUnavailable ? () => setUnavailableModalOpen(true) : () => setInquiryOpen(true)}
-                  onScheduleViewing={isUnavailable ? () => setUnavailableModalOpen(true) : () => setInquiryOpen(true)}
+                  onContact={
+                    isUnavailable
+                      ? () => setUnavailableModalOpen(true)
+                      : () => setInquiryOpenedByUser(true)
+                  }
+                  onScheduleViewing={
+                    isUnavailable
+                      ? () => setUnavailableModalOpen(true)
+                      : () => setInquiryOpenedByUser(true)
+                  }
                   isAuthenticated={isAuthenticated}
                   isUnavailable={isUnavailable}
                 />
@@ -392,8 +430,16 @@ export function ListingDetailClient({
                   price={priceBreakdown}
                   availableNow={listing.available_now}
                   availableFrom={listing.available_from}
-                  onContact={isUnavailable ? () => setUnavailableModalOpen(true) : () => setInquiryOpen(true)}
-                  onScheduleViewing={isUnavailable ? () => setUnavailableModalOpen(true) : () => setInquiryOpen(true)}
+                  onContact={
+                    isUnavailable
+                      ? () => setUnavailableModalOpen(true)
+                      : () => setInquiryOpenedByUser(true)
+                  }
+                  onScheduleViewing={
+                    isUnavailable
+                      ? () => setUnavailableModalOpen(true)
+                      : () => setInquiryOpenedByUser(true)
+                  }
                   isAuthenticated={isAuthenticated}
                   isUnavailable={isUnavailable}
                 />
@@ -403,7 +449,7 @@ export function ListingDetailClient({
           </div>
 
           {/* Similar Listings */}
-          <SimilarListings 
+          <SimilarListings
             listings={similarListings}
             currentArea={listing.area}
             className="mt-8 border-t border-gray-100 pt-6"
@@ -424,11 +470,13 @@ export function ListingDetailClient({
               </p>
               {priceBreakdown.serviceCharge && (
                 <p className="text-xs text-gray-500">
-                  +{new Intl.NumberFormat("en-KE", {
+                  +
+                  {new Intl.NumberFormat("en-KE", {
                     style: "currency",
                     currency: priceBreakdown.currency,
                     minimumFractionDigits: 0,
-                  }).format(priceBreakdown.serviceCharge)} service
+                  }).format(priceBreakdown.serviceCharge)}{" "}
+                  service
                 </p>
               )}
             </div>
@@ -442,7 +490,7 @@ export function ListingDetailClient({
               </button>
             ) : (
               <button
-                onClick={() => setInquiryOpen(true)}
+                onClick={() => setInquiryOpenedByUser(true)}
                 className="bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 text-white font-semibold py-3 px-6 rounded-xl flex items-center gap-2 transition-all shadow-md"
               >
                 <MessageCircle className="w-5 h-5" />
@@ -488,7 +536,7 @@ export function ListingDetailClient({
             cover_photo: listing.cover_photo,
             status: unavailableStatus,
           }}
-          similarListings={similarListings.map(l => ({
+          similarListings={similarListings.map((l) => ({
             id: l.id,
             title: l.title,
             area: l.area,

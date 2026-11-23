@@ -1,6 +1,6 @@
 /**
  * Landlord Inquiries Dashboard
- * 
+ *
  * Shows all inquiries/leads received by the landlord.
  * Features:
  * - List of all inquiries with status
@@ -13,11 +13,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { 
-  MessageSquare, 
-  Calendar, 
-  CheckCircle, 
-  Clock, 
+import {
+  MessageSquare,
+  Calendar,
+  CheckCircle,
+  Clock,
   Archive,
   Mail,
   Phone,
@@ -31,11 +31,14 @@ import {
   MoreHorizontal,
   RefreshCw,
   Wifi,
-  WifiOff
+  WifiOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { useRealtimeInquiries, type RealtimeInquiry } from "@/hooks/useRealtimeInquiries";
+import {
+  useRealtimeInquiries,
+  type RealtimeInquiry,
+} from "@/hooks/useRealtimeInquiries";
 
 interface Inquiry {
   id: string;
@@ -49,7 +52,13 @@ interface Inquiry {
   request_viewing: boolean;
   preferred_viewing_time: string | null;
   preferred_viewing_day: string | null;
-  status: "new" | "viewed" | "contacted" | "viewing_scheduled" | "converted" | "archived";
+  status:
+    | "new"
+    | "viewed"
+    | "contacted"
+    | "viewing_scheduled"
+    | "converted"
+    | "archived";
   landlord_notes: string | null;
   source: string;
   created_at: string;
@@ -58,11 +67,41 @@ interface Inquiry {
 const STATUS_CONFIG = {
   new: { label: "New", color: "bg-orange-100 text-orange-700", icon: Inbox },
   viewed: { label: "Viewed", color: "bg-blue-100 text-blue-700", icon: Eye },
-  contacted: { label: "Contacted", color: "bg-teal-100 text-teal-700", icon: CheckCircle },
-  viewing_scheduled: { label: "Viewing", color: "bg-purple-100 text-purple-700", icon: Calendar },
-  converted: { label: "Converted", color: "bg-green-100 text-green-700", icon: CheckCircle },
-  archived: { label: "Archived", color: "bg-gray-100 text-gray-500", icon: Archive },
+  contacted: {
+    label: "Contacted",
+    color: "bg-teal-100 text-teal-700",
+    icon: CheckCircle,
+  },
+  viewing_scheduled: {
+    label: "Viewing",
+    color: "bg-purple-100 text-purple-700",
+    icon: Calendar,
+  },
+  converted: {
+    label: "Converted",
+    color: "bg-green-100 text-green-700",
+    icon: CheckCircle,
+  },
+  archived: {
+    label: "Archived",
+    color: "bg-gray-100 text-gray-500",
+    icon: Archive,
+  },
 };
+
+/**
+ * Fetch the landlord's inquiries. No React state: the two callers decide what to do
+ * with the result, which is what lets the mount effect own a cancellable copy without
+ * duplicating the request.
+ */
+async function loadInquiries(): Promise<Inquiry[]> {
+  const response = await fetch("/api/landlord/inquiries");
+  if (!response.ok) {
+    throw new Error("Failed to fetch inquiries");
+  }
+  const data = await response.json();
+  return data.inquiries || [];
+}
 
 export default function InquiriesPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -74,16 +113,16 @@ export default function InquiriesPage() {
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
   // Polling interval ref for cleanup
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Realtime subscription for instant new inquiry notifications
-  const { 
-    isConnected: isRealtimeConnected, 
+  const {
+    isConnected: isRealtimeConnected,
     status: realtimeStatus,
     newInquiriesCount,
-    resetCount: resetNewInquiriesCount 
+    resetCount: resetNewInquiriesCount,
   } = useRealtimeInquiries({
     onNewInquiry: (newInquiry: RealtimeInquiry) => {
       // Add new inquiry to the top of the list optimistically
@@ -104,15 +143,15 @@ export default function InquiriesPage() {
         source: newInquiry.source || "listing_page",
         created_at: newInquiry.created_at,
       };
-      
-      setInquiries(prev => {
+
+      setInquiries((prev) => {
         // Check if inquiry already exists
-        if (prev.some(i => i.id === newInquiry.id)) {
+        if (prev.some((i) => i.id === newInquiry.id)) {
           return prev;
         }
         return [transformed, ...prev];
       });
-      
+
       // Show toast notification (browser notification if permitted)
       if (typeof window !== "undefined" && "Notification" in window) {
         if (Notification.permission === "granted") {
@@ -130,12 +169,7 @@ export default function InquiriesPage() {
       setIsRefreshing(true);
     }
     try {
-      const response = await fetch("/api/landlord/inquiries");
-      if (!response.ok) {
-        throw new Error("Failed to fetch inquiries");
-      }
-      const data = await response.json();
-      setInquiries(data.inquiries || []);
+      setInquiries(await loadInquiries());
       setLastRefresh(new Date());
       setError(null);
     } catch (err) {
@@ -146,18 +180,65 @@ export default function InquiriesPage() {
     }
   }, []);
 
-  // Initial fetch
+  /**
+   * The first load, owned by the effect that performs it.
+   *
+   * This used to be a bare `fetchInquiries()` in the effect body, which is what
+   * react-hooks/set-state-in-effect reported. Two things are different now, and only
+   * one of them is about the lint rule.
+   *
+   * The substantive one: this request had no cancellation. A landlord who opened the
+   * page and navigated away before it returned had setInquiries, setLastRefresh and
+   * setIsLoading all fire against an unmounted component — the same class of defect
+   * the payment form's polling chain had. The `cancelled` flag the cleanup sets is
+   * checked after the await, which is the only place it can be checked usefully:
+   * while a request is in flight there is nothing else to cancel.
+   *
+   * The HTTP call itself lives in loadInquiries(), outside the component, so the
+   * polling and manual-refresh paths above share it rather than duplicating it.
+   *
+   * NOT done, deliberately: wrapping the old `fetchInquiries()` call in an inner async
+   * IIFE also silences the rule, and changes nothing whatsoever about when state is
+   * written. Checked directly against the rule. That is laundering a warning rather
+   * than answering it.
+   */
   useEffect(() => {
-    fetchInquiries();
-    
+    let cancelled = false;
+
+    async function loadFirstPage() {
+      try {
+        const list = await loadInquiries();
+        if (cancelled) return;
+        setInquiries(list);
+        setLastRefresh(new Date());
+        setError(null);
+      } catch (err) {
+        if (cancelled) return;
+        setError(
+          err instanceof Error ? err.message : "Failed to load inquiries",
+        );
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
+      }
+    }
+
+    void loadFirstPage();
+
     // Request notification permission for browser notifications
     if (typeof window !== "undefined" && "Notification" in window) {
       if (Notification.permission === "default") {
         Notification.requestPermission();
       }
     }
-  }, [fetchInquiries]);
-  
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Polling fallback: refresh every 30 seconds when realtime isn't connected
   // This ensures data stays fresh even if WebSocket connection fails
   useEffect(() => {
@@ -166,14 +247,14 @@ export default function InquiriesPage() {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
-    
+
     // Only poll if realtime is not connected
     if (!isRealtimeConnected && !isLoading) {
       pollingIntervalRef.current = setInterval(() => {
         fetchInquiries(false); // Silent refresh
       }, 30000); // 30 seconds
     }
-    
+
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -181,7 +262,7 @@ export default function InquiriesPage() {
       }
     };
   }, [isRealtimeConnected, isLoading, fetchInquiries]);
-  
+
   // Reset new inquiries count when user views the page
   useEffect(() => {
     resetNewInquiriesCount();
@@ -195,15 +276,19 @@ export default function InquiriesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      
+
       if (response.ok) {
-        setInquiries(prev => 
-          prev.map(inq => 
-            inq.id === inquiryId ? { ...inq, status: newStatus as Inquiry["status"] } : inq
-          )
+        setInquiries((prev) =>
+          prev.map((inq) =>
+            inq.id === inquiryId
+              ? { ...inq, status: newStatus as Inquiry["status"] }
+              : inq,
+          ),
         );
         if (selectedInquiry?.id === inquiryId) {
-          setSelectedInquiry(prev => prev ? { ...prev, status: newStatus as Inquiry["status"] } : null);
+          setSelectedInquiry((prev) =>
+            prev ? { ...prev, status: newStatus as Inquiry["status"] } : null,
+          );
         }
       }
     } catch (err) {
@@ -214,7 +299,7 @@ export default function InquiriesPage() {
   };
 
   // Filter inquiries
-  const filteredInquiries = inquiries.filter(inq => {
+  const filteredInquiries = inquiries.filter((inq) => {
     if (statusFilter !== "all" && inq.status !== statusFilter) return false;
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -231,9 +316,10 @@ export default function InquiriesPage() {
   // Stats
   const stats = {
     total: inquiries.length,
-    new: inquiries.filter(i => i.status === "new").length,
-    viewingScheduled: inquiries.filter(i => i.status === "viewing_scheduled").length,
-    converted: inquiries.filter(i => i.status === "converted").length,
+    new: inquiries.filter((i) => i.status === "new").length,
+    viewingScheduled: inquiries.filter((i) => i.status === "viewing_scheduled")
+      .length,
+    converted: inquiries.filter((i) => i.status === "converted").length,
   };
 
   const formatDate = (dateString: string) => {
@@ -261,10 +347,16 @@ export default function InquiriesPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
         <MessageSquare className="w-12 h-12 text-gray-400 mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Unable to load inquiries</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          Unable to load inquiries
+        </h3>
         <p className="text-gray-500 mb-4">{error}</p>
-        <button 
-          onClick={() => { setError(null); setIsLoading(true); fetchInquiries(); }}
+        <button
+          onClick={() => {
+            setError(null);
+            setIsLoading(true);
+            fetchInquiries();
+          }}
           className="text-teal-600 hover:text-teal-700 font-medium"
         >
           Try again
@@ -279,18 +371,22 @@ export default function InquiriesPage() {
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Inquiries</h1>
-          <p className="text-gray-500 mt-1">Manage leads and tenant inquiries</p>
+          <p className="text-gray-500 mt-1">
+            Manage leads and tenant inquiries
+          </p>
         </div>
-        
+
         {/* Connection status & refresh */}
         <div className="flex items-center gap-3">
           {/* Connection indicator */}
-          <div className={cn(
-            "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
-            isRealtimeConnected 
-              ? "bg-green-100 text-green-700" 
-              : "bg-gray-100 text-gray-600"
-          )}>
+          <div
+            className={cn(
+              "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
+              isRealtimeConnected
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-100 text-gray-600",
+            )}
+          >
             {isRealtimeConnected ? (
               <>
                 <Wifi className="w-3 h-3" />
@@ -303,7 +399,7 @@ export default function InquiriesPage() {
               </>
             )}
           </div>
-          
+
           {/* Manual refresh button */}
           <button
             onClick={() => fetchInquiries(true)}
@@ -311,10 +407,12 @@ export default function InquiriesPage() {
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
               "border border-gray-300 hover:bg-gray-50",
-              isRefreshing && "opacity-50 cursor-not-allowed"
+              isRefreshing && "opacity-50 cursor-not-allowed",
             )}
           >
-            <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+            <RefreshCw
+              className={cn("w-4 h-4", isRefreshing && "animate-spin")}
+            />
             <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
@@ -331,11 +429,15 @@ export default function InquiriesPage() {
           <div className="text-sm text-orange-600">New (Unread)</div>
         </div>
         <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
-          <div className="text-2xl font-bold text-purple-700">{stats.viewingScheduled}</div>
+          <div className="text-2xl font-bold text-purple-700">
+            {stats.viewingScheduled}
+          </div>
           <div className="text-sm text-purple-600">Viewings Scheduled</div>
         </div>
         <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-          <div className="text-2xl font-bold text-green-700">{stats.converted}</div>
+          <div className="text-2xl font-bold text-green-700">
+            {stats.converted}
+          </div>
           <div className="text-sm text-green-600">Converted</div>
         </div>
       </div>
@@ -376,13 +478,14 @@ export default function InquiriesPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
           <Inbox className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            {inquiries.length === 0 ? "No inquiries yet" : "No matching inquiries"}
+            {inquiries.length === 0
+              ? "No inquiries yet"
+              : "No matching inquiries"}
           </h3>
           <p className="text-gray-500">
-            {inquiries.length === 0 
+            {inquiries.length === 0
               ? "When tenants contact you about your listings, they'll appear here."
-              : "Try adjusting your search or filters."
-            }
+              : "Try adjusting your search or filters."}
           </p>
         </div>
       ) : (
@@ -396,7 +499,7 @@ export default function InquiriesPage() {
                   className={cn(
                     "p-4 sm:p-6 hover:bg-gray-50 cursor-pointer transition-colors",
                     inquiry.status === "new" && "bg-orange-50/50",
-                    selectedInquiry?.id === inquiry.id && "bg-teal-50"
+                    selectedInquiry?.id === inquiry.id && "bg-teal-50",
                   )}
                   onClick={() => {
                     setSelectedInquiry(inquiry);
@@ -407,10 +510,14 @@ export default function InquiriesPage() {
                 >
                   <div className="flex items-start gap-4">
                     {/* Avatar */}
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
-                      inquiry.status === "new" ? "bg-orange-100" : "bg-gray-100"
-                    )}>
+                    <div
+                      className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                        inquiry.status === "new"
+                          ? "bg-orange-100"
+                          : "bg-gray-100",
+                      )}
+                    >
                       <span className="text-lg font-medium text-gray-700">
                         {inquiry.name.charAt(0).toUpperCase()}
                       </span>
@@ -422,10 +529,12 @@ export default function InquiriesPage() {
                         <h3 className="font-semibold text-gray-900 truncate">
                           {inquiry.name}
                         </h3>
-                        <span className={cn(
-                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                          STATUS_CONFIG[inquiry.status].color
-                        )}>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
+                            STATUS_CONFIG[inquiry.status].color,
+                          )}
+                        >
                           <StatusIcon className="w-3 h-3" />
                           {STATUS_CONFIG[inquiry.status].label}
                         </span>
@@ -433,7 +542,7 @@ export default function InquiriesPage() {
 
                       <p className="text-sm text-gray-500 mb-2">
                         Interested in{" "}
-                        <Link 
+                        <Link
                           href={`/listings/${inquiry.listing_id}`}
                           className="text-teal-600 hover:underline"
                           onClick={(e) => e.stopPropagation()}
@@ -446,14 +555,15 @@ export default function InquiriesPage() {
 
                       {inquiry.message && (
                         <p className="text-sm text-gray-600 line-clamp-2 mb-2">
-                          "{inquiry.message}"
+                          &quot;{inquiry.message}&quot;
                         </p>
                       )}
 
                       {inquiry.request_viewing && (
                         <div className="flex items-center gap-1 text-sm text-purple-600">
                           <Calendar className="w-4 h-4" />
-                          Viewing requested ({inquiry.preferred_viewing_time || "any time"})
+                          Viewing requested (
+                          {inquiry.preferred_viewing_time || "any time"})
                         </div>
                       )}
                     </div>
@@ -463,7 +573,7 @@ export default function InquiriesPage() {
                       <div className="text-sm text-gray-500 mb-2">
                         {formatDate(inquiry.created_at)}
                       </div>
-                      
+
                       {/* Quick actions */}
                       <div className="flex items-center gap-2">
                         {inquiry.email && (
@@ -528,16 +638,15 @@ function InquiryDetailPanel({
   return (
     <div className="fixed inset-0 z-50 lg:relative lg:inset-auto">
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/50 lg:hidden" 
-        onClick={onClose}
-      />
-      
+      <div className="fixed inset-0 bg-black/50 lg:hidden" onClick={onClose} />
+
       {/* Panel */}
       <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-xl lg:relative lg:shadow-none lg:mt-6 lg:rounded-xl lg:border lg:border-gray-200">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Inquiry Details</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Inquiry Details
+          </h2>
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"
@@ -558,10 +667,12 @@ function InquiryDetailPanel({
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">{inquiry.name}</h3>
-                <span className={cn(
-                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                  STATUS_CONFIG[inquiry.status].color
-                )}>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
+                    STATUS_CONFIG[inquiry.status].color,
+                  )}
+                >
                   <StatusIcon className="w-3 h-3" />
                   {STATUS_CONFIG[inquiry.status].label}
                 </span>
@@ -570,7 +681,7 @@ function InquiryDetailPanel({
 
             <div className="space-y-2">
               {inquiry.email && (
-                <a 
+                <a
                   href={`mailto:${inquiry.email}`}
                   className="flex items-center gap-2 text-sm text-gray-600 hover:text-teal-600"
                 >
@@ -579,7 +690,7 @@ function InquiryDetailPanel({
                 </a>
               )}
               {inquiry.phone && (
-                <a 
+                <a
                   href={`tel:+254${inquiry.phone.replace(/\s/g, "")}`}
                   className="flex items-center gap-2 text-sm text-gray-600 hover:text-teal-600"
                 >
@@ -593,20 +704,24 @@ function InquiryDetailPanel({
           {/* Listing */}
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-500 mb-1">Interested in</p>
-            <Link 
+            <Link
               href={`/listings/${inquiry.listing_id}`}
               className="font-medium text-teal-600 hover:underline flex items-center gap-1"
             >
               {inquiry.listing_title}
               <ExternalLink className="w-4 h-4" />
             </Link>
-            <p className="text-sm text-gray-500 mt-1">📍 {inquiry.listing_area}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              📍 {inquiry.listing_area}
+            </p>
           </div>
 
           {/* Message */}
           {inquiry.message && (
             <div>
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Message</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Message
+              </h4>
               <p className="text-gray-600 text-sm whitespace-pre-wrap bg-gray-50 rounded-lg p-4">
                 {inquiry.message}
               </p>
@@ -621,15 +736,23 @@ function InquiryDetailPanel({
                 Viewing Requested
               </div>
               <div className="text-sm text-purple-600">
-                <p>Preferred time: <strong>{inquiry.preferred_viewing_time || "Any"}</strong></p>
-                <p>Preferred day: <strong>{inquiry.preferred_viewing_day || "Any"}</strong></p>
+                <p>
+                  Preferred time:{" "}
+                  <strong>{inquiry.preferred_viewing_time || "Any"}</strong>
+                </p>
+                <p>
+                  Preferred day:{" "}
+                  <strong>{inquiry.preferred_viewing_day || "Any"}</strong>
+                </p>
               </div>
             </div>
           )}
 
           {/* Meta */}
           <div className="text-sm text-gray-500">
-            <p>Received: {new Date(inquiry.created_at).toLocaleString("en-KE")}</p>
+            <p>
+              Received: {new Date(inquiry.created_at).toLocaleString("en-KE")}
+            </p>
             <p>Source: {inquiry.source.replace("_", " ")}</p>
           </div>
         </div>
@@ -668,7 +791,11 @@ function InquiryDetailPanel({
                 disabled={isUpdating}
                 className="flex-1 py-2 px-3 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
               >
-                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Mark Contacted"}
+                {isUpdating ? (
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                ) : (
+                  "Mark Contacted"
+                )}
               </button>
             )}
             {inquiry.status !== "viewing_scheduled" && (
@@ -677,7 +804,11 @@ function InquiryDetailPanel({
                 disabled={isUpdating}
                 className="flex-1 py-2 px-3 text-sm border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 disabled:opacity-50"
               >
-                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Schedule Viewing"}
+                {isUpdating ? (
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                ) : (
+                  "Schedule Viewing"
+                )}
               </button>
             )}
             {inquiry.status !== "converted" && (
@@ -686,7 +817,11 @@ function InquiryDetailPanel({
                 disabled={isUpdating}
                 className="flex-1 py-2 px-3 text-sm border border-green-300 text-green-700 rounded-lg hover:bg-green-50 disabled:opacity-50"
               >
-                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Mark Converted"}
+                {isUpdating ? (
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                ) : (
+                  "Mark Converted"
+                )}
               </button>
             )}
             {inquiry.status !== "archived" && (

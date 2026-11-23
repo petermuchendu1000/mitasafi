@@ -1,22 +1,28 @@
 /**
  * Inquiry Modal Component (v2 - Engagement First)
- * 
+ *
  * Modal for contacting landlord that works for EVERYONE:
  * - Public users: Show contact form (name, email/phone, message)
  * - Logged-in users: Pre-fill from profile, link inquiry to account
- * 
+ *
  * NO LOGIN REQUIRED to contact a landlord.
  * Lead capture happens naturally through the form.
- * 
+ *
  * Theme: 70% Teal, 30% Orange (submit button in orange)
  */
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { 
-  X, 
-  MessageCircle, 
+import {
+  useState,
+  useEffect,
+  useRef,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
+import {
+  X,
+  MessageCircle,
   Calendar,
   Send,
   Loader2,
@@ -24,7 +30,7 @@ import {
   Mail,
   User as UserIcon,
   AlertCircle,
-  Sparkles
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -73,13 +79,73 @@ function formatPhone(value: string): string {
   return parts.join(" ");
 }
 
-export function InquiryModal({
-  isOpen,
+function initialFormData(props: InquiryModalProps): InquiryFormData {
+  const {
+    landlordName,
+    listingTitle,
+    listingArea,
+    userName,
+    userEmail,
+    userPhone,
+  } = props;
+  const defaultMessage = `Hi${landlordName ? ` ${landlordName.split(" ")[0]}` : ""},\n\nI'm interested in the ${listingTitle} in ${listingArea}. Is it still available?\n\nPlease let me know when I can view it.\n\nThank you!`;
+
+  return {
+    name: userName || "",
+    email: userEmail || "",
+    phone: userPhone ? formatPhone(userPhone.replace("+254", "")) : "",
+    message: defaultMessage,
+    requestViewing: false,
+    preferredTime: "morning",
+    preferredDay: "weekday",
+  };
+}
+
+/**
+ * Split in two, because the draft and the submission state want opposite lifetimes.
+ *
+ * This modal had FOUR effects keyed on isOpen, two of which the rule reported: one
+ * prefilled the form on open, one reset isSuccess/error/touched on close. It stayed
+ * mounted when closed (`if (!isOpen) return null`), which is why the resetting had to
+ * be done by hand at all.
+ *
+ * The obvious fix — unmount the whole thing when closed, as the other modals here now
+ * do — would be WRONG for this one. The prefill effect wrote
+ * `message: prev.message || defaultMessage` and `name: userName || prev.name`, so a
+ * visitor who typed a message, closed the modal and reopened it still had their draft.
+ * Destroying the component on close would quietly throw that away.
+ *
+ * So the draft lives out here, where closing does not touch it, and everything that
+ * SHOULD be forgotten — whether the inquiry was sent, the error from the last attempt,
+ * which fields have been blurred — lives in the inner component, which is mounted only
+ * while the modal is open and therefore resets by existing rather than by being reset.
+ *
+ * One behaviour does change, and it is worth stating: the prefill no longer re-applies
+ * the signed-in user's name, email and phone on every open, only on the first mount.
+ * That would matter if the profile props could change while this page stayed mounted;
+ * they come from the server component that renders ListingDetailClient, so signing in
+ * navigates and remounts.
+ */
+export function InquiryModal(props: InquiryModalProps) {
+  const [formData, setFormData] = useState<InquiryFormData>(() =>
+    initialFormData(props),
+  );
+
+  if (!props.isOpen) return null;
+
+  return (
+    <InquiryModalContent
+      {...props}
+      formData={formData}
+      setFormData={setFormData}
+    />
+  );
+}
+
+function InquiryModalContent({
   onClose,
   listingId,
   listingTitle,
-  listingArea,
-  landlordName,
   landlordId,
   propertyId,
   isAuthenticated = false,
@@ -87,72 +153,41 @@ export function InquiryModal({
   userName,
   userEmail,
   userPhone,
-}: InquiryModalProps) {
-  const [formData, setFormData] = useState<InquiryFormData>({
-    name: "",
-    email: "",
-    phone: "",
-    message: "",
-    requestViewing: false,
-    preferredTime: "morning",
-    preferredDay: "weekday",
-  });
+  formData,
+  setFormData,
+}: InquiryModalProps & {
+  formData: InquiryFormData;
+  setFormData: Dispatch<SetStateAction<InquiryFormData>>;
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  
+
   const nameInputRef = useRef<HTMLInputElement>(null);
   const messageRef = useRef<HTMLTextAreaElement>(null);
 
-  // Pre-fill for logged-in users and generate default message
+  // Focus on mount, which is now the same thing as "when the modal opens". The timer
+  // is cleared on unmount, which the old version did not do.
   useEffect(() => {
-    if (isOpen) {
-      const defaultMessage = `Hi${landlordName ? ` ${landlordName.split(" ")[0]}` : ""},\n\nI'm interested in the ${listingTitle} in ${listingArea}. Is it still available?\n\nPlease let me know when I can view it.\n\nThank you!`;
-      
-      setFormData(prev => ({
-        ...prev,
-        name: userName || prev.name,
-        email: userEmail || prev.email,
-        phone: userPhone ? formatPhone(userPhone.replace("+254", "")) : prev.phone,
-        message: prev.message || defaultMessage,
-      }));
-    }
-  }, [isOpen, userName, userEmail, userPhone, landlordName, listingTitle, listingArea]);
+    const timer = setTimeout(() => {
+      if (isAuthenticated && messageRef.current) {
+        messageRef.current.focus();
+      } else if (nameInputRef.current) {
+        nameInputRef.current.focus();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated]);
 
-  // Focus appropriate input when modal opens
+  // Prevent body scroll for as long as this component exists. The `else` branch that
+  // cleared the style when closed is gone: unmounting runs the cleanup.
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => {
-        if (isAuthenticated && messageRef.current) {
-          messageRef.current.focus();
-        } else if (nameInputRef.current) {
-          nameInputRef.current.focus();
-        }
-      }, 100);
-    }
-  }, [isOpen, isAuthenticated]);
-
-  // Reset state when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setIsSuccess(false);
-      setError(null);
-      setTouched({});
-    }
-  }, [isOpen]);
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isOpen]);
+  }, []);
 
   // Validation
   const validateForm = (): string | null => {
@@ -172,7 +207,7 @@ export function InquiryModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -184,7 +219,7 @@ export function InquiryModal({
 
     try {
       // Format phone with country code if provided
-      const formattedPhone = formData.phone 
+      const formattedPhone = formData.phone
         ? `+254${formData.phone.replace(/\D/g, "")}`
         : null;
 
@@ -199,12 +234,16 @@ export function InquiryModal({
         // Message
         message: formData.message.trim(),
         request_viewing: formData.requestViewing,
-        preferred_viewing_time: formData.requestViewing ? formData.preferredTime : null,
-        preferred_viewing_day: formData.requestViewing ? formData.preferredDay : null,
+        preferred_viewing_time: formData.requestViewing
+          ? formData.preferredTime
+          : null,
+        preferred_viewing_day: formData.requestViewing
+          ? formData.preferredDay
+          : null,
         // User ID if logged in
         user_id: userId || null,
       };
-      
+
       console.log("[InquiryModal] Sending request:", requestBody);
 
       const response = await fetch("/api/inquiries", {
@@ -227,12 +266,10 @@ export function InquiryModal({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -247,7 +284,9 @@ export function InquiryModal({
             </div>
             <div>
               <h2 className="font-semibold text-gray-900">Contact Landlord</h2>
-              <p className="text-sm text-gray-500 truncate max-w-[200px]">{listingTitle}</p>
+              <p className="text-sm text-gray-500 truncate max-w-[200px]">
+                {listingTitle}
+              </p>
             </div>
           </div>
           <button
@@ -270,23 +309,27 @@ export function InquiryModal({
                 Message Sent!
               </h3>
               <p className="text-gray-600 mb-6 max-w-xs mx-auto">
-                The landlord will receive your inquiry and typically responds within 24 hours
+                The landlord will receive your inquiry and typically responds
+                within 24 hours
               </p>
-              
+
               {!isAuthenticated && (
                 <div className="bg-brand-50 rounded-xl p-4 mb-6 text-left">
                   <div className="flex items-start gap-3">
                     <Sparkles className="w-5 h-5 text-brand-600 mt-0.5" />
                     <div>
-                      <p className="font-medium text-brand-900 text-sm">Create a free account</p>
+                      <p className="font-medium text-brand-900 text-sm">
+                        Create a free account
+                      </p>
                       <p className="text-brand-700 text-xs mt-1">
-                        Track your inquiries, save listings, and get notified when similar homes are available.
+                        Track your inquiries, save listings, and get notified
+                        when similar homes are available.
                       </p>
                     </div>
                   </div>
                 </div>
               )}
-              
+
               <button
                 onClick={onClose}
                 className="bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 px-8 rounded-xl transition-colors"
@@ -302,8 +345,14 @@ export function InquiryModal({
                 <div className="space-y-3">
                   {/* Name */}
                   <div>
-                    <label htmlFor="inquiry-name" className="block text-sm font-medium text-gray-700 mb-1">
-                      Your Name <span className="text-gray-400 text-xs font-normal">(optional)</span>
+                    <label
+                      htmlFor="inquiry-name"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Your Name{" "}
+                      <span className="text-gray-400 text-xs font-normal">
+                        (optional)
+                      </span>
                     </label>
                     <div className="relative">
                       <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -312,11 +361,20 @@ export function InquiryModal({
                         id="inquiry-name"
                         type="text"
                         value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        onBlur={() => setTouched(prev => ({ ...prev, name: true }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            name: e.target.value,
+                          }))
+                        }
+                        onBlur={() =>
+                          setTouched((prev) => ({ ...prev, name: true }))
+                        }
                         className={cn(
                           "w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500",
-                          touched.name && !formData.name.trim() ? "border-error-300" : "border-gray-200"
+                          touched.name && !formData.name.trim()
+                            ? "border-error-300"
+                            : "border-gray-200",
                         )}
                         placeholder="John Doe"
                       />
@@ -327,7 +385,10 @@ export function InquiryModal({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Email */}
                     <div>
-                      <label htmlFor="inquiry-email" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label
+                        htmlFor="inquiry-email"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
                         Email <span className="text-gray-400">(optional)</span>
                       </label>
                       <div className="relative">
@@ -336,7 +397,12 @@ export function InquiryModal({
                           id="inquiry-email"
                           type="email"
                           value={formData.email}
-                          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              email: e.target.value,
+                            }))
+                          }
                           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                           placeholder="you@email.com"
                         />
@@ -345,7 +411,10 @@ export function InquiryModal({
 
                     {/* Phone */}
                     <div>
-                      <label htmlFor="inquiry-phone" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label
+                        htmlFor="inquiry-phone"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
                         Phone <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
@@ -356,7 +425,12 @@ export function InquiryModal({
                           id="inquiry-phone"
                           type="tel"
                           value={formData.phone}
-                          onChange={(e) => setFormData(prev => ({ ...prev, phone: formatPhone(e.target.value) }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              phone: formatPhone(e.target.value),
+                            }))
+                          }
                           className="w-full pl-14 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                           placeholder="712 345 678"
                         />
@@ -365,7 +439,8 @@ export function InquiryModal({
                   </div>
 
                   <p className="text-xs text-gray-500 flex items-center gap-1">
-                    We'll share your phone with the landlord so they can reach you
+                    We&apos;ll share your phone with the landlord so they can
+                    reach you
                   </p>
                 </div>
               )}
@@ -378,21 +453,34 @@ export function InquiryModal({
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{userName}</p>
-                    <p className="text-sm text-gray-500">{userEmail || userPhone}</p>
+                    <p className="text-sm text-gray-500">
+                      {userEmail || userPhone}
+                    </p>
                   </div>
                 </div>
               )}
 
               {/* Message */}
               <div>
-                <label htmlFor="inquiry-message" className="block text-sm font-medium text-gray-700 mb-1">
-                  Your Message <span className="text-gray-400 text-xs font-normal">(optional)</span>
+                <label
+                  htmlFor="inquiry-message"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Your Message{" "}
+                  <span className="text-gray-400 text-xs font-normal">
+                    (optional)
+                  </span>
                 </label>
                 <textarea
                   ref={messageRef}
                   id="inquiry-message"
                   value={formData.message}
-                  onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      message: e.target.value,
+                    }))
+                  }
                   rows={4}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 resize-none text-gray-900 placeholder-gray-400"
                   placeholder="Write your message..."
@@ -405,7 +493,12 @@ export function InquiryModal({
                   <input
                     type="checkbox"
                     checked={formData.requestViewing}
-                    onChange={(e) => setFormData(prev => ({ ...prev, requestViewing: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        requestViewing: e.target.checked,
+                      }))
+                    }
                     className="mt-0.5 w-5 h-5 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
                   />
                   <div>
@@ -413,7 +506,9 @@ export function InquiryModal({
                       <Calendar className="w-4 h-4 text-brand-600" />
                       Request a viewing
                     </span>
-                    <span className="text-sm text-gray-500">I&apos;d like to schedule a visit</span>
+                    <span className="text-sm text-gray-500">
+                      I&apos;d like to schedule a visit
+                    </span>
                   </div>
                 </label>
 
@@ -426,7 +521,12 @@ export function InquiryModal({
                       </label>
                       <select
                         value={formData.preferredTime}
-                        onChange={(e) => setFormData(prev => ({ ...prev, preferredTime: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            preferredTime: e.target.value,
+                          }))
+                        }
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                       >
                         <option value="morning">Morning (9am-12pm)</option>
@@ -440,7 +540,12 @@ export function InquiryModal({
                       </label>
                       <select
                         value={formData.preferredDay}
-                        onChange={(e) => setFormData(prev => ({ ...prev, preferredDay: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            preferredDay: e.target.value,
+                          }))
+                        }
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                       >
                         <option value="weekday">Weekday</option>

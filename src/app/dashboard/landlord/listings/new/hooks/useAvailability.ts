@@ -1,6 +1,6 @@
 /**
  * Availability Hooks
- * 
+ *
  * React hooks for managing property availability state and validation.
  * Implements recommendations for real-time updates and caching.
  */
@@ -14,52 +14,52 @@ import {
   ValidationResult,
   PropertyStatus,
   Booking,
-  
+
   // Status functions
   getAvailabilityStatus,
   isAvailableNow,
   isAvailableSoon,
   isUpcoming,
-  
+
   // Time calculations
   getDaysUntilAvailable,
   getWeeksUntilAvailable,
   getMonthsUntilAvailable,
   isWithinDays,
-  
+
   // Scheduling
   calculateMoveInDate,
   getEarliestAvailableDate,
   suggestAvailabilityDate,
-  
+
   // Lease calculations
   calculateLeaseEndDate,
   isLeaseExpiringSoon,
   getLeaseRemainingDays,
-  
+
   // Vacancy
   getVacancyRisk,
   estimateVacancyLoss,
-  
+
   // Transitions
   canTransitionTo,
   getValidTransitions,
-  
+
   // Validation
   validateAvailabilityData,
   validateDateRange,
   validateLeaseTerms,
-  
+
   // Scheduling conflicts
   hasSchedulingConflict,
   findNextAvailableSlot,
-  
+
   // Date utils
   isValidAvailabilityDate,
   formatAvailabilityDate,
   parseAvailabilityDate,
   getDateDaysFromNow,
-  
+
   // Constants
   MIN_NOTICE_DAYS,
   SOON_THRESHOLD_DAYS,
@@ -83,20 +83,20 @@ export interface UseAvailabilityReturn {
   isAvailable: boolean;
   isSoon: boolean;
   isUpcoming: boolean;
-  
+
   // Time info
   daysUntil: number;
   weeksUntil: number;
   monthsUntil: number;
   formattedDate: string;
-  
+
   // Risk assessment
   vacancyRisk: VacancyRisk;
-  
+
   // Validation
   validation: ValidationResult;
   isValid: boolean;
-  
+
   // Actions
   setAvailableFrom: (date: string | null) => void;
   setAvailableNow: (now: boolean) => void;
@@ -110,28 +110,35 @@ export interface UseLeaseReturn {
   endDate: string | null;
   remainingDays: number | null;
   isExpiringSoon: boolean;
-  
+
   // Actions
   calculateEndDate: (startDate: string, durationMonths: number) => string;
   setLeaseEndDate: (date: string | null) => void;
-  
+
   // Validation
   validation: ValidationResult;
-  validateTerms: (startDate: string, durationMonths: number, minDuration: number) => ValidationResult;
+  validateTerms: (
+    startDate: string,
+    durationMonths: number,
+    minDuration: number,
+  ) => ValidationResult;
 }
 
 export interface UseSchedulingReturn {
   // Scheduling
   earliestMoveIn: string;
   suggestedDate: string;
-  
+
   // Conflict detection
   hasConflict: boolean;
   nextAvailableSlot: { startDate: string; endDate: string } | null;
-  
+
   // Actions
   checkConflict: (startDate: string, endDate: string) => boolean;
-  findNextSlot: (preferredStart: string, durationDays: number) => { startDate: string; endDate: string };
+  findNextSlot: (
+    preferredStart: string,
+    durationDays: number,
+  ) => { startDate: string; endDate: string };
   addBooking: (booking: Booking) => void;
   removeBooking: (index: number) => void;
   clearBookings: () => void;
@@ -158,19 +165,20 @@ class AvailabilityCache<T> {
   private cache = new Map<string, CacheEntry<T>>();
   private ttlMs: number;
 
-  constructor(ttlMs: number = 5 * 60 * 1000) { // 5 minute default
+  constructor(ttlMs: number = 5 * 60 * 1000) {
+    // 5 minute default
     this.ttlMs = ttlMs;
   }
 
   get(key: string): T | undefined {
     const entry = this.cache.get(key);
     if (!entry) return undefined;
-    
+
     if (Date.now() - entry.timestamp > this.ttlMs) {
       this.cache.delete(key);
       return undefined;
     }
-    
+
     return entry.value;
   }
 
@@ -200,7 +208,7 @@ const validationCache = new AvailabilityCache<ValidationResult>();
  */
 export function useAvailability(
   initialData: Partial<AvailabilityData> = {},
-  options: UseAvailabilityOptions = {}
+  options: UseAvailabilityOptions = {},
 ): UseAvailabilityReturn {
   const {
     autoValidate = true,
@@ -230,7 +238,7 @@ export function useAvailability(
     const cacheKey = JSON.stringify(data);
     const cached = availabilityCache.get(cacheKey);
     if (cached) return cached;
-    
+
     const result = getAvailabilityStatus(data);
     availabilityCache.set(cacheKey, result);
     return result;
@@ -239,16 +247,16 @@ export function useAvailability(
   const isAvailable = useMemo(() => isAvailableNow(data), [data]);
   const isSoon = useMemo(() => isAvailableSoon(data), [data]);
   const isUpcomingStatus = useMemo(() => isUpcoming(data), [data]);
-  
+
   const daysUntil = useMemo(() => getDaysUntilAvailable(data), [data]);
   const weeksUntil = useMemo(() => getWeeksUntilAvailable(data), [data]);
   const monthsUntil = useMemo(() => getMonthsUntilAvailable(data), [data]);
-  
+
   const formattedDate = useMemo(
     () => formatAvailabilityDate(data.availableFrom),
-    [data.availableFrom]
+    [data.availableFrom],
   );
-  
+
   const vacancyRisk = useMemo(() => getVacancyRisk(data), [data]);
 
   // Validation function
@@ -256,7 +264,7 @@ export function useAvailability(
     const cacheKey = `validation:${JSON.stringify(data)}`;
     const cached = validationCache.get(cacheKey);
     if (cached) return cached;
-    
+
     const result = validateAvailabilityData(data);
     validationCache.set(cacheKey, result);
     return result;
@@ -307,9 +315,12 @@ export function useAvailability(
     validationCache.clear();
   }, []);
 
-  const suggestDate = useCallback((type: "long_term" | "short_term" | "immediate") => {
-    return suggestAvailabilityDate(type);
-  }, []);
+  const suggestDate = useCallback(
+    (type: "long_term" | "short_term" | "immediate") => {
+      return suggestAvailabilityDate(type);
+    },
+    [],
+  );
 
   return {
     status,
@@ -338,10 +349,10 @@ export function useAvailability(
 /**
  * Hook for managing lease dates and calculations
  */
-export function useLease(
-  initialEndDate: string | null = null
-): UseLeaseReturn {
-  const [leaseEndDate, setLeaseEndDate] = useState<string | null>(initialEndDate);
+export function useLease(initialEndDate: string | null = null): UseLeaseReturn {
+  const [leaseEndDate, setLeaseEndDate] = useState<string | null>(
+    initialEndDate,
+  );
   const [validation, setValidation] = useState<ValidationResult>({
     isValid: true,
     errors: {},
@@ -357,9 +368,12 @@ export function useLease(
     return isLeaseExpiringSoon({ leaseEndDate }, VACANCY_WARNING_DAYS);
   }, [leaseEndDate]);
 
-  const calculateEndDateFn = useCallback((startDate: string, durationMonths: number) => {
-    return calculateLeaseEndDate(startDate, durationMonths);
-  }, []);
+  const calculateEndDateFn = useCallback(
+    (startDate: string, durationMonths: number) => {
+      return calculateLeaseEndDate(startDate, durationMonths);
+    },
+    [],
+  );
 
   const validateTerms = useCallback(
     (startDate: string, durationMonths: number, minDuration: number) => {
@@ -371,7 +385,7 @@ export function useLease(
       setValidation(result);
       return result;
     },
-    []
+    [],
   );
 
   return {
@@ -394,24 +408,28 @@ export function useLease(
  */
 export function useScheduling(
   listingData: Partial<AvailabilityData> = {},
-  initialBookings: Booking[] = []
+  initialBookings: Booking[] = [],
 ): UseSchedulingReturn {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
-  const [proposedRange, setProposedRange] = useState<{ start: string; end: string } | null>(null);
+  const [proposedRange, setProposedRange] = useState<{
+    start: string;
+    end: string;
+  } | null>(null);
 
   const earliestMoveIn = useMemo(
     () => getEarliestAvailableDate(listingData, MIN_NOTICE_DAYS),
-    [listingData]
+    [listingData],
   );
 
-  const suggestedDate = useMemo(
-    () => calculateMoveInDate(MIN_NOTICE_DAYS),
-    []
-  );
+  const suggestedDate = useMemo(() => calculateMoveInDate(MIN_NOTICE_DAYS), []);
 
   const hasConflict = useMemo(() => {
     if (!proposedRange) return false;
-    return hasSchedulingConflict(proposedRange.start, proposedRange.end, bookings);
+    return hasSchedulingConflict(
+      proposedRange.start,
+      proposedRange.end,
+      bookings,
+    );
   }, [proposedRange, bookings]);
 
   const nextAvailableSlot = useMemo(() => {
@@ -424,14 +442,14 @@ export function useScheduling(
       setProposedRange({ start: startDate, end: endDate });
       return hasSchedulingConflict(startDate, endDate, bookings);
     },
-    [bookings]
+    [bookings],
   );
 
   const findNextSlot = useCallback(
     (preferredStart: string, durationDays: number) => {
       return findNextAvailableSlot(preferredStart, durationDays, bookings);
     },
-    [bookings]
+    [bookings],
   );
 
   const addBooking = useCallback((booking: Booking) => {
@@ -467,21 +485,22 @@ export function useScheduling(
  * Hook for managing status transitions with history tracking
  */
 export function useStatusTransition(
-  initialStatus: PropertyStatus = "vacant"
+  initialStatus: PropertyStatus = "vacant",
 ): UseStatusTransitionReturn {
-  const [currentStatus, setCurrentStatus] = useState<PropertyStatus>(initialStatus);
+  const [currentStatus, setCurrentStatus] =
+    useState<PropertyStatus>(initialStatus);
   const [history, setHistory] = useState<
     Array<{ from: PropertyStatus; to: PropertyStatus; timestamp: Date }>
   >([]);
 
   const validTransitions = useMemo(
     () => getValidTransitions(currentStatus),
-    [currentStatus]
+    [currentStatus],
   );
 
   const canTransition = useCallback(
     (to: PropertyStatus) => canTransitionTo(currentStatus, to),
-    [currentStatus]
+    [currentStatus],
   );
 
   const transition = useCallback(
@@ -497,7 +516,7 @@ export function useStatusTransition(
       setCurrentStatus(to);
       return true;
     },
-    [currentStatus]
+    [currentStatus],
   );
 
   return {
@@ -525,26 +544,29 @@ export interface VacancyAnalytics {
  */
 export function useVacancyAnalytics(
   listing: Partial<AvailabilityData>,
-  monthlyRent: number
+  monthlyRent: number,
 ): VacancyAnalytics {
   return useMemo(() => {
     const daysUntil = getDaysUntilAvailable(listing);
     const loss = estimateVacancyLoss(monthlyRent, daysUntil);
     const risk = getVacancyRisk(listing);
-    
+
     let suggestion = "";
     switch (risk) {
       case VacancyRisk.HIGH:
-        suggestion = "Consider reducing rent or improving listing visibility. Property has been vacant for an extended period.";
+        suggestion =
+          "Consider reducing rent or improving listing visibility. Property has been vacant for an extended period.";
         break;
       case VacancyRisk.MEDIUM:
-        suggestion = "Review pricing and marketing strategy. Consider professional photos or virtual tours.";
+        suggestion =
+          "Review pricing and marketing strategy. Consider professional photos or virtual tours.";
         break;
       case VacancyRisk.LOW:
-        suggestion = "Property is on track. Continue current marketing efforts.";
+        suggestion =
+          "Property is on track. Continue current marketing efforts.";
         break;
     }
-    
+
     return {
       currentVacancyDays: daysUntil,
       estimatedLoss: loss,
@@ -572,9 +594,10 @@ export interface UseDateInputReturn {
 /**
  * Hook for managing date input with validation
  */
-export function useDateInput(initialValue: string | null = null): UseDateInputReturn {
+export function useDateInput(
+  initialValue: string | null = null,
+): UseDateInputReturn {
   const [value, setValueInternal] = useState<string>(initialValue || "");
-  const [error, setError] = useState<string | null>(null);
 
   const isValid = useMemo(() => {
     if (!value) return true; // Empty is valid (optional)
@@ -586,13 +609,13 @@ export function useDateInput(initialValue: string | null = null): UseDateInputRe
     return formatAvailabilityDate(value);
   }, [value]);
 
-  useEffect(() => {
-    if (value && !isValid) {
-      setError("Invalid date format. Use YYYY-MM-DD");
-    } else {
-      setError(null);
-    }
-  }, [value, isValid]);
+  // Derived, not stored. This was state kept in step by an effect, which meant the
+  // message always described the PREVIOUS value for one render after each keystroke:
+  // typing a character re-rendered with the new value and the old error, and only the
+  // effect's follow-up render agreed with itself. It is a pure function of
+  // (value, isValid), so it is computed here.
+  const error =
+    value && !isValid ? "Invalid date format. Use YYYY-MM-DD" : null;
 
   const setValue = useCallback((newValue: string) => {
     setValueInternal(newValue);
@@ -600,27 +623,29 @@ export function useDateInput(initialValue: string | null = null): UseDateInputRe
 
   const clear = useCallback(() => {
     setValueInternal("");
-    setError(null);
   }, []);
 
   const setToToday = useCallback(() => {
     setValueInternal(getDateDaysFromNow(0));
   }, []);
 
-  const addDays = useCallback((days: number) => {
-    if (!value || !isValid) {
-      setValueInternal(getDateDaysFromNow(days));
-    } else {
-      const currentDate = parseAvailabilityDate(value);
-      if (currentDate) {
-        currentDate.setDate(currentDate.getDate() + days);
-        const year = currentDate.getFullYear();
-        const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-        const day = String(currentDate.getDate()).padStart(2, "0");
-        setValueInternal(`${year}-${month}-${day}`);
+  const addDays = useCallback(
+    (days: number) => {
+      if (!value || !isValid) {
+        setValueInternal(getDateDaysFromNow(days));
+      } else {
+        const currentDate = parseAvailabilityDate(value);
+        if (currentDate) {
+          currentDate.setDate(currentDate.getDate() + days);
+          const year = currentDate.getFullYear();
+          const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+          const day = String(currentDate.getDate()).padStart(2, "0");
+          setValueInternal(`${year}-${month}-${day}`);
+        }
       }
-    }
-  }, [value, isValid]);
+    },
+    [value, isValid],
+  );
 
   return {
     value,
@@ -642,7 +667,7 @@ export {
   // Re-export types
   AvailabilityStatus,
   VacancyRisk,
-  
+
   // Re-export constants
   MIN_NOTICE_DAYS,
   SOON_THRESHOLD_DAYS,

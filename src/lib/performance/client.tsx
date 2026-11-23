@@ -1,65 +1,62 @@
 /**
  * Client-Side Performance Monitoring
- * 
+ *
  * Tracks React component render times, data fetching, and user interactions.
  * Uses browser's Performance API for accurate measurements.
  */
 
-'use client'
+"use client";
 
-import { useEffect, useRef, useState } from 'react'
+import { Profiler, useEffect, useRef, useState } from "react";
 
 interface ComponentMetric {
-  component: string
-  mountTime?: number
-  renderTime?: number
-  hydrationTime?: number
-  dataFetchTime?: number
-  timestamp: number
+  component: string;
+  mountTime?: number;
+  renderTime?: number;
+  hydrationTime?: number;
+  dataFetchTime?: number;
+  timestamp: number;
 }
 
 class ClientPerformanceMonitor {
-  private metrics: ComponentMetric[] = []
-  private marks: Map<string, number> = new Map()
+  private metrics: ComponentMetric[] = [];
+  private marks: Map<string, number> = new Map();
 
   /**
    * Mark the start of an operation
    */
   mark(name: string): void {
-    const markName = `perf-${name}-start`
-    performance.mark(markName)
-    this.marks.set(name, performance.now())
+    const markName = `perf-${name}-start`;
+    performance.mark(markName);
+    this.marks.set(name, performance.now());
   }
 
   /**
    * Measure the duration since mark
    */
   measure(name: string): number {
-    const startTime = this.marks.get(name)
+    const startTime = this.marks.get(name);
     if (!startTime) {
-      console.warn(`[ClientPerf] No mark found for: ${name}`)
-      return 0
+      console.warn(`[ClientPerf] No mark found for: ${name}`);
+      return 0;
     }
 
-    const duration = performance.now() - startTime
-    this.marks.delete(name)
-    
-    return duration
+    const duration = performance.now() - startTime;
+    this.marks.delete(name);
+
+    return duration;
   }
 
   /**
    * Log component metric
    */
   logComponent(metric: ComponentMetric): void {
-    this.metrics.push(metric)
-    
+    this.metrics.push(metric);
+
     // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      const emoji = this.getPerformanceEmoji(metric.renderTime || 0)
-      console.log(
-        `${emoji} [Component] ${metric.component}`,
-        metric
-      )
+    if (process.env.NODE_ENV === "development") {
+      const emoji = this.getPerformanceEmoji(metric.renderTime || 0);
+      console.log(`${emoji} [Component] ${metric.component}`, metric);
     }
   }
 
@@ -67,78 +64,89 @@ class ClientPerformanceMonitor {
    * Get all metrics
    */
   getMetrics(): ComponentMetric[] {
-    return this.metrics
+    return this.metrics;
   }
 
   /**
    * Clear all metrics
    */
   clear(): void {
-    this.metrics = []
-    this.marks.clear()
+    this.metrics = [];
+    this.marks.clear();
   }
 
   /**
    * Get performance summary
    */
   getSummary(): {
-    totalComponents: number
-    avgRenderTime: number
-    slowestComponents: ComponentMetric[]
+    totalComponents: number;
+    avgRenderTime: number;
+    slowestComponents: ComponentMetric[];
   } {
-    const totalComponents = this.metrics.length
-    const avgRenderTime = this.metrics.reduce((sum, m) => sum + (m.renderTime || 0), 0) / totalComponents
+    const totalComponents = this.metrics.length;
+    const avgRenderTime =
+      this.metrics.reduce((sum, m) => sum + (m.renderTime || 0), 0) /
+      totalComponents;
     const slowestComponents = [...this.metrics]
       .sort((a, b) => (b.renderTime || 0) - (a.renderTime || 0))
-      .slice(0, 10)
+      .slice(0, 10);
 
     return {
       totalComponents,
       avgRenderTime,
       slowestComponents,
-    }
+    };
   }
 
   private getPerformanceEmoji(duration: number): string {
-    if (duration < 16) return '🟢' // Fast (< 1 frame)
-    if (duration < 50) return '🟡' // OK
-    if (duration < 100) return '🟠' // Slow
-    return '🔴' // Very slow
+    if (duration < 16) return "🟢"; // Fast (< 1 frame)
+    if (duration < 50) return "🟡"; // OK
+    if (duration < 100) return "🟠"; // Slow
+    return "🔴"; // Very slow
   }
 }
 
 // Global client performance monitor
-export const clientPerf = new ClientPerformanceMonitor()
+export const clientPerf = new ClientPerformanceMonitor();
 
 /**
  * Hook to monitor component performance
  */
 export function useComponentPerformance(componentName: string) {
-  const mountTimeRef = useRef<number>(0)
-  const renderCountRef = useRef<number>(0)
+  const mountTimeRef = useRef<number>(0);
+  const renderCountRef = useRef<number>(0);
 
   useEffect(() => {
-    mountTimeRef.current = performance.now()
-    const markName = `${componentName}-mount`
-    clientPerf.mark(markName)
+    mountTimeRef.current = performance.now();
+    const markName = `${componentName}-mount`;
+    clientPerf.mark(markName);
 
     return () => {
-      const mountDuration = clientPerf.measure(markName)
+      const mountDuration = clientPerf.measure(markName);
       clientPerf.logComponent({
         component: componentName,
         mountTime: mountDuration,
         timestamp: Date.now(),
-      })
-    }
-  }, [componentName])
+      });
+    };
+  }, [componentName]);
 
   useEffect(() => {
-    renderCountRef.current++
-  })
+    renderCountRef.current++;
+  });
 
+  // renderCountRef is incremented in the effect above. Mutating a ref never triggers a
+  // re-render, so a `renderCount` read during render was both stale — it reported the
+  // count from before this render's effect — and unobservable, because nothing would
+  // re-render when it changed. That is what ESLint react-hooks/refs reported here.
+  //
+  // A render count cannot be state: incrementing it in an effect with no dependency
+  // array would schedule another render on every render. So it stays a ref and is
+  // exposed as a getter, to be called from an effect or an event handler rather than
+  // during render.
   return {
-    renderCount: renderCountRef.current,
-  }
+    getRenderCount: () => renderCountRef.current,
+  };
 }
 
 /**
@@ -146,50 +154,49 @@ export function useComponentPerformance(componentName: string) {
  */
 export function useDataFetchPerformance(operationName: string) {
   const startAsync = () => {
-    const markName = `${operationName}-fetch`
-    clientPerf.mark(markName)
-    return markName
-  }
+    const markName = `${operationName}-fetch`;
+    clientPerf.mark(markName);
+    return markName;
+  };
 
   const endAsync = (markName: string) => {
-    const duration = clientPerf.measure(markName)
-    
-    if (process.env.NODE_ENV === 'development') {
-      const emoji = duration < 100 ? '🟢' : duration < 500 ? '🟡' : '🔴'
-      console.log(`${emoji} [Data Fetch] ${operationName}: ${duration.toFixed(2)}ms`)
-    }
-    
-    return duration
-  }
+    const duration = clientPerf.measure(markName);
 
-  return { startAsync, endAsync }
+    if (process.env.NODE_ENV === "development") {
+      const emoji = duration < 100 ? "🟢" : duration < 500 ? "🟡" : "🔴";
+      console.log(
+        `${emoji} [Data Fetch] ${operationName}: ${duration.toFixed(2)}ms`,
+      );
+    }
+
+    return duration;
+  };
+
+  return { startAsync, endAsync };
 }
 
 /**
  * Measure async operation (hook version)
  */
 export function useMeasureAsync() {
-  return async <T,>(
-    name: string,
-    fn: () => Promise<T>
-  ): Promise<T> => {
-    const markName = `async-${name}`
-    clientPerf.mark(markName)
-    
+  return async <T,>(name: string, fn: () => Promise<T>): Promise<T> => {
+    const markName = `async-${name}`;
+    clientPerf.mark(markName);
+
     try {
-      const result = await fn()
-      const duration = clientPerf.measure(markName)
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`⏱️  [Async] ${name}: ${duration.toFixed(2)}ms`)
+      const result = await fn();
+      const duration = clientPerf.measure(markName);
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(`⏱️  [Async] ${name}: ${duration.toFixed(2)}ms`);
       }
-      
-      return result
+
+      return result;
     } catch (error) {
-      clientPerf.measure(markName)
-      throw error
+      clientPerf.measure(markName);
+      throw error;
     }
-  }
+  };
 }
 
 /**
@@ -198,81 +205,89 @@ export function useMeasureAsync() {
 export function usePageLoadPerformance() {
   useEffect(() => {
     // Wait for page to fully load
-    if (typeof window === 'undefined') return
+    if (typeof window === "undefined") return;
 
     const logPagePerformance = () => {
-      const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
-      
-      if (!navigation) return
+      const navigation = performance.getEntriesByType(
+        "navigation",
+      )[0] as PerformanceNavigationTiming;
+
+      if (!navigation) return;
 
       const metrics = {
         dns: navigation.domainLookupEnd - navigation.domainLookupStart,
         tcp: navigation.connectEnd - navigation.connectStart,
         request: navigation.responseStart - navigation.requestStart,
         response: navigation.responseEnd - navigation.responseStart,
-        dom: navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart,
+        dom:
+          navigation.domContentLoadedEventEnd -
+          navigation.domContentLoadedEventStart,
         load: navigation.loadEventEnd - navigation.loadEventStart,
         total: navigation.loadEventEnd - navigation.fetchStart,
-      }
+      };
 
-      console.log('\n' + '='.repeat(80))
-      console.log('🚀 PAGE LOAD PERFORMANCE')
-      console.log('='.repeat(80))
-      console.log(`📡 DNS Lookup:           ${metrics.dns.toFixed(2)}ms`)
-      console.log(`🔌 TCP Connection:       ${metrics.tcp.toFixed(2)}ms`)
-      console.log(`📤 Request:              ${metrics.request.toFixed(2)}ms`)
-      console.log(`📥 Response:             ${metrics.response.toFixed(2)}ms`)
-      console.log(`📄 DOM Processing:       ${metrics.dom.toFixed(2)}ms`)
-      console.log(`⚡ Page Load:            ${metrics.load.toFixed(2)}ms`)
-      console.log(`📊 TOTAL:                ${metrics.total.toFixed(2)}ms`)
-      console.log('='.repeat(80) + '\n')
+      console.log("\n" + "=".repeat(80));
+      console.log("🚀 PAGE LOAD PERFORMANCE");
+      console.log("=".repeat(80));
+      console.log(`📡 DNS Lookup:           ${metrics.dns.toFixed(2)}ms`);
+      console.log(`🔌 TCP Connection:       ${metrics.tcp.toFixed(2)}ms`);
+      console.log(`📤 Request:              ${metrics.request.toFixed(2)}ms`);
+      console.log(`📥 Response:             ${metrics.response.toFixed(2)}ms`);
+      console.log(`📄 DOM Processing:       ${metrics.dom.toFixed(2)}ms`);
+      console.log(`⚡ Page Load:            ${metrics.load.toFixed(2)}ms`);
+      console.log(`📊 TOTAL:                ${metrics.total.toFixed(2)}ms`);
+      console.log("=".repeat(80) + "\n");
 
       // Log component summary
-      const summary = clientPerf.getSummary()
+      const summary = clientPerf.getSummary();
       if (summary.totalComponents > 0) {
-        console.log('📦 COMPONENT PERFORMANCE')
-        console.log('='.repeat(80))
-        console.log(`Total Components:        ${summary.totalComponents}`)
-        console.log(`Avg Render Time:         ${summary.avgRenderTime.toFixed(2)}ms`)
-        console.log('\nSlowest Components:')
+        console.log("📦 COMPONENT PERFORMANCE");
+        console.log("=".repeat(80));
+        console.log(`Total Components:        ${summary.totalComponents}`);
+        console.log(
+          `Avg Render Time:         ${summary.avgRenderTime.toFixed(2)}ms`,
+        );
+        console.log("\nSlowest Components:");
         summary.slowestComponents.forEach((comp, i) => {
-          console.log(`  ${i + 1}. ${comp.component}: ${(comp.renderTime || 0).toFixed(2)}ms`)
-        })
-        console.log('='.repeat(80) + '\n')
+          console.log(
+            `  ${i + 1}. ${comp.component}: ${(comp.renderTime || 0).toFixed(2)}ms`,
+          );
+        });
+        console.log("=".repeat(80) + "\n");
       }
-    }
+    };
 
     // Log when page is fully loaded
-    if (document.readyState === 'complete') {
-      setTimeout(logPagePerformance, 100)
+    if (document.readyState === "complete") {
+      setTimeout(logPagePerformance, 100);
     } else {
-      window.addEventListener('load', () => {
-        setTimeout(logPagePerformance, 100)
-      })
+      window.addEventListener("load", () => {
+        setTimeout(logPagePerformance, 100);
+      });
     }
-  }, [])
+  }, []);
 }
 
 /**
  * Track navigation timing
  */
 export function useNavigationPerformance() {
-  const [navigationTime, setNavigationTime] = useState<number>(0)
+  const [navigationTime, setNavigationTime] = useState<number>(0);
 
   useEffect(() => {
-    const startTime = performance.now()
+    const startTime = performance.now();
 
     return () => {
-      const duration = performance.now() - startTime
-      setNavigationTime(duration)
-      
-      if (process.env.NODE_ENV === 'development' && duration > 100) {
-        console.log(`🧭 Navigation took: ${duration.toFixed(2)}ms`)
-      }
-    }
-  }, [])
+      const duration = performance.now() - startTime;
+      setNavigationTime(duration);
 
-  return navigationTime
+      if (process.env.NODE_ENV === "development" && duration > 100) {
+        console.log(`🧭 Navigation took: ${duration.toFixed(2)}ms`);
+      }
+    };
+  }, []);
+
+  return navigationTime;
 }
 
 /**
@@ -280,25 +295,45 @@ export function useNavigationPerformance() {
  */
 export function withPerformanceMonitoring<P extends object>(
   Component: React.ComponentType<P>,
-  componentName?: string
+  componentName?: string,
 ) {
   const WrappedComponent = (props: P) => {
-    const name = componentName || Component.displayName || Component.name || 'UnknownComponent'
-    const renderStart = useRef<number>(performance.now())
+    const name =
+      componentName ||
+      Component.displayName ||
+      Component.name ||
+      "UnknownComponent";
+    // Measured by React, not by hand.
+    //
+    // This was `useRef<number>(performance.now())` plus an effect computing
+    // `performance.now() - renderStart.current`. Two problems. The small one is the
+    // impure call during render that react-hooks/purity reported: useRef evaluates its
+    // argument on every render and keeps only the first result. The large one is what
+    // that implies — renderStart was pinned to MOUNT time, so every render after the
+    // first logged the time since the component appeared, labelled renderTime. A
+    // component left on screen for ten seconds reported a ten-second render;
+    // __tests__/withPerformanceMonitoring.test.tsx reproduced exactly that
+    // (Expected < 5000, Received 10000) before this change.
+    //
+    // Profiler's actualDuration is the time React spent rendering this subtree for this
+    // commit, which is the number this HOC always claimed to report.
+    return (
+      <Profiler
+        id={name}
+        onRender={(_id, _phase, actualDuration) => {
+          clientPerf.logComponent({
+            component: name,
+            renderTime: actualDuration,
+            timestamp: Date.now(),
+          });
+        }}
+      >
+        <Component {...props} />
+      </Profiler>
+    );
+  };
 
-    useEffect(() => {
-      const renderTime = performance.now() - renderStart.current
-      clientPerf.logComponent({
-        component: name,
-        renderTime,
-        timestamp: Date.now(),
-      })
-    })
+  WrappedComponent.displayName = `withPerformance(${componentName || Component.displayName || Component.name})`;
 
-    return <Component {...props} />
-  }
-
-  WrappedComponent.displayName = `withPerformance(${componentName || Component.displayName || Component.name})`
-  
-  return WrappedComponent
+  return WrappedComponent;
 }

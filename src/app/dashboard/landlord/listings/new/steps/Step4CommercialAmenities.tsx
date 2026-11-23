@@ -1,9 +1,9 @@
 /**
  * Step 4: Commercial Amenities & Features
- * 
+ *
  * Commercial-specific amenity selection organized by category.
  * Dynamically filters amenity categories based on commercial type/subtype.
- * 
+ *
  * Design: Clean, professional. Teal primary, orange accents.
  */
 
@@ -11,8 +11,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { 
-  Shield, 
+import {
+  Shield,
   Car,
   ChevronDown,
   Check,
@@ -24,7 +24,10 @@ import {
 } from "lucide-react";
 import { useWizard } from "../context";
 import { COMMERCIAL_AMENITY_CATEGORIES } from "../commercial-types";
-import { getAmenityCategories, shouldSkipAmenities } from "../commercial-flow-config";
+import {
+  getAmenityCategories,
+  shouldSkipAmenities,
+} from "../commercial-flow-config";
 
 // Icon mapping for commercial amenity categories
 const COMMERCIAL_CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -53,7 +56,7 @@ export function Step4CommercialAmenities() {
 
   // Track which categories are expanded - only relevant ones
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(relevantCategories)
+    new Set(relevantCategories),
   );
 
   // Amenities are optional - always valid
@@ -80,7 +83,7 @@ export function Step4CommercialAmenities() {
   const toggleAmenity = (amenityId: string) => {
     const currentAmenities = commercialAmenities || [];
     const isSelected = currentAmenities.includes(amenityId);
-    
+
     updateFormData({
       commercial: {
         ...commercial,
@@ -98,7 +101,7 @@ export function Step4CommercialAmenities() {
   // Filter categories to only show relevant ones
   const filteredCategories = useMemo(() => {
     return Object.entries(COMMERCIAL_AMENITY_CATEGORIES).filter(
-      ([categoryId]) => relevantCategories.includes(categoryId)
+      ([categoryId]) => relevantCategories.includes(categoryId),
     );
   }, [relevantCategories]);
 
@@ -110,9 +113,7 @@ export function Step4CommercialAmenities() {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Space Features
           </h2>
-          <p className="text-gray-500">
-            Basic features for this space type
-          </p>
+          <p className="text-gray-500">Basic features for this space type</p>
         </div>
 
         <div className="space-y-4">
@@ -124,8 +125,8 @@ export function Step4CommercialAmenities() {
                 Specialized space type detected
               </p>
               <p className="text-sm text-teal-700 mt-0.5">
-                This property type has specific features defined in the details step. 
-                Standard building amenities may not apply.
+                This property type has specific features defined in the details
+                step. Standard building amenities may not apply.
               </p>
             </div>
           </div>
@@ -134,11 +135,9 @@ export function Step4CommercialAmenities() {
           <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900">Operating Hours</h3>
-              <p className="text-sm text-gray-500 mt-0.5">
-                Access schedule
-              </p>
+              <p className="text-sm text-gray-500 mt-0.5">Access schedule</p>
             </div>
-            
+
             <div className="p-5">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
@@ -150,18 +149,24 @@ export function Step4CommercialAmenities() {
                   <button
                     key={option.id}
                     type="button"
-                    onClick={() => updateFormData({
-                      commercial: {
-                        ...commercial,
-                        operatingHours: option.id as "24_7" | "business_hours" | "extended" | "custom",
-                      },
-                    })}
+                    onClick={() =>
+                      updateFormData({
+                        commercial: {
+                          ...commercial,
+                          operatingHours: option.id as
+                            | "24_7"
+                            | "business_hours"
+                            | "extended"
+                            | "custom",
+                        },
+                      })
+                    }
                     className={cn(
                       "px-3 py-2.5 rounded-lg border-2 text-center transition-all",
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
                       commercial.operatingHours === option.id
                         ? "border-teal-600 bg-teal-50 text-teal-700"
-                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300",
                     )}
                   >
                     <span className="text-sm font-medium">{option.label}</span>
@@ -183,7 +188,7 @@ export function Step4CommercialAmenities() {
           Building Amenities
         </h2>
         <p className="text-gray-500">
-          What's included with this commercial space?
+          What&apos;s included with this commercial space?
         </p>
       </div>
 
@@ -191,12 +196,12 @@ export function Step4CommercialAmenities() {
         {/* Amenity Categories - filtered */}
         {filteredCategories.map(([categoryId, category]) => {
           const isExpanded = expandedCategories.has(categoryId);
-          const selectedCount = category.amenities.filter(
-            (a) => isAmenitySelected(a.id)
+          const selectedCount = category.amenities.filter((a) =>
+            isAmenitySelected(a.id),
           ).length;
 
           return (
-            <section 
+            <section
               key={categoryId}
               className="bg-white rounded-xl border border-gray-200 overflow-hidden"
             >
@@ -207,35 +212,38 @@ export function Step4CommercialAmenities() {
                 className={cn(
                   "w-full px-5 py-4 flex items-center justify-between",
                   "hover:bg-gray-50 transition-colors",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-500"
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-500",
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center",
-                    selectedCount > 0 
-                      ? "bg-teal-100 text-teal-600" 
-                      : "bg-gray-100 text-gray-500"
-                  )}>
-                    {COMMERCIAL_CATEGORY_ICONS[categoryId] || <Building2 className="w-5 h-5" />}
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center",
+                      selectedCount > 0
+                        ? "bg-teal-100 text-teal-600"
+                        : "bg-gray-100 text-gray-500",
+                    )}
+                  >
+                    {COMMERCIAL_CATEGORY_ICONS[categoryId] || (
+                      <Building2 className="w-5 h-5" />
+                    )}
                   </div>
                   <div className="text-left">
                     <h3 className="font-semibold text-gray-900">
                       {category.title}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {selectedCount > 0 
+                      {selectedCount > 0
                         ? `${selectedCount} selected`
-                        : "None selected"
-                      }
+                        : "None selected"}
                     </p>
                   </div>
                 </div>
-                <ChevronDown 
+                <ChevronDown
                   className={cn(
                     "w-5 h-5 text-gray-400 transition-transform",
-                    isExpanded && "rotate-180"
-                  )} 
+                    isExpanded && "rotate-180",
+                  )}
                 />
               </button>
 
@@ -256,15 +264,17 @@ export function Step4CommercialAmenities() {
                             "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-1",
                             selected
                               ? "border-teal-600 bg-teal-50 text-teal-700"
-                              : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                              : "border-gray-200 bg-white text-gray-700 hover:border-gray-300",
                           )}
                         >
-                          <div className={cn(
-                            "w-5 h-5 rounded flex-shrink-0 flex items-center justify-center",
-                            selected 
-                              ? "bg-teal-600 text-white"
-                              : "border-2 border-gray-300"
-                          )}>
+                          <div
+                            className={cn(
+                              "w-5 h-5 rounded flex-shrink-0 flex items-center justify-center",
+                              selected
+                                ? "bg-teal-600 text-white"
+                                : "border-2 border-gray-300",
+                            )}
+                          >
                             {selected && <Check className="w-3.5 h-3.5" />}
                           </div>
                           <span className="text-sm font-medium truncate">
@@ -288,7 +298,7 @@ export function Step4CommercialAmenities() {
               Building access schedule
             </p>
           </div>
-          
+
           <div className="p-5">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
@@ -300,18 +310,24 @@ export function Step4CommercialAmenities() {
                 <button
                   key={option.id}
                   type="button"
-                  onClick={() => updateFormData({
-                    commercial: {
-                      ...commercial,
-                      operatingHours: option.id as "24_7" | "business_hours" | "extended" | "custom",
-                    },
-                  })}
+                  onClick={() =>
+                    updateFormData({
+                      commercial: {
+                        ...commercial,
+                        operatingHours: option.id as
+                          | "24_7"
+                          | "business_hours"
+                          | "extended"
+                          | "custom",
+                      },
+                    })
+                  }
                   className={cn(
                     "px-3 py-2.5 rounded-lg border-2 text-center transition-all",
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
                     commercial.operatingHours === option.id
                       ? "border-teal-600 bg-teal-50 text-teal-700"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300",
                   )}
                 >
                   <span className="text-sm font-medium">{option.label}</span>
@@ -329,7 +345,7 @@ export function Step4CommercialAmenities() {
               Terms and flexibility
             </p>
           </div>
-          
+
           <div className="p-5 space-y-4">
             {/* Minimum Lease Term */}
             <div>
@@ -347,18 +363,20 @@ export function Step4CommercialAmenities() {
                   <button
                     key={option.id}
                     type="button"
-                    onClick={() => updateFormData({
-                      commercial: {
-                        ...commercial,
-                        minimumLease: option.id,
-                      },
-                    })}
+                    onClick={() =>
+                      updateFormData({
+                        commercial: {
+                          ...commercial,
+                          minimumLease: option.id,
+                        },
+                      })
+                    }
                     className={cn(
                       "px-3 py-2 rounded-lg border-2 text-center transition-all",
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
                       commercial.minimumLease === option.id
                         ? "border-teal-600 bg-teal-50 text-teal-700"
-                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300",
                     )}
                   >
                     <span className="text-xs font-medium">{option.label}</span>
@@ -370,8 +388,16 @@ export function Step4CommercialAmenities() {
             {/* Options */}
             <div className="grid grid-cols-2 gap-3">
               {[
-                { key: "fitoutAllowed", label: "Fit-out Negotiable", desc: "Tenant can customize" },
-                { key: "subleaseAllowed", label: "Sublease Allowed", desc: "Can sublet space" },
+                {
+                  key: "fitoutAllowed",
+                  label: "Fit-out Negotiable",
+                  desc: "Tenant can customize",
+                },
+                {
+                  key: "subleaseAllowed",
+                  label: "Sublease Allowed",
+                  desc: "Can sublet space",
+                },
               ].map((option) => (
                 <label
                   key={option.key}
@@ -379,22 +405,30 @@ export function Step4CommercialAmenities() {
                     "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
                     commercial[option.key as keyof typeof commercial]
                       ? "border-teal-600 bg-teal-50"
-                      : "border-gray-200 hover:border-gray-300"
+                      : "border-gray-200 hover:border-gray-300",
                   )}
                 >
                   <input
                     type="checkbox"
-                    checked={commercial[option.key as keyof typeof commercial] as boolean}
-                    onChange={(e) => updateFormData({
-                      commercial: {
-                        ...commercial,
-                        [option.key]: e.target.checked,
-                      },
-                    })}
+                    checked={
+                      commercial[
+                        option.key as keyof typeof commercial
+                      ] as boolean
+                    }
+                    onChange={(e) =>
+                      updateFormData({
+                        commercial: {
+                          ...commercial,
+                          [option.key]: e.target.checked,
+                        },
+                      })
+                    }
                     className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                   />
                   <div>
-                    <span className="text-sm font-medium text-gray-700 block">{option.label}</span>
+                    <span className="text-sm font-medium text-gray-700 block">
+                      {option.label}
+                    </span>
                     <span className="text-xs text-gray-500">{option.desc}</span>
                   </div>
                 </label>

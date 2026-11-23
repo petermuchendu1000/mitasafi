@@ -1,6 +1,6 @@
 /**
  * Add Tenant Page
- * 
+ *
  * Form for adding a new tenant and creating a lease for a unit.
  * Combines tenant info + lease creation in one flow.
  */
@@ -36,12 +36,12 @@ interface TenantFormData {
   email: string;
   id_type: "national_id" | "passport" | "military_id";
   id_number: string;
-  
+
   // Emergency Contact
   emergency_name: string;
   emergency_phone: string;
   emergency_relationship: string;
-  
+
   // Lease Details
   start_date: string;
   end_date: string;
@@ -49,7 +49,7 @@ interface TenantFormData {
   deposit_amount: string;
   deposit_paid: boolean;
   payment_day: string;
-  
+
   // Notes
   notes: string;
 }
@@ -107,10 +107,15 @@ export default function AddTenantPage({
     notes: "",
   });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof TenantFormData, string>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof TenantFormData, string>>
+  >({});
 
   // Update form field
-  const updateField = <K extends keyof TenantFormData>(field: K, value: TenantFormData[K]) => {
+  const updateField = <K extends keyof TenantFormData>(
+    field: K,
+    value: TenantFormData[K],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -132,19 +137,28 @@ export default function AddTenantPage({
     const newErrors: Partial<Record<keyof TenantFormData, string>> = {};
 
     if (step === 1) {
-      if (!formData.first_name.trim()) newErrors.first_name = "First name is required";
-      if (!formData.last_name.trim()) newErrors.last_name = "Last name is required";
+      if (!formData.first_name.trim())
+        newErrors.first_name = "First name is required";
+      if (!formData.last_name.trim())
+        newErrors.last_name = "Last name is required";
       if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
-      if (formData.phone && !/^0[17]\d{8}$/.test(formData.phone.replace(/\s/g, ""))) {
+      if (
+        formData.phone &&
+        !/^0[17]\d{8}$/.test(formData.phone.replace(/\s/g, ""))
+      ) {
         newErrors.phone = "Enter a valid Kenyan phone number";
       }
-      if (!formData.id_number.trim()) newErrors.id_number = "ID number is required";
+      if (!formData.id_number.trim())
+        newErrors.id_number = "ID number is required";
     }
 
     if (step === 2) {
-      if (!formData.emergency_name.trim()) newErrors.emergency_name = "Emergency contact name is required";
-      if (!formData.emergency_phone.trim()) newErrors.emergency_phone = "Emergency phone is required";
-      if (!formData.emergency_relationship) newErrors.emergency_relationship = "Relationship is required";
+      if (!formData.emergency_name.trim())
+        newErrors.emergency_name = "Emergency contact name is required";
+      if (!formData.emergency_phone.trim())
+        newErrors.emergency_phone = "Emergency phone is required";
+      if (!formData.emergency_relationship)
+        newErrors.emergency_relationship = "Relationship is required";
     }
 
     if (step === 3) {
@@ -153,7 +167,10 @@ export default function AddTenantPage({
       if (!formData.rent_amount || parseFloat(formData.rent_amount) <= 0) {
         newErrors.rent_amount = "Valid rent amount is required";
       }
-      if (!formData.deposit_amount || parseFloat(formData.deposit_amount) <= 0) {
+      if (
+        !formData.deposit_amount ||
+        parseFloat(formData.deposit_amount) <= 0
+      ) {
         newErrors.deposit_amount = "Valid deposit amount is required";
       }
     }
@@ -187,7 +204,9 @@ export default function AddTenantPage({
       console.log("Saving tenant:", formData);
 
       // Success - redirect back to unit
-      router.push(`/dashboard/landlord/buildings/${buildingId}/units/${unitId}`);
+      router.push(
+        `/dashboard/landlord/buildings/${buildingId}/units/${unitId}`,
+      );
     } catch (error) {
       console.error("Error saving tenant:", error);
       alert("Failed to add tenant. Please try again.");
@@ -215,8 +234,12 @@ export default function AddTenantPage({
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">Add Tenant</h1>
-              <p className="text-sm text-gray-500">Unit {mockUnit.unit_number}</p>
+              <h1 className="text-lg font-semibold text-gray-900">
+                Add Tenant
+              </h1>
+              <p className="text-sm text-gray-500">
+                Unit {mockUnit.unit_number}
+              </p>
             </div>
           </div>
         </div>
@@ -227,11 +250,15 @@ export default function AddTenantPage({
             {steps.map((step, index) => (
               <div key={step.number} className="flex items-center">
                 <button
-                  onClick={() => currentStep > step.number && setCurrentStep(step.number)}
+                  onClick={() =>
+                    currentStep > step.number && setCurrentStep(step.number)
+                  }
                   className={cn(
                     "flex items-center gap-2",
-                    currentStep >= step.number ? "text-teal-600" : "text-gray-400",
-                    currentStep > step.number && "cursor-pointer"
+                    currentStep >= step.number
+                      ? "text-teal-600"
+                      : "text-gray-400",
+                    currentStep > step.number && "cursor-pointer",
                   )}
                   disabled={currentStep < step.number}
                 >
@@ -241,19 +268,25 @@ export default function AddTenantPage({
                       currentStep > step.number
                         ? "bg-teal-600 text-white"
                         : currentStep === step.number
-                        ? "bg-teal-100 text-teal-700 border-2 border-teal-600"
-                        : "bg-gray-100 text-gray-500"
+                          ? "bg-teal-100 text-teal-700 border-2 border-teal-600"
+                          : "bg-gray-100 text-gray-500",
                     )}
                   >
-                    {currentStep > step.number ? <CheckCircle className="w-5 h-5" /> : step.number}
+                    {currentStep > step.number ? (
+                      <CheckCircle className="w-5 h-5" />
+                    ) : (
+                      step.number
+                    )}
                   </div>
-                  <span className="hidden sm:inline text-sm font-medium">{step.title}</span>
+                  <span className="hidden sm:inline text-sm font-medium">
+                    {step.title}
+                  </span>
                 </button>
                 {index < steps.length - 1 && (
                   <div
                     className={cn(
                       "w-12 sm:w-24 h-0.5 mx-2 sm:mx-4",
-                      currentStep > step.number ? "bg-teal-600" : "bg-gray-200"
+                      currentStep > step.number ? "bg-teal-600" : "bg-gray-200",
                     )}
                   />
                 )}
@@ -267,9 +300,11 @@ export default function AddTenantPage({
         {/* Step 1: Personal Info */}
         {currentStep === 1 && (
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Personal Information</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">
+              Personal Information
+            </h2>
             <p className="text-sm text-gray-500 mb-6">
-              Enter the tenant's personal details
+              Enter the tenant&apos;s personal details
             </p>
 
             <div className="space-y-4">
@@ -285,11 +320,13 @@ export default function AddTenantPage({
                     placeholder="John"
                     className={cn(
                       "w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                      errors.first_name ? "border-red-300" : "border-gray-200"
+                      errors.first_name ? "border-red-300" : "border-gray-200",
                     )}
                   />
                   {errors.first_name && (
-                    <p className="mt-1 text-sm text-red-600">{errors.first_name}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.first_name}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -303,11 +340,13 @@ export default function AddTenantPage({
                     placeholder="Mwangi"
                     className={cn(
                       "w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                      errors.last_name ? "border-red-300" : "border-gray-200"
+                      errors.last_name ? "border-red-300" : "border-gray-200",
                     )}
                   />
                   {errors.last_name && (
-                    <p className="mt-1 text-sm text-red-600">{errors.last_name}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.last_name}
+                    </p>
                   )}
                 </div>
               </div>
@@ -325,7 +364,7 @@ export default function AddTenantPage({
                     placeholder="0712 345 678"
                     className={cn(
                       "w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                      errors.phone ? "border-red-300" : "border-gray-200"
+                      errors.phone ? "border-red-300" : "border-gray-200",
                     )}
                   />
                 </div>
@@ -358,7 +397,12 @@ export default function AddTenantPage({
                   <div className="relative">
                     <select
                       value={formData.id_type}
-                      onChange={(e) => updateField("id_type", e.target.value as TenantFormData["id_type"])}
+                      onChange={(e) =>
+                        updateField(
+                          "id_type",
+                          e.target.value as TenantFormData["id_type"],
+                        )
+                      }
                       className="w-full appearance-none px-4 py-2.5 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                     >
                       {ID_TYPES.map((type) => (
@@ -383,12 +427,14 @@ export default function AddTenantPage({
                       placeholder="12345678"
                       className={cn(
                         "w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                        errors.id_number ? "border-red-300" : "border-gray-200"
+                        errors.id_number ? "border-red-300" : "border-gray-200",
                       )}
                     />
                   </div>
                   {errors.id_number && (
-                    <p className="mt-1 text-sm text-red-600">{errors.id_number}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.id_number}
+                    </p>
                   )}
                 </div>
               </div>
@@ -399,7 +445,9 @@ export default function AddTenantPage({
         {/* Step 2: Emergency Contact */}
         {currentStep === 2 && (
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Emergency Contact</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">
+              Emergency Contact
+            </h2>
             <p className="text-sm text-gray-500 mb-6">
               Someone we can contact in case of emergencies
             </p>
@@ -412,15 +460,21 @@ export default function AddTenantPage({
                 <input
                   type="text"
                   value={formData.emergency_name}
-                  onChange={(e) => updateField("emergency_name", e.target.value)}
+                  onChange={(e) =>
+                    updateField("emergency_name", e.target.value)
+                  }
                   placeholder="Full name"
                   className={cn(
                     "w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                    errors.emergency_name ? "border-red-300" : "border-gray-200"
+                    errors.emergency_name
+                      ? "border-red-300"
+                      : "border-gray-200",
                   )}
                 />
                 {errors.emergency_name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.emergency_name}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.emergency_name}
+                  </p>
                 )}
               </div>
 
@@ -433,16 +487,22 @@ export default function AddTenantPage({
                   <input
                     type="tel"
                     value={formData.emergency_phone}
-                    onChange={(e) => updateField("emergency_phone", e.target.value)}
+                    onChange={(e) =>
+                      updateField("emergency_phone", e.target.value)
+                    }
                     placeholder="0712 345 678"
                     className={cn(
                       "w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                      errors.emergency_phone ? "border-red-300" : "border-gray-200"
+                      errors.emergency_phone
+                        ? "border-red-300"
+                        : "border-gray-200",
                     )}
                   />
                 </div>
                 {errors.emergency_phone && (
-                  <p className="mt-1 text-sm text-red-600">{errors.emergency_phone}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.emergency_phone}
+                  </p>
                 )}
               </div>
 
@@ -453,10 +513,14 @@ export default function AddTenantPage({
                 <div className="relative">
                   <select
                     value={formData.emergency_relationship}
-                    onChange={(e) => updateField("emergency_relationship", e.target.value)}
+                    onChange={(e) =>
+                      updateField("emergency_relationship", e.target.value)
+                    }
                     className={cn(
                       "w-full appearance-none px-4 py-2.5 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                      errors.emergency_relationship ? "border-red-300" : "border-gray-200"
+                      errors.emergency_relationship
+                        ? "border-red-300"
+                        : "border-gray-200",
                     )}
                   >
                     <option value="">Select relationship</option>
@@ -469,7 +533,9 @@ export default function AddTenantPage({
                   <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
                 {errors.emergency_relationship && (
-                  <p className="mt-1 text-sm text-red-600">{errors.emergency_relationship}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.emergency_relationship}
+                  </p>
                 )}
               </div>
             </div>
@@ -479,7 +545,9 @@ export default function AddTenantPage({
         {/* Step 3: Lease Details */}
         {currentStep === 3 && (
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Lease Details</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">
+              Lease Details
+            </h2>
             <p className="text-sm text-gray-500 mb-6">
               Set up the rental agreement details
             </p>
@@ -498,12 +566,16 @@ export default function AddTenantPage({
                       onChange={(e) => handleStartDateChange(e.target.value)}
                       className={cn(
                         "w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                        errors.start_date ? "border-red-300" : "border-gray-200"
+                        errors.start_date
+                          ? "border-red-300"
+                          : "border-gray-200",
                       )}
                     />
                   </div>
                   {errors.start_date && (
-                    <p className="mt-1 text-sm text-red-600">{errors.start_date}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.start_date}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -518,12 +590,14 @@ export default function AddTenantPage({
                       onChange={(e) => updateField("end_date", e.target.value)}
                       className={cn(
                         "w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                        errors.end_date ? "border-red-300" : "border-gray-200"
+                        errors.end_date ? "border-red-300" : "border-gray-200",
                       )}
                     />
                   </div>
                   {errors.end_date && (
-                    <p className="mt-1 text-sm text-red-600">{errors.end_date}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.end_date}
+                    </p>
                   )}
                 </div>
               </div>
@@ -540,15 +614,21 @@ export default function AddTenantPage({
                     <input
                       type="number"
                       value={formData.rent_amount}
-                      onChange={(e) => updateField("rent_amount", e.target.value)}
+                      onChange={(e) =>
+                        updateField("rent_amount", e.target.value)
+                      }
                       className={cn(
                         "w-full pl-12 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                        errors.rent_amount ? "border-red-300" : "border-gray-200"
+                        errors.rent_amount
+                          ? "border-red-300"
+                          : "border-gray-200",
                       )}
                     />
                   </div>
                   {errors.rent_amount && (
-                    <p className="mt-1 text-sm text-red-600">{errors.rent_amount}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.rent_amount}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -562,15 +642,21 @@ export default function AddTenantPage({
                     <input
                       type="number"
                       value={formData.deposit_amount}
-                      onChange={(e) => updateField("deposit_amount", e.target.value)}
+                      onChange={(e) =>
+                        updateField("deposit_amount", e.target.value)
+                      }
                       className={cn(
                         "w-full pl-12 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                        errors.deposit_amount ? "border-red-300" : "border-gray-200"
+                        errors.deposit_amount
+                          ? "border-red-300"
+                          : "border-gray-200",
                       )}
                     />
                   </div>
                   {errors.deposit_amount && (
-                    <p className="mt-1 text-sm text-red-600">{errors.deposit_amount}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.deposit_amount}
+                    </p>
                   )}
                 </div>
               </div>
@@ -587,7 +673,17 @@ export default function AddTenantPage({
                   >
                     {[1, 5, 10, 15, 20, 25, 28].map((day) => (
                       <option key={day} value={day.toString()}>
-                        {day}{day === 1 ? "st" : day === 5 ? "th" : day === 15 ? "th" : day === 28 ? "th" : "th"} of each month
+                        {day}
+                        {day === 1
+                          ? "st"
+                          : day === 5
+                            ? "th"
+                            : day === 15
+                              ? "th"
+                              : day === 28
+                                ? "th"
+                                : "th"}{" "}
+                        of each month
                       </option>
                     ))}
                   </select>
@@ -600,7 +696,9 @@ export default function AddTenantPage({
                   type="checkbox"
                   id="deposit_paid"
                   checked={formData.deposit_paid}
-                  onChange={(e) => updateField("deposit_paid", e.target.checked)}
+                  onChange={(e) =>
+                    updateField("deposit_paid", e.target.checked)
+                  }
                   className="w-5 h-5 text-teal-600 rounded border-gray-300 focus:ring-teal-500"
                 />
                 <label htmlFor="deposit_paid" className="text-sm text-gray-700">
@@ -627,12 +725,27 @@ export default function AddTenantPage({
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-teal-600 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-teal-900">Lease Summary</p>
+                  <p className="text-sm font-medium text-teal-900">
+                    Lease Summary
+                  </p>
                   <p className="text-sm text-teal-700 mt-1">
-                    {formData.first_name || "Tenant"} {formData.last_name} will pay{" "}
-                    <strong>KES {parseInt(formData.rent_amount || "0").toLocaleString()}</strong>/month
-                    from {formData.start_date ? new Date(formData.start_date).toLocaleDateString("en-KE") : "—"}{" "}
-                    to {formData.end_date ? new Date(formData.end_date).toLocaleDateString("en-KE") : "—"}.
+                    {formData.first_name || "Tenant"} {formData.last_name} will
+                    pay{" "}
+                    <strong>
+                      KES{" "}
+                      {parseInt(formData.rent_amount || "0").toLocaleString()}
+                    </strong>
+                    /month from{" "}
+                    {formData.start_date
+                      ? new Date(formData.start_date).toLocaleDateString(
+                          "en-KE",
+                        )
+                      : "—"}{" "}
+                    to{" "}
+                    {formData.end_date
+                      ? new Date(formData.end_date).toLocaleDateString("en-KE")
+                      : "—"}
+                    .
                   </p>
                 </div>
               </div>

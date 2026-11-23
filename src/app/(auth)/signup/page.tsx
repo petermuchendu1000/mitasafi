@@ -892,7 +892,7 @@ function SignupPageContent() {
                       {roleUpgradeWarning.title}
                     </h2>
                     <p className="text-gray-500 mt-1">
-                      Welcome back! You're currently signed in as a{" "}
+                      Welcome back! You&apos;re currently signed in as a{" "}
                       <span className="font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded">
                         {roleUpgradeWarning.fromRole === "service_provider"
                           ? "Service Provider"

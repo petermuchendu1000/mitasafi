@@ -1,6 +1,6 @@
 /**
  * Success Modal Component
- * 
+ *
  * Celebratory modal shown after successful actions like publishing a listing.
  * Includes confetti animation option and clear next-step CTAs.
  */
@@ -30,8 +30,46 @@ interface SuccessModalProps {
   showConfetti?: boolean;
 }
 
-export function SuccessModal({
-  isOpen,
+const CONFETTI_COLOURS = [
+  "#14b8a6", // teal-500
+  "#f97316", // orange-500
+  "#eab308", // yellow-500
+  "#3b82f6", // blue-500
+  "#a855f7", // purple-500
+  "#ec4899", // pink-500
+];
+
+function makeConfetti(): Array<{ id: number; style: React.CSSProperties }> {
+  return Array.from({ length: 50 }, (_, i) => ({
+    id: i,
+    style: {
+      left: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 0.5}s`,
+      backgroundColor:
+        CONFETTI_COLOURS[Math.floor(Math.random() * CONFETTI_COLOURS.length)],
+    },
+  }));
+}
+
+/**
+ * The modal is MOUNTED only while it is open.
+ *
+ * The confetti used to be state filled in by an effect keyed on isOpen, which is the
+ * reported setState: the modal's first open frame had no confetti and the second did.
+ * It is a value computed once per opening, so it belongs in a useState initialiser,
+ * and the initialiser only makes sense if opening the modal mounts something.
+ *
+ * Math.random() in an initialiser would be a hydration hazard if this could render on
+ * the server with isOpen true. It cannot: both call sites
+ * (listings/new/page.tsx:155, listings/[id]/edit/page.tsx:177) pass a `showSuccessModal`
+ * that starts as useState(false) and is only ever set after a client-side submit.
+ */
+export function SuccessModal(props: SuccessModalProps) {
+  if (!props.isOpen) return null;
+  return <SuccessModalContent {...props} />;
+}
+
+function SuccessModalContent({
   onClose,
   title,
   message,
@@ -39,50 +77,33 @@ export function SuccessModal({
   secondaryAction,
   showConfetti = true,
 }: SuccessModalProps) {
-  const [confettiPieces, setConfettiPieces] = useState<Array<{ id: number; style: React.CSSProperties }>>([]);
+  const [confettiPieces, setConfettiPieces] = useState<
+    Array<{ id: number; style: React.CSSProperties }>
+  >(() => (showConfetti ? makeConfetti() : []));
 
-  // Generate confetti on mount
+  // Clear the confetti once its animation has finished. setConfettiPieces is called
+  // from the timer callback, not the effect body, which is both what the rule cares
+  // about and an accurate description: this is a delayed event, not a derivation.
   useEffect(() => {
-    if (isOpen && showConfetti) {
-      const pieces = Array.from({ length: 50 }, (_, i) => ({
-        id: i,
-        style: {
-          left: `${Math.random() * 100}%`,
-          animationDelay: `${Math.random() * 0.5}s`,
-          backgroundColor: [
-            "#14b8a6", // teal-500
-            "#f97316", // orange-500
-            "#eab308", // yellow-500
-            "#3b82f6", // blue-500
-            "#a855f7", // purple-500
-            "#ec4899", // pink-500
-          ][Math.floor(Math.random() * 6)],
-        },
-      }));
-      setConfettiPieces(pieces);
-
-      // Clear confetti after animation
-      const timer = setTimeout(() => setConfettiPieces([]), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, showConfetti]);
-
-  if (!isOpen) return null;
+    if (!showConfetti) return;
+    const timer = setTimeout(() => setConfettiPieces([]), 3000);
+    return () => clearTimeout(timer);
+  }, [showConfetti]);
 
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/50 z-50 animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div 
+        <div
           className={cn(
             "relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto",
-            "animate-in zoom-in-95 fade-in duration-300"
+            "animate-in zoom-in-95 fade-in duration-300",
           )}
           onClick={(e) => e.stopPropagation()}
         >
@@ -115,25 +136,21 @@ export function SuccessModal({
             </div>
 
             {/* Title */}
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              {title}
-            </h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">{title}</h2>
 
             {/* Message */}
-            <p className="text-gray-600 mb-6">
-              {message}
-            </p>
+            <p className="text-gray-600 mb-6">{message}</p>
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3">
-              {secondaryAction && (
-                secondaryAction.href ? (
+              {secondaryAction &&
+                (secondaryAction.href ? (
                   <Link
                     href={secondaryAction.href}
                     className={cn(
                       "flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg",
                       "text-gray-700 bg-gray-100 hover:bg-gray-200",
-                      "text-sm font-medium transition-colors"
+                      "text-sm font-medium transition-colors",
                     )}
                   >
                     <Pencil className="w-4 h-4" />
@@ -145,23 +162,22 @@ export function SuccessModal({
                     className={cn(
                       "flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg",
                       "text-gray-700 bg-gray-100 hover:bg-gray-200",
-                      "text-sm font-medium transition-colors"
+                      "text-sm font-medium transition-colors",
                     )}
                   >
                     <Pencil className="w-4 h-4" />
                     {secondaryAction.label}
                   </button>
-                )
-              )}
+                ))}
 
-              {primaryAction && (
-                primaryAction.href ? (
+              {primaryAction &&
+                (primaryAction.href ? (
                   <Link
                     href={primaryAction.href}
                     className={cn(
                       "flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg",
                       "text-white bg-teal-600 hover:bg-teal-700",
-                      "text-sm font-semibold transition-colors shadow-sm"
+                      "text-sm font-semibold transition-colors shadow-sm",
                     )}
                   >
                     <Eye className="w-4 h-4" />
@@ -173,14 +189,13 @@ export function SuccessModal({
                     className={cn(
                       "flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg",
                       "text-white bg-teal-600 hover:bg-teal-700",
-                      "text-sm font-semibold transition-colors shadow-sm"
+                      "text-sm font-semibold transition-colors shadow-sm",
                     )}
                   >
                     <Eye className="w-4 h-4" />
                     {primaryAction.label}
                   </button>
-                )
-              )}
+                ))}
             </div>
           </div>
         </div>

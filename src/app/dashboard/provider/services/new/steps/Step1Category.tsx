@@ -1,11 +1,11 @@
 /**
  * Step 1: Category Selection
- * 
+ *
  * PERFORMANCE OPTIMIZED:
  * - Direct category/subcategory queries (no joins needed)
  * - Client-side filtering for instant search
  * - Reduced database round-trips
- * 
+ *
  * Provider selects a category and subcategory.
  * Categories load from database, subcategories filter based on selection.
  * Optimized for 700+ services by filtering at category level first.
@@ -31,9 +31,9 @@ export function Step1Category() {
 
   // Tier-based filtering: Main (12) vs More Services (8)
   const { mainCategories, moreCategories } = useMemo(() => {
-    const main = categories.filter(c => c.is_primary && c.is_active);
-    const more = categories.filter(c => !c.is_primary && c.is_active);
-    
+    const main = categories.filter((c) => c.is_primary && c.is_active);
+    const more = categories.filter((c) => !c.is_primary && c.is_active);
+
     return { mainCategories: main, moreCategories: more };
   }, [categories]);
 
@@ -82,25 +82,26 @@ export function Step1Category() {
   const handleCategorySelect = (categoryId: string) => {
     const currentCategories = formData.categoryIds || [];
     const isSelected = currentCategories.includes(categoryId);
-    
+
     // If already selected, allow deselection
     // If not selected, check limit before adding
     if (!isSelected && currentCategories.length >= MAX_CATEGORIES) {
       // Already at max - don't add more
       return;
     }
-    
+
     // Toggle selection
     const newCategoryIds = isSelected
-      ? currentCategories.filter(id => id !== categoryId)
+      ? currentCategories.filter((id) => id !== categoryId)
       : [...currentCategories, categoryId];
-    
+
     updateFormData({
       categoryIds: newCategoryIds,
     });
   };
 
-  const isAtMaxCategories = (formData.categoryIds?.length || 0) >= MAX_CATEGORIES;
+  const isAtMaxCategories =
+    (formData.categoryIds?.length || 0) >= MAX_CATEGORIES;
 
   if (isLoadingCategories) {
     return (
@@ -118,12 +119,17 @@ export function Step1Category() {
           What kind of work do you do?
         </h2>
         <p className="text-gray-500 text-sm">
-          Select up to {MAX_CATEGORIES} categories that best describe your services.
+          Select up to {MAX_CATEGORIES} categories that best describe your
+          services.
         </p>
         {formData.categoryIds && formData.categoryIds.length > 0 && (
-          <p className={`mt-2 text-sm font-medium ${isAtMaxCategories ? 'text-amber-600' : 'text-teal-600'}`}>
-            {formData.categoryIds.length} of {MAX_CATEGORIES} {formData.categoryIds.length === 1 ? 'category' : 'categories'} selected
-            {isAtMaxCategories && ' (maximum reached)'}
+          <p
+            className={`mt-2 text-sm font-medium ${isAtMaxCategories ? "text-amber-600" : "text-teal-600"}`}
+          >
+            {formData.categoryIds.length} of {MAX_CATEGORIES}{" "}
+            {formData.categoryIds.length === 1 ? "category" : "categories"}{" "}
+            selected
+            {isAtMaxCategories && " (maximum reached)"}
           </p>
         )}
       </div>
@@ -144,9 +150,12 @@ export function Step1Category() {
 
       {/* Categories Grid */}
       <div className="mb-8">
-        {filteredCategories.main.length === 0 && filteredCategories.more.length === 0 ? (
+        {filteredCategories.main.length === 0 &&
+        filteredCategories.more.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">No categories found. Try a different search term.</p>
+            <p className="text-gray-500">
+              No categories found. Try a different search term.
+            </p>
           </div>
         ) : (
           <>
@@ -155,7 +164,8 @@ export function Step1Category() {
               <div className="mb-8">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {visibleMainCategories.map((category) => {
-                    const isSelected = formData.categoryIds?.includes(category.id) || false;
+                    const isSelected =
+                      formData.categoryIds?.includes(category.id) || false;
                     const isDisabled = !isSelected && isAtMaxCategories;
                     return (
                       <button
@@ -170,29 +180,46 @@ export function Step1Category() {
                             : "hover:shadow-md",
                           isSelected
                             ? "border-teal-600 bg-teal-50 shadow-sm"
-                            : !isDisabled && "border-gray-200 hover:border-gray-300 bg-white"
+                            : !isDisabled &&
+                                "border-gray-200 hover:border-gray-300 bg-white",
                         )}
                       >
                         {/* Checkbox indicator */}
                         <div className="absolute top-3 right-3">
-                          <div className={cn(
-                            "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
-                            isSelected
-                              ? "bg-teal-600 border-teal-600"
-                              : "bg-white border-gray-300"
-                          )}>
+                          <div
+                            className={cn(
+                              "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+                              isSelected
+                                ? "bg-teal-600 border-teal-600"
+                                : "bg-white border-gray-300",
+                            )}
+                          >
                             {isSelected && (
-                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              <svg
+                                className="w-3 h-3 text-white"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={3}
+                                  d="M5 13l4 4L19 7"
+                                />
                               </svg>
                             )}
                           </div>
                         </div>
-                        
+
                         <span
                           className={cn(
                             "block font-semibold text-sm pr-8",
-                            isSelected ? "text-teal-700" : isDisabled ? "text-gray-400" : "text-gray-900"
+                            isSelected
+                              ? "text-teal-700"
+                              : isDisabled
+                                ? "text-gray-400"
+                                : "text-gray-900",
                           )}
                         >
                           {category.name}
@@ -201,7 +228,6 @@ export function Step1Category() {
                     );
                   })}
                 </div>
-
               </div>
             )}
 
@@ -212,24 +238,32 @@ export function Step1Category() {
                   onClick={() => setShowAllCategories(!showAllCategories)}
                   className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium text-sm mb-3"
                 >
-                  <span>+ More Services ({filteredCategories.more.length})</span>
+                  <span>
+                    + More Services ({filteredCategories.more.length})
+                  </span>
                   <svg
                     className={cn(
                       "w-4 h-4 transition-transform",
-                      showAllCategories ? "rotate-180" : ""
+                      showAllCategories ? "rotate-180" : "",
                     )}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </button>
-                
+
                 {showAllCategories && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {filteredCategories.more.map((category) => {
-                      const isSelected = formData.categoryIds?.includes(category.id) || false;
+                      const isSelected =
+                        formData.categoryIds?.includes(category.id) || false;
                       const isDisabled = !isSelected && isAtMaxCategories;
                       return (
                         <button
@@ -244,29 +278,46 @@ export function Step1Category() {
                               : "hover:shadow-md",
                             isSelected
                               ? "border-teal-600 bg-teal-50 shadow-sm"
-                              : !isDisabled && "border-gray-200 hover:border-gray-300 bg-white"
+                              : !isDisabled &&
+                                  "border-gray-200 hover:border-gray-300 bg-white",
                           )}
                         >
                           {/* Checkbox indicator */}
                           <div className="absolute top-3 right-3">
-                            <div className={cn(
-                              "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
-                              isSelected
-                                ? "bg-teal-600 border-teal-600"
-                                : "bg-white border-gray-300"
-                            )}>
+                            <div
+                              className={cn(
+                                "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+                                isSelected
+                                  ? "bg-teal-600 border-teal-600"
+                                  : "bg-white border-gray-300",
+                              )}
+                            >
                               {isSelected && (
-                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                <svg
+                                  className="w-3 h-3 text-white"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={3}
+                                    d="M5 13l4 4L19 7"
+                                  />
                                 </svg>
                               )}
                             </div>
                           </div>
-                          
+
                           <span
                             className={cn(
                               "block font-semibold text-sm pr-8",
-                              isSelected ? "text-teal-700" : isDisabled ? "text-gray-400" : "text-gray-900"
+                              isSelected
+                                ? "text-teal-700"
+                                : isDisabled
+                                  ? "text-gray-400"
+                                  : "text-gray-900",
                             )}
                           >
                             {category.name}
@@ -282,10 +333,13 @@ export function Step1Category() {
             {/* Search results for More Services */}
             {searchQuery && filteredCategories.more.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">More Services</h3>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                  More Services
+                </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {filteredCategories.more.map((category) => {
-                    const isSelected = formData.categoryIds?.includes(category.id) || false;
+                    const isSelected =
+                      formData.categoryIds?.includes(category.id) || false;
                     const isDisabled = !isSelected && isAtMaxCategories;
                     return (
                       <button
@@ -300,29 +354,46 @@ export function Step1Category() {
                             : "hover:shadow-md",
                           isSelected
                             ? "border-teal-600 bg-teal-50 shadow-sm"
-                            : !isDisabled && "border-gray-200 hover:border-gray-300 bg-white"
+                            : !isDisabled &&
+                                "border-gray-200 hover:border-gray-300 bg-white",
                         )}
                       >
                         {/* Checkbox indicator */}
                         <div className="absolute top-3 right-3">
-                          <div className={cn(
-                            "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
-                            isSelected
-                              ? "bg-teal-600 border-teal-600"
-                              : "bg-white border-gray-300"
-                          )}>
+                          <div
+                            className={cn(
+                              "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+                              isSelected
+                                ? "bg-teal-600 border-teal-600"
+                                : "bg-white border-gray-300",
+                            )}
+                          >
                             {isSelected && (
-                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              <svg
+                                className="w-3 h-3 text-white"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={3}
+                                  d="M5 13l4 4L19 7"
+                                />
                               </svg>
                             )}
                           </div>
                         </div>
-                        
+
                         <span
                           className={cn(
                             "block font-semibold text-sm pr-8",
-                            isSelected ? "text-teal-700" : isDisabled ? "text-gray-400" : "text-gray-900"
+                            isSelected
+                              ? "text-teal-700"
+                              : isDisabled
+                                ? "text-gray-400"
+                                : "text-gray-900",
                           )}
                         >
                           {category.name}
@@ -333,11 +404,11 @@ export function Step1Category() {
                 </div>
               </div>
             )}
-            
+
             {/* Can't find message */}
             {!searchQuery && (
               <p className="mt-4 text-center text-sm text-gray-500">
-                Can't see your service? Use the search box above.
+                Can&apos;t see your service? Use the search box above.
               </p>
             )}
           </>

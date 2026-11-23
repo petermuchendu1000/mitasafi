@@ -1,9 +1,9 @@
 /**
  * Step 6: Pricing & Availability
- * 
+ *
  * Comprehensive pricing setup including rent, deposit, fees,
  * lease terms, and Kenya-specific payment methods.
- * 
+ *
  * OPTIMIZED: Cleaner copy, teal accents
  * REFACTORED: Uses useResidentialForm hook for standardized validation
  */
@@ -12,8 +12,8 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { 
-  ChevronDown, 
+import {
+  ChevronDown,
   Calendar,
   Info,
   CreditCard,
@@ -26,8 +26,8 @@ import {
 } from "lucide-react";
 import { useResidentialForm } from "../hooks";
 import { formatAmount, parseAmount } from "../utils";
-import { 
-  LEASE_TERMS, 
+import {
+  LEASE_TERMS,
   PAYMENT_METHODS,
   type LeaseTermType,
   type CustomFee,
@@ -41,7 +41,7 @@ const CURRENCY_OPTIONS = [
 export function Step6Pricing() {
   // Use shared hook for standardized state management & validation
   const { formData, updateFields, isRequired } = useResidentialForm(6);
-  const { 
+  const {
     rentAmount,
     currency,
     depositMonths,
@@ -58,12 +58,18 @@ export function Step6Pricing() {
 
   // Local state for UI-specific behavior
   const [showCustomDeposit, setShowCustomDeposit] = useState(false);
-  const [rentInputValue, setRentInputValue] = useState(formatAmount(rentAmount));
+  const [rentInputValue, setRentInputValue] = useState(
+    formatAmount(rentAmount),
+  );
   const [showAddFee, setShowAddFee] = useState(false);
   const [newFeeName, setNewFeeName] = useState("");
   const [newFeeAmount, setNewFeeAmount] = useState("");
-  const [newFeeAmountType, setNewFeeAmountType] = useState<"fixed" | "percentage">("fixed");
-  const [newFeeFrequency, setNewFeeFrequency] = useState<"monthly" | "once">("once");
+  const [newFeeAmountType, setNewFeeAmountType] = useState<
+    "fixed" | "percentage"
+  >("fixed");
+  const [newFeeFrequency, setNewFeeFrequency] = useState<"monthly" | "once">(
+    "once",
+  );
 
   // Calculate deposit based on months
   const calculatedDeposit = rentAmount ? rentAmount * (depositMonths || 1) : 0;
@@ -85,7 +91,7 @@ export function Step6Pricing() {
   const togglePaymentMethod = (methodId: string) => {
     const current = paymentMethods || [];
     const isSelected = current.includes(methodId);
-    
+
     updateFields({
       paymentMethods: isSelected
         ? current.filter((m) => m !== methodId)
@@ -96,7 +102,7 @@ export function Step6Pricing() {
   const toggleRentIncludes = (item: string) => {
     const current = rentIncludes || [];
     const isSelected = current.includes(item);
-    
+
     updateFields({
       rentIncludes: isSelected
         ? current.filter((i) => i !== item)
@@ -107,7 +113,7 @@ export function Step6Pricing() {
   // Add custom fee
   const handleAddFee = () => {
     if (!newFeeName.trim() || !newFeeAmount) return;
-    
+
     const amount = parseAmount(newFeeAmount);
     if (!amount) return;
 
@@ -141,14 +147,35 @@ export function Step6Pricing() {
   // What's NOT included (opposite of rentIncludes)
   const UTILITY_OPTIONS = [
     { id: "water", label: "Water", description: "Tenant pays separately" },
-    { id: "electricity", label: "Electricity", description: "Tenant pays KPLC directly" },
-    { id: "internet", label: "Internet", description: "Tenant arranges own connection" },
-    { id: "garbage", label: "Garbage Collection", description: "Included in service charge or paid separately" },
-    { id: "security", label: "Security Levy", description: "Monthly security contribution" },
-    { id: "parking", label: "Parking", description: "Separate parking fee applies" },
+    {
+      id: "electricity",
+      label: "Electricity",
+      description: "Tenant pays KPLC directly",
+    },
+    {
+      id: "internet",
+      label: "Internet",
+      description: "Tenant arranges own connection",
+    },
+    {
+      id: "garbage",
+      label: "Garbage Collection",
+      description: "Included in service charge or paid separately",
+    },
+    {
+      id: "security",
+      label: "Security Levy",
+      description: "Monthly security contribution",
+    },
+    {
+      id: "parking",
+      label: "Parking",
+      description: "Separate parking fee applies",
+    },
   ];
 
-  const currencySymbol = CURRENCY_OPTIONS.find((c) => c.id === currency)?.symbol || "KSh";
+  const currencySymbol =
+    CURRENCY_OPTIONS.find((c) => c.id === currency)?.symbol || "KSh";
 
   // Get min date for availability (today)
   const today = new Date().toISOString().split("T")[0];
@@ -178,7 +205,7 @@ export function Step6Pricing() {
           Set your price
         </h2>
         <p className="text-gray-500">
-          Rent, deposit, and when it's available
+          Rent, deposit, and when it&apos;s available
         </p>
       </div>
 
@@ -188,7 +215,7 @@ export function Step6Pricing() {
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Monthly Rent</h3>
           </div>
-          
+
           <div className="p-5 space-y-6">
             {/* Rent Amount */}
             <div>
@@ -204,11 +231,13 @@ export function Step6Pricing() {
                     className={cn(
                       "h-full px-3 py-2.5 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50",
                       "text-gray-700 font-medium appearance-none pr-8",
-                      "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent focus:z-10"
+                      "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent focus:z-10",
                     )}
                   >
                     {CURRENCY_OPTIONS.map((c) => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
                     ))}
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -224,7 +253,7 @@ export function Step6Pricing() {
                   className={cn(
                     "flex-1 px-4 py-2.5 rounded-r-lg border border-gray-300 bg-white",
                     "text-gray-900 placeholder:text-gray-400 text-lg font-medium",
-                    "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent"
+                    "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent",
                   )}
                 />
               </div>
@@ -241,7 +270,8 @@ export function Step6Pricing() {
                 What&apos;s included in rent?
               </label>
               <p className="text-xs text-gray-500 mb-3">
-                Select utilities that are included. Unselected items will be paid separately by tenant.
+                Select utilities that are included. Unselected items will be
+                paid separately by tenant.
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {UTILITY_OPTIONS.map((item) => {
@@ -256,14 +286,16 @@ export function Step6Pricing() {
                         "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1",
                         isIncluded
                           ? "bg-teal-100 text-teal-700 border-2 border-teal-400"
-                          : "bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200"
+                          : "bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200",
                       )}
                     >
                       <span className="block">{item.label}</span>
-                      <span className={cn(
-                        "text-xs mt-0.5 block",
-                        isIncluded ? "text-teal-600" : "text-gray-400"
-                      )}>
+                      <span
+                        className={cn(
+                          "text-xs mt-0.5 block",
+                          isIncluded ? "text-teal-600" : "text-gray-400",
+                        )}
+                      >
                         {isIncluded ? "Included" : "Not included"}
                       </span>
                     </button>
@@ -279,14 +311,14 @@ export function Step6Pricing() {
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Deposit & Fees</h3>
           </div>
-          
+
           <div className="p-5 space-y-6">
             {/* Security Deposit */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Security Deposit
               </label>
-              
+
               {/* Deposit Months */}
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {[1, 2, 3].map((months) => (
@@ -302,10 +334,12 @@ export function Step6Pricing() {
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1",
                       depositMonths === months && !showCustomDeposit
                         ? "border-teal-600 bg-teal-50 text-teal-700"
-                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300",
                     )}
                   >
-                    <span className="text-sm font-medium">{months} Month{months > 1 ? "s" : ""}</span>
+                    <span className="text-sm font-medium">
+                      {months} Month{months > 1 ? "s" : ""}
+                    </span>
                   </button>
                 ))}
                 <button
@@ -316,7 +350,7 @@ export function Step6Pricing() {
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1",
                     showCustomDeposit
                       ? "border-teal-600 bg-teal-50 text-teal-700"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300",
                   )}
                 >
                   <span className="text-sm font-medium">Custom</span>
@@ -331,14 +365,16 @@ export function Step6Pricing() {
                     type="text"
                     inputMode="numeric"
                     value={depositAmount ? formatAmount(depositAmount) : ""}
-                    onChange={(e) => updateFields({ 
-                      depositAmount: parseAmount(e.target.value)
-                    })}
+                    onChange={(e) =>
+                      updateFields({
+                        depositAmount: parseAmount(e.target.value),
+                      })
+                    }
                     placeholder="Enter custom amount"
                     className={cn(
                       "flex-1 px-4 py-2 rounded-lg border border-gray-300 bg-white",
                       "text-gray-900 placeholder:text-gray-400",
-                      "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent"
+                      "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent",
                     )}
                   />
                 </div>
@@ -353,21 +389,25 @@ export function Step6Pricing() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Agent/Service Fee
-                <span className="text-gray-400 font-normal ml-1">(Optional)</span>
+                <span className="text-gray-400 font-normal ml-1">
+                  (Optional)
+                </span>
               </label>
               <div className="flex gap-3">
                 <input
                   type="text"
                   inputMode="numeric"
                   value={agentFee ? formatAmount(agentFee) : ""}
-                  onChange={(e) => updateFields({ 
-                    agentFee: parseAmount(e.target.value)
-                  })}
+                  onChange={(e) =>
+                    updateFields({
+                      agentFee: parseAmount(e.target.value),
+                    })
+                  }
                   placeholder="Amount"
                   className={cn(
                     "flex-1 px-4 py-2.5 rounded-lg border border-gray-300 bg-white",
                     "text-gray-900 placeholder:text-gray-400",
-                    "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent"
+                    "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent",
                   )}
                 />
                 <div className="flex rounded-lg border border-gray-300 overflow-hidden">
@@ -378,7 +418,7 @@ export function Step6Pricing() {
                       "px-4 py-2.5 text-sm font-medium transition-colors",
                       agentFeeType === "fixed"
                         ? "bg-teal-600 text-white"
-                        : "bg-white text-gray-600 hover:bg-gray-50"
+                        : "bg-white text-gray-600 hover:bg-gray-50",
                     )}
                   >
                     {currencySymbol}
@@ -390,7 +430,7 @@ export function Step6Pricing() {
                       "px-4 py-2.5 text-sm font-medium transition-colors border-l border-gray-300",
                       agentFeeType === "percentage"
                         ? "bg-teal-600 text-white"
-                        : "bg-white text-gray-600 hover:bg-gray-50"
+                        : "bg-white text-gray-600 hover:bg-gray-50",
                     )}
                   >
                     %
@@ -399,7 +439,8 @@ export function Step6Pricing() {
               </div>
               {agentFee && agentFeeType === "percentage" && rentAmount && (
                 <p className="text-sm text-gray-500 mt-1.5">
-                  = {currencySymbol} {formatAmount(Math.round(rentAmount * agentFee / 100))}
+                  = {currencySymbol}{" "}
+                  {formatAmount(Math.round((rentAmount * agentFee) / 100))}
                 </p>
               )}
             </div>
@@ -409,7 +450,9 @@ export function Step6Pricing() {
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-gray-700">
                   Other Fees
-                  <span className="text-gray-400 font-normal ml-1">(Optional)</span>
+                  <span className="text-gray-400 font-normal ml-1">
+                    (Optional)
+                  </span>
                 </label>
                 <button
                   type="button"
@@ -425,28 +468,34 @@ export function Step6Pricing() {
               {(customFees || []).length > 0 && (
                 <div className="space-y-2 mb-3">
                   {(customFees || []).map((fee) => {
-                    const displayAmount = fee.amountType === "percentage" && rentAmount
-                      ? Math.round(rentAmount * fee.amount / 100)
-                      : fee.amount;
-                    
+                    const displayAmount =
+                      fee.amountType === "percentage" && rentAmount
+                        ? Math.round((rentAmount * fee.amount) / 100)
+                        : fee.amount;
+
                     return (
-                      <div 
+                      <div
                         key={fee.id}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                       >
                         <div>
-                          <span className="font-medium text-gray-900">{fee.name}</span>
+                          <span className="font-medium text-gray-900">
+                            {fee.name}
+                          </span>
                           <span className="text-sm text-gray-500 ml-2">
-                            ({fee.frequency === "monthly" ? "Monthly" : "One-time"})
+                            (
+                            {fee.frequency === "monthly"
+                              ? "Monthly"
+                              : "One-time"}
+                            )
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="text-right">
                             <span className="font-medium text-gray-900">
-                              {fee.amountType === "percentage" 
+                              {fee.amountType === "percentage"
                                 ? `${fee.amount}% of rent`
-                                : `${currencySymbol} ${formatAmount(fee.amount)}`
-                              }
+                                : `${currencySymbol} ${formatAmount(fee.amount)}`}
                             </span>
                             {fee.amountType === "percentage" && rentAmount && (
                               <span className="text-sm text-gray-500 block">
@@ -479,7 +528,7 @@ export function Step6Pricing() {
                     className={cn(
                       "w-full px-3 py-2 rounded-lg border border-gray-300 bg-white",
                       "text-gray-900 placeholder:text-gray-400 text-sm",
-                      "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent"
+                      "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent",
                     )}
                   />
                   <div className="flex gap-2">
@@ -489,11 +538,15 @@ export function Step6Pricing() {
                         inputMode="numeric"
                         value={newFeeAmount}
                         onChange={(e) => setNewFeeAmount(e.target.value)}
-                        placeholder={newFeeAmountType === "percentage" ? "e.g., 10" : "Amount"}
+                        placeholder={
+                          newFeeAmountType === "percentage"
+                            ? "e.g., 10"
+                            : "Amount"
+                        }
                         className={cn(
                           "flex-1 px-3 py-2 rounded-lg border border-gray-300 bg-white",
                           "text-gray-900 placeholder:text-gray-400 text-sm",
-                          "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent"
+                          "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent",
                         )}
                       />
                       {/* Fixed / Percentage Toggle */}
@@ -505,7 +558,7 @@ export function Step6Pricing() {
                             "px-3 py-2 text-sm font-medium transition-colors",
                             newFeeAmountType === "fixed"
                               ? "bg-teal-600 text-white"
-                              : "bg-white text-gray-600 hover:bg-gray-50"
+                              : "bg-white text-gray-600 hover:bg-gray-50",
                           )}
                         >
                           {currencySymbol}
@@ -517,7 +570,7 @@ export function Step6Pricing() {
                             "px-3 py-2 text-sm font-medium transition-colors border-l border-gray-300",
                             newFeeAmountType === "percentage"
                               ? "bg-teal-600 text-white"
-                              : "bg-white text-gray-600 hover:bg-gray-50"
+                              : "bg-white text-gray-600 hover:bg-gray-50",
                           )}
                         >
                           %
@@ -526,7 +579,9 @@ export function Step6Pricing() {
                     </div>
                     <select
                       value={newFeeFrequency}
-                      onChange={(e) => setNewFeeFrequency(e.target.value as "monthly" | "once")}
+                      onChange={(e) =>
+                        setNewFeeFrequency(e.target.value as "monthly" | "once")
+                      }
                       className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm"
                     >
                       <option value="once">One-time</option>
@@ -534,11 +589,20 @@ export function Step6Pricing() {
                     </select>
                   </div>
                   {/* Preview calculated amount for percentage */}
-                  {newFeeAmountType === "percentage" && newFeeAmount && rentAmount && (
-                    <p className="text-sm text-gray-500">
-                      = {currencySymbol} {formatAmount(Math.round(rentAmount * parseAmount(newFeeAmount)! / 100))} ({newFeeAmount}% of {currencySymbol} {formatAmount(rentAmount)})
-                    </p>
-                  )}
+                  {newFeeAmountType === "percentage" &&
+                    newFeeAmount &&
+                    rentAmount && (
+                      <p className="text-sm text-gray-500">
+                        = {currencySymbol}{" "}
+                        {formatAmount(
+                          Math.round(
+                            (rentAmount * parseAmount(newFeeAmount)!) / 100,
+                          ),
+                        )}{" "}
+                        ({newFeeAmount}% of {currencySymbol}{" "}
+                        {formatAmount(rentAmount)})
+                      </p>
+                    )}
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -548,7 +612,7 @@ export function Step6Pricing() {
                         "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                         newFeeName.trim() && newFeeAmount
                           ? "bg-teal-600 text-white hover:bg-teal-700"
-                          : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-200 text-gray-400 cursor-not-allowed",
                       )}
                     >
                       Add
@@ -577,7 +641,7 @@ export function Step6Pricing() {
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Lease Terms</h3>
           </div>
-          
+
           <div className="p-5 space-y-6">
             {/* Lease Type */}
             <div>
@@ -589,17 +653,23 @@ export function Step6Pricing() {
                   <button
                     key={term.id}
                     type="button"
-                    onClick={() => updateFields({ leaseTerm: term.id as LeaseTermType })}
+                    onClick={() =>
+                      updateFields({ leaseTerm: term.id as LeaseTermType })
+                    }
                     className={cn(
                       "px-4 py-3 rounded-lg border-2 text-center transition-all",
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1",
                       leaseTerm === term.id
                         ? "border-teal-600 bg-teal-50 text-teal-700"
-                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300",
                     )}
                   >
-                    <span className="block font-medium text-sm">{term.label}</span>
-                    <span className="text-xs text-gray-500">{term.description}</span>
+                    <span className="block font-medium text-sm">
+                      {term.label}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {term.description}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -614,13 +684,15 @@ export function Step6Pricing() {
                 <div className="relative w-48">
                   <select
                     value={minLeaseDuration || 12}
-                    onChange={(e) => updateFields({ 
-                      minLeaseDuration: parseInt(e.target.value) 
-                    })}
+                    onChange={(e) =>
+                      updateFields({
+                        minLeaseDuration: parseInt(e.target.value),
+                      })
+                    }
                     className={cn(
                       "w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white appearance-none",
                       "text-gray-900",
-                      "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent"
+                      "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent",
                     )}
                   >
                     <option value={6}>6 months</option>
@@ -647,18 +719,24 @@ export function Step6Pricing() {
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1",
                     availableFrom === today
                       ? "border-teal-600 bg-teal-50 text-teal-700"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300",
                   )}
                 >
                   <span className="font-medium text-sm">Immediately</span>
                 </button>
-                
+
                 <div className="relative flex-1 max-w-xs">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                   <input
                     type="date"
-                    value={availableFrom && availableFrom !== today ? availableFrom : ""}
-                    onChange={(e) => updateFields({ availableFrom: e.target.value })}
+                    value={
+                      availableFrom && availableFrom !== today
+                        ? availableFrom
+                        : ""
+                    }
+                    onChange={(e) =>
+                      updateFields({ availableFrom: e.target.value })
+                    }
                     min={today}
                     className={cn(
                       "w-full pl-10 pr-4 py-2.5 rounded-lg border-2 bg-white",
@@ -666,7 +744,7 @@ export function Step6Pricing() {
                       "focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent",
                       availableFrom && availableFrom !== today
                         ? "border-teal-600"
-                        : "border-gray-200"
+                        : "border-gray-200",
                     )}
                   />
                 </div>
@@ -679,15 +757,16 @@ export function Step6Pricing() {
         <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">
-              Accepted Payment Methods <span className="text-orange-500">*</span>
+              Accepted Payment Methods{" "}
+              <span className="text-orange-500">*</span>
             </h3>
           </div>
-          
+
           <div className="p-5">
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {PAYMENT_METHODS.map((method) => {
                 const isSelected = (paymentMethods || []).includes(method.id);
-                
+
                 return (
                   <button
                     key={method.id}
@@ -699,18 +778,22 @@ export function Step6Pricing() {
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1",
                       isSelected
                         ? "border-teal-600 bg-teal-50"
-                        : "border-gray-200 bg-white hover:border-gray-300"
+                        : "border-gray-200 bg-white hover:border-gray-300",
                     )}
                   >
-                    <span className={cn(
-                      isSelected ? "text-teal-600" : "text-gray-400"
-                    )}>
+                    <span
+                      className={cn(
+                        isSelected ? "text-teal-600" : "text-gray-400",
+                      )}
+                    >
                       {getPaymentIcon(method.id)}
                     </span>
-                    <span className={cn(
-                      "text-sm font-medium",
-                      isSelected ? "text-teal-700" : "text-gray-700"
-                    )}>
+                    <span
+                      className={cn(
+                        "text-sm font-medium",
+                        isSelected ? "text-teal-700" : "text-gray-700",
+                      )}
+                    >
                       {method.label}
                     </span>
                   </button>
@@ -723,8 +806,8 @@ export function Step6Pricing() {
               <div className="mt-4 p-3 bg-green-50 rounded-lg flex gap-2">
                 <Info className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-green-700">
-                  M-Pesa is the most popular payment method in Kenya. 
-                  MitaSafi can help automate rent collection via M-Pesa.
+                  M-Pesa is the most popular payment method in Kenya. MitaSafi
+                  can help automate rent collection via M-Pesa.
                 </p>
               </div>
             )}

@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Phone, Smartphone, RefreshCw } from "lucide-react";
 import type {
@@ -72,51 +72,110 @@ export function PaymentForm({
 
   // Polling state
   const [paymentId, setPaymentId] = useState<string | null>(
-    pendingPaymentId ?? null
+    pendingPaymentId ?? null,
   );
   const [isPolling, setIsPolling] = useState(!!pendingPaymentId);
   const [pollCount, setPollCount] = useState(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(
-    pendingPaymentId ? "Checking payment status…" : null
+    pendingPaymentId ? "Checking payment status…" : null,
   );
-  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Cleanup polling on unmount
+  /**
+   * The router, held by a ref so the polling chain below does not depend on it.
+   *
+   * This is not ceremony. useRouter() returns a NEW object on every render — measured,
+   * not assumed — so listing `router` in the chain's dependency array makes the effect
+   * re-run on every render. Each re-run cancels the chain and starts a fresh one at
+   * attempt 0, so the counter never advances and the 3-minute timeout never arrives:
+   * the page polls /api/payments/mpesa/query every 3 seconds forever.
+   *
+   * I introduced exactly that. The effect this replaced carried an
+   * `eslint-disable-next-line react-hooks/exhaustive-deps`, and removing it looked
+   * like tidying up; the suppression was load-bearing. The test that drives the chain
+   * to MAX_POLL_ATTEMPTS is what caught it, after it reported 66 requests where 60
+   * were expected and did not stop.
+   */
+  const routerRef = useRef(router);
   useEffect(() => {
-    return () => {
-      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
-    };
-  }, []);
+    routerRef.current = router;
+  });
 
-  // ---------------------------------------------------------------------------
-  // Poll for payment status
-  // ---------------------------------------------------------------------------
-  const pollStatus = useCallback(
-    async (pId: string, attempt: number) => {
+  /**
+   * The polling chain, owned by the effect that starts it.
+   *
+   * WHY IT MOVED IN HERE
+   *   This used to be a pollStatus useCallback outside the effect, re-invoking itself
+   *   through a setTimeout. Because a callback cannot name itself before its binding
+   *   exists, it went through a pollStatusRef that a second effect kept up to date; and
+   *   because the chain outlived the component, a cancelledRef set by a third effect
+   *   had to be rechecked after every await. Three effects and two refs existed only to
+   *   let a loop live outside the effect that starts it.
+   *
+   *   Inside the effect, `cancelled` is a closure variable the cleanup sets, `poll` can
+   *   refer to itself by name, and the timer is cleared by the same cleanup. That is
+   *   also what react-hooks/set-state-in-effect was pointing at: calling an async
+   *   function DEFINED OUTSIDE the effect is reported even when every setState in it
+   *   follows an await, while the same loop declared inside is not. Verified against
+   *   the rule directly, six shapes at a time, rather than guessed at.
+   *
+   *   The lifecycle bug the old refs were patching is unchanged and still covered:
+   *   clearing the timer alone is not enough, because while a request is in flight
+   *   there is no timer to clear, so the continuation must check `cancelled` after the
+   *   await or it will book another tick against an unmounted component.
+   *   __tests__/PaymentForm.polling.test.tsx holds that behaviour.
+   *
+   *   The chain always starts at attempt 0, which is why pollCount is not a dependency
+   *   and the exhaustive-deps suppression that used to sit here is gone. Both entry
+   *   paths guarantee it: mounting with a pendingPaymentId starts pollCount at 0, and
+   *   handleInitiate calls setPollCount(0) in the same batch as setIsPolling(true).
+   */
+  useEffect(() => {
+    if (!isPolling || !paymentId) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    /**
+     * Book the next attempt, or give up.
+     *
+     * The MAX_POLL_ATTEMPTS check used to be the first thing poll() did, so "run
+     * attempt N" and "notice there is no attempt N left" were one function and the way
+     * to report a timeout was to call the poller and have it refuse. Deciding here
+     * instead means the message appears as soon as the 60th attempt would have been
+     * booked rather than 3 seconds later; the number of requests is unchanged.
+     */
+    function scheduleNext(attempt: number) {
+      if (cancelled) return;
+
       if (attempt >= MAX_POLL_ATTEMPTS) {
         setIsPolling(false);
         setStatusMessage(null);
         setError(
           "Payment confirmation is taking longer than expected. " +
             "If you've already paid, it will be confirmed shortly. " +
-            "You can refresh this page to check."
+            "You can refresh this page to check.",
         );
         return;
       }
 
+      timer = setTimeout(() => void poll(attempt), POLL_INTERVAL_MS);
+    }
+
+    async function poll(attempt: number) {
+      if (cancelled) return;
+
       try {
         const res = await fetch(
-          `/api/payments/mpesa/query?paymentId=${pId}&poll=${attempt % 5 === 0 ? "true" : "false"}`
+          `/api/payments/mpesa/query?paymentId=${paymentId}&poll=${attempt % 5 === 0 ? "true" : "false"}`,
         );
         const data: PaymentStatusResult = await res.json();
+
+        // The component may have unmounted while the request was in flight.
+        if (cancelled) return;
 
         if (!data.success || !data.payment) {
           // Non-fatal: keep polling
           setPollCount(attempt + 1);
-          pollTimerRef.current = setTimeout(
-            () => pollStatus(pId, attempt + 1),
-            POLL_INTERVAL_MS
-          );
+          scheduleNext(attempt + 1);
           return;
         }
 
@@ -128,11 +187,11 @@ export function PaymentForm({
 
           if (status === "completed") {
             // Success — refresh the page to show server-rendered success state
-            router.refresh();
+            routerRef.current.refresh();
           } else if (status === "failed") {
             setError(
               data.payment.failure_reason ||
-                "Payment was not completed. You can try again."
+                "Payment was not completed. You can try again.",
             );
             setPaymentId(null);
           } else {
@@ -148,32 +207,26 @@ export function PaymentForm({
             ? "Waiting for M-Pesa confirmation…"
             : attempt < 15
               ? "Still waiting — please check your phone for the M-Pesa prompt…"
-              : "Payment is being processed. This may take a moment…"
+              : "Payment is being processed. This may take a moment…",
         );
         setPollCount(attempt + 1);
-        pollTimerRef.current = setTimeout(
-          () => pollStatus(pId, attempt + 1),
-          POLL_INTERVAL_MS
-        );
+        scheduleNext(attempt + 1);
       } catch {
-        // Network error — retry
+        // Network error — retry, unless we are gone.
+        if (cancelled) return;
         setPollCount(attempt + 1);
-        pollTimerRef.current = setTimeout(
-          () => pollStatus(pId, attempt + 1),
-          POLL_INTERVAL_MS
-        );
+        scheduleNext(attempt + 1);
       }
-    },
-    [router]
-  );
-
-  // Start polling when paymentId is set and isPolling is true
-  useEffect(() => {
-    if (isPolling && paymentId) {
-      pollStatus(paymentId, pollCount);
     }
-    // Only trigger when polling starts
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    void poll(0);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+    // router is deliberately absent: see routerRef above. pollCount is absent because
+    // the chain always starts at 0, which both entry paths guarantee.
   }, [isPolling, paymentId]);
 
   // ---------------------------------------------------------------------------
@@ -214,11 +267,13 @@ export function PaymentForm({
       setIsPolling(true);
       setPollCount(0);
       setStatusMessage(
-        data.customerMessage || "Check your phone for the M-Pesa prompt…"
+        data.customerMessage || "Check your phone for the M-Pesa prompt…",
       );
       setIsSubmitting(false);
     } catch {
-      setError("Something went wrong. Please check your connection and try again.");
+      setError(
+        "Something went wrong. Please check your connection and try again.",
+      );
       setIsSubmitting(false);
     }
   };

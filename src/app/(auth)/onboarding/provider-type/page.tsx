@@ -1,9 +1,9 @@
 /**
  * Provider Type Selection - Onboarding Step
- * 
+ *
  * Shown immediately after signup for service providers.
  * User must choose: Individual or Business before proceeding.
- * 
+ *
  * UX FLOW:
  * 1. User views detailed comparison of Individual vs Business
  * 2. User selects one option
@@ -11,7 +11,7 @@
  * 4. User can change selection ONCE before final confirmation
  * 5. After confirming, choice is locked (prevent database recursion)
  * 6. Browser back button is disabled after confirmation
- * 
+ *
  * RATIONALE:
  * - Prevents decision fatigue (no infinite back-and-forth)
  * - Prevents database UPDATE recursion (54001 stack depth errors)
@@ -24,26 +24,33 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { User, Building2, Check, ArrowRight, Loader2, HelpCircle } from "lucide-react";
+import {
+  User,
+  Building2,
+  Check,
+  ArrowRight,
+  Loader2,
+  HelpCircle,
+} from "lucide-react";
 import { Logo } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { setProviderType } from "./actions";
 
 // Inline sanitizer for client component (can't import server module)
 function sanitizeRedirectUrl(url: string | null): string {
-  const fallback = '/dashboard/provider';
+  const fallback = "/dashboard/provider";
   if (!url) return fallback;
-  
+
   try {
     const decoded = decodeURIComponent(url);
     // Must start with / but not //
-    if (!decoded.startsWith('/') || decoded.startsWith('//')) return fallback;
+    if (!decoded.startsWith("/") || decoded.startsWith("//")) return fallback;
     // No protocols
-    if (decoded.includes(':')) return fallback;
+    if (decoded.includes(":")) return fallback;
     // No path traversal
-    if (decoded.includes('..')) return fallback;
+    if (decoded.includes("..")) return fallback;
     // Must be dashboard path
-    if (!decoded.startsWith('/dashboard')) return fallback;
+    if (!decoded.startsWith("/dashboard")) return fallback;
     return decoded;
   } catch {
     return fallback;
@@ -86,7 +93,7 @@ function ProviderTypeContent() {
   const searchParams = useSearchParams();
   // SECURITY: Sanitize redirect URL to prevent open redirect attacks
   const redirectTo = sanitizeRedirectUrl(searchParams.get("redirectTo"));
-  
+
   const [selected, setSelected] = useState<ProviderType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,13 +106,13 @@ function ProviderTypeContent() {
 
   const handleContinue = async () => {
     if (!selected) return;
-    
+
     setIsLoading(true);
     setError(null);
 
     try {
       const result = await setProviderType(selected);
-      
+
       if (result.success) {
         // Redirect to dashboard (sanitized URL)
         router.push(redirectTo);
@@ -142,7 +149,8 @@ function ProviderTypeContent() {
               How are you operating right now?
             </h1>
             <p className="text-gray-600">
-              Choose how you're currently operating — you can change this later.
+              Choose how you&apos;re currently operating — you can change this
+              later.
             </p>
           </div>
 
@@ -151,7 +159,7 @@ function ProviderTypeContent() {
             {providerTypes.map((type) => {
               const Icon = type.icon;
               const isSelected = selected === type.id;
-              
+
               return (
                 <button
                   key={type.id}
@@ -162,7 +170,7 @@ function ProviderTypeContent() {
                     isSelected
                       ? "border-brand-600 bg-brand-50 shadow-md"
                       : "border-gray-200 bg-white hover:border-gray-300",
-                    !isSelected && !type.recommended && "opacity-90"
+                    !isSelected && !type.recommended && "opacity-90",
                   )}
                 >
                   {/* Recommended badge */}
@@ -174,10 +182,14 @@ function ProviderTypeContent() {
 
                   <div className="flex gap-4">
                     {/* Icon */}
-                    <div className={cn(
-                      "w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0",
-                      isSelected ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"
-                    )}>
+                    <div
+                      className={cn(
+                        "w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0",
+                        isSelected
+                          ? "bg-brand-600 text-white"
+                          : "bg-gray-100 text-gray-600",
+                      )}
+                    >
                       <Icon className="w-8 h-8" />
                     </div>
 
@@ -188,7 +200,7 @@ function ProviderTypeContent() {
                           <h3 className="text-xl font-bold text-gray-900">
                             {type.title}
                           </h3>
-                          {type.id === 'company' && (
+                          {type.id === "company" && (
                             <div className="relative">
                               <div
                                 role="button"
@@ -198,13 +210,20 @@ function ProviderTypeContent() {
                                   setShowBusinessTooltip(!showBusinessTooltip);
                                 }}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
+                                  if (e.key === "Enter" || e.key === " ") {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    setShowBusinessTooltip(!showBusinessTooltip);
+                                    setShowBusinessTooltip(
+                                      !showBusinessTooltip,
+                                    );
                                   }
                                 }}
-                                onBlur={() => setTimeout(() => setShowBusinessTooltip(false), 200)}
+                                onBlur={() =>
+                                  setTimeout(
+                                    () => setShowBusinessTooltip(false),
+                                    200,
+                                  )
+                                }
                                 className="text-gray-400 hover:text-brand-600 transition-colors cursor-pointer"
                                 aria-label="What counts as a registered business?"
                               >
@@ -212,8 +231,14 @@ function ProviderTypeContent() {
                               </div>
                               {showBusinessTooltip && (
                                 <div className="absolute left-0 top-6 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl">
-                                  <p className="font-semibold mb-1">What counts as a registered business?</p>
-                                  <p>A registered business includes companies with a valid business certificate or incorporation document.</p>
+                                  <p className="font-semibold mb-1">
+                                    What counts as a registered business?
+                                  </p>
+                                  <p>
+                                    A registered business includes companies
+                                    with a valid business certificate or
+                                    incorporation document.
+                                  </p>
                                   <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45" />
                                 </div>
                               )}
@@ -227,15 +252,20 @@ function ProviderTypeContent() {
                       <p className="text-sm text-gray-500 mb-4">
                         {type.description}
                       </p>
-                      
+
                       {/* Features */}
                       <ul className="space-y-1">
                         {type.features.map((feature, idx) => (
-                          <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                            <Check className={cn(
-                              "w-5 h-5 flex-shrink-0",
-                              isSelected ? "text-brand-600" : "text-gray-400"
-                            )} />
+                          <li
+                            key={idx}
+                            className="flex items-center gap-2 text-sm text-gray-600"
+                          >
+                            <Check
+                              className={cn(
+                                "w-5 h-5 flex-shrink-0",
+                                isSelected ? "text-brand-600" : "text-gray-400",
+                              )}
+                            />
                             <span className="truncate">{feature}</span>
                           </li>
                         ))}
@@ -243,12 +273,14 @@ function ProviderTypeContent() {
                     </div>
 
                     {/* Selection indicator */}
-                    <div className={cn(
-                      "w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1",
-                      isSelected
-                        ? "border-brand-600 bg-brand-600"
-                        : "border-gray-300"
-                    )}>
+                    <div
+                      className={cn(
+                        "w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1",
+                        isSelected
+                          ? "border-brand-600 bg-brand-600"
+                          : "border-gray-300",
+                      )}
+                    >
                       {isSelected && <Check className="w-4 h-4 text-white" />}
                     </div>
                   </div>
@@ -269,12 +301,12 @@ function ProviderTypeContent() {
             onClick={handleContinue}
             disabled={!selected || isLoading}
             className={cn(
-                "w-full py-4 rounded-xl font-semibold text-lg transition-all duration-200 min-h-[56px]",
-                "flex items-center justify-center gap-2",
-                selected && !isLoading
-                  ? "bg-brand-600 text-white hover:bg-brand-700 shadow-lg hover:shadow-xl"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              )}
+              "w-full py-4 rounded-xl font-semibold text-lg transition-all duration-200 min-h-[56px]",
+              "flex items-center justify-center gap-2",
+              selected && !isLoading
+                ? "bg-brand-600 text-white hover:bg-brand-700 shadow-lg hover:shadow-xl"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed",
+            )}
           >
             {isLoading ? (
               <>
@@ -283,7 +315,8 @@ function ProviderTypeContent() {
               </>
             ) : selected ? (
               <>
-                Continue as {selected === 'individual' ? 'Individual' : 'Business'}
+                Continue as{" "}
+                {selected === "individual" ? "Individual" : "Business"}
                 <ArrowRight className="w-5 h-5" />
               </>
             ) : (
@@ -311,11 +344,13 @@ function ProviderTypeContent() {
 
 export default function ProviderTypePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
+        </div>
+      }
+    >
       <ProviderTypeContent />
     </Suspense>
   );

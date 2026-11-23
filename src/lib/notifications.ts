@@ -1,11 +1,12 @@
 /**
  * Notifications System
- * 
+ *
  * Handles notifications for saved listing status changes.
  * Stores in localStorage and provides utilities for managing notifications.
  */
 
 export const NOTIFICATIONS_KEY = "mitasafi_notifications";
+export const NOTIFICATIONS_CHANGED_EVENT = "notificationsChanged";
 
 export interface Notification {
   id: string;
@@ -27,7 +28,7 @@ export function getNotifications(): Notification[] {
     const notifications = JSON.parse(stored) as Notification[];
     // Only keep notifications from the last 7 days
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return notifications.filter(n => n.timestamp > weekAgo);
+    return notifications.filter((n) => n.timestamp > weekAgo);
   } catch {
     return [];
   }
@@ -36,7 +37,9 @@ export function getNotifications(): Notification[] {
 /**
  * Add a new notification
  */
-export function addNotification(notification: Omit<Notification, "id" | "read">): void {
+export function addNotification(
+  notification: Omit<Notification, "id" | "read">,
+): void {
   if (typeof window === "undefined") return;
   const notifications = getNotifications();
   const newNotification: Notification = {
@@ -57,8 +60,8 @@ export function addNotification(notification: Omit<Notification, "id" | "read">)
 export function markAsRead(notificationId: string): void {
   if (typeof window === "undefined") return;
   const notifications = getNotifications();
-  const updated = notifications.map(n => 
-    n.id === notificationId ? { ...n, read: true } : n
+  const updated = notifications.map((n) =>
+    n.id === notificationId ? { ...n, read: true } : n,
   );
   localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated));
   window.dispatchEvent(new CustomEvent("notificationsChanged"));
@@ -70,7 +73,7 @@ export function markAsRead(notificationId: string): void {
 export function markAllAsRead(): void {
   if (typeof window === "undefined") return;
   const notifications = getNotifications();
-  const updated = notifications.map(n => ({ ...n, read: true }));
+  const updated = notifications.map((n) => ({ ...n, read: true }));
   localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated));
   window.dispatchEvent(new CustomEvent("notificationsChanged"));
 }
@@ -88,7 +91,37 @@ export function clearAllNotifications(): void {
  * Get unread count
  */
 export function getUnreadCount(): number {
-  return getNotifications().filter(n => !n.read).length;
+  return getNotifications().filter((n) => !n.read).length;
+}
+
+/**
+ * Subscribe to notification changes, from this tab and from others.
+ *
+ * The four writers above already dispatch `notificationsChanged`, but every listener
+ * was registered by hand at the call site, and the only one in the repo
+ * (ui/NotificationBell.tsx) listens for the same-tab event alone, so a notification
+ * added in another tab was never shown. The teardown returned here removes exactly what
+ * it added.
+ *
+ * Deliberately not built on createLocalStore: the snapshots this backs are NUMBERS
+ * (unread counts), so the reference-caching rule useSyncExternalStore imposes on object
+ * snapshots does not apply, and getNotifications() filters by age — a time-dependent
+ * parse that a raw-string cache would freeze at its first read.
+ */
+export function subscribeNotifications(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === NOTIFICATIONS_KEY || e.key === null) onChange();
+  };
+
+  window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onChange);
+  window.addEventListener("storage", onStorage);
+
+  return () => {
+    window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onChange);
+    window.removeEventListener("storage", onStorage);
+  };
 }
 
 /**
@@ -114,7 +147,7 @@ export function getNotificationMessage(notification: Notification): string {
  */
 export function getRelativeTime(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  
+
   if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;

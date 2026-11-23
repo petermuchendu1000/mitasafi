@@ -1,20 +1,26 @@
 /**
  * Save Search Button Component
- * 
+ *
  * Prominent button for saving search criteria as an alert.
  * - One click for logged-in users (auto-saves with user email)
  * - Opens modal for guests (captures email/phone)
- * 
+ *
  * High-value lead capture at moment of intent.
  */
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Bell, Check, Loader2 } from "lucide-react";
 import { SearchAlertModal } from "@/components/listings/SearchAlertModal";
 import { useToast } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { createArrayStore } from "@/lib/browser-storage/local-store";
+import { useLocalStore } from "@/lib/browser-storage/useLocalStore";
+import {
+  canonicalSearchHash,
+  storedListContains,
+} from "@/lib/search/criteria-hash";
 
 interface SearchCriteria {
   areas?: string[];
@@ -48,30 +54,45 @@ function formatCriteriaLabel(criteria: SearchCriteria): string {
   if (criteria.query && criteria.query.trim()) {
     return criteria.query.trim();
   }
-  
+
   const parts: string[] = [];
-  
+
   if (criteria.bedroomsMin) {
     parts.push(`${criteria.bedroomsMin}+ bedroom`);
   }
-  
+
   if (criteria.propertyTypes && criteria.propertyTypes.length > 0) {
-    const types = criteria.propertyTypes.map(t => 
-      t.charAt(0).toUpperCase() + t.slice(1).toLowerCase().replace(/_/g, " ")
+    const types = criteria.propertyTypes.map(
+      (t) =>
+        t.charAt(0).toUpperCase() + t.slice(1).toLowerCase().replace(/_/g, " "),
     );
     parts.push(types.join(", "));
   }
-  
+
   if (criteria.areas && criteria.areas.length > 0) {
     parts.push(`in ${criteria.areas.slice(0, 2).join(", ")}`);
   }
-  
+
   if (criteria.priceMax) {
     parts.push(`under KES ${(criteria.priceMax / 1000).toFixed(0)}K`);
   }
-  
+
   return parts.join(" ") || "All new listings";
 }
+
+/**
+ * Searches this browser has already been notified about.
+ *
+ * Entries are a canonical hash of the criteria — keys sorted, unset fields dropped,
+ * array filters sorted — rather than a bare JSON.stringify, whose output depends on
+ * the order the object happened to be built in. Entries written by the previous
+ * scheme are plain JSON and canonicalise to the same string, so nothing already in a
+ * user's browser is orphaned and no migration runs. See lib/search/criteria-hash.ts.
+ */
+const savedSearchesStore = createArrayStore<string>(
+  "mitasafi_saved_searches",
+  (value): value is string => typeof value === "string",
+);
 
 export function SaveSearchButton({
   searchCriteria,
@@ -90,32 +111,36 @@ export function SaveSearchButton({
   const savedText = "Notified!";
   const [modalOpen, setModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  // A save made in THIS session, which is all a guest gets: nothing is recorded for a
+  // visitor with no account, so there is nothing to derive from. Genuine event state.
+  const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const savedSearches = useLocalStore(savedSearchesStore);
+  const searchHash = canonicalSearchHash(searchCriteria);
+
+  // Derived. The effect this replaces re-read localStorage and re-parsed it on every
+  // render, not once: `searchCriteria` is an object literal built inline by
+  // ListingsGrid, so it has a fresh identity each time and the dependency array never
+  // matched. The setState then bailed out because the boolean was unchanged, which hid
+  // the cost rather than removing it.
+  const isSaved =
+    justSaved ||
+    (isAuthenticated &&
+      !!userId &&
+      storedListContains(savedSearches, searchCriteria));
 
   // Handle successful alert creation (from modal or quick save)
   const handleSuccess = () => {
-    // Mark as saved in localStorage
-    const savedSearches = JSON.parse(localStorage.getItem("mitasafi_saved_searches") || "[]");
-    savedSearches.push(JSON.stringify(searchCriteria));
-    localStorage.setItem("mitasafi_saved_searches", JSON.stringify(savedSearches));
-    
-    setIsSaved(true);
+    if (!storedListContains(savedSearches, searchCriteria)) {
+      savedSearchesStore.write([...savedSearches, searchHash]);
+    }
+    setJustSaved(true);
     success("You'll be notified when new listings match");
   };
 
   // Check if user can do one-click save (needs email OR phone)
   const canQuickSave = isAuthenticated && (userEmail || userPhone);
-
-  // Check if this search is already saved (for logged-in users)
-  useEffect(() => {
-    if (!isAuthenticated || !userId) return;
-    
-    // Check localStorage for saved search hash
-    const savedSearches = JSON.parse(localStorage.getItem("mitasafi_saved_searches") || "[]");
-    const searchHash = JSON.stringify(searchCriteria);
-    setIsSaved(savedSearches.includes(searchHash));
-  }, [searchCriteria, isAuthenticated, userId]);
 
   // One-click save for logged-in users with contact info
   const handleQuickSave = async () => {
@@ -176,10 +201,8 @@ export function SaveSearchButton({
           disabled={isSaving || isSaved}
           className={cn(
             "inline-flex items-center gap-1.5 text-sm font-medium transition-colors",
-            isSaved
-              ? "text-green-600"
-              : "text-gray-600 hover:text-gray-900",
-            className
+            isSaved ? "text-green-600" : "text-gray-600 hover:text-gray-900",
+            className,
           )}
         >
           {isSaving ? (
@@ -211,10 +234,12 @@ export function SaveSearchButton({
   if (variant === "banner") {
     return (
       <>
-        <div className={cn(
-          "flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200",
-          className
-        )}>
+        <div
+          className={cn(
+            "flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200",
+            className,
+          )}
+        >
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Bell className="w-4 h-4 text-gray-400" />
             <span>Get notified when new properties match this search</span>
@@ -226,7 +251,7 @@ export function SaveSearchButton({
               "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
               isSaved
                 ? "bg-green-100 text-green-700"
-                : "bg-gray-900 text-white hover:bg-gray-800"
+                : "bg-gray-900 text-white hover:bg-gray-800",
             )}
           >
             {isSaving ? (
@@ -268,7 +293,7 @@ export function SaveSearchButton({
           isSaved
             ? "bg-green-100 text-green-700 border border-green-200"
             : "bg-cta-500 hover:bg-cta-600 text-white",
-          className
+          className,
         )}
       >
         {isSaving ? (
