@@ -218,6 +218,10 @@ export function Step2Location() {
             <input
               type="text"
               id="buildingName"
+              aria-invalid={
+                touched.buildingName && errors.buildingName ? true : undefined
+              }
+              aria-describedby="buildingName-desc"
               value={buildingName}
               onChange={(e) =>
                 handleFieldChange("buildingName", e.target.value)
@@ -235,9 +239,11 @@ export function Step2Location() {
             />
           </div>
           {touched.buildingName && errors.buildingName ? (
-            <p className="text-xs text-red-600 mt-1.5">{errors.buildingName}</p>
+            <p id="buildingName-desc" className="text-xs text-red-600 mt-1.5">
+              {errors.buildingName}
+            </p>
           ) : (
-            <p className="text-xs text-gray-500 mt-1.5">
+            <p id="buildingName-desc" className="text-xs text-gray-500 mt-1.5">
               {content.buildingName.helper}
             </p>
           )}
@@ -258,6 +264,10 @@ export function Step2Location() {
               ref={addressInputRef}
               type="text"
               id="streetAddress"
+              aria-invalid={
+                touched.streetAddress && errors.streetAddress ? true : undefined
+              }
+              aria-describedby="streetAddress-desc"
               value={addressSearch}
               onChange={(e) => handleAddressInputChange(e.target.value)}
               onFocus={() =>
@@ -313,11 +323,11 @@ export function Step2Location() {
             )}
           </div>
           {touched.streetAddress && errors.streetAddress ? (
-            <p className="text-xs text-red-600 mt-1.5">
+            <p id="streetAddress-desc" className="text-xs text-red-600 mt-1.5">
               {errors.streetAddress}
             </p>
           ) : (
-            <p className="text-xs text-gray-500 mt-1.5">
+            <p id="streetAddress-desc" className="text-xs text-gray-500 mt-1.5">
               {content.streetAddress.helper}
             </p>
           )}
@@ -336,6 +346,10 @@ export function Step2Location() {
             <div className="relative">
               <button
                 id="area"
+                aria-invalid={touched.area && errors.area ? true : undefined}
+                aria-describedby={
+                  touched.area && errors.area ? "area-error" : undefined
+                }
                 type="button"
                 onClick={() => setIsAreaDropdownOpen(!isAreaDropdownOpen)}
                 className={cn(
@@ -433,7 +447,9 @@ export function Step2Location() {
               )}
             </div>
             {touched.area && errors.area && (
-              <p className="text-xs text-red-600 mt-1.5">{errors.area}</p>
+              <p id="area-error" className="text-xs text-red-600 mt-1.5">
+                {errors.area}
+              </p>
             )}
           </div>
 

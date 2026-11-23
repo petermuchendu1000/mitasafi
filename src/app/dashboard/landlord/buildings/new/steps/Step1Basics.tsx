@@ -219,6 +219,8 @@ export function Step1Basics() {
           </div>
           <input
             id="bld-name"
+            aria-invalid={showError("name") ? true : undefined}
+            aria-describedby={showError("name") ? "bld-name-error" : undefined}
             type="text"
             value={formData.name}
             onChange={(e) => updateFormData({ name: e.target.value })}
@@ -236,7 +238,7 @@ export function Step1Basics() {
           />
         </div>
         {showError("name") && (
-          <p className="mt-1.5 text-sm text-red-600">
+          <p id="bld-name-error" className="mt-1.5 text-sm text-red-600">
             {currentValidation.errors.name}
           </p>
         )}
@@ -256,6 +258,9 @@ export function Step1Basics() {
         <div
           role="group"
           aria-labelledby="bld-type-label"
+          aria-describedby={
+            showError("building_type") ? "bld-type-error" : undefined
+          }
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
         >
           {BUILDING_TYPES.map((type) => {
@@ -307,7 +312,7 @@ export function Step1Basics() {
           })}
         </div>
         {showError("building_type") && (
-          <p className="mt-2 text-sm text-red-600">
+          <p id="bld-type-error" className="mt-2 text-sm text-red-600">
             {currentValidation.errors.building_type}
           </p>
         )}
@@ -327,6 +332,10 @@ export function Step1Basics() {
           </div>
           <input
             id="bld-address"
+            aria-invalid={showError("address") ? true : undefined}
+            aria-describedby={
+              showError("address") ? "bld-address-error" : undefined
+            }
             ref={addressInputRef}
             type="text"
             value={formData.address}
@@ -350,7 +359,7 @@ export function Step1Basics() {
           </p>
         )}
         {showError("address") && (
-          <p className="mt-1.5 text-sm text-red-600">
+          <p id="bld-address-error" className="mt-1.5 text-sm text-red-600">
             {currentValidation.errors.address}
           </p>
         )}
@@ -370,6 +379,8 @@ export function Step1Basics() {
           </div>
           <input
             id="bld-area"
+            aria-invalid={showError("area") ? true : undefined}
+            aria-describedby={showError("area") ? "bld-area-error" : undefined}
             type="text"
             value={formData.area}
             onChange={(e) => updateFormData({ area: e.target.value })}
@@ -387,7 +398,7 @@ export function Step1Basics() {
           />
         </div>
         {showError("area") && (
-          <p className="mt-1.5 text-sm text-red-600">
+          <p id="bld-area-error" className="mt-1.5 text-sm text-red-600">
             {currentValidation.errors.area}
           </p>
         )}

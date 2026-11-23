@@ -391,6 +391,12 @@ export function Step5Financials() {
                 </label>
                 <input
                   id="bld-paybill-number"
+                  aria-invalid={showError("payment_details") ? true : undefined}
+                  aria-describedby={
+                    showError("payment_details")
+                      ? "bld-payment-details-error"
+                      : undefined
+                  }
                   type="text"
                   value={formData.bank_details.mpesa_paybill || ""}
                   onChange={(e) =>
@@ -480,6 +486,12 @@ export function Step5Financials() {
                 </label>
                 <input
                   id="bld-account-number"
+                  aria-invalid={showError("payment_details") ? true : undefined}
+                  aria-describedby={
+                    showError("payment_details")
+                      ? "bld-payment-details-error"
+                      : undefined
+                  }
                   type="text"
                   value={formData.bank_details.account_number || ""}
                   onChange={(e) =>
@@ -495,7 +507,10 @@ export function Step5Financials() {
 
           {/* Error */}
           {showError("payment_details") && (
-            <div className="flex items-center gap-2 text-red-600 text-sm">
+            <div
+              id="bld-payment-details-error"
+              className="flex items-center gap-2 text-red-600 text-sm"
+            >
               <AlertCircle className="w-4 h-4" />
               {currentValidation.errors.payment_details}
             </div>
