@@ -38,7 +38,6 @@ import {
   Phone,
   Mail,
   CheckCircle,
-  Clock,
   AlertTriangle,
   Search,
   ShieldCheck,
@@ -54,9 +53,6 @@ import {
   unitTypeShortLabels,
   unitStatusLabels,
   unitListingStatusLabels,
-  maintenanceCategoryLabels,
-  maintenanceStatusLabels,
-  maintenanceUrgencyLabels,
   paymentMethodLabels,
   verificationLevelLabels,
   labelFor,
@@ -64,6 +60,9 @@ import {
   formatKesCompact,
 } from "@/lib/landlord/labels";
 import type { RentStatus } from "@/lib/landlord/rent-status";
+// The maintenance card is shared with /dashboard/landlord/maintenance, which
+// shows the same records across every building.
+import { MaintenanceRequestCard } from "@/components/dashboard/landlord/MaintenanceRequestCard";
 import type { BuildingDetailData, UnitCard } from "./types";
 
 const MONTH_SHORT = [
@@ -139,23 +138,6 @@ const rentStatusStyle: Record<
   partial: { label: "Part paid", bg: "bg-amber-50", text: "text-amber-700" },
   pending: { label: "Not due yet", bg: "bg-gray-100", text: "text-gray-600" },
   overdue: { label: "Overdue", bg: "bg-red-50", text: "text-red-700" },
-};
-
-const urgencyStyle: Record<string, string> = {
-  emergency: "bg-red-100 text-red-800",
-  high: "bg-orange-50 text-orange-700",
-  normal: "bg-gray-100 text-gray-700",
-  low: "bg-gray-50 text-gray-500",
-};
-
-const maintenanceStatusStyle: Record<string, string> = {
-  open: "bg-red-50 text-red-700",
-  acknowledged: "bg-amber-50 text-amber-700",
-  assigned: "bg-blue-50 text-blue-700",
-  in_progress: "bg-blue-50 text-blue-700",
-  completed: "bg-green-50 text-green-700",
-  closed: "bg-gray-100 text-gray-600",
-  cancelled: "bg-gray-100 text-gray-500",
 };
 
 type TabId = "units" | "tenants" | "finances" | "maintenance";
@@ -1106,112 +1088,11 @@ export function BuildingDetail({ data }: { data: BuildingDetailData }) {
                       </h3>
                       <div className="space-y-3">
                         {group.items.map((m) => (
-                          <div
+                          <MaintenanceRequestCard
                             key={m.id}
-                            className="bg-white rounded-xl border border-gray-200 p-4"
-                          >
-                            <div className="flex items-start justify-between gap-4 flex-wrap">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap mb-1">
-                                  <h4 className="font-medium text-gray-900">
-                                    {m.title}
-                                  </h4>
-                                  <span
-                                    className={cn(
-                                      "px-2 py-0.5 text-xs font-medium rounded-full",
-                                      urgencyStyle[m.urgency] ??
-                                        "bg-gray-100 text-gray-700",
-                                    )}
-                                  >
-                                    {labelFor(
-                                      maintenanceUrgencyLabels,
-                                      m.urgency,
-                                    )}
-                                  </span>
-                                  <span
-                                    className={cn(
-                                      "px-2 py-0.5 text-xs font-medium rounded-full",
-                                      maintenanceStatusStyle[m.status] ??
-                                        "bg-gray-100 text-gray-700",
-                                    )}
-                                  >
-                                    {labelFor(
-                                      maintenanceStatusLabels,
-                                      m.status,
-                                    )}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-gray-600 mb-2">
-                                  {m.description}
-                                </p>
-                                <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-gray-500">
-                                  <Link
-                                    href={`/dashboard/landlord/buildings/${building.id}/units/${m.unitId}`}
-                                    className="inline-flex items-center gap-1 font-medium text-gray-700 hover:text-teal-600"
-                                  >
-                                    <Home className="w-3 h-3" />
-                                    {m.unitNumber}
-                                  </Link>
-                                  <span>
-                                    {labelFor(
-                                      maintenanceCategoryLabels,
-                                      m.category,
-                                    )}
-                                  </span>
-                                  <span className="inline-flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    reported {formatShortDate(m.reportedAt)}
-                                  </span>
-                                  {m.dueDate && m.isOpen && (
-                                    <span className="inline-flex items-center gap-1">
-                                      <Calendar className="w-3 h-3" />
-                                      due {formatShortDate(m.dueDate)}
-                                    </span>
-                                  )}
-                                  {m.completedAt && (
-                                    <span className="inline-flex items-center gap-1 text-green-600">
-                                      <CheckCircle className="w-3 h-3" />
-                                      done {formatShortDate(m.completedAt)}
-                                    </span>
-                                  )}
-                                  {m.assignedTo && (
-                                    <span>
-                                      {m.assignedTo}
-                                      {m.assignedPhone
-                                        ? ` · ${m.assignedPhone}`
-                                        : ""}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="text-right shrink-0">
-                                {m.actualCost !== null ? (
-                                  <>
-                                    <p className="font-semibold text-gray-900">
-                                      {formatKes(m.actualCost)}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      actual
-                                      {m.costPaidBy ? ` · ${m.costPaidBy}` : ""}
-                                    </p>
-                                  </>
-                                ) : m.estimatedCost !== null ? (
-                                  <>
-                                    <p className="font-semibold text-gray-700">
-                                      {formatKes(m.estimatedCost)}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      estimate
-                                    </p>
-                                  </>
-                                ) : (
-                                  <p className="text-xs text-gray-400">
-                                    no cost yet
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                            item={m}
+                            buildingId={building.id}
+                          />
                         ))}
                       </div>
                     </div>

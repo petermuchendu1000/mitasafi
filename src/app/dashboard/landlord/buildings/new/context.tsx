@@ -68,7 +68,35 @@ const initialState: WizardState = {
 // REDUCER
 // =============================================================================
 
-function wizardReducer(state: WizardState, action: WizardAction): WizardState {
+/** Shallow equality for a string-keyed record. */
+function sameRecord<T>(a: Record<string, T>, b: Record<string, T>): boolean {
+  const aKeys = Object.keys(a);
+  if (aKeys.length !== Object.keys(b).length) return false;
+  return aKeys.every((k) => Object.is(a[k], b[k]));
+}
+
+/**
+ * Do these two validation results say the same thing?
+ *
+ * Exported so the loop this prevents can be tested without a browser; see
+ * __tests__/wizard-validation-loop.test.ts.
+ */
+export function sameStepValidation(
+  a: StepValidation,
+  b: StepValidation,
+): boolean {
+  return (
+    a.isValid === b.isValid &&
+    sameRecord(a.errors ?? {}, b.errors ?? {}) &&
+    sameRecord(a.touched ?? {}, b.touched ?? {})
+  );
+}
+
+/** Exported so the render-loop property can be tested without a browser. */
+export function wizardReducer(
+  state: WizardState,
+  action: WizardAction,
+): WizardState {
   switch (action.type) {
     case "SET_STEP":
       return {
@@ -95,21 +123,47 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
         isDirty: true,
       };
 
-    case "SET_VALIDATION":
+    case "SET_VALIDATION": {
       const existingValidation = state.validation[action.payload.step];
+      const merged: StepValidation = {
+        ...action.payload.validation,
+        touched: {
+          ...(existingValidation?.touched || {}),
+          ...action.payload.validation.touched,
+        },
+      };
+
+      // Re-validating to the SAME result is not a state change.
+      //
+      // Without this the wizard renders forever. Each step runs an effect that
+      // calls validate() and dispatches the result; each step's validate() is a
+      // useCallback with `validation` in its dependency array. This case used to
+      // return a brand-new `validation` object unconditionally, so: dispatch ->
+      // new validation object -> new validate identity -> the effect's deps
+      // changed -> dispatch again. Measured on /dashboard/landlord/buildings/new
+      // before this change: 47 "Maximum update depth exceeded" errors in 2.5
+      // seconds, with React bailing out of the render rather than the page
+      // settling.
+      //
+      // Returning the identical state object is what stops it: React bails out
+      // of the re-render, the deps stop changing, and the loop has no next
+      // iteration. Fixing it here rather than in the five steps means there is
+      // one place to be right instead of five.
+      if (
+        existingValidation &&
+        sameStepValidation(existingValidation, merged)
+      ) {
+        return state;
+      }
+
       return {
         ...state,
         validation: {
           ...state.validation,
-          [action.payload.step]: {
-            ...action.payload.validation,
-            touched: {
-              ...(existingValidation?.touched || {}),
-              ...action.payload.validation.touched,
-            },
-          },
+          [action.payload.step]: merged,
         },
       };
+    }
 
     case "SET_FIELD_TOUCHED":
       const currentValidation = state.validation[action.payload.step] || {
