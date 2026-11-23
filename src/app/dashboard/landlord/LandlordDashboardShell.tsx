@@ -94,11 +94,21 @@ export function LandlordDashboardShell({
   // The two effects that used to live here are gone, replaced by the
   // useLocalStore(sidebarCollapsedStore) call above. What they were:
   //
-  // 1. A mount effect reading localStorage into state. That is the reported setState,
-  //    and it meant the first paint always drew the sidebar expanded, with the content
-  //    margin at md:ml-[260px], before snapping to 72px one commit later for anyone who
-  //    had collapsed it. Its cross-tab listener also ignored a removal of the key
+  // 1. A mount effect reading localStorage into state. That is the reported setState.
+  //    Its cross-tab listener also ignored a removal of the key
   //    (`e.newValue !== null`), so clearing site data in another tab was not picked up.
+  //
+  //    CORRECTION. The first version of this comment said the mount effect "meant the
+  //    first paint always drew the sidebar expanded, at md:ml-[260px], before snapping
+  //    to 72px" — implying this change removes that. It does not, and I measured it
+  //    rather than reasoning about it: sampling the content panel's left edge on every
+  //    animation frame from first paint gives the identical sequence either way,
+  //    0 -> 260 -> (CSS transition) -> 72. It cannot be otherwise. The server does not
+  //    know what this browser stored, so the server render and the hydration render
+  //    must both be the expanded default, and the stored value can only be applied
+  //    after. useSyncExternalStore is explicit about that — it renders
+  //    getServerSnapshot during hydration by design. Removing the jump needs the value
+  //    somewhere the server can see it, such as a cookie; it is not a lint fix.
   //
   // 2. A setInterval, every 100ms, for the lifetime of every landlord dashboard page,
   //    re-reading localStorage and comparing it with state — plus a MutationObserver
@@ -109,6 +119,10 @@ export function LandlordDashboardShell({
   //    below already updates the value it just wrote. It was 10 reads a second to
   //    observe itself. Because the effect listed isSidebarCollapsed as a dependency, it
   //    also tore down and recreated the interval on every toggle.
+  //
+  //    Measured in Chromium, counting getItem("sidebar-collapsed") over five idle
+  //    seconds on this page: 50 reads before, 0 after. That is the real saving here,
+  //    and unlike the first-paint claim above it survives checking.
   //
   // A store subscription does what the poll was reaching for, for real and for free:
   // writes notify in this tab, and the `storage` event covers the others.
