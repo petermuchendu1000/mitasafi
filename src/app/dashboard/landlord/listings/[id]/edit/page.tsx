@@ -183,12 +183,17 @@ function WizardContent({
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="py-8 px-4 sm:px-6 lg:px-8">
+      {/* Main Content.
+          A <div>, not a <main>: LandlordDashboardShell already wraps every page
+          in <main className="p-4 lg:p-6">, so a <main> here nested one landmark
+          inside another. Screen readers then announce two "main" regions and
+          "skip to main content" becomes ambiguous. Measured at runtime: 2 <main>,
+          nested=1. The className is unchanged, so nothing moves on screen. */}
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           {StepComponent && <StepComponent />}
         </div>
-      </main>
+      </div>
 
       {/* Bottom Navigation */}
       <WizardNavigation

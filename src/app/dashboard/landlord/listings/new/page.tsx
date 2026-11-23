@@ -1,6 +1,6 @@
 /**
  * Property Wizard Page
- * 
+ *
  * Multi-step wizard for adding a new property listing.
  * Uses React Context for state management across steps.
  * Supports both residential and commercial listings.
@@ -61,8 +61,10 @@ function WizardContent() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [publishedListingId, setPublishedListingId] = useState<string | null>(null);
-  
+  const [publishedListingId, setPublishedListingId] = useState<string | null>(
+    null,
+  );
+
   // Select step component based on listing category
   const isCommercial = formData.listingCategory === "commercial";
   const STEP_COMPONENTS = isCommercial ? COMMERCIAL_STEPS : RESIDENTIAL_STEPS;
@@ -72,16 +74,22 @@ function WizardContent() {
   const handleSaveDraft = async () => {
     setIsSavingDraft(true);
     dispatch({ type: "SET_SAVING", payload: true });
-    
+
     try {
       const result = await saveDraft(formData, draftId);
-      
+
       if (result.success && result.listingId) {
         // Update draft ID in state if this was a new draft
         if (!draftId) {
-          dispatch({ type: "SAVE_SUCCESS", payload: { draftId: result.listingId, savedAt: new Date() } });
+          dispatch({
+            type: "SAVE_SUCCESS",
+            payload: { draftId: result.listingId, savedAt: new Date() },
+          });
         } else {
-          dispatch({ type: "SET_LAST_SAVED", payload: new Date().toISOString() });
+          dispatch({
+            type: "SET_LAST_SAVED",
+            payload: new Date().toISOString(),
+          });
         }
         dispatch({ type: "SET_DIRTY", payload: false });
         success("Draft saved", "Your listing has been saved as a draft");
@@ -101,15 +109,18 @@ function WizardContent() {
   const handlePublish = async () => {
     setIsPublishing(true);
     dispatch({ type: "SET_SUBMITTING", payload: true });
-    
+
     try {
       const result = await publishListing(formData, draftId);
-      
+
       if (result.success && result.listingId) {
         setPublishedListingId(result.listingId);
         setShowSuccessModal(true);
       } else {
-        showError("Publish failed", result.error || "Failed to publish listing");
+        showError(
+          "Publish failed",
+          result.error || "Failed to publish listing",
+        );
       }
     } catch (err) {
       console.error("Error publishing:", err);
@@ -138,15 +149,18 @@ function WizardContent() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="py-8 px-4 sm:px-6 lg:px-8">
+      {/* Main Content.
+          A <div>, not a <main>: the shell already provides the page's <main>
+          landmark. See the note on the edit page, which carried the identical
+          line. Measured at runtime: 2 <main>, nested=1. className unchanged. */}
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           {StepComponent && <StepComponent />}
         </div>
-      </main>
+      </div>
 
       {/* Bottom Navigation */}
-      <WizardNavigation 
+      <WizardNavigation
         onSaveDraft={handleSaveDraft}
         onPublish={handlePublish}
       />
@@ -156,7 +170,10 @@ function WizardContent() {
         isOpen={showSuccessModal}
         onClose={handleSuccessClose}
         title={successContent.title || "Your listing is live! 🎉"}
-        message={successContent.message || "Your listing is now visible to potential clients."}
+        message={
+          successContent.message ||
+          "Your listing is now visible to potential clients."
+        }
         primaryAction={{
           label: successContent.primaryLabel || "View My Listings",
           href: "/dashboard/landlord/listings",

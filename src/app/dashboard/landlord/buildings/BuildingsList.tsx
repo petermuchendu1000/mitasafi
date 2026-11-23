@@ -135,7 +135,10 @@ export function BuildingsList({ buildings }: { buildings: BuildingSummary[] }) {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* A <div>, not a <main>: the shell already provides the page's <main>
+          landmark. This one was missed in the earlier sweep that fixed the
+          building detail, add-building and tenants pages. className unchanged. */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Portfolio totals */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
@@ -370,7 +373,7 @@ export function BuildingsList({ buildings }: { buildings: BuildingSummary[] }) {
             )}
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }
