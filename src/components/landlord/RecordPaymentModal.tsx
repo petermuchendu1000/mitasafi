@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   X,
   Calendar,
@@ -68,8 +68,34 @@ function getMonthOptions(): { value: string; label: string }[] {
   return options;
 }
 
-export function RecordPaymentModal({
-  isOpen,
+/**
+ * The modal is MOUNTED only while it is open.
+ *
+ * NOTE: this component has no call sites. `grep -rnE "<RecordPaymentModal([ />]|$)"`
+ * over src finds nothing; the only reference anywhere is the barrel re-export in
+ * components/landlord/index.ts. It is fixed rather than deleted because deleting a
+ * component is a bigger decision than clearing a lint error, but it is a deletion
+ * candidate alongside the other barrel-only exports found in this pass.
+ *
+ * Two things were wrong with the effect, not one.
+ *
+ * It reset the form AFTER the first render with the modal open, so the frame the user
+ * saw on reopening still held the previous payment's amount and M-Pesa reference code.
+ * On a form that records money against a tenant, a stale pre-filled confirmation code
+ * is not a cosmetic problem.
+ *
+ * Worse, its dependency list was [isOpen, expectedAmount, forMonth] — not isOpen
+ * alone. If expectedAmount changed while the modal was OPEN, which is exactly what a
+ * parent re-fetching the tenant's balance would do, the effect fired and wiped
+ * everything the landlord had typed. Mounting on open removes both: the defaults are
+ * useState initialisers, and nothing re-runs them while the form is in use.
+ */
+export function RecordPaymentModal(props: RecordPaymentModalProps) {
+  if (!props.isOpen) return null;
+  return <RecordPaymentModalContent {...props} />;
+}
+
+function RecordPaymentModalContent({
   onClose,
   onSubmit,
   tenantName,
@@ -78,32 +104,17 @@ export function RecordPaymentModal({
   forMonth,
 }: RecordPaymentModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<PaymentData>({
+  const [formData, setFormData] = useState<PaymentData>(() => ({
     amount: expectedAmount,
     payment_date: new Date().toISOString().split("T")[0],
     payment_method: "mpesa",
     reference: "",
     for_month: forMonth || getMonthOptions()[0].value,
     notes: "",
-  });
+  }));
   const [errors, setErrors] = useState<
     Partial<Record<keyof PaymentData, string>>
   >({});
-
-  // Reset form when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        amount: expectedAmount,
-        payment_date: new Date().toISOString().split("T")[0],
-        payment_method: "mpesa",
-        reference: "",
-        for_month: forMonth || getMonthOptions()[0].value,
-        notes: "",
-      });
-      setErrors({});
-    }
-  }, [isOpen, expectedAmount, forMonth]);
 
   // Update field
   const updateField = <K extends keyof PaymentData>(
@@ -151,8 +162,6 @@ export function RecordPaymentModal({
       setIsSubmitting(false);
     }
   };
-
-  if (!isOpen) return null;
 
   const monthOptions = getMonthOptions();
 

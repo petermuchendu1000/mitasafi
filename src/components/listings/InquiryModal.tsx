@@ -13,7 +13,13 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import {
   X,
   MessageCircle,
@@ -73,13 +79,73 @@ function formatPhone(value: string): string {
   return parts.join(" ");
 }
 
-export function InquiryModal({
-  isOpen,
+function initialFormData(props: InquiryModalProps): InquiryFormData {
+  const {
+    landlordName,
+    listingTitle,
+    listingArea,
+    userName,
+    userEmail,
+    userPhone,
+  } = props;
+  const defaultMessage = `Hi${landlordName ? ` ${landlordName.split(" ")[0]}` : ""},\n\nI'm interested in the ${listingTitle} in ${listingArea}. Is it still available?\n\nPlease let me know when I can view it.\n\nThank you!`;
+
+  return {
+    name: userName || "",
+    email: userEmail || "",
+    phone: userPhone ? formatPhone(userPhone.replace("+254", "")) : "",
+    message: defaultMessage,
+    requestViewing: false,
+    preferredTime: "morning",
+    preferredDay: "weekday",
+  };
+}
+
+/**
+ * Split in two, because the draft and the submission state want opposite lifetimes.
+ *
+ * This modal had FOUR effects keyed on isOpen, two of which the rule reported: one
+ * prefilled the form on open, one reset isSuccess/error/touched on close. It stayed
+ * mounted when closed (`if (!isOpen) return null`), which is why the resetting had to
+ * be done by hand at all.
+ *
+ * The obvious fix — unmount the whole thing when closed, as the other modals here now
+ * do — would be WRONG for this one. The prefill effect wrote
+ * `message: prev.message || defaultMessage` and `name: userName || prev.name`, so a
+ * visitor who typed a message, closed the modal and reopened it still had their draft.
+ * Destroying the component on close would quietly throw that away.
+ *
+ * So the draft lives out here, where closing does not touch it, and everything that
+ * SHOULD be forgotten — whether the inquiry was sent, the error from the last attempt,
+ * which fields have been blurred — lives in the inner component, which is mounted only
+ * while the modal is open and therefore resets by existing rather than by being reset.
+ *
+ * One behaviour does change, and it is worth stating: the prefill no longer re-applies
+ * the signed-in user's name, email and phone on every open, only on the first mount.
+ * That would matter if the profile props could change while this page stayed mounted;
+ * they come from the server component that renders ListingDetailClient, so signing in
+ * navigates and remounts.
+ */
+export function InquiryModal(props: InquiryModalProps) {
+  const [formData, setFormData] = useState<InquiryFormData>(() =>
+    initialFormData(props),
+  );
+
+  if (!props.isOpen) return null;
+
+  return (
+    <InquiryModalContent
+      {...props}
+      formData={formData}
+      setFormData={setFormData}
+    />
+  );
+}
+
+function InquiryModalContent({
   onClose,
   listingId,
   listingTitle,
-  listingArea,
-  landlordName,
   landlordId,
   propertyId,
   isAuthenticated = false,
@@ -87,16 +153,12 @@ export function InquiryModal({
   userName,
   userEmail,
   userPhone,
-}: InquiryModalProps) {
-  const [formData, setFormData] = useState<InquiryFormData>({
-    name: "",
-    email: "",
-    phone: "",
-    message: "",
-    requestViewing: false,
-    preferredTime: "morning",
-    preferredDay: "weekday",
-  });
+  formData,
+  setFormData,
+}: InquiryModalProps & {
+  formData: InquiryFormData;
+  setFormData: Dispatch<SetStateAction<InquiryFormData>>;
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,64 +167,27 @@ export function InquiryModal({
   const nameInputRef = useRef<HTMLInputElement>(null);
   const messageRef = useRef<HTMLTextAreaElement>(null);
 
-  // Pre-fill for logged-in users and generate default message
+  // Focus on mount, which is now the same thing as "when the modal opens". The timer
+  // is cleared on unmount, which the old version did not do.
   useEffect(() => {
-    if (isOpen) {
-      const defaultMessage = `Hi${landlordName ? ` ${landlordName.split(" ")[0]}` : ""},\n\nI'm interested in the ${listingTitle} in ${listingArea}. Is it still available?\n\nPlease let me know when I can view it.\n\nThank you!`;
+    const timer = setTimeout(() => {
+      if (isAuthenticated && messageRef.current) {
+        messageRef.current.focus();
+      } else if (nameInputRef.current) {
+        nameInputRef.current.focus();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated]);
 
-      setFormData((prev) => ({
-        ...prev,
-        name: userName || prev.name,
-        email: userEmail || prev.email,
-        phone: userPhone
-          ? formatPhone(userPhone.replace("+254", ""))
-          : prev.phone,
-        message: prev.message || defaultMessage,
-      }));
-    }
-  }, [
-    isOpen,
-    userName,
-    userEmail,
-    userPhone,
-    landlordName,
-    listingTitle,
-    listingArea,
-  ]);
-
-  // Focus appropriate input when modal opens
+  // Prevent body scroll for as long as this component exists. The `else` branch that
+  // cleared the style when closed is gone: unmounting runs the cleanup.
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => {
-        if (isAuthenticated && messageRef.current) {
-          messageRef.current.focus();
-        } else if (nameInputRef.current) {
-          nameInputRef.current.focus();
-        }
-      }, 100);
-    }
-  }, [isOpen, isAuthenticated]);
-
-  // Reset state when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setIsSuccess(false);
-      setError(null);
-      setTouched({});
-    }
-  }, [isOpen]);
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isOpen]);
+  }, []);
 
   // Validation
   const validateForm = (): string | null => {
@@ -240,8 +265,6 @@ export function InquiryModal({
       setIsSubmitting(false);
     }
   };
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">

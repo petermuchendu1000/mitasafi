@@ -88,8 +88,31 @@ function formatCriteriaLabel(criteria: SearchCriteria): string {
   return parts.length > 0 ? `"${parts.join(" ")}"` : "your search";
 }
 
-export function SearchAlertModal({
-  isOpen,
+/**
+ * The modal is MOUNTED only while it is open.
+ *
+ * This component already rendered nothing when closed (`if (!isOpen) return null`), so
+ * it stayed mounted with the previous session's state still in it, and an effect put
+ * that state back to its defaults whenever isOpen went true. That effect is the
+ * reported setState, and it ran AFTER the first render with the modal open — so the
+ * frame the user actually saw on reopening still had the last email they typed and the
+ * last error message, before snapping to a clean form.
+ *
+ * Gating the mount here instead means the defaults live in useState initialisers and
+ * run before anything is painted. There is no state to put back because there is no
+ * state: closing the modal destroys it.
+ *
+ * Nothing is lost by unmounting. Every field this modal resets on open was reset
+ * UNCONDITIONALLY — setEmail(userEmail || ""), not `|| prev` — so it never preserved
+ * anything the user typed. (InquiryModal does preserve a draft, and is split
+ * differently for that reason.)
+ */
+export function SearchAlertModal(props: SearchAlertModalProps) {
+  if (!props.isOpen) return null;
+  return <SearchAlertModalContent {...props} />;
+}
+
+function SearchAlertModalContent({
   onClose,
   onSuccess,
   searchCriteria,
@@ -98,8 +121,10 @@ export function SearchAlertModal({
   userEmail,
   userPhone,
 }: SearchAlertModalProps) {
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState(userEmail || "");
+  const [phone, setPhone] = useState(
+    userPhone ? formatPhone(userPhone.replace("+254", "")) : "",
+  );
   const [frequency, setFrequency] = useState<"instant" | "daily" | "weekly">(
     "instant",
   );
@@ -117,34 +142,22 @@ export function SearchAlertModal({
   const needsContactInfo = !isAuthenticated || !hasAnyContact;
   const canAddPhone = isAuthenticated && hasUserEmail && !hasUserPhone;
 
-  // Pre-fill from user profile
+  // Focus the email input on mount, which is now the same thing as "when the modal
+  // opens". setTimeout because the element has to be in the document first.
   useEffect(() => {
-    if (isOpen) {
-      setEmail(userEmail || "");
-      setPhone(userPhone ? formatPhone(userPhone.replace("+254", "")) : "");
-      setShowPhoneField(false);
-      setError(null);
-    }
-  }, [isOpen, userEmail, userPhone]);
+    if (!needsContactInfo) return;
+    const timer = setTimeout(() => emailInputRef.current?.focus(), 100);
+    return () => clearTimeout(timer);
+  }, [needsContactInfo]);
 
-  // Focus email input when modal opens
+  // Prevent body scroll for as long as this component exists. The `else` branch that
+  // used to clear the style when closed is gone: unmounting runs the cleanup.
   useEffect(() => {
-    if (isOpen && needsContactInfo && emailInputRef.current) {
-      setTimeout(() => emailInputRef.current?.focus(), 100);
-    }
-  }, [isOpen, needsContactInfo]);
-
-  // Prevent body scroll
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isOpen]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,8 +241,6 @@ export function SearchAlertModal({
       setIsSubmitting(false);
     }
   };
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

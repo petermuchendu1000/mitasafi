@@ -130,8 +130,25 @@ function getStatusMessage(status: string): {
   }
 }
 
-export function UnavailableListingModal({
-  isOpen,
+/**
+ * The modal is MOUNTED only while it is open.
+ *
+ * It already rendered nothing when closed, so it stayed mounted holding the previous
+ * session's state, and an effect reset that state whenever isOpen went true. The
+ * effect is the reported setState, and because it runs after the first open render,
+ * reopening the modal after a successful waitlist join painted one frame of the
+ * "You're on the list" success panel before the form appeared.
+ *
+ * Gating the mount puts the defaults in useState initialisers, which run before paint.
+ * Every value the old effect reset was reset unconditionally, so unmounting preserves
+ * nothing that was being preserved before.
+ */
+export function UnavailableListingModal(props: UnavailableListingModalProps) {
+  if (!props.isOpen) return null;
+  return <UnavailableListingModalContent {...props} />;
+}
+
+function UnavailableListingModalContent({
   onClose,
   listing,
   similarListings = [],
@@ -143,8 +160,10 @@ export function UnavailableListingModal({
   const [activeTab, setActiveTab] = useState<"waitlist" | "similar">(
     listing.status === "paused" ? "waitlist" : "similar",
   );
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState(userEmail || "");
+  const [phone, setPhone] = useState(
+    userPhone ? formatPhone(userPhone.replace("+254", "")) : "",
+  );
   const [wantsSimilar, setWantsSimilar] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -152,34 +171,22 @@ export function UnavailableListingModal({
 
   const emailInputRef = useRef<HTMLInputElement>(null);
 
-  // Pre-fill from user profile
+  // Focus the email input on mount, which is now the same thing as "when the modal
+  // opens". The timer is cleared on unmount, which the old version did not do.
   useEffect(() => {
-    if (isOpen) {
-      setEmail(userEmail || "");
-      setPhone(userPhone ? formatPhone(userPhone.replace("+254", "")) : "");
-      setIsSuccess(false);
-      setError(null);
-    }
-  }, [isOpen, userEmail, userPhone]);
+    if (isAuthenticated) return;
+    const timer = setTimeout(() => emailInputRef.current?.focus(), 100);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated]);
 
-  // Focus email input when modal opens
+  // Prevent body scroll for as long as this component exists. The `else` branch that
+  // cleared the style when closed is gone: unmounting runs the cleanup.
   useEffect(() => {
-    if (isOpen && !isAuthenticated && emailInputRef.current) {
-      setTimeout(() => emailInputRef.current?.focus(), 100);
-    }
-  }, [isOpen, isAuthenticated]);
-
-  // Prevent body scroll
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isOpen]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -265,8 +272,6 @@ export function UnavailableListingModal({
       setIsSubmitting(false);
     }
   };
-
-  if (!isOpen) return null;
 
   const statusInfo = getStatusMessage(listing.status);
 
