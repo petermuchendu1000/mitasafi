@@ -37,6 +37,9 @@ import {
   Building,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+// Shared with the detail page so the two cannot disagree about what a
+// building_type value is called. See src/lib/landlord/labels.ts.
+import { buildingTypeLabels } from "@/lib/landlord/labels";
 
 export interface BuildingSummary {
   id: string;
@@ -55,17 +58,6 @@ export interface BuildingSummary {
   occupancy_rate: number;
   created_at: string;
 }
-
-/** Keys are exactly the values buildings_building_type_check permits. */
-const buildingTypeLabels: Record<string, string> = {
-  apartment: "Apartment Building",
-  flat_block: "Flat Block",
-  townhouse_complex: "Townhouse Complex",
-  gated_community: "Gated Community",
-  student_hostel: "Student Hostel",
-  mixed_use: "Mixed Use",
-  other: "Other",
-};
 
 /** Keys are exactly the values buildings_status_check permits. */
 const statusConfig: Record<string, { label: string; dot: string }> = {

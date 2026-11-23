@@ -1,743 +1,590 @@
 /**
- * Building Detail Page
+ * Building detail — the management hub for one building.
  *
- * Shows building overview, units grid, and quick actions.
- * This is the main management hub for a single building.
+ * WHAT THIS REPLACES
+ *   A 743-line `"use client"` page whose every figure came from two hardcoded
+ *   objects: `mockBuilding` ("Sunset Apartments", 24 units, Kilimani) and
+ *   `mockUnits` (eight invented units with invented tenants, lease end dates and
+ *   rent statuses). The page took an `id` from the URL and then ignored it, so
+ *   EVERY building opened as Sunset Apartments — the real one's name, address,
+ *   occupancy and rent roll were nowhere on the screen. Two of its four tabs said
+ *   "coming soon".
+ *
+ *   The mock also disagreed with the schema in ways that would have broken on
+ *   contact with a real row: `building_type: "apartment_block"` is not a value
+ *   buildings_building_type_check permits; `address` was a nested object where the
+ *   column is TEXT; units carried `floor`, `size_sqft` and `rent_amount` where the
+ *   columns are `floor_level`, `size_sqm` and `monthly_rent`; and the unit status
+ *   map had three entries for a column with four, so a 'reserved' unit would have
+ *   thrown on `statusConfig[unit.status].bgColor`.
+ *
+ * WHY A SERVER COMPONENT
+ *   Everything on first paint is data this landlord owns, and five queries resolved
+ *   on the server beat five round trips from the browser after hydration. The
+ *   interactive parts — tab, filter, search, view mode — stay in BuildingDetail.
+ *
+ * AUTHORIZATION IS IN THE QUERY, NOT AFTER IT
+ *   The building is fetched with `.eq("landlord_id", user.id)`, so another
+ *   landlord's id in the URL returns no row and the page 404s. RLS enforces the
+ *   same thing server-side; the explicit filter means the page does not depend on
+ *   the policy being right to avoid leaking a name.
+ *
+ * WHERE THE NUMBERS COME FROM
+ *   Occupancy and the rent roll are derived from the `units` rows, not from
+ *   `buildings.total_units` — that is a stored counter with no trigger keeping it
+ *   true. Rent status per unit comes from src/lib/landlord/rent-status.ts, which
+ *   reads the lease's due day and grace period against confirmed rent payments for
+ *   the period. Expected rent is summed over LEASES in force that month, not over
+ *   occupied units, because the lease is what is owed.
  */
 
-"use client";
-
-import { useState, use } from "react";
-import Link from "next/link";
+import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import {
-  ArrowLeft,
-  Building2,
-  Edit2,
-  MoreVertical,
-  MapPin,
-  Plus,
-  Grid3X3,
-  List,
-  Home,
-  Users,
-  Wallet,
-  Settings,
-  Calendar,
-  Phone,
-  Mail,
-  CheckCircle,
-  Clock,
-  XCircle,
-  AlertTriangle,
-  ChevronDown,
-  Search,
-  Filter,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+  nairobiToday,
+  rentStatusForPeriod,
+  leaseCoversPeriod,
+  recentPeriods,
+  civilFromISO,
+  compareCivil,
+  type RentStatus,
+} from "@/lib/landlord/rent-status";
+import { BuildingDetail } from "./BuildingDetail";
+import type {
+  BuildingDetailData,
+  UnitCard,
+  MaintenanceItem,
+  PaymentItem,
+  MonthCollection,
+} from "./types";
 
-// Type definitions
-type UnitStatus = "occupied" | "vacant" | "maintenance";
-type RentStatus = "paid" | "pending" | "overdue";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Mock data - will be replaced with Supabase queries
-const mockBuilding = {
-  id: "1",
-  name: "Sunset Apartments",
-  building_type: "apartment_block",
-  address: {
-    formatted: "123 Ngong Road, Nairobi",
-    area: "Kilimani",
-  },
-  floors: 6,
-  total_units: 24,
-  year_built: 2018,
-  status: "active",
-  photos: [
-    { url: "/images/properties/apartment-1.jpg", is_cover: true },
-    { url: "/images/properties/apartment-2.jpg", is_cover: false },
-  ],
-  amenities: {
-    security: ["guard_24hr", "cctv", "intercom"],
-    water: "borehole_backup",
-    power: "backup_generator",
-    parking: { type: "covered", spaces: 30 },
-    common_areas: ["gym", "rooftop_terrace", "laundry_room"],
-  },
-  financials: {
-    service_charge: { amount: 5000, frequency: "monthly" },
-    management_type: "self",
-    payment_collection: ["mpesa", "bank_transfer"],
-  },
-  created_at: "2024-01-15",
-};
-
-const mockUnits = [
-  {
-    id: "u1",
-    unit_number: "A101",
-    floor: 1,
-    bedrooms: 1,
-    bathrooms: 1,
-    size_sqft: 450,
-    rent_amount: 25000,
-    status: "occupied" as UnitStatus,
-    tenant: { name: "John Mwangi", phone: "0712345678" },
-    lease_end: "2025-06-30",
-    rent_status: "paid" as RentStatus,
-  },
-  {
-    id: "u2",
-    unit_number: "A102",
-    floor: 1,
-    bedrooms: 2,
-    bathrooms: 1,
-    size_sqft: 650,
-    rent_amount: 35000,
-    status: "occupied" as UnitStatus,
-    tenant: { name: "Sarah Wanjiku", phone: "0723456789" },
-    lease_end: "2025-03-15",
-    rent_status: "overdue" as RentStatus,
-  },
-  {
-    id: "u3",
-    unit_number: "A103",
-    floor: 1,
-    bedrooms: 2,
-    bathrooms: 2,
-    size_sqft: 750,
-    rent_amount: 40000,
-    status: "vacant" as UnitStatus,
-    tenant: null,
-    lease_end: null,
-    rent_status: null as RentStatus | null,
-  },
-  {
-    id: "u4",
-    unit_number: "A201",
-    floor: 2,
-    bedrooms: 1,
-    bathrooms: 1,
-    size_sqft: 450,
-    rent_amount: 25000,
-    status: "occupied" as UnitStatus,
-    tenant: { name: "Peter Otieno", phone: "0734567890" },
-    lease_end: "2025-08-31",
-    rent_status: "paid" as RentStatus,
-  },
-  {
-    id: "u5",
-    unit_number: "A202",
-    floor: 2,
-    bedrooms: 2,
-    bathrooms: 1,
-    size_sqft: 650,
-    rent_amount: 35000,
-    status: "occupied" as UnitStatus,
-    tenant: { name: "Grace Akinyi", phone: "0745678901" },
-    lease_end: "2025-04-30",
-    rent_status: "pending" as RentStatus,
-  },
-  {
-    id: "u6",
-    unit_number: "A203",
-    floor: 2,
-    bedrooms: 3,
-    bathrooms: 2,
-    size_sqft: 950,
-    rent_amount: 55000,
-    status: "maintenance" as UnitStatus,
-    tenant: null,
-    lease_end: null,
-    rent_status: null as RentStatus | null,
-  },
-  {
-    id: "u7",
-    unit_number: "B101",
-    floor: 1,
-    bedrooms: 1,
-    bathrooms: 1,
-    size_sqft: 450,
-    rent_amount: 25000,
-    status: "vacant" as UnitStatus,
-    tenant: null,
-    lease_end: null,
-    rent_status: null as RentStatus | null,
-  },
-  {
-    id: "u8",
-    unit_number: "B102",
-    floor: 1,
-    bedrooms: 2,
-    bathrooms: 2,
-    size_sqft: 750,
-    rent_amount: 42000,
-    status: "occupied" as UnitStatus,
-    tenant: { name: "Mary Njeri", phone: "0756789012" },
-    lease_end: "2025-09-30",
-    rent_status: "paid" as RentStatus,
-  },
+/** Fixed so the server and the browser never disagree on a month name. */
+const MONTH_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
-const statusConfig: Record<
-  UnitStatus,
-  {
-    label: string;
-    color: string;
-    bgColor: string;
-    textColor: string;
-    icon: React.ReactNode;
-  }
-> = {
-  occupied: {
-    label: "Occupied",
-    color: "bg-green-500",
-    bgColor: "bg-green-50",
-    textColor: "text-green-700",
-    icon: <CheckCircle className="w-4 h-4" />,
-  },
-  vacant: {
-    label: "Vacant",
-    color: "bg-blue-500",
-    bgColor: "bg-blue-50",
-    textColor: "text-blue-700",
-    icon: <Home className="w-4 h-4" />,
-  },
-  maintenance: {
-    label: "Maintenance",
-    color: "bg-yellow-500",
-    bgColor: "bg-yellow-50",
-    textColor: "text-yellow-700",
-    icon: <AlertTriangle className="w-4 h-4" />,
-  },
-};
+function monthLabel(period: { year: number; month: number }): string {
+  return `${MONTH_SHORT[period.month - 1]} ${period.year}`;
+}
 
-const rentStatusConfig: Record<
-  RentStatus,
-  { label: string; color: string; bgColor: string }
-> = {
-  paid: { label: "Paid", color: "text-green-600", bgColor: "bg-green-50" },
-  pending: {
-    label: "Pending",
-    color: "text-yellow-600",
-    bgColor: "bg-yellow-50",
-  },
-  overdue: { label: "Overdue", color: "text-red-600", bgColor: "bg-red-50" },
-};
+/** PostgREST returns numeric as a string; null must not become 0 silently. */
+function num(value: number | string | null | undefined): number {
+  if (value === null || value === undefined || value === "") return 0;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
 
-type TabType = "units" | "tenants" | "finances" | "maintenance";
+interface UnitRow {
+  id: string;
+  unit_number: string;
+  unit_type: string;
+  floor_level: string | null;
+  wing_block: string | null;
+  bedrooms: number | null;
+  bathrooms: number | string | null;
+  size_sqm: number | string | null;
+  monthly_rent: number | string | null;
+  status: string;
+  listing_status: string | null;
+  furnishing: string | null;
+  available_from: string | null;
+}
 
-export default function BuildingDetailPage({
+interface LeaseRow {
+  id: string;
+  unit_id: string;
+  tenant_id: string;
+  start_date: string;
+  end_date: string | null;
+  monthly_rent: number | string | null;
+  rent_due_day: number | null;
+  grace_period_days: number | null;
+  deposit_amount: number | string | null;
+  deposit_status: string | null;
+  deposit_refunded: number | string | null;
+  status: string;
+  tenants: {
+    id: string;
+    full_name: string;
+    phone: string;
+    email: string | null;
+    verification_level: string | null;
+  } | null;
+}
+
+interface PaymentRow {
+  id: string;
+  lease_id: string;
+  amount: number | string | null;
+  payment_type: string;
+  period_month: number | null;
+  period_year: number | null;
+  payment_date: string;
+  payment_method: string;
+  reference_number: string | null;
+  status: string;
+}
+
+interface MaintenanceRow {
+  id: string;
+  unit_id: string;
+  tenant_id: string | null;
+  category: string;
+  title: string;
+  description: string;
+  urgency: string;
+  status: string;
+  assigned_to: string | null;
+  assigned_phone: string | null;
+  estimated_cost: number | string | null;
+  actual_cost: number | string | null;
+  cost_paid_by: string | null;
+  reported_at: string;
+  due_date: string | null;
+  completed_at: string | null;
+}
+
+/** Statuses that mean the lease is a live obligation this month. */
+const LIVE_LEASE_STATUSES = ["active", "pending_signature"];
+
+/** Maintenance that is still someone's problem. */
+const OPEN_MAINTENANCE_STATUSES = [
+  "open",
+  "acknowledged",
+  "assigned",
+  "in_progress",
+];
+
+export default async function BuildingDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
-  const [activeTab, setActiveTab] = useState<TabType>("units");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [filterStatus, setFilterStatus] = useState<
-    "all" | "occupied" | "vacant" | "maintenance"
-  >("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const { id } = await params;
 
-  // Filter units
-  const filteredUnits = mockUnits.filter((unit) => {
-    if (filterStatus !== "all" && unit.status !== filterStatus) return false;
-    if (
-      searchQuery &&
-      !unit.unit_number.toLowerCase().includes(searchQuery.toLowerCase())
-    ) {
-      return false;
+  // An id that is not a UUID would make PostgREST reject the query with 22P02
+  // rather than return nothing, so it is turned away here. This is also the path
+  // taken by the old mock links, which pointed at "1".
+  if (!UUID.test(id)) notFound();
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const landlordId = user?.id ?? "";
+
+  const { data: building, error: buildingError } = await supabase
+    .from("buildings")
+    // Kept as ONE string literal on purpose: supabase-js reads the select as a
+    // literal type to infer the row shape, and a concatenated expression is not one.
+    // Split it over `+` and every field below becomes GenericStringError.
+    // prettier-ignore
+    .select(
+      "id, name, building_type, address, area, city, status, photos, cover_photo, total_floors, total_units, year_built, plot_number, management_type, service_charge, created_at",
+    )
+    .eq("id", id)
+    .eq("landlord_id", landlordId)
+    .maybeSingle();
+
+  if (buildingError) {
+    console.error(
+      "[BuildingDetail] building query failed:",
+      buildingError.message,
+    );
+  }
+  if (!building) notFound();
+
+  const { data: unitRows, error: unitsError } = await supabase
+    .from("units")
+    // prettier-ignore
+    .select(
+      "id, unit_number, unit_type, floor_level, wing_block, bedrooms, bathrooms, size_sqm, monthly_rent, status, listing_status, furnishing, available_from",
+    )
+    .eq("building_id", id)
+    .eq("landlord_id", landlordId)
+    .order("unit_number", { ascending: true });
+
+  if (unitsError) {
+    console.error("[BuildingDetail] units query failed:", unitsError.message);
+  }
+
+  const units = (unitRows ?? []) as UnitRow[];
+  const unitIds = units.map((u) => u.id);
+
+  // Leases and maintenance both hang off the unit ids, so they go together. With no
+  // units there is nothing to ask for, and `.in()` on an empty list is a query that
+  // can only return nothing.
+  const [leaseResult, maintenanceResult] = unitIds.length
+    ? await Promise.all([
+        supabase
+          .from("leases")
+          // prettier-ignore
+          .select(
+            "id, unit_id, tenant_id, start_date, end_date, monthly_rent, rent_due_day, grace_period_days, deposit_amount, deposit_status, deposit_refunded, status, tenants ( id, full_name, phone, email, verification_level )",
+          )
+          .in("unit_id", unitIds)
+          .eq("landlord_id", landlordId)
+          .order("start_date", { ascending: false }),
+        supabase
+          .from("maintenance_requests")
+          // prettier-ignore
+          .select(
+            "id, unit_id, tenant_id, category, title, description, urgency, status, assigned_to, assigned_phone, estimated_cost, actual_cost, cost_paid_by, reported_at, due_date, completed_at",
+          )
+          .in("unit_id", unitIds)
+          .eq("landlord_id", landlordId)
+          .order("reported_at", { ascending: false })
+          .limit(200),
+      ])
+    : [
+        { data: [], error: null },
+        { data: [], error: null },
+      ];
+
+  if (leaseResult.error) {
+    console.error(
+      "[BuildingDetail] leases query failed:",
+      leaseResult.error.message,
+    );
+  }
+  if (maintenanceResult.error) {
+    console.error(
+      "[BuildingDetail] maintenance query failed:",
+      maintenanceResult.error.message,
+    );
+  }
+
+  const leases = (leaseResult.data ?? []) as unknown as LeaseRow[];
+  const leaseIds = leases.map((l) => l.id);
+
+  // One payments query feeds the per-unit rent status, the six-month collection
+  // series and the recent-payments list. Capped so a long-running building cannot
+  // pull an unbounded result; the cap is well above six months of a large block,
+  // and the newest rows are the ones every figure here is about.
+  const { data: paymentRows, error: paymentsError } = leaseIds.length
+    ? await supabase
+        .from("payments")
+        // prettier-ignore
+        .select(
+          "id, lease_id, amount, payment_type, period_month, period_year, payment_date, payment_method, reference_number, status",
+        )
+        .in("lease_id", leaseIds)
+        .eq("status", "confirmed")
+        .order("payment_date", { ascending: false })
+        .limit(2000)
+    : { data: [], error: null };
+
+  if (paymentsError) {
+    console.error(
+      "[BuildingDetail] payments query failed:",
+      paymentsError.message,
+    );
+  }
+  const payments = (paymentRows ?? []) as PaymentRow[];
+
+  // ---------------------------------------------------------------- derivation
+
+  const today = nairobiToday();
+  const currentPeriod = { year: today.year, month: today.month };
+  const periods = recentPeriods(currentPeriod, 6);
+
+  /** The lease in force on a unit: the live one, else the most recent. */
+  const leaseByUnit = new Map<string, LeaseRow>();
+  for (const lease of leases) {
+    const existing = leaseByUnit.get(lease.unit_id);
+    const isLive = LIVE_LEASE_STATUSES.includes(lease.status);
+    if (!existing) {
+      leaseByUnit.set(lease.unit_id, lease);
+      continue;
     }
-    return true;
+    const existingIsLive = LIVE_LEASE_STATUSES.includes(existing.status);
+    if (isLive && !existingIsLive) leaseByUnit.set(lease.unit_id, lease);
+    // Otherwise keep the first, which is the latest by start_date.
+  }
+
+  /** Confirmed rent, summed per lease per period. */
+  const rentByLeasePeriod = new Map<string, number>();
+  for (const p of payments) {
+    if (p.payment_type !== "rent") continue;
+    if (p.period_year === null || p.period_month === null) continue;
+    const key = `${p.lease_id}:${p.period_year}-${p.period_month}`;
+    rentByLeasePeriod.set(
+      key,
+      (rentByLeasePeriod.get(key) ?? 0) + num(p.amount),
+    );
+  }
+
+  const openByUnit = new Map<string, number>();
+  for (const m of (maintenanceResult.data ?? []) as MaintenanceRow[]) {
+    if (!OPEN_MAINTENANCE_STATUSES.includes(m.status)) continue;
+    openByUnit.set(m.unit_id, (openByUnit.get(m.unit_id) ?? 0) + 1);
+  }
+
+  const unitCards: UnitCard[] = units.map((u) => {
+    const lease = leaseByUnit.get(u.id);
+    const live =
+      lease && LIVE_LEASE_STATUSES.includes(lease.status) ? lease : null;
+
+    let rent: UnitCard["rent"] = null;
+    if (live && leaseCoversPeriod(live, currentPeriod)) {
+      const paid =
+        rentByLeasePeriod.get(
+          `${live.id}:${currentPeriod.year}-${currentPeriod.month}`,
+        ) ?? 0;
+      const r = rentStatusForPeriod({
+        monthlyRent: num(live.monthly_rent),
+        rentDueDay: live.rent_due_day ?? 5,
+        gracePeriodDays: live.grace_period_days ?? 0,
+        amountPaid: paid,
+        period: currentPeriod,
+        today,
+      });
+      rent = {
+        status: r.status,
+        due: r.due,
+        paid: r.paid,
+        balance: r.balance,
+        daysLate: r.daysLate,
+        dueDay: r.dueDate.day,
+      };
+    }
+
+    return {
+      id: u.id,
+      unit_number: u.unit_number,
+      unit_type: u.unit_type,
+      floor_level: u.floor_level,
+      wing_block: u.wing_block,
+      bedrooms: u.bedrooms ?? 0,
+      bathrooms: num(u.bathrooms),
+      size_sqm: u.size_sqm === null ? null : num(u.size_sqm),
+      monthly_rent: num(u.monthly_rent),
+      status: u.status,
+      listing_status: u.listing_status,
+      furnishing: u.furnishing,
+      available_from: u.available_from,
+      openMaintenance: openByUnit.get(u.id) ?? 0,
+      tenant: live?.tenants
+        ? {
+            id: live.tenants.id,
+            name: live.tenants.full_name,
+            phone: live.tenants.phone,
+            email: live.tenants.email,
+            verification_level: live.tenants.verification_level,
+          }
+        : null,
+      lease: live
+        ? {
+            id: live.id,
+            start_date: live.start_date,
+            end_date: live.end_date,
+            monthly_rent: num(live.monthly_rent),
+            rent_due_day: live.rent_due_day ?? 5,
+            status: live.status,
+          }
+        : null,
+      rent,
+    };
   });
 
-  // Calculate stats
-  const stats = {
-    total: mockUnits.length,
-    occupied: mockUnits.filter((u) => u.status === "occupied").length,
-    vacant: mockUnits.filter((u) => u.status === "vacant").length,
-    maintenance: mockUnits.filter((u) => u.status === "maintenance").length,
-    monthlyRevenue: mockUnits
-      .filter((u) => u.status === "occupied")
-      .reduce((sum, u) => sum + u.rent_amount, 0),
-    occupancyRate: Math.round(
-      (mockUnits.filter((u) => u.status === "occupied").length /
-        mockUnits.length) *
-        100,
-    ),
+  // Collection history. Expected is summed over leases in force that month, so a
+  // unit that was empty in August is not counted as August arrears.
+  const unitNumberById = new Map(units.map((u) => [u.id, u.unit_number]));
+  const months: MonthCollection[] = periods.map((period) => {
+    let expected = 0;
+    let collected = 0;
+    for (const lease of leases) {
+      if (
+        !LIVE_LEASE_STATUSES.includes(lease.status) &&
+        lease.status !== "expired"
+      )
+        continue;
+      if (!leaseCoversPeriod(lease, period)) continue;
+      expected += num(lease.monthly_rent);
+      collected +=
+        rentByLeasePeriod.get(`${lease.id}:${period.year}-${period.month}`) ??
+        0;
+    }
+    return {
+      label: monthLabel(period),
+      year: period.year,
+      month: period.month,
+      expected,
+      collected,
+    };
+  });
+
+  const thisMonth = months[months.length - 1] ?? {
+    label: monthLabel(currentPeriod),
+    year: currentPeriod.year,
+    month: currentPeriod.month,
+    expected: 0,
+    collected: 0,
   };
 
-  const tabs = [
-    { id: "units" as const, label: "Units", icon: Grid3X3, count: stats.total },
-    {
-      id: "tenants" as const,
-      label: "Tenants",
-      icon: Users,
-      count: stats.occupied,
-    },
-    { id: "finances" as const, label: "Finances", icon: Wallet },
-    { id: "maintenance" as const, label: "Maintenance", icon: Settings },
-  ];
+  const depositsHeld = leases
+    .filter(
+      (l) =>
+        LIVE_LEASE_STATUSES.includes(l.status) &&
+        (l.deposit_status === "held" ||
+          l.deposit_status === "partially_refunded"),
+    )
+    .reduce(
+      (sum, l) =>
+        sum + Math.max(0, num(l.deposit_amount) - num(l.deposit_refunded)),
+      0,
+    );
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/dashboard/landlord/buildings"
-                className="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  {mockBuilding.name}
-                </h1>
-                <p className="text-sm text-gray-500 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {mockBuilding.address.area}
-                </p>
-              </div>
-            </div>
+  const arrears = unitCards
+    .filter((u) => u.rent && u.rent.balance > 0)
+    .map((u) => ({
+      unitId: u.id,
+      unitNumber: u.unit_number,
+      tenantName: u.tenant?.name ?? "—",
+      balance: u.rent?.balance ?? 0,
+      daysLate: u.rent?.daysLate ?? 0,
+      status: (u.rent?.status ?? "pending") as RentStatus,
+    }))
+    .sort((a, b) => b.balance - a.balance);
 
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/dashboard/landlord/buildings/${id}/edit`}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Edit2 className="w-5 h-5" />
-              </Link>
-              <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                <MoreVertical className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex items-center gap-1 -mb-px overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
-                  activeTab === tab.id
-                    ? "border-teal-500 text-teal-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
-                )}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-                {tab.count !== undefined && (
-                  <span
-                    className={cn(
-                      "px-1.5 py-0.5 text-xs rounded-full",
-                      activeTab === tab.id
-                        ? "bg-teal-100 text-teal-700"
-                        : "bg-gray-100 text-gray-600",
-                    )}
-                  >
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeTab === "units" && (
-          <>
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <p className="text-sm text-gray-500 mb-1">Occupancy Rate</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.occupancyRate}%
-                </p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <p className="text-sm text-gray-500 mb-1">Occupied</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {stats.occupied}
-                </p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <p className="text-sm text-gray-500 mb-1">Vacant</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {stats.vacant}
-                </p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <p className="text-sm text-gray-500 mb-1">Maintenance</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {stats.maintenance}
-                </p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <p className="text-sm text-gray-500 mb-1">Monthly Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  KES {(stats.monthlyRevenue / 1000).toFixed(0)}k
-                </p>
-              </div>
-            </div>
-
-            {/* Filters & Actions */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                {/* Search */}
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search units..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm"
-                  />
-                </div>
-
-                {/* Status Filter */}
-                <div className="flex items-center gap-2">
-                  {["all", "occupied", "vacant", "maintenance"].map(
-                    (status) => (
-                      <button
-                        key={status}
-                        onClick={() =>
-                          setFilterStatus(status as typeof filterStatus)
-                        }
-                        className={cn(
-                          "px-3 py-2 text-sm rounded-lg transition-colors capitalize",
-                          filterStatus === status
-                            ? "bg-teal-50 text-teal-700 font-medium"
-                            : "text-gray-600 hover:bg-gray-100",
-                        )}
-                      >
-                        {status}
-                      </button>
-                    ),
-                  )}
-                </div>
-
-                {/* View Toggle */}
-                <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
-                  <button
-                    onClick={() => setViewMode("grid")}
-                    className={cn(
-                      "p-2 rounded-md transition-colors",
-                      viewMode === "grid"
-                        ? "bg-white shadow-sm"
-                        : "text-gray-500 hover:text-gray-700",
-                    )}
-                  >
-                    <Grid3X3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode("list")}
-                    className={cn(
-                      "p-2 rounded-md transition-colors",
-                      viewMode === "list"
-                        ? "bg-white shadow-sm"
-                        : "text-gray-500 hover:text-gray-700",
-                    )}
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Add Unit */}
-                <Link
-                  href={`/dashboard/landlord/buildings/${id}/units/new`}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white font-medium rounded-xl hover:bg-teal-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Unit</span>
-                </Link>
-              </div>
-            </div>
-
-            {/* Units Grid/List */}
-            {viewMode === "grid" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredUnits.map((unit) => (
-                  <Link
-                    key={unit.id}
-                    href={`/dashboard/landlord/buildings/${id}/units/${unit.id}`}
-                    className="group bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md hover:border-gray-300 transition-all"
-                  >
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={cn(
-                            "w-10 h-10 rounded-lg flex items-center justify-center",
-                            statusConfig[unit.status].bgColor,
-                          )}
-                        >
-                          <Home
-                            className={cn(
-                              "w-5 h-5",
-                              statusConfig[unit.status].textColor,
-                            )}
-                          />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900 group-hover:text-teal-600 transition-colors">
-                            {unit.unit_number}
-                          </h3>
-                          <p className="text-xs text-gray-500">
-                            Floor {unit.floor}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={cn(
-                          "px-2 py-1 text-xs font-medium rounded-full",
-                          statusConfig[unit.status].bgColor,
-                          statusConfig[unit.status].textColor,
-                        )}
-                      >
-                        {statusConfig[unit.status].label}
-                      </span>
-                    </div>
-
-                    {/* Details */}
-                    <div className="flex items-center gap-3 text-sm text-gray-600 mb-3">
-                      <span>{unit.bedrooms} BR</span>
-                      <span>•</span>
-                      <span>{unit.bathrooms} BA</span>
-                      <span>•</span>
-                      <span>{unit.size_sqft} sqft</span>
-                    </div>
-
-                    {/* Rent */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-lg font-bold text-gray-900">
-                          KES {unit.rent_amount.toLocaleString()}
-                        </span>
-                        <span className="text-sm text-gray-500">/mo</span>
-                      </div>
-                      {unit.rent_status && (
-                        <span
-                          className={cn(
-                            "px-2 py-1 text-xs font-medium rounded-full",
-                            rentStatusConfig[unit.rent_status].bgColor,
-                            rentStatusConfig[unit.rent_status].color,
-                          )}
-                        >
-                          {rentStatusConfig[unit.rent_status].label}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Tenant (if occupied) */}
-                    {unit.tenant && (
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                            <Users className="w-4 h-4 text-gray-500" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {unit.tenant.name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Until{" "}
-                              {new Date(unit.lease_end!).toLocaleDateString(
-                                "en-KE",
-                                {
-                                  month: "short",
-                                  year: "numeric",
-                                },
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Unit
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Type
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Status
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Tenant
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Rent
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Payment
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filteredUnits.map((unit) => (
-                      <tr
-                        key={unit.id}
-                        className="hover:bg-gray-50 cursor-pointer"
-                        onClick={() =>
-                          (window.location.href = `/dashboard/landlord/buildings/${id}/units/${unit.id}`)
-                        }
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={cn(
-                                "w-8 h-8 rounded-lg flex items-center justify-center",
-                                statusConfig[unit.status].bgColor,
-                              )}
-                            >
-                              <Home
-                                className={cn(
-                                  "w-4 h-4",
-                                  statusConfig[unit.status].textColor,
-                                )}
-                              />
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">
-                                {unit.unit_number}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                Floor {unit.floor}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {unit.bedrooms} BR / {unit.bathrooms} BA
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full",
-                              statusConfig[unit.status].bgColor,
-                              statusConfig[unit.status].textColor,
-                            )}
-                          >
-                            {statusConfig[unit.status].icon}
-                            {statusConfig[unit.status].label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {unit.tenant ? (
-                            <div>
-                              <p className="font-medium text-gray-900">
-                                {unit.tenant.name}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {unit.tenant.phone}
-                              </p>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          KES {unit.rent_amount.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3">
-                          {unit.rent_status ? (
-                            <span
-                              className={cn(
-                                "px-2 py-1 text-xs font-medium rounded-full",
-                                rentStatusConfig[unit.rent_status].bgColor,
-                                rentStatusConfig[unit.rent_status].color,
-                              )}
-                            >
-                              {rentStatusConfig[unit.rent_status].label}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {filteredUnits.length === 0 && (
-              <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                  <Home className="w-8 h-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  No units found
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  {searchQuery || filterStatus !== "all"
-                    ? "Try adjusting your search or filters"
-                    : "Start by adding units to this building"}
-                </p>
-                <Link
-                  href={`/dashboard/landlord/buildings/${id}/units/new`}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white font-medium rounded-xl hover:bg-teal-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add First Unit
-                </Link>
-              </div>
-            )}
-          </>
-        )}
-
-        {activeTab === "tenants" && (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Tenant Management
-            </h3>
-            <p className="text-gray-500">
-              View and manage tenants from the Units tab, or use the Tenants
-              page for a full list.
-            </p>
-          </div>
-        )}
-
-        {activeTab === "finances" && (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <Wallet className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Finances
-            </h3>
-            <p className="text-gray-500">
-              Financial overview and payment tracking coming soon.
-            </p>
-          </div>
-        )}
-
-        {activeTab === "maintenance" && (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <Settings className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Maintenance
-            </h3>
-            <p className="text-gray-500">
-              Maintenance request tracking coming soon.
-            </p>
-          </div>
-        )}
-      </main>
-    </div>
+  const leaseUnit = new Map(leases.map((l) => [l.id, l.unit_id]));
+  const leaseTenant = new Map(
+    leases.map((l) => [l.id, l.tenants?.full_name ?? "—"]),
   );
+  const recentPayments: PaymentItem[] = payments.slice(0, 12).map((p) => ({
+    id: p.id,
+    date: p.payment_date,
+    unitNumber: unitNumberById.get(leaseUnit.get(p.lease_id) ?? "") ?? "—",
+    tenantName: leaseTenant.get(p.lease_id) ?? "—",
+    amount: num(p.amount),
+    method: p.payment_method,
+    type: p.payment_type,
+    reference: p.reference_number,
+    periodLabel:
+      p.period_year && p.period_month
+        ? monthLabel({ year: p.period_year, month: p.period_month })
+        : null,
+  }));
+
+  const maintenance: MaintenanceItem[] = (
+    (maintenanceResult.data ?? []) as MaintenanceRow[]
+  ).map((m) => ({
+    id: m.id,
+    unitId: m.unit_id,
+    unitNumber: unitNumberById.get(m.unit_id) ?? "—",
+    category: m.category,
+    title: m.title,
+    description: m.description,
+    urgency: m.urgency,
+    status: m.status,
+    assignedTo: m.assigned_to,
+    assignedPhone: m.assigned_phone,
+    estimatedCost: m.estimated_cost === null ? null : num(m.estimated_cost),
+    actualCost: m.actual_cost === null ? null : num(m.actual_cost),
+    costPaidBy: m.cost_paid_by,
+    reportedAt: m.reported_at,
+    dueDate: m.due_date,
+    completedAt: m.completed_at,
+    isOpen: OPEN_MAINTENANCE_STATUSES.includes(m.status),
+  }));
+
+  // Leases ending within 60 days, which is the window a landlord has to act in.
+  const renewalCutoff = (() => {
+    const t =
+      Date.UTC(today.year, today.month - 1, today.day) + 60 * 86_400_000;
+    const d = new Date(t);
+    return {
+      year: d.getUTCFullYear(),
+      month: d.getUTCMonth() + 1,
+      day: d.getUTCDate(),
+    };
+  })();
+
+  const expiringLeases = unitCards
+    .filter((u) => {
+      if (!u.lease?.end_date) return false;
+      const end = civilFromISO(u.lease.end_date);
+      if (!end) return false;
+      return (
+        compareCivil(end, today) >= 0 && compareCivil(end, renewalCutoff) <= 0
+      );
+    })
+    .map((u) => ({
+      unitId: u.id,
+      unitNumber: u.unit_number,
+      tenantName: u.tenant?.name ?? "—",
+      endDate: u.lease?.end_date ?? "",
+    }));
+
+  const occupied = unitCards.filter((u) => u.status === "occupied").length;
+  const data: BuildingDetailData = {
+    building: {
+      id: building.id,
+      name: building.name,
+      building_type: building.building_type,
+      address: building.address,
+      area: building.area,
+      city: building.city,
+      status: building.status,
+      photos: building.photos ?? [],
+      cover_photo: building.cover_photo,
+      total_floors: building.total_floors,
+      recorded_total_units: building.total_units,
+      year_built: building.year_built,
+      plot_number: building.plot_number,
+      management_type: building.management_type,
+      service_charge:
+        building.service_charge === null ? null : num(building.service_charge),
+      created_at: building.created_at,
+    },
+    units: unitCards,
+    stats: {
+      total: unitCards.length,
+      occupied,
+      vacant: unitCards.filter((u) => u.status === "vacant").length,
+      maintenance: unitCards.filter((u) => u.status === "maintenance").length,
+      reserved: unitCards.filter((u) => u.status === "reserved").length,
+      monthlyRevenue: unitCards
+        .filter((u) => u.status === "occupied")
+        .reduce((sum, u) => sum + u.monthly_rent, 0),
+      occupancyRate:
+        unitCards.length === 0
+          ? 0
+          : Math.round((occupied / unitCards.length) * 100),
+    },
+    finances: {
+      currentLabel: thisMonth.label,
+      expected: thisMonth.expected,
+      collected: thisMonth.collected,
+      outstanding: Math.max(0, thisMonth.expected - thisMonth.collected),
+      collectionRate:
+        thisMonth.expected === 0
+          ? 0
+          : Math.round((thisMonth.collected / thisMonth.expected) * 100),
+      depositsHeld,
+      months,
+      arrears,
+      recentPayments,
+    },
+    maintenance,
+    expiringLeases,
+    todayIso: `${today.year}-${String(today.month).padStart(2, "0")}-${String(
+      today.day,
+    ).padStart(2, "0")}`,
+  };
+
+  return <BuildingDetail data={data} />;
 }
