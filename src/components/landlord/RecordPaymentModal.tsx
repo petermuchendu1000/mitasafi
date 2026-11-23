@@ -1,6 +1,6 @@
 /**
  * Record Payment Modal
- * 
+ *
  * Modal for recording a rent payment manually.
  * Used in unit detail and tenant detail pages.
  */
@@ -40,7 +40,11 @@ interface PaymentData {
 
 const PAYMENT_METHODS = [
   { value: "mpesa", label: "M-Pesa", description: "Mobile money transfer" },
-  { value: "bank_transfer", label: "Bank Transfer", description: "Direct bank deposit" },
+  {
+    value: "bank_transfer",
+    label: "Bank Transfer",
+    description: "Direct bank deposit",
+  },
   { value: "cash", label: "Cash", description: "Cash payment" },
   { value: "cheque", label: "Cheque", description: "Bank cheque" },
 ];
@@ -49,15 +53,18 @@ const PAYMENT_METHODS = [
 function getMonthOptions(): { value: string; label: string }[] {
   const options = [];
   const now = new Date();
-  
+
   for (let i = 0; i < 4; i++) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     options.push({
       value: date.toISOString().slice(0, 7), // YYYY-MM format
-      label: date.toLocaleDateString("en-KE", { month: "long", year: "numeric" }),
+      label: date.toLocaleDateString("en-KE", {
+        month: "long",
+        year: "numeric",
+      }),
     });
   }
-  
+
   return options;
 }
 
@@ -79,7 +86,9 @@ export function RecordPaymentModal({
     for_month: forMonth || getMonthOptions()[0].value,
     notes: "",
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof PaymentData, string>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof PaymentData, string>>
+  >({});
 
   // Reset form when modal opens
   useEffect(() => {
@@ -97,7 +106,10 @@ export function RecordPaymentModal({
   }, [isOpen, expectedAmount, forMonth]);
 
   // Update field
-  const updateField = <K extends keyof PaymentData>(field: K, value: PaymentData[K]) => {
+  const updateField = <K extends keyof PaymentData>(
+    field: K,
+    value: PaymentData[K],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -150,7 +162,9 @@ export function RecordPaymentModal({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Record Payment</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Record Payment
+            </h3>
             <p className="text-sm text-gray-500">
               {tenantName} • Unit {unitNumber}
             </p>
@@ -177,14 +191,18 @@ export function RecordPaymentModal({
               <input
                 type="number"
                 value={formData.amount}
-                onChange={(e) => updateField("amount", parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  updateField("amount", parseFloat(e.target.value) || 0)
+                }
                 className={cn(
                   "w-full pl-12 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-lg font-semibold",
-                  errors.amount ? "border-red-300" : "border-gray-200"
+                  errors.amount ? "border-red-300" : "border-gray-200",
                 )}
               />
             </div>
-            {errors.amount && <p className="mt-1 text-sm text-red-600">{errors.amount}</p>}
+            {errors.amount && (
+              <p className="mt-1 text-sm text-red-600">{errors.amount}</p>
+            )}
             {formData.amount !== expectedAmount && (
               <p className="mt-1 text-xs text-yellow-600">
                 Expected: KES {expectedAmount.toLocaleString()}
@@ -223,7 +241,7 @@ export function RecordPaymentModal({
                 onChange={(e) => updateField("payment_date", e.target.value)}
                 className={cn(
                   "w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                  errors.payment_date ? "border-red-300" : "border-gray-200"
+                  errors.payment_date ? "border-red-300" : "border-gray-200",
                 )}
               />
             </div>
@@ -242,44 +260,56 @@ export function RecordPaymentModal({
                 <button
                   key={method.value}
                   type="button"
-                  onClick={() => updateField("payment_method", method.value as PaymentData["payment_method"])}
+                  onClick={() =>
+                    updateField(
+                      "payment_method",
+                      method.value as PaymentData["payment_method"],
+                    )
+                  }
                   className={cn(
                     "p-3 text-left border rounded-xl transition-all",
                     formData.payment_method === method.value
                       ? "border-teal-500 bg-teal-50"
-                      : "border-gray-200 hover:border-gray-300"
+                      : "border-gray-200 hover:border-gray-300",
                   )}
                 >
-                  <span className="text-sm font-medium text-gray-900">{method.label}</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {method.label}
+                  </span>
                 </button>
               ))}
             </div>
             {errors.payment_method && (
-              <p className="mt-1 text-sm text-red-600">{errors.payment_method}</p>
+              <p className="mt-1 text-sm text-red-600">
+                {errors.payment_method}
+              </p>
             )}
           </div>
 
           {/* Reference */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Reference / Confirmation Code <span className="text-red-500">*</span>
+              Reference / Confirmation Code{" "}
+              <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 value={formData.reference}
-                onChange={(e) => updateField("reference", e.target.value.toUpperCase())}
+                onChange={(e) =>
+                  updateField("reference", e.target.value.toUpperCase())
+                }
                 placeholder={
                   formData.payment_method === "mpesa"
                     ? "e.g., RGD456XYZA"
                     : formData.payment_method === "bank_transfer"
-                    ? "e.g., Bank reference number"
-                    : "e.g., Receipt number"
+                      ? "e.g., Bank reference number"
+                      : "e.g., Receipt number"
                 }
                 className={cn(
                   "w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500",
-                  errors.reference ? "border-red-300" : "border-gray-200"
+                  errors.reference ? "border-red-300" : "border-gray-200",
                 )}
               />
             </div>

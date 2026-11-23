@@ -1,6 +1,6 @@
 /**
  * Success Modal Component
- * 
+ *
  * Celebratory modal shown after successful actions like publishing a listing.
  * Includes confetti animation option and clear next-step CTAs.
  */
@@ -39,7 +39,9 @@ export function SuccessModal({
   secondaryAction,
   showConfetti = true,
 }: SuccessModalProps) {
-  const [confettiPieces, setConfettiPieces] = useState<Array<{ id: number; style: React.CSSProperties }>>([]);
+  const [confettiPieces, setConfettiPieces] = useState<
+    Array<{ id: number; style: React.CSSProperties }>
+  >([]);
 
   // Generate confetti on mount
   useEffect(() => {
@@ -72,17 +74,17 @@ export function SuccessModal({
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/50 z-50 animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div 
+        <div
           className={cn(
             "relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 pointer-events-auto",
-            "animate-in zoom-in-95 fade-in duration-300"
+            "animate-in zoom-in-95 fade-in duration-300",
           )}
           onClick={(e) => e.stopPropagation()}
         >
@@ -115,25 +117,21 @@ export function SuccessModal({
             </div>
 
             {/* Title */}
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              {title}
-            </h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">{title}</h2>
 
             {/* Message */}
-            <p className="text-gray-600 mb-6">
-              {message}
-            </p>
+            <p className="text-gray-600 mb-6">{message}</p>
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3">
-              {secondaryAction && (
-                secondaryAction.href ? (
+              {secondaryAction &&
+                (secondaryAction.href ? (
                   <Link
                     href={secondaryAction.href}
                     className={cn(
                       "flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg",
                       "text-gray-700 bg-gray-100 hover:bg-gray-200",
-                      "text-sm font-medium transition-colors"
+                      "text-sm font-medium transition-colors",
                     )}
                   >
                     <Pencil className="w-4 h-4" />
@@ -145,23 +143,22 @@ export function SuccessModal({
                     className={cn(
                       "flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg",
                       "text-gray-700 bg-gray-100 hover:bg-gray-200",
-                      "text-sm font-medium transition-colors"
+                      "text-sm font-medium transition-colors",
                     )}
                   >
                     <Pencil className="w-4 h-4" />
                     {secondaryAction.label}
                   </button>
-                )
-              )}
+                ))}
 
-              {primaryAction && (
-                primaryAction.href ? (
+              {primaryAction &&
+                (primaryAction.href ? (
                   <Link
                     href={primaryAction.href}
                     className={cn(
                       "flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg",
                       "text-white bg-teal-600 hover:bg-teal-700",
-                      "text-sm font-semibold transition-colors shadow-sm"
+                      "text-sm font-semibold transition-colors shadow-sm",
                     )}
                   >
                     <Eye className="w-4 h-4" />
@@ -173,14 +170,13 @@ export function SuccessModal({
                     className={cn(
                       "flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg",
                       "text-white bg-teal-600 hover:bg-teal-700",
-                      "text-sm font-semibold transition-colors shadow-sm"
+                      "text-sm font-semibold transition-colors shadow-sm",
                     )}
                   >
                     <Eye className="w-4 h-4" />
                     {primaryAction.label}
                   </button>
-                )
-              )}
+                ))}
             </div>
           </div>
         </div>

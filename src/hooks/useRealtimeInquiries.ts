@@ -1,22 +1,22 @@
 /**
  * Real-time Inquiry Notifications Hook
- * 
+ *
  * PURPOSE:
  * Provides real-time notifications to landlords when tenants submit new inquiries.
  * Uses Supabase Realtime to listen for INSERT events on the inquiries table.
- * 
+ *
  * WHY WEBSOCKET (not polling):
  * - First-responder advantage: Landlords who respond quickly win tenants
  * - Push is essential: Landlord could be on dashboard already
  * - Efficient: Only fires when relevant (vs polling every 30s for 1000 landlords)
- * 
+ *
  * WHO:
  * - Landlords (authenticated users with landlord role)
- * 
+ *
  * WHEN:
  * - Tenant submits inquiry via /api/listings/inquire
  * - INSERT event triggers on inquiries table filtered by landlord_id
- * 
+ *
  * HOW:
  * - Subscribes to Supabase Realtime channel on inquiries table
  * - Filters by landlord_id = current user
@@ -28,7 +28,10 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { RealtimeChannel, RealtimePostgresInsertPayload } from "@supabase/supabase-js";
+import type {
+  RealtimeChannel,
+  RealtimePostgresInsertPayload,
+} from "@supabase/supabase-js";
 
 // Types for inquiry data from realtime events
 export interface RealtimeInquiry {
@@ -53,7 +56,7 @@ interface UseRealtimeInquiriesOptions {
    * Callback fired when a new inquiry is received
    */
   onNewInquiry?: (inquiry: RealtimeInquiry) => void;
-  
+
   /**
    * Whether the subscription is enabled (default: true)
    * Set to false to temporarily disable without unmounting
@@ -66,22 +69,22 @@ interface UseRealtimeInquiriesReturn {
    * Whether the realtime connection is active
    */
   isConnected: boolean;
-  
+
   /**
    * Current connection status
    */
   status: "connecting" | "connected" | "disconnected" | "error";
-  
+
   /**
    * Error message if connection failed
    */
   error: string | null;
-  
+
   /**
    * Count of new inquiries received since hook mounted (for badge)
    */
   newInquiriesCount: number;
-  
+
   /**
    * Reset the new inquiries counter (e.g., when user views inquiries)
    */
@@ -89,25 +92,27 @@ interface UseRealtimeInquiriesReturn {
 }
 
 export function useRealtimeInquiries(
-  options: UseRealtimeInquiriesOptions = {}
+  options: UseRealtimeInquiriesOptions = {},
 ): UseRealtimeInquiriesReturn {
   const { onNewInquiry, enabled = true } = options;
-  
+
   const [isConnected, setIsConnected] = useState(false);
-  const [status, setStatus] = useState<"connecting" | "connected" | "disconnected" | "error">("disconnected");
+  const [status, setStatus] = useState<
+    "connecting" | "connected" | "disconnected" | "error"
+  >("disconnected");
   const [error, setError] = useState<string | null>(null);
   const [newInquiriesCount, setNewInquiriesCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
-  
+
   // Refs to avoid stale closures
   const channelRef = useRef<RealtimeChannel | null>(null);
   const onNewInquiryRef = useRef(onNewInquiry);
-  
+
   // Keep callback ref updated
   useEffect(() => {
     onNewInquiryRef.current = onNewInquiry;
   }, [onNewInquiry]);
-  
+
   const resetCount = useCallback(() => {
     setNewInquiriesCount(0);
   }, []);
@@ -126,23 +131,26 @@ export function useRealtimeInquiries(
     }
 
     const supabase = createClient();
-    
+
     // Get current user first
     const setupSubscription = async () => {
       try {
         setStatus("connecting");
         setError(null);
-        
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
+
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
+
         if (authError || !user) {
           setStatus("disconnected");
           setError("Authentication required for real-time updates");
           return;
         }
-        
+
         setUserId(user.id);
-        
+
         // Create channel with filter for this landlord's inquiries
         // Using postgres_changes for row-level filtering
         // NOTE: We listen to BOTH 'inquiries' (new engagement table) AND 'listing_inquiries' (legacy)
@@ -159,22 +167,22 @@ export function useRealtimeInquiries(
             },
             (payload: RealtimePostgresInsertPayload<RealtimeInquiry>) => {
               const inquiry = payload.new;
-              
+
               // Increment counter
               setNewInquiriesCount((prev) => prev + 1);
-              
+
               // Call callback if provided
               if (onNewInquiryRef.current) {
                 onNewInquiryRef.current(inquiry);
               }
-              
+
               // Dispatch custom event for other components
               if (typeof window !== "undefined") {
                 window.dispatchEvent(
-                  new CustomEvent("newInquiryReceived", { detail: inquiry })
+                  new CustomEvent("newInquiryReceived", { detail: inquiry }),
                 );
               }
-            }
+            },
           )
           // Also listen to legacy listing_inquiries table
           // The listing_inquiries table uses landlord_id through listings join,
@@ -189,9 +197,9 @@ export function useRealtimeInquiries(
             async (payload) => {
               // For listing_inquiries, we need to verify this belongs to our landlord
               // by checking if the listing belongs to us
-              const newRecord = payload.new as { 
+              const newRecord = payload.new as {
                 id: string;
-                listing_id: string; 
+                listing_id: string;
                 name?: string;
                 email?: string;
                 phone?: string;
@@ -199,7 +207,7 @@ export function useRealtimeInquiries(
                 status?: string;
                 created_at?: string;
               };
-              
+
               // Fetch listing to verify ownership
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const { data: listingData } = await (supabase as any)
@@ -207,9 +215,12 @@ export function useRealtimeInquiries(
                 .select("landlord_id, title")
                 .eq("id", newRecord.listing_id)
                 .single();
-              
-              const listing = listingData as { landlord_id: string; title: string } | null;
-              
+
+              const listing = listingData as {
+                landlord_id: string;
+                title: string;
+              } | null;
+
               // Only process if this listing belongs to us
               if (listing && listing.landlord_id === user.id) {
                 // Transform to RealtimeInquiry format
@@ -229,20 +240,20 @@ export function useRealtimeInquiries(
                   source: "listing_page",
                   created_at: newRecord.created_at || new Date().toISOString(),
                 };
-                
+
                 setNewInquiriesCount((prev) => prev + 1);
-                
+
                 if (onNewInquiryRef.current) {
                   onNewInquiryRef.current(inquiry);
                 }
-                
+
                 if (typeof window !== "undefined") {
                   window.dispatchEvent(
-                    new CustomEvent("newInquiryReceived", { detail: inquiry })
+                    new CustomEvent("newInquiryReceived", { detail: inquiry }),
                   );
                 }
               }
-            }
+            },
           )
           .subscribe((subscriptionStatus) => {
             if (subscriptionStatus === "SUBSCRIBED") {
@@ -262,18 +273,17 @@ export function useRealtimeInquiries(
               setStatus("disconnected");
             }
           });
-        
+
         channelRef.current = channel;
-        
       } catch (err) {
         console.error("[useRealtimeInquiries] Setup error:", err);
         setStatus("error");
         setError(err instanceof Error ? err.message : "Unknown error");
       }
     };
-    
+
     setupSubscription();
-    
+
     // Cleanup on unmount or when disabled
     return () => {
       if (channelRef.current) {
@@ -286,8 +296,10 @@ export function useRealtimeInquiries(
   // Listen for auth state changes
   useEffect(() => {
     const supabase = createClient();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
         // Clean up subscription on logout
         if (channelRef.current) {
@@ -300,7 +312,7 @@ export function useRealtimeInquiries(
         setNewInquiriesCount(0);
       }
     });
-    
+
     return () => {
       subscription.unsubscribe();
     };
@@ -321,18 +333,18 @@ export function useRealtimeInquiries(
  */
 export function useNewInquiryCount(): number {
   const [count, setCount] = useState(0);
-  
+
   useEffect(() => {
     const handleNewInquiry = () => {
       setCount((prev) => prev + 1);
     };
-    
+
     window.addEventListener("newInquiryReceived", handleNewInquiry);
-    
+
     return () => {
       window.removeEventListener("newInquiryReceived", handleNewInquiry);
     };
   }, []);
-  
+
   return count;
 }

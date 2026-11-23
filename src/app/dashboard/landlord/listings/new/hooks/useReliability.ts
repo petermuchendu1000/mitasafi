@@ -8,9 +8,9 @@
  * - Data persistence and recovery
  */
 
-'use client';
+"use client";
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   RetryConfig,
   CircuitBreakerConfig,
@@ -27,8 +27,12 @@ import {
   sanitizeFormData,
   DEFAULT_RETRY_CONFIG,
   DEFAULT_CIRCUIT_BREAKER_CONFIG,
-} from '../reliability-utils';
-import { CommercialFormData, CommercialType, CommercialSubtype } from '../commercial-types';
+} from "../reliability-utils";
+import {
+  CommercialFormData,
+  CommercialType,
+  CommercialSubtype,
+} from "../commercial-types";
 
 // =============================================================================
 // RETRY HOOK
@@ -51,7 +55,9 @@ interface UseRetryResult<T> {
 /**
  * Hook for async operations with automatic retry
  */
-export function useRetry<T>(options: UseRetryOptions<T> = {}): UseRetryResult<T> {
+export function useRetry<T>(
+  options: UseRetryOptions<T> = {},
+): UseRetryResult<T> {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -59,7 +65,8 @@ export function useRetry<T>(options: UseRetryOptions<T> = {}): UseRetryResult<T>
   const config: RetryConfig = {
     maxAttempts: options.maxAttempts ?? DEFAULT_RETRY_CONFIG.maxAttempts,
     delayMs: options.delayMs ?? DEFAULT_RETRY_CONFIG.delayMs,
-    exponentialBackoff: options.exponentialBackoff ?? DEFAULT_RETRY_CONFIG.exponentialBackoff,
+    exponentialBackoff:
+      options.exponentialBackoff ?? DEFAULT_RETRY_CONFIG.exponentialBackoff,
     maxDelayMs: options.maxDelayMs ?? DEFAULT_RETRY_CONFIG.maxDelayMs,
     onRetry: (attemptNum, err) => {
       setAttempt(attemptNum);
@@ -87,7 +94,7 @@ export function useRetry<T>(options: UseRetryOptions<T> = {}): UseRetryResult<T>
         setIsLoading(false);
       }
     },
-    [config, options]
+    [config, options],
   );
 
   const reset = useCallback(() => {
@@ -121,16 +128,23 @@ interface UseCircuitBreakerResult<T> {
  * Hook for circuit breaker pattern
  */
 export function useCircuitBreaker<T>(
-  options: UseCircuitBreakerOptions = {}
+  options: UseCircuitBreakerOptions = {},
 ): UseCircuitBreakerResult<T> {
-  const [state, setState] = useState<CircuitBreakerState>(CircuitBreakerState.CLOSED);
+  const [state, setState] = useState<CircuitBreakerState>(
+    CircuitBreakerState.CLOSED,
+  );
   const [failureCount, setFailureCount] = useState(0);
   const prevStateRef = useRef(state);
 
   const config: CircuitBreakerConfig = {
-    failureThreshold: options.failureThreshold ?? DEFAULT_CIRCUIT_BREAKER_CONFIG.failureThreshold,
-    resetTimeoutMs: options.resetTimeoutMs ?? DEFAULT_CIRCUIT_BREAKER_CONFIG.resetTimeoutMs,
-    halfOpenRequests: options.halfOpenRequests ?? DEFAULT_CIRCUIT_BREAKER_CONFIG.halfOpenRequests,
+    failureThreshold:
+      options.failureThreshold ??
+      DEFAULT_CIRCUIT_BREAKER_CONFIG.failureThreshold,
+    resetTimeoutMs:
+      options.resetTimeoutMs ?? DEFAULT_CIRCUIT_BREAKER_CONFIG.resetTimeoutMs,
+    halfOpenRequests:
+      options.halfOpenRequests ??
+      DEFAULT_CIRCUIT_BREAKER_CONFIG.halfOpenRequests,
   };
 
   const breakerRef = useRef(createCircuitBreaker(config));
@@ -139,13 +153,16 @@ export function useCircuitBreaker<T>(
   useEffect(() => {
     if (prevStateRef.current !== state) {
       options.onStateChange?.(state);
-      
+
       if (state === CircuitBreakerState.OPEN) {
         options.onOpen?.();
-      } else if (state === CircuitBreakerState.CLOSED && prevStateRef.current !== CircuitBreakerState.CLOSED) {
+      } else if (
+        state === CircuitBreakerState.CLOSED &&
+        prevStateRef.current !== CircuitBreakerState.CLOSED
+      ) {
         options.onClose?.();
       }
-      
+
       prevStateRef.current = state;
     }
   }, [state, options]);
@@ -153,11 +170,13 @@ export function useCircuitBreaker<T>(
   const execute = useCallback(
     async (fn: () => Promise<T>): Promise<SafeResult<T>> => {
       const breaker = breakerRef.current;
-      
+
       if (!breaker.canExecute()) {
         return {
           success: false,
-          error: new Error('Circuit breaker is open - service temporarily unavailable'),
+          error: new Error(
+            "Circuit breaker is open - service temporarily unavailable",
+          ),
         };
       }
 
@@ -176,7 +195,7 @@ export function useCircuitBreaker<T>(
         return { success: false, error };
       }
     },
-    []
+    [],
   );
 
   const reset = useCallback(() => {
@@ -215,7 +234,9 @@ interface UseSafeAsyncResult<T> {
 /**
  * Hook for safe async execution with automatic error handling
  */
-export function useSafeAsync<T>(options: UseSafeAsyncOptions<T> = {}): UseSafeAsyncResult<T> {
+export function useSafeAsync<T>(
+  options: UseSafeAsyncOptions<T> = {},
+): UseSafeAsyncResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -233,17 +254,21 @@ export function useSafeAsync<T>(options: UseSafeAsyncOptions<T> = {}): UseSafeAs
       } else if (result.error) {
         setError(result.error);
         options.onError?.(result.error);
-        
+
         if (options.trackErrors !== false) {
           const classification = classifyError(result.error);
-          trackError(result.error, classification.category, classification.severity);
+          trackError(
+            result.error,
+            classification.category,
+            classification.severity,
+          );
         }
       }
 
       setIsLoading(false);
       return result;
     },
-    [options]
+    [options],
   );
 
   const reset = useCallback(() => {
@@ -279,18 +304,23 @@ interface UseDataRecoveryResult {
 /**
  * Hook for data validation and recovery
  */
-export function useDataRecovery(options: UseDataRecoveryOptions): UseDataRecoveryResult {
+export function useDataRecovery(
+  options: UseDataRecoveryOptions,
+): UseDataRecoveryResult {
   const [lastRecoveredFields, setLastRecoveredFields] = useState<string[]>([]);
   const [hasRecovery, setHasRecovery] = useState(false);
 
-  const storageKey = options.autoSaveKey || 'listing_draft';
+  const storageKey = options.autoSaveKey || "listing_draft";
 
   // Auto-save interval
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
 
-  const sanitize = useCallback((data: CommercialFormData): CommercialFormData => {
-    return sanitizeFormData(data);
-  }, []);
+  const sanitize = useCallback(
+    (data: CommercialFormData): CommercialFormData => {
+      return sanitizeFormData(data);
+    },
+    [],
+  );
 
   const recover = useCallback(
     (data: CommercialFormData): CommercialFormData => {
@@ -302,7 +332,7 @@ export function useDataRecovery(options: UseDataRecoveryOptions): UseDataRecover
       const { data: recovered, recoveredFields } = validateAndRecover(
         sanitized,
         options.propertyType,
-        options.propertySubtype
+        options.propertySubtype,
       );
 
       setLastRecoveredFields(recoveredFields);
@@ -310,7 +340,7 @@ export function useDataRecovery(options: UseDataRecoveryOptions): UseDataRecover
 
       return recovered;
     },
-    [options.propertyType, options.propertySubtype]
+    [options.propertyType, options.propertySubtype],
   );
 
   const saveToStorage = useCallback(
@@ -324,10 +354,10 @@ export function useDataRecovery(options: UseDataRecoveryOptions): UseDataRecover
         });
         localStorage.setItem(storageKey, serialized);
       } catch (err) {
-        console.warn('Failed to save to storage:', err);
+        console.warn("Failed to save to storage:", err);
       }
     },
-    [storageKey, options.propertyType, options.propertySubtype]
+    [storageKey, options.propertyType, options.propertySubtype],
   );
 
   const loadFromStorage = useCallback((): CommercialFormData | null => {
@@ -336,7 +366,7 @@ export function useDataRecovery(options: UseDataRecoveryOptions): UseDataRecover
       if (!stored) return null;
 
       const parsed = JSON.parse(stored);
-      
+
       // Check if data is too old (24 hours)
       const maxAge = 24 * 60 * 60 * 1000;
       if (Date.now() - parsed.timestamp > maxAge) {
@@ -347,7 +377,7 @@ export function useDataRecovery(options: UseDataRecoveryOptions): UseDataRecover
       // Recover the loaded data
       return recover(parsed.data);
     } catch (err) {
-      console.warn('Failed to load from storage:', err);
+      console.warn("Failed to load from storage:", err);
       return null;
     }
   }, [storageKey, recover]);
@@ -356,7 +386,7 @@ export function useDataRecovery(options: UseDataRecoveryOptions): UseDataRecover
     try {
       localStorage.removeItem(storageKey);
     } catch (err) {
-      console.warn('Failed to clear storage:', err);
+      console.warn("Failed to clear storage:", err);
     }
   }, [storageKey]);
 
@@ -410,7 +440,7 @@ interface UseGracefulDegradationResult<T> {
  * Hook for graceful degradation with fallback chain
  */
 export function useGracefulDegradation<T>(
-  options: UseGracefulDegradationOptions<T>
+  options: UseGracefulDegradationOptions<T>,
 ): UseGracefulDegradationResult<T> {
   const [result, setResult] = useState<T | null>(null);
   const [usedFallback, setUsedFallback] = useState<string | null>(null);
@@ -421,7 +451,7 @@ export function useGracefulDegradation<T>(
 
   // Sort fallbacks by priority (lower = higher priority)
   const sortedFallbacks = [...options.fallbacks].sort(
-    (a, b) => (a.priority ?? 0) - (b.priority ?? 0)
+    (a, b) => (a.priority ?? 0) - (b.priority ?? 0),
   );
 
   const execute = useCallback(async (): Promise<T | null> => {
@@ -429,7 +459,7 @@ export function useGracefulDegradation<T>(
     if (options.cacheResult && cacheRef.current) {
       const cacheAge = Date.now() - cacheRef.current.timestamp;
       const maxAge = options.cacheDuration ?? 5 * 60 * 1000; // 5 minutes default
-      
+
       if (cacheAge < maxAge) {
         return cacheRef.current.data;
       }
@@ -445,7 +475,7 @@ export function useGracefulDegradation<T>(
       try {
         const data = await fallback.execute();
         setResult(data);
-        
+
         if (fallback.priority !== 0) {
           setUsedFallback(fallback.id);
           options.onFallbackUsed?.(fallback.id);
@@ -465,12 +495,12 @@ export function useGracefulDegradation<T>(
 
     // All fallbacks failed
     const finalError = new Error(
-      `All fallback options failed: ${errors.map((e) => e.message).join('; ')}`
+      `All fallback options failed: ${errors.map((e) => e.message).join("; ")}`,
     );
     setError(finalError);
     setIsLoading(false);
     trackError(finalError, ErrorCategory.SYSTEM, ErrorSeverity.HIGH);
-    
+
     return null;
   }, [sortedFallbacks, options]);
 
@@ -507,7 +537,7 @@ interface UseOnlineStatusResult {
  */
 export function useOnlineStatus(): UseOnlineStatusResult {
   const [isOnline, setIsOnline] = useState(
-    typeof window !== 'undefined' ? navigator.onLine : true
+    typeof window !== "undefined" ? navigator.onLine : true,
   );
   const [wasOffline, setWasOffline] = useState(false);
   const [lastOnlineAt, setLastOnlineAt] = useState<Date | null>(null);
@@ -523,12 +553,12 @@ export function useOnlineStatus(): UseOnlineStatusResult {
       setWasOffline(true);
     };
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
@@ -565,7 +595,7 @@ interface UseOperationQueueResult<T> {
  * Hook for queuing operations (especially useful for offline support)
  */
 export function useOperationQueue<T>(
-  options: UseOperationQueueOptions = {}
+  options: UseOperationQueueOptions = {},
 ): UseOperationQueueResult<T> {
   const [queue, setQueue] = useState<QueuedOperation<T>[]>([]);
   const [processing, setProcessing] = useState(false);
@@ -600,7 +630,7 @@ export function useOperationQueue<T>(
         newResults.set(item.id, { success: true, data: result });
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
-        
+
         if (item.retries < maxRetries) {
           remainingQueue.push({ ...item, retries: item.retries + 1 });
         } else {
@@ -654,7 +684,7 @@ interface UseReliableFetchResult<T> {
  * Combined hook for reliable data fetching with retry, circuit breaker, and caching
  */
 export function useReliableFetch<T>(
-  options: UseReliableFetchOptions<T> = {}
+  options: UseReliableFetchOptions<T> = {},
 ): UseReliableFetchResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -665,10 +695,12 @@ export function useReliableFetch<T>(
   });
 
   const { execute: breakerExecute, state: circuitState } = useCircuitBreaker<T>(
-    options.circuitBreakerConfig
+    options.circuitBreakerConfig,
   );
 
-  const cacheRef = useRef<Map<string, { data: T; timestamp: number }>>(new Map());
+  const cacheRef = useRef<Map<string, { data: T; timestamp: number }>>(
+    new Map(),
+  );
 
   const execute = useCallback(
     async (url: string, init?: RequestInit): Promise<T | null> => {
@@ -698,7 +730,7 @@ export function useReliableFetch<T>(
         });
 
         if (result === null) {
-          throw new Error('Request failed after retries');
+          throw new Error("Request failed after retries");
         }
         return result;
       });
@@ -707,7 +739,7 @@ export function useReliableFetch<T>(
 
       if (breakerResult.success && breakerResult.data) {
         setData(breakerResult.data);
-        
+
         // Update cache
         if (options.cacheDuration) {
           cacheRef.current.set(cacheKey, {
@@ -715,7 +747,7 @@ export function useReliableFetch<T>(
             timestamp: Date.now(),
           });
         }
-        
+
         return breakerResult.data;
       }
 
@@ -725,10 +757,10 @@ export function useReliableFetch<T>(
         return options.fallbackData;
       }
 
-      setError(breakerResult.error || new Error('Unknown error'));
+      setError(breakerResult.error || new Error("Unknown error"));
       return null;
     },
-    [retryExecute, breakerExecute, options]
+    [retryExecute, breakerExecute, options],
   );
 
   const reset = useCallback(() => {

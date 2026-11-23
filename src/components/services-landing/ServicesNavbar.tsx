@@ -88,7 +88,7 @@ export function ServicesNavbar() {
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         isScrolled
           ? "bg-white/95 backdrop-blur-md shadow-soft"
-          : "bg-transparent"
+          : "bg-transparent",
       )}
       role="banner"
     >
@@ -121,7 +121,7 @@ export function ServicesNavbar() {
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
                   isScrolled
                     ? "text-gray-700 hover:text-brand-600 hover:bg-gray-100"
-                    : "text-white/90 hover:text-white hover:bg-white/10"
+                    : "text-white/90 hover:text-white hover:bg-white/10",
                 )}
               >
                 {label}
@@ -138,7 +138,7 @@ export function ServicesNavbar() {
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
                 isScrolled
                   ? "text-gray-700 hover:text-brand-600 hover:bg-gray-100"
-                  : "text-white/90 hover:text-white hover:bg-white/10"
+                  : "text-white/90 hover:text-white hover:bg-white/10",
               )}
             >
               {AUTH_LINKS.login.label}
@@ -150,7 +150,7 @@ export function ServicesNavbar() {
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
                 isScrolled
                   ? "bg-cta-600 text-white hover:bg-cta-700 focus-visible:ring-cta-500"
-                  : "bg-white text-cta-700 hover:bg-white/90 focus-visible:ring-white"
+                  : "bg-white text-cta-700 hover:bg-white/90 focus-visible:ring-white",
               )}
             >
               {AUTH_LINKS.signup.label}
@@ -165,7 +165,7 @@ export function ServicesNavbar() {
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
               isScrolled
                 ? "text-gray-700 hover:bg-gray-100"
-                : "text-white hover:bg-white/10"
+                : "text-white hover:bg-white/10",
             )}
             onClick={() => setIsMobileMenuOpen(true)}
             aria-label="Open navigation menu"
@@ -175,19 +175,19 @@ export function ServicesNavbar() {
             <span
               className={cn(
                 "block w-5 h-0.5 rounded-full transition-colors",
-                isScrolled ? "bg-gray-700" : "bg-white"
+                isScrolled ? "bg-gray-700" : "bg-white",
               )}
             />
             <span
               className={cn(
                 "block w-5 h-0.5 rounded-full mt-1.5 transition-colors",
-                isScrolled ? "bg-gray-700" : "bg-white"
+                isScrolled ? "bg-gray-700" : "bg-white",
               )}
             />
             <span
               className={cn(
                 "block w-5 h-0.5 rounded-full mt-1.5 transition-colors",
-                isScrolled ? "bg-gray-700" : "bg-white"
+                isScrolled ? "bg-gray-700" : "bg-white",
               )}
             />
           </button>
@@ -220,7 +220,10 @@ export function ServicesNavbar() {
               aria-label="Close navigation menu"
             >
               {/* × close character — no Lucide icon */}
-              <span className="text-2xl font-light leading-none" aria-hidden="true">
+              <span
+                className="text-2xl font-light leading-none"
+                aria-hidden="true"
+              >
                 ×
               </span>
             </button>
