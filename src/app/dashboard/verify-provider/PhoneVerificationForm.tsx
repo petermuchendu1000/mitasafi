@@ -76,21 +76,34 @@ export function PhoneVerificationForm({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
-  const [canResend, setCanResend] = useState(false);
   // DEV MODE: Show OTP when SMS is disabled
   const [devOtp, setDevOtp] = useState<string | null>(null);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Countdown timer for resend
+  // Derived, not synchronised by an effect.
+  //
+  // canResend was state, flipped to true by the countdown effect below once the
+  // counter reached zero. It is a restatement of its own two inputs, so there was a
+  // render in between where countdown was already 0 and canResend was still false —
+  // and that render is the one that drew "Resend in 0s" instead of the Resend button.
+  // Deriving removes the gap: there is no render in which the two disagree.
+  //
+  // setCanResend(false) also appeared at both places that start a new countdown
+  // (handleSendOTP, handleResend) because state has to be put back by hand. Nothing
+  // puts this back; countdown going to 60 is what makes it false.
+  const canResend = step === "otp" && countdown === 0;
+
+  // Countdown timer for resend.
+  //
+  // setCountdown here is inside a setTimeout callback, so it is a write from a timer
+  // rather than a synchronous write during the effect body, which is why the rule
+  // never reported this one and why it correctly stays an effect.
   useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0 && step === "otp") {
-      setCanResend(true);
-    }
-  }, [countdown, step]);
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   // Handle phone input change
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,7 +135,6 @@ export function PhoneVerificationForm({
       if (result.success) {
         setStep("otp");
         setCountdown(60); // 60 second countdown
-        setCanResend(false);
         // DEV MODE: Store OTP for display
         if (result.devOtp) {
           setDevOtp(result.devOtp);
@@ -231,7 +243,6 @@ export function PhoneVerificationForm({
 
       if (result.success) {
         setCountdown(60);
-        setCanResend(false);
         // DEV MODE: Store OTP for display
         if (result.devOtp) {
           setDevOtp(result.devOtp);

@@ -18,7 +18,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -158,8 +158,27 @@ export function ProviderCard({
   const visibleCarouselImages = carouselImages.filter(
     (image) => !imageErrorIndexes.includes(image.index),
   );
-  const activeCarouselImage = visibleCarouselImages[activeImageIndex] ?? null;
-  const hasCarousel = visibleCarouselImages.length > 0;
+
+  // The index CLAMPED to what is currently visible, derived rather than corrected
+  // afterwards by an effect.
+  //
+  // activeImageIndex is state the user moves with the arrows. The list it indexes
+  // shrinks underneath it whenever an image fails to load (handleImageError adds its
+  // index to imageErrorIndexes). The effect below used to notice the index had fallen
+  // off the end and reset it to 0 — one render later. In that render
+  // `visibleCarouselImages[activeImageIndex]` was undefined, so activeCarouselImage
+  // was null and the card drew the CategoryPlaceholder: a provider's photo was
+  // replaced by a big grey letter for a frame before snapping back to the first image.
+  // The dots agreed with nothing in that render either, since none matched the index.
+  //
+  // Reading through a clamp instead makes the out-of-range state unobservable, so it
+  // no longer matters that activeImageIndex is briefly stale.
+  const safeImageIndex =
+    activeImageIndex < visibleCarouselImages.length ? activeImageIndex : 0;
+  const activeCarouselImage = visibleCarouselImages[safeImageIndex] ?? null;
+  // hasCarousel used to live here too. Its only reader was the clamping effect, and
+  // `activeCarouselImage !== null` already says the same thing to the render, so it
+  // went with the effect rather than being left behind as a dead local.
   const hasMultipleImages = visibleCarouselImages.length > 1;
 
   // Primary category for placeholder fallback
@@ -189,27 +208,24 @@ export function ProviderCard({
       ? "bg-brand-500/95 text-white"
       : "";
 
-  useEffect(() => {
-    if (!hasCarousel) {
-      if (activeImageIndex !== 0) setActiveImageIndex(0);
-      return;
-    }
-
-    if (activeImageIndex > visibleCarouselImages.length - 1) {
-      setActiveImageIndex(0);
-    }
-  }, [activeImageIndex, hasCarousel, visibleCarouselImages.length]);
-
+  // The arrows step from the CLAMPED index, not from the raw state.
+  //
+  // These used the setState updater form, whose `prev` is the unclamped value. With a
+  // stale index of 2 over a list that had shrunk to 2 entries, "previous" went to 1 —
+  // skipping the image the user was looking at — and "next" went to 3, off the end
+  // again. Stepping from safeImageIndex is both correct and simpler to read.
   const goToPreviousImage = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
       if (!hasMultipleImages) return;
-      setActiveImageIndex((prev) =>
-        prev === 0 ? visibleCarouselImages.length - 1 : prev - 1,
+      setActiveImageIndex(
+        safeImageIndex === 0
+          ? visibleCarouselImages.length - 1
+          : safeImageIndex - 1,
       );
     },
-    [hasMultipleImages, visibleCarouselImages.length],
+    [hasMultipleImages, safeImageIndex, visibleCarouselImages.length],
   );
 
   const goToNextImage = useCallback(
@@ -217,11 +233,13 @@ export function ProviderCard({
       e.preventDefault();
       e.stopPropagation();
       if (!hasMultipleImages) return;
-      setActiveImageIndex((prev) =>
-        prev === visibleCarouselImages.length - 1 ? 0 : prev + 1,
+      setActiveImageIndex(
+        safeImageIndex === visibleCarouselImages.length - 1
+          ? 0
+          : safeImageIndex + 1,
       );
     },
-    [hasMultipleImages, visibleCarouselImages.length],
+    [hasMultipleImages, safeImageIndex, visibleCarouselImages.length],
   );
 
   const goToImage = useCallback((e: React.MouseEvent, index: number) => {
@@ -342,7 +360,7 @@ export function ProviderCard({
                     aria-label={`View image ${index + 1}`}
                     className={cn(
                       "h-1.5 rounded-full transition-all",
-                      index === activeImageIndex
+                      index === safeImageIndex
                         ? "w-4 bg-white"
                         : "w-1.5 bg-white/70",
                     )}
@@ -483,7 +501,7 @@ export function ProviderCard({
                   aria-label={`View image ${index + 1}`}
                   className={cn(
                     "h-1.5 rounded-full transition-all",
-                    index === activeImageIndex
+                    index === safeImageIndex
                       ? "w-5 bg-white"
                       : "w-1.5 bg-white/70",
                   )}

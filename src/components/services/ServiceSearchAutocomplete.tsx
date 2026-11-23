@@ -20,6 +20,8 @@ import { Search, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAnalytics } from "@/lib/analytics/use-analytics";
 import { SERVICE_CATEGORIES, type ServiceCategory } from "@/lib/constants";
+import { createArrayStore } from "@/lib/browser-storage/local-store";
+import { useLocalStore } from "@/lib/browser-storage/useLocalStore";
 
 // =============================================================================
 // TYPES
@@ -43,9 +45,26 @@ interface ServiceSearchAutocompleteProps {
   showPopularOnFocus?: boolean;
 }
 
-// Storage key for recent searches
-const RECENT_SEARCHES_KEY = "mitasafi_recent_service_searches";
+/**
+ * Recent searches, owned by one store at module scope.
+ *
+ * Module scope is not a style choice: useLocalStore hands these three functions to
+ * useSyncExternalStore, which resubscribes whenever their identity changes, so the
+ * store has to outlive a render. Creating it inside the component would resubscribe on
+ * every commit.
+ *
+ * Two of these boxes are rendered at once on /services/browse (the hero and the filter
+ * bar). They now share one store, so clearing recent searches in one updates the other
+ * immediately; before, each held its own copy taken at mount.
+ */
+const recentServiceSearchesStore = createArrayStore<string>(
+  "mitasafi_recent_service_searches",
+  (value): value is string => typeof value === "string",
+);
 const MAX_RECENT_SEARCHES = 5;
+
+/** Stable identity for "no suggestions"; see the derivation in the component. */
+const EMPTY_SUGGESTIONS: SearchSuggestion[] = [];
 
 // Popular searches (can be fetched from API in production)
 const POPULAR_SEARCHES: SearchSuggestion[] = [
@@ -84,37 +103,23 @@ const HERO_PLACEHOLDER_TEXTS = [
 // UTILITY FUNCTIONS
 // =============================================================================
 
-function getRecentSearches(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-}
-
+/**
+ * Record a search, most recent first, case-insensitively de-duplicated.
+ *
+ * The three hand-rolled helpers this replaces each did their own SSR guard, their own
+ * try/catch and their own JSON handling; the store does all three once. The write also
+ * notifies now, which is what lets a second search box on the same page see it.
+ */
 function saveRecentSearch(query: string): void {
-  if (typeof window === "undefined" || !query.trim()) return;
-  try {
-    const recent = getRecentSearches();
-    const filtered = recent.filter(
-      (s) => s.toLowerCase() !== query.toLowerCase(),
-    );
-    const updated = [query, ...filtered].slice(0, MAX_RECENT_SEARCHES);
-    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
-  } catch {
-    // Silently fail
-  }
-}
-
-function clearRecentSearches(): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(RECENT_SEARCHES_KEY);
-  } catch {
-    // Silently fail
-  }
+  const trimmed = query.trim();
+  if (!trimmed) return;
+  const recent = recentServiceSearchesStore.read();
+  const filtered = recent.filter(
+    (s) => s.toLowerCase() !== trimmed.toLowerCase(),
+  );
+  recentServiceSearchesStore.write(
+    [trimmed, ...filtered].slice(0, MAX_RECENT_SEARCHES),
+  );
 }
 
 // Debounce hook
@@ -241,10 +246,19 @@ export function ServiceSearchAutocomplete({
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  // What the last completed fetch returned. Read through `suggestions` below, never
+  // directly: with no query there is nothing to suggest, and that is derivable.
+  const [fetchedSuggestions, setFetchedSuggestions] = useState<
+    SearchSuggestion[]
+  >([]);
   const [isLoading, setIsLoading] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  // Recent searches come from localStorage, which is an external store, so they are
+  // read through one instead of being copied into state by a mount effect. That effect
+  // was `setRecentSearches(getRecentSearches())`, and it cost a render on every mount
+  // of every search box on the page.
+  const recentSearches = useLocalStore(recentServiceSearchesStore);
 
   // Refs
   const inputRef = useRef<HTMLInputElement>(null);
@@ -252,11 +266,6 @@ export function ServiceSearchAutocomplete({
 
   // Debounced query for API calls
   const debouncedQuery = useDebounce(query, 200);
-
-  // Load recent searches on mount
-  useEffect(() => {
-    setRecentSearches(getRecentSearches());
-  }, []);
 
   // Cycle hero placeholder text for guided discovery
   useEffect(() => {
@@ -294,12 +303,20 @@ export function ServiceSearchAutocomplete({
     return results.slice(0, 3);
   }, [debouncedQuery]);
 
+  // With no query there is nothing to suggest. Derived, so there is no render in which
+  // the box is empty and the previous query's suggestions are still in state.
+  //
+  // The effect below opened with `setSuggestions([])` on an empty query: a render, a
+  // state write, then another render, to reach a constant. EMPTY_SUGGESTIONS is shared
+  // rather than a fresh [] so that `suggestions` keeps a stable identity across those
+  // renders — handleKeyDown takes it as a dependency.
+  const suggestions = debouncedQuery.trim()
+    ? fetchedSuggestions
+    : EMPTY_SUGGESTIONS;
+
   // Fetch service suggestions from API
   useEffect(() => {
-    if (!debouncedQuery.trim()) {
-      setSuggestions([]);
-      return;
-    }
+    if (!debouncedQuery.trim()) return;
 
     let cancelled = false;
 
@@ -342,13 +359,13 @@ export function ServiceSearchAutocomplete({
               ),
           );
 
-          setSuggestions(unique.slice(0, 8));
+          setFetchedSuggestions(unique.slice(0, 8));
         }
       } catch (error) {
         console.error("Error fetching suggestions:", error);
         if (!cancelled) {
           // Fallback to category suggestions only
-          setSuggestions(categorySuggestions);
+          setFetchedSuggestions(categorySuggestions);
         }
       } finally {
         if (!cancelled) {
@@ -386,10 +403,10 @@ export function ServiceSearchAutocomplete({
       const trimmed = searchQuery.trim();
       if (!trimmed && !categoryId) return;
 
-      // Save to recent searches
+      // Save to recent searches. The store write notifies, so the second line that
+      // used to re-read storage into state is gone.
       if (trimmed) {
         saveRecentSearch(trimmed);
-        setRecentSearches(getRecentSearches());
       }
 
       // Analytics: log the search query
@@ -458,19 +475,18 @@ export function ServiceSearchAutocomplete({
   // Handle recent search removal
   const handleRemoveRecent = useCallback(
     (searchQuery: string) => {
-      const updated = recentSearches.filter(
-        (s) => s.toLowerCase() !== searchQuery.toLowerCase(),
+      recentServiceSearchesStore.write(
+        recentSearches.filter(
+          (s) => s.toLowerCase() !== searchQuery.toLowerCase(),
+        ),
       );
-      setRecentSearches(updated);
-      localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
     },
     [recentSearches],
   );
 
   // Handle clear all recent
   const handleClearAllRecent = useCallback(() => {
-    clearRecentSearches();
-    setRecentSearches([]);
+    recentServiceSearchesStore.clear();
   }, []);
 
   // Keyboard navigation
@@ -610,7 +626,7 @@ export function ServiceSearchAutocomplete({
               type="button"
               onClick={() => {
                 setQuery("");
-                setSuggestions([]);
+                setFetchedSuggestions(EMPTY_SUGGESTIONS);
                 inputRef.current?.focus();
               }}
               className={cn(
