@@ -330,12 +330,16 @@ export function Step1PropertyType() {
           {/* Commercial Sub-types */}
           {commercialType && (
             <div className="pt-4 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+              <h3
+                id="listing-subtype-label"
+                className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2"
+              >
                 <ChevronRight className="w-4 h-4 text-orange-500" />
                 Select type
               </h3>
               <div
                 role="group"
+                aria-labelledby="listing-subtype-label"
                 aria-describedby={
                   stepErrors.commercialSubtype
                     ? fieldErrorId("commercialSubtype")
