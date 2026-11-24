@@ -9,6 +9,7 @@
 
 import { useEffect } from "react";
 import { useWizard } from "../../../context";
+import { FieldError, fieldErrorProps, fieldErrorId } from "../../../FieldError";
 import {
   FormSection,
   PageHeader,
@@ -24,6 +25,7 @@ import {
 
 export function BankBranchDetails() {
   const { state, updateFormData, setValidation } = useWizard();
+  const stepErrors = state.validation[3]?.errors ?? {};
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
@@ -59,32 +61,38 @@ export function BankBranchDetails() {
         <FormSection title="Space Dimensions">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel
-                htmlFor="bank-branch-total-area"
-                label="Total Area"
-                required
-              />
+              <FieldLabel htmlFor="sizeSqm" label="Total Area" required />
               <NumberInput
-                id="bank-branch-total-area"
+                id="sizeSqm"
+                {...fieldErrorProps("sizeSqm", stepErrors.sizeSqm)}
                 value={commercial.sizeSqm}
                 onChange={(v) => update({ sizeSqm: v })}
                 placeholder="e.g., 400"
                 unit="sqm"
                 min={50}
               />
+              <FieldError field="sizeSqm" error={stepErrors.sizeSqm} />
             </div>
             <div>
               <FieldLabel
-                htmlFor="bank-branch-customer-service-area"
+                htmlFor="customerServiceArea"
                 label="Customer Service Area"
                 required
               />
               <NumberInput
-                id="bank-branch-customer-service-area"
+                id="customerServiceArea"
+                {...fieldErrorProps(
+                  "customerServiceArea",
+                  stepErrors.customerServiceArea,
+                )}
                 value={commercial.customerServiceArea}
                 onChange={(v) => update({ customerServiceArea: v })}
                 placeholder="e.g., 150"
                 unit="sqm"
+              />
+              <FieldError
+                field="customerServiceArea"
+                error={stepErrors.customerServiceArea}
               />
             </div>
           </div>
@@ -95,42 +103,66 @@ export function BankBranchDetails() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
               <FieldLabel
-                id="bank-branch-teller-positions"
+                id="tellerCounterPositions-label"
                 label="Teller Positions"
                 required
               />
               <CounterInput
-                labelledBy="bank-branch-teller-positions"
+                labelledBy="tellerCounterPositions-label"
+                describedBy={
+                  stepErrors.tellerCounterPositions
+                    ? fieldErrorId("tellerCounterPositions")
+                    : undefined
+                }
                 value={commercial.tellerCounterPositions || 0}
                 onChange={(v) => update({ tellerCounterPositions: v })}
                 min={0}
                 max={20}
               />
+              <FieldError
+                field="tellerCounterPositions"
+                error={stepErrors.tellerCounterPositions}
+              />
             </div>
             <div>
               <FieldLabel
-                id="bank-branch-private-offices"
+                id="privateOfficeBanking-label"
                 label="Private Offices"
               />
               <CounterInput
-                labelledBy="bank-branch-private-offices"
+                labelledBy="privateOfficeBanking-label"
+                describedBy={
+                  stepErrors.privateOfficeBanking
+                    ? fieldErrorId("privateOfficeBanking")
+                    : undefined
+                }
                 value={commercial.privateOfficeBanking || 0}
                 onChange={(v) => update({ privateOfficeBanking: v })}
                 min={0}
                 max={15}
               />
+              <FieldError
+                field="privateOfficeBanking"
+                error={stepErrors.privateOfficeBanking}
+              />
             </div>
             <div>
-              <FieldLabel
-                id="bank-branch-atm-locations"
-                label="ATM Locations"
-              />
+              <FieldLabel id="atmLocations-label" label="ATM Locations" />
               <CounterInput
-                labelledBy="bank-branch-atm-locations"
+                labelledBy="atmLocations-label"
+                describedBy={
+                  stepErrors.atmLocations
+                    ? fieldErrorId("atmLocations")
+                    : undefined
+                }
                 value={commercial.atmLocations || 0}
                 onChange={(v) => update({ atmLocations: v })}
                 min={0}
                 max={10}
+              />
+              <FieldError
+                field="atmLocations"
+                error={stepErrors.atmLocations}
               />
             </div>
           </div>
@@ -166,16 +198,18 @@ export function BankBranchDetails() {
           </div>
           {commercial.vaultRoom && (
             <div className="mt-4 pl-4 border-l-2 border-teal-200">
-              <FieldLabel
-                htmlFor="bank-branch-vault-room-size"
-                label="Vault Room Size"
-              />
+              <FieldLabel htmlFor="vaultRoomSqm" label="Vault Room Size" />
               <NumberInput
-                id="bank-branch-vault-room-size"
+                id="vaultRoomSqm"
+                {...fieldErrorProps("vaultRoomSqm", stepErrors.vaultRoomSqm)}
                 value={commercial.vaultRoomSqm}
                 onChange={(v) => update({ vaultRoomSqm: v })}
                 placeholder="e.g., 25"
                 unit="sqm"
+              />
+              <FieldError
+                field="vaultRoomSqm"
+                error={stepErrors.vaultRoomSqm}
               />
             </div>
           )}
@@ -204,15 +238,24 @@ export function BankBranchDetails() {
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <FieldLabel
-                id="bank-branch-customer-parking"
+                id="customerParkingSpaces-label"
                 label="Customer Parking"
               />
               <CounterInput
-                labelledBy="bank-branch-customer-parking"
+                labelledBy="customerParkingSpaces-label"
+                describedBy={
+                  stepErrors.customerParkingSpaces
+                    ? fieldErrorId("customerParkingSpaces")
+                    : undefined
+                }
                 value={commercial.customerParkingSpaces || 0}
                 onChange={(v) => update({ customerParkingSpaces: v })}
                 min={0}
                 max={100}
+              />
+              <FieldError
+                field="customerParkingSpaces"
+                error={stepErrors.customerParkingSpaces}
               />
             </div>
           </div>

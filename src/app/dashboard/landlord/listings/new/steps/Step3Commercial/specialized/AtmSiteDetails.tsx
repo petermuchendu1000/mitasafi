@@ -9,6 +9,7 @@
 
 import { useEffect } from "react";
 import { useWizard } from "../../../context";
+import { FieldError, fieldErrorProps, fieldErrorId } from "../../../FieldError";
 import {
   FormSection,
   PageHeader,
@@ -33,6 +34,7 @@ type FootTrafficLevel = "low" | "medium" | "high" | "very_high";
 
 export function AtmSiteDetails() {
   const { state, updateFormData, setValidation } = useWizard();
+  const stepErrors = state.validation[3]?.errors ?? {};
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
@@ -69,30 +71,47 @@ export function AtmSiteDetails() {
           <div className="space-y-4">
             <div>
               <FieldLabel
-                id="atm-site-foot-traffic-level"
+                id="footTrafficLevel-label"
                 label="Foot Traffic Level"
                 required
               />
               <ButtonGroup
-                labelledBy="atm-site-foot-traffic-level"
+                labelledBy="footTrafficLevel-label"
+                describedBy={
+                  stepErrors.footTrafficLevel
+                    ? fieldErrorId("footTrafficLevel")
+                    : undefined
+                }
                 options={FOOT_TRAFFIC_OPTIONS}
                 value={commercial.footTrafficLevel || null}
                 onChange={(v) =>
                   update({ footTrafficLevel: v as FootTrafficLevel })
                 }
               />
+              <FieldError
+                field="footTrafficLevel"
+                error={stepErrors.footTrafficLevel}
+              />
             </div>
             <div>
               <FieldLabel
-                htmlFor="atm-site-nearby-landmarks"
+                htmlFor="nearbyLandmarks"
                 label="Nearby Landmarks"
                 description="e.g., Mall, Hospital, University"
               />
               <TextInput
-                id="atm-site-nearby-landmarks"
+                id="nearbyLandmarks"
+                {...fieldErrorProps(
+                  "nearbyLandmarks",
+                  stepErrors.nearbyLandmarks,
+                )}
                 value={commercial.nearbyLandmarks || ""}
                 onChange={(v) => update({ nearbyLandmarks: v })}
                 placeholder="e.g., Next to Westgate Mall entrance"
+              />
+              <FieldError
+                field="nearbyLandmarks"
+                error={stepErrors.nearbyLandmarks}
               />
             </div>
           </div>

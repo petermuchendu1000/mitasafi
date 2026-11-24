@@ -9,6 +9,7 @@
 
 import { useEffect } from "react";
 import { useWizard } from "../../../context";
+import { FieldError, fieldErrorProps, fieldErrorId } from "../../../FieldError";
 import {
   FormSection,
   PageHeader,
@@ -24,6 +25,7 @@ import {
 
 export function SalonSpaDetails() {
   const { state, updateFormData, setValidation } = useWizard();
+  const stepErrors = state.validation[3]?.errors ?? {};
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
@@ -59,31 +61,37 @@ export function SalonSpaDetails() {
         <FormSection title="Space Dimensions">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel
-                htmlFor="salon-spa-total-area"
-                label="Total Area"
-                required
-              />
+              <FieldLabel htmlFor="sizeSqm" label="Total Area" required />
               <NumberInput
-                id="salon-spa-total-area"
+                id="sizeSqm"
+                {...fieldErrorProps("sizeSqm", stepErrors.sizeSqm)}
                 value={commercial.sizeSqm}
                 onChange={(v) => update({ sizeSqm: v })}
                 placeholder="e.g., 150"
                 unit="sqm"
                 min={20}
               />
+              <FieldError field="sizeSqm" error={stepErrors.sizeSqm} />
             </div>
             <div>
               <FieldLabel
-                htmlFor="salon-spa-waiting-area"
+                htmlFor="waitingAreaCapacitySalon"
                 label="Waiting Area"
               />
               <NumberInput
-                id="salon-spa-waiting-area"
+                id="waitingAreaCapacitySalon"
+                {...fieldErrorProps(
+                  "waitingAreaCapacitySalon",
+                  stepErrors.waitingAreaCapacitySalon,
+                )}
                 value={commercial.waitingAreaCapacitySalon}
                 onChange={(v) => update({ waitingAreaCapacitySalon: v })}
                 placeholder="e.g., 8"
                 unit="seats"
+              />
+              <FieldError
+                field="waitingAreaCapacitySalon"
+                error={stepErrors.waitingAreaCapacitySalon}
               />
             </div>
           </div>
@@ -94,43 +102,61 @@ export function SalonSpaDetails() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
               <FieldLabel
-                id="salon-spa-styling-stations"
+                id="stylingStations-label"
                 label="Styling Stations"
                 required
               />
               <CounterInput
-                labelledBy="salon-spa-styling-stations"
+                labelledBy="stylingStations-label"
+                describedBy={
+                  stepErrors.stylingStations
+                    ? fieldErrorId("stylingStations")
+                    : undefined
+                }
                 value={commercial.stylingStations || 0}
                 onChange={(v) => update({ stylingStations: v })}
                 min={0}
                 max={30}
               />
+              <FieldError
+                field="stylingStations"
+                error={stepErrors.stylingStations}
+              />
             </div>
             <div>
-              <FieldLabel
-                id="salon-spa-wash-basins"
-                label="Wash Basins"
-                required
-              />
+              <FieldLabel id="washBasins-label" label="Wash Basins" required />
               <CounterInput
-                labelledBy="salon-spa-wash-basins"
+                labelledBy="washBasins-label"
+                describedBy={
+                  stepErrors.washBasins ? fieldErrorId("washBasins") : undefined
+                }
                 value={commercial.washBasins || 0}
                 onChange={(v) => update({ washBasins: v })}
                 min={0}
                 max={15}
               />
+              <FieldError field="washBasins" error={stepErrors.washBasins} />
             </div>
             <div>
               <FieldLabel
-                id="salon-spa-mani-pedi-stations"
+                id="manicurePedicureStations-label"
                 label="Mani/Pedi Stations"
               />
               <CounterInput
-                labelledBy="salon-spa-mani-pedi-stations"
+                labelledBy="manicurePedicureStations-label"
+                describedBy={
+                  stepErrors.manicurePedicureStations
+                    ? fieldErrorId("manicurePedicureStations")
+                    : undefined
+                }
                 value={commercial.manicurePedicureStations || 0}
                 onChange={(v) => update({ manicurePedicureStations: v })}
                 min={0}
                 max={20}
+              />
+              <FieldError
+                field="manicurePedicureStations"
+                error={stepErrors.manicurePedicureStations}
               />
             </div>
           </div>
@@ -141,28 +167,43 @@ export function SalonSpaDetails() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel
-                id="salon-spa-treatment-rooms"
+                id="treatmentRoomsSpa-label"
                 label="Treatment Rooms"
               />
               <CounterInput
-                labelledBy="salon-spa-treatment-rooms"
+                labelledBy="treatmentRoomsSpa-label"
+                describedBy={
+                  stepErrors.treatmentRoomsSpa
+                    ? fieldErrorId("treatmentRoomsSpa")
+                    : undefined
+                }
                 value={commercial.treatmentRoomsSpa || 0}
                 onChange={(v) => update({ treatmentRoomsSpa: v })}
                 min={0}
                 max={20}
               />
+              <FieldError
+                field="treatmentRoomsSpa"
+                error={stepErrors.treatmentRoomsSpa}
+              />
             </div>
             <div>
-              <FieldLabel
-                id="salon-spa-treatment-beds"
-                label="Treatment Beds"
-              />
+              <FieldLabel id="treatmentBeds-label" label="Treatment Beds" />
               <CounterInput
-                labelledBy="salon-spa-treatment-beds"
+                labelledBy="treatmentBeds-label"
+                describedBy={
+                  stepErrors.treatmentBeds
+                    ? fieldErrorId("treatmentBeds")
+                    : undefined
+                }
                 value={commercial.treatmentBeds || 0}
                 onChange={(v) => update({ treatmentBeds: v })}
                 min={0}
                 max={30}
+              />
+              <FieldError
+                field="treatmentBeds"
+                error={stepErrors.treatmentBeds}
               />
             </div>
           </div>
@@ -207,13 +248,22 @@ export function SalonSpaDetails() {
         {/* Parking */}
         <FormSection title="Parking">
           <div>
-            <FieldLabel id="salon-spa-parking-spaces" label="Parking Spaces" />
+            <FieldLabel id="parkingSpacesCount-label" label="Parking Spaces" />
             <CounterInput
-              labelledBy="salon-spa-parking-spaces"
+              labelledBy="parkingSpacesCount-label"
+              describedBy={
+                stepErrors.parkingSpacesCount
+                  ? fieldErrorId("parkingSpacesCount")
+                  : undefined
+              }
               value={commercial.parkingSpacesCount || 0}
               onChange={(v) => update({ parkingSpacesCount: v })}
               min={0}
               max={50}
+            />
+            <FieldError
+              field="parkingSpacesCount"
+              error={stepErrors.parkingSpacesCount}
             />
           </div>
         </FormSection>

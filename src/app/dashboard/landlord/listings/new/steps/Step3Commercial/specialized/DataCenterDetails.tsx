@@ -9,6 +9,7 @@
 
 import { useEffect } from "react";
 import { useWizard } from "../../../context";
+import { FieldError, fieldErrorProps, fieldErrorId } from "../../../FieldError";
 import {
   FormSection,
   PageHeader,
@@ -46,6 +47,7 @@ const CONNECTIVITY_OPTIONS = [
 
 export function DataCenterDetails() {
   const { state, updateFormData, setValidation } = useWizard();
+  const stepErrors = state.validation[3]?.errors ?? {};
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
@@ -89,33 +91,40 @@ export function DataCenterDetails() {
         <FormSection title="Space & Capacity">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel
-                htmlFor="data-center-floor-area"
-                label="Floor Area"
-                required
-              />
+              <FieldLabel htmlFor="sizeSqm" label="Floor Area" required />
               <NumberInput
-                id="data-center-floor-area"
+                id="sizeSqm"
+                {...fieldErrorProps("sizeSqm", stepErrors.sizeSqm)}
                 value={commercial.sizeSqm}
                 onChange={(v) => update({ sizeSqm: v })}
                 placeholder="e.g., 1000"
                 unit="sqm"
                 min={10}
               />
+              <FieldError field="sizeSqm" error={stepErrors.sizeSqm} />
             </div>
             <div>
               <FieldLabel
-                id="data-center-rack-capacity"
+                id="rackCapacity-label"
                 label="Rack Capacity"
                 required
                 description="Total rack units available"
               />
               <CounterInput
-                labelledBy="data-center-rack-capacity"
+                labelledBy="rackCapacity-label"
+                describedBy={
+                  stepErrors.rackCapacity
+                    ? fieldErrorId("rackCapacity")
+                    : undefined
+                }
                 value={commercial.rackCapacity || 0}
                 onChange={(v) => update({ rackCapacity: v })}
                 min={0}
                 max={1000}
+              />
+              <FieldError
+                field="rackCapacity"
+                error={stepErrors.rackCapacity}
               />
             </div>
           </div>
@@ -125,18 +134,22 @@ export function DataCenterDetails() {
         <FormSection title="Uptime & Reliability">
           <div>
             <FieldLabel
-              id="data-center-uptime-tier"
+              id="uptimeTier-label"
               label="Uptime Tier"
               required
               description="TIA-942 data center tier classification"
             />
             <ButtonGroup
-              labelledBy="data-center-uptime-tier"
+              labelledBy="uptimeTier-label"
+              describedBy={
+                stepErrors.uptimeTier ? fieldErrorId("uptimeTier") : undefined
+              }
               value={commercial.uptimeTier}
               onChange={(v) => update({ uptimeTier: v })}
               options={UPTIME_TIERS}
               columns={4}
             />
+            <FieldError field="uptimeTier" error={stepErrors.uptimeTier} />
           </div>
         </FormSection>
 
@@ -145,29 +158,45 @@ export function DataCenterDetails() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <FieldLabel
-                htmlFor="data-center-power-capacity"
+                htmlFor="powerCapacityKva"
                 label="Power Capacity"
                 required
               />
               <NumberInput
-                id="data-center-power-capacity"
+                id="powerCapacityKva"
+                {...fieldErrorProps(
+                  "powerCapacityKva",
+                  stepErrors.powerCapacityKva,
+                )}
                 value={commercial.powerCapacityKva}
                 onChange={(v) => update({ powerCapacityKva: v })}
                 placeholder="e.g., 500"
                 unit="kVA"
               />
+              <FieldError
+                field="powerCapacityKva"
+                error={stepErrors.powerCapacityKva}
+              />
             </div>
             <div>
               <FieldLabel
-                htmlFor="data-center-power-redundancy"
+                htmlFor="powerRedundancy"
                 label="Power Redundancy"
                 description="N+1, 2N, 2N+1"
               />
               <TextInput
-                id="data-center-power-redundancy"
+                id="powerRedundancy"
+                {...fieldErrorProps(
+                  "powerRedundancy",
+                  stepErrors.powerRedundancy,
+                )}
                 value={commercial.powerRedundancy || ""}
                 onChange={(v) => update({ powerRedundancy: v })}
                 placeholder="e.g., 2N"
+              />
+              <FieldError
+                field="powerRedundancy"
+                error={stepErrors.powerRedundancy}
               />
             </div>
           </div>
@@ -177,28 +206,34 @@ export function DataCenterDetails() {
         <FormSection title="Cooling & Fire Suppression">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel
-                htmlFor="data-center-cooling-type"
-                label="Cooling Type"
-                required
-              />
+              <FieldLabel htmlFor="coolingType" label="Cooling Type" required />
               <TextInput
-                id="data-center-cooling-type"
+                id="coolingType"
+                {...fieldErrorProps("coolingType", stepErrors.coolingType)}
                 value={commercial.coolingType || ""}
                 onChange={(v) => update({ coolingType: v })}
                 placeholder="e.g., CRAC, In-row, Chilled water"
               />
+              <FieldError field="coolingType" error={stepErrors.coolingType} />
             </div>
             <div>
               <FieldLabel
-                htmlFor="data-center-fire-suppression"
+                htmlFor="fireSuppressionType"
                 label="Fire Suppression"
               />
               <TextInput
-                id="data-center-fire-suppression"
+                id="fireSuppressionType"
+                {...fieldErrorProps(
+                  "fireSuppressionType",
+                  stepErrors.fireSuppressionType,
+                )}
                 value={commercial.fireSuppressionType || ""}
                 onChange={(v) => update({ fireSuppressionType: v })}
                 placeholder="e.g., FM200, Novec 1230"
+              />
+              <FieldError
+                field="fireSuppressionType"
+                error={stepErrors.fireSuppressionType}
               />
             </div>
           </div>
@@ -224,15 +259,24 @@ export function DataCenterDetails() {
         <FormSection title="Physical Security">
           <div>
             <FieldLabel
-              id="data-center-security-level"
+              id="physicalSecurityLevel-label"
               label="Security Level"
             />
             <ButtonGroup
-              labelledBy="data-center-security-level"
+              labelledBy="physicalSecurityLevel-label"
+              describedBy={
+                stepErrors.physicalSecurityLevel
+                  ? fieldErrorId("physicalSecurityLevel")
+                  : undefined
+              }
               value={commercial.physicalSecurityLevel}
               onChange={(v) => update({ physicalSecurityLevel: v })}
               options={SECURITY_LEVELS}
               columns={3}
+            />
+            <FieldError
+              field="physicalSecurityLevel"
+              error={stepErrors.physicalSecurityLevel}
             />
           </div>
         </FormSection>

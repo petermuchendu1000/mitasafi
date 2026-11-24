@@ -9,6 +9,7 @@
 
 import { useEffect } from "react";
 import { useWizard } from "../../../context";
+import { FieldError, fieldErrorProps, fieldErrorId } from "../../../FieldError";
 import {
   FormSection,
   PageHeader,
@@ -25,6 +26,7 @@ import {
 
 export function RecordingStudioDetails() {
   const { state, updateFormData, setValidation } = useWizard();
+  const stepErrors = state.validation[3]?.errors ?? {};
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
@@ -60,32 +62,38 @@ export function RecordingStudioDetails() {
         <FormSection title="Space Layout">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel
-                htmlFor="recording-studio-total-area"
-                label="Total Area"
-                required
-              />
+              <FieldLabel htmlFor="sizeSqm" label="Total Area" required />
               <NumberInput
-                id="recording-studio-total-area"
+                id="sizeSqm"
+                {...fieldErrorProps("sizeSqm", stepErrors.sizeSqm)}
                 value={commercial.sizeSqm}
                 onChange={(v) => update({ sizeSqm: v })}
                 placeholder="e.g., 150"
                 unit="sqm"
                 min={20}
               />
+              <FieldError field="sizeSqm" error={stepErrors.sizeSqm} />
             </div>
             <div>
               <FieldLabel
-                htmlFor="recording-studio-ceiling-height"
+                htmlFor="ceilingHeightStudios"
                 label="Ceiling Height"
                 description="Important for acoustics"
               />
               <NumberInput
-                id="recording-studio-ceiling-height"
+                id="ceilingHeightStudios"
+                {...fieldErrorProps(
+                  "ceilingHeightStudios",
+                  stepErrors.ceilingHeightStudios,
+                )}
                 value={commercial.ceilingHeightStudios}
                 onChange={(v) => update({ ceilingHeightStudios: v })}
                 placeholder="e.g., 3.5"
                 unit="m"
+              />
+              <FieldError
+                field="ceilingHeightStudios"
+                error={stepErrors.ceilingHeightStudios}
               />
             </div>
           </div>
@@ -93,31 +101,49 @@ export function RecordingStudioDetails() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <div>
               <FieldLabel
-                id="recording-studio-studio-rooms"
+                id="studioRoomCount-label"
                 label="Studio Rooms"
                 required
                 description="Main recording spaces"
               />
               <CounterInput
-                labelledBy="recording-studio-studio-rooms"
+                labelledBy="studioRoomCount-label"
+                describedBy={
+                  stepErrors.studioRoomCount
+                    ? fieldErrorId("studioRoomCount")
+                    : undefined
+                }
                 value={commercial.studioRoomCount || 0}
                 onChange={(v) => update({ studioRoomCount: v })}
                 min={0}
                 max={10}
               />
+              <FieldError
+                field="studioRoomCount"
+                error={stepErrors.studioRoomCount}
+              />
             </div>
             <div>
               <FieldLabel
-                id="recording-studio-isolation-booths"
+                id="isoBoothCount-label"
                 label="Isolation Booths"
                 description="Vocal/instrument booths"
               />
               <CounterInput
-                labelledBy="recording-studio-isolation-booths"
+                labelledBy="isoBoothCount-label"
+                describedBy={
+                  stepErrors.isoBoothCount
+                    ? fieldErrorId("isoBoothCount")
+                    : undefined
+                }
                 value={commercial.isoBoothCount || 0}
                 onChange={(v) => update({ isoBoothCount: v })}
                 min={0}
                 max={10}
+              />
+              <FieldError
+                field="isoBoothCount"
+                error={stepErrors.isoBoothCount}
               />
             </div>
           </div>
@@ -151,32 +177,40 @@ export function RecordingStudioDetails() {
         <FormSection title="Flooring & Infrastructure">
           <div>
             <FieldLabel
-              htmlFor="recording-studio-flooring-type"
+              htmlFor="flooringType"
               label="Flooring Type"
               description="Floating floor, concrete, wood, etc."
             />
             <TextInput
-              id="recording-studio-flooring-type"
+              id="flooringType"
+              {...fieldErrorProps("flooringType", stepErrors.flooringType)}
               value={commercial.flooringType || ""}
               onChange={(v) => update({ flooringType: v })}
               placeholder="e.g., Floating hardwood floor"
             />
+            <FieldError field="flooringType" error={stepErrors.flooringType} />
           </div>
         </FormSection>
 
         {/* Parking */}
         <FormSection title="Access & Parking">
           <div>
-            <FieldLabel
-              id="recording-studio-parking-spaces"
-              label="Parking Spaces"
-            />
+            <FieldLabel id="parkingSpacesCount-label" label="Parking Spaces" />
             <CounterInput
-              labelledBy="recording-studio-parking-spaces"
+              labelledBy="parkingSpacesCount-label"
+              describedBy={
+                stepErrors.parkingSpacesCount
+                  ? fieldErrorId("parkingSpacesCount")
+                  : undefined
+              }
               value={commercial.parkingSpacesCount || 0}
               onChange={(v) => update({ parkingSpacesCount: v })}
               min={0}
               max={50}
+            />
+            <FieldError
+              field="parkingSpacesCount"
+              error={stepErrors.parkingSpacesCount}
             />
           </div>
         </FormSection>

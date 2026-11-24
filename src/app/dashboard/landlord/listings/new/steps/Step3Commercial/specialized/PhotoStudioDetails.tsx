@@ -9,6 +9,7 @@
 
 import { useEffect } from "react";
 import { useWizard } from "../../../context";
+import { FieldError, fieldErrorProps, fieldErrorId } from "../../../FieldError";
 import {
   FormSection,
   PageHeader,
@@ -24,6 +25,7 @@ import {
 
 export function PhotoStudioDetails() {
   const { state, updateFormData, setValidation } = useWizard();
+  const stepErrors = state.validation[3]?.errors ?? {};
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
@@ -59,33 +61,39 @@ export function PhotoStudioDetails() {
         <FormSection title="Space Dimensions">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel
-                htmlFor="photo-studio-total-area"
-                label="Total Area"
-                required
-              />
+              <FieldLabel htmlFor="sizeSqm" label="Total Area" required />
               <NumberInput
-                id="photo-studio-total-area"
+                id="sizeSqm"
+                {...fieldErrorProps("sizeSqm", stepErrors.sizeSqm)}
                 value={commercial.sizeSqm}
                 onChange={(v) => update({ sizeSqm: v })}
                 placeholder="e.g., 200"
                 unit="sqm"
                 min={30}
               />
+              <FieldError field="sizeSqm" error={stepErrors.sizeSqm} />
             </div>
             <div>
               <FieldLabel
-                htmlFor="photo-studio-ceiling-height"
+                htmlFor="ceilingHeightStudios"
                 label="Ceiling Height"
                 required
                 description="Higher is better for lighting"
               />
               <NumberInput
-                id="photo-studio-ceiling-height"
+                id="ceilingHeightStudios"
+                {...fieldErrorProps(
+                  "ceilingHeightStudios",
+                  stepErrors.ceilingHeightStudios,
+                )}
                 value={commercial.ceilingHeightStudios}
                 onChange={(v) => update({ ceilingHeightStudios: v })}
                 placeholder="e.g., 4.5"
                 unit="m"
+              />
+              <FieldError
+                field="ceilingHeightStudios"
+                error={stepErrors.ceilingHeightStudios}
               />
             </div>
           </div>
@@ -154,16 +162,22 @@ export function PhotoStudioDetails() {
         {/* Parking */}
         <FormSection title="Access & Parking">
           <div>
-            <FieldLabel
-              id="photo-studio-parking-spaces"
-              label="Parking Spaces"
-            />
+            <FieldLabel id="parkingSpacesCount-label" label="Parking Spaces" />
             <CounterInput
-              labelledBy="photo-studio-parking-spaces"
+              labelledBy="parkingSpacesCount-label"
+              describedBy={
+                stepErrors.parkingSpacesCount
+                  ? fieldErrorId("parkingSpacesCount")
+                  : undefined
+              }
               value={commercial.parkingSpacesCount || 0}
               onChange={(v) => update({ parkingSpacesCount: v })}
               min={0}
               max={50}
+            />
+            <FieldError
+              field="parkingSpacesCount"
+              error={stepErrors.parkingSpacesCount}
             />
           </div>
         </FormSection>

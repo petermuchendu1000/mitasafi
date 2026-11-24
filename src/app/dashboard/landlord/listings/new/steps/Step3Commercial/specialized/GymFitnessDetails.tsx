@@ -9,6 +9,7 @@
 
 import { useEffect } from "react";
 import { useWizard } from "../../../context";
+import { FieldError, fieldErrorProps, fieldErrorId } from "../../../FieldError";
 import {
   FormSection,
   PageHeader,
@@ -33,6 +34,7 @@ const FLOORING_OPTIONS: { id: string; label: string }[] = [
 
 export function GymFitnessDetails() {
   const { state, updateFormData, setValidation } = useWizard();
+  const stepErrors = state.validation[3]?.errors ?? {};
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
@@ -69,43 +71,52 @@ export function GymFitnessDetails() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <FieldLabel
-                htmlFor="gym-fitness-total-gym-floor"
+                htmlFor="gymFloorSqm"
                 label="Total Gym Floor"
                 required
               />
               <NumberInput
-                id="gym-fitness-total-gym-floor"
+                id="gymFloorSqm"
+                {...fieldErrorProps("gymFloorSqm", stepErrors.gymFloorSqm)}
                 value={commercial.gymFloorSqm}
                 onChange={(v) => update({ gymFloorSqm: v })}
                 placeholder="e.g., 500"
                 unit="sqm"
                 min={50}
               />
+              <FieldError field="gymFloorSqm" error={stepErrors.gymFloorSqm} />
             </div>
             <div>
-              <FieldLabel
-                htmlFor="gym-fitness-cardio-zone"
-                label="Cardio Zone"
-              />
+              <FieldLabel htmlFor="cardioZoneSqm" label="Cardio Zone" />
               <NumberInput
-                id="gym-fitness-cardio-zone"
+                id="cardioZoneSqm"
+                {...fieldErrorProps("cardioZoneSqm", stepErrors.cardioZoneSqm)}
                 value={commercial.cardioZoneSqm}
                 onChange={(v) => update({ cardioZoneSqm: v })}
                 placeholder="e.g., 100"
                 unit="sqm"
               />
+              <FieldError
+                field="cardioZoneSqm"
+                error={stepErrors.cardioZoneSqm}
+              />
             </div>
             <div>
-              <FieldLabel
-                htmlFor="gym-fitness-weights-zone"
-                label="Weights Zone"
-              />
+              <FieldLabel htmlFor="weightsZoneSqm" label="Weights Zone" />
               <NumberInput
-                id="gym-fitness-weights-zone"
+                id="weightsZoneSqm"
+                {...fieldErrorProps(
+                  "weightsZoneSqm",
+                  stepErrors.weightsZoneSqm,
+                )}
                 value={commercial.weightsZoneSqm}
                 onChange={(v) => update({ weightsZoneSqm: v })}
                 placeholder="e.g., 150"
                 unit="sqm"
+              />
+              <FieldError
+                field="weightsZoneSqm"
+                error={stepErrors.weightsZoneSqm}
               />
             </div>
           </div>
@@ -114,10 +125,14 @@ export function GymFitnessDetails() {
         {/* Flooring Type */}
         <FormSection title="Flooring Type">
           <ButtonGroup
+            describedBy={
+              stepErrors.flooringType ? fieldErrorId("flooringType") : undefined
+            }
             options={FLOORING_OPTIONS}
             value={commercial.flooringType || null}
             onChange={(v) => update({ flooringType: v })}
           />
+          <FieldError field="flooringType" error={stepErrors.flooringType} />
           <div className="mt-4">
             <CheckboxInput
               checked={commercial.rubberFlooring || false}
@@ -151,31 +166,43 @@ export function GymFitnessDetails() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel
-                id="gym-fitness-locker-rooms"
+                id="lockerRooms-label"
                 label="Locker Rooms"
                 required
               />
               <CounterInput
-                labelledBy="gym-fitness-locker-rooms"
+                labelledBy="lockerRooms-label"
+                describedBy={
+                  stepErrors.lockerRooms
+                    ? fieldErrorId("lockerRooms")
+                    : undefined
+                }
                 value={commercial.lockerRooms || 0}
                 onChange={(v) => update({ lockerRooms: v })}
                 min={0}
                 max={10}
               />
+              <FieldError field="lockerRooms" error={stepErrors.lockerRooms} />
             </div>
             <div>
               <FieldLabel
-                id="gym-fitness-shower-units"
+                id="showerCount-label"
                 label="Shower Units"
                 required
               />
               <CounterInput
-                labelledBy="gym-fitness-shower-units"
+                labelledBy="showerCount-label"
+                describedBy={
+                  stepErrors.showerCount
+                    ? fieldErrorId("showerCount")
+                    : undefined
+                }
                 value={commercial.showerCount || 0}
                 onChange={(v) => update({ showerCount: v })}
                 min={0}
                 max={30}
               />
+              <FieldError field="showerCount" error={stepErrors.showerCount} />
             </div>
           </div>
         </FormSection>
@@ -198,13 +225,22 @@ export function GymFitnessDetails() {
           </div>
           {commercial.swimmingPool && (
             <div className="mt-4 pl-4 border-l-2 border-teal-200">
-              <FieldLabel id="gym-fitness-pool-lanes" label="Pool Lanes" />
+              <FieldLabel id="poolLaneCount-label" label="Pool Lanes" />
               <CounterInput
-                labelledBy="gym-fitness-pool-lanes"
+                labelledBy="poolLaneCount-label"
+                describedBy={
+                  stepErrors.poolLaneCount
+                    ? fieldErrorId("poolLaneCount")
+                    : undefined
+                }
                 value={commercial.poolLaneCount || 0}
                 onChange={(v) => update({ poolLaneCount: v })}
                 min={1}
                 max={10}
+              />
+              <FieldError
+                field="poolLaneCount"
+                error={stepErrors.poolLaneCount}
               />
             </div>
           )}
@@ -213,16 +249,22 @@ export function GymFitnessDetails() {
         {/* Parking */}
         <FormSection title="Parking">
           <div>
-            <FieldLabel
-              id="gym-fitness-parking-spaces"
-              label="Parking Spaces"
-            />
+            <FieldLabel id="parkingSpacesCount-label" label="Parking Spaces" />
             <CounterInput
-              labelledBy="gym-fitness-parking-spaces"
+              labelledBy="parkingSpacesCount-label"
+              describedBy={
+                stepErrors.parkingSpacesCount
+                  ? fieldErrorId("parkingSpacesCount")
+                  : undefined
+              }
               value={commercial.parkingSpacesCount || 0}
               onChange={(v) => update({ parkingSpacesCount: v })}
               min={0}
               max={200}
+            />
+            <FieldError
+              field="parkingSpacesCount"
+              error={stepErrors.parkingSpacesCount}
             />
           </div>
         </FormSection>

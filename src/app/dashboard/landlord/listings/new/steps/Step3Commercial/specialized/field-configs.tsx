@@ -85,6 +85,10 @@ export interface SectionConfig {
 interface NumberInputProps {
   /** Pairs with <FieldLabel htmlFor> so the label actually names this input. */
   id?: string;
+  /** Spread from fieldErrorProps(field, error) — same key as the id. */
+  "aria-invalid"?: true;
+  "aria-describedby"?: string;
+
   value: number | null;
   onChange: (value: number | null) => void;
   placeholder?: string;
@@ -96,6 +100,8 @@ interface NumberInputProps {
 
 export function NumberInput({
   id,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
   value,
   onChange,
   placeholder,
@@ -108,6 +114,8 @@ export function NumberInput({
     <div className="relative">
       <input
         id={id}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
         type="number"
         value={value ?? ""}
         onChange={(e) => {
@@ -137,6 +145,8 @@ export function NumberInput({
 interface CounterInputProps {
   /** id of the <FieldLabel id=…> caption that names this group. */
   labelledBy?: string;
+  /** id of this field's message, from fieldErrorId(field). */
+  describedBy?: string;
   value: number;
   onChange: (value: number) => void;
   min?: number;
@@ -146,6 +156,7 @@ interface CounterInputProps {
 
 export function CounterInput({
   labelledBy,
+  describedBy,
   value,
   onChange,
   min = 0,
@@ -156,6 +167,7 @@ export function CounterInput({
     <div
       role={labelledBy ? "group" : undefined}
       aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
       className="flex items-center gap-3"
     >
       <button
@@ -229,6 +241,8 @@ export function CheckboxInput({
 interface ButtonGroupProps<T extends string> {
   /** id of the <FieldLabel id=…> caption that names this group. */
   labelledBy?: string;
+  /** id of this field's message, from fieldErrorId(field). */
+  describedBy?: string;
   value: T | null;
   onChange: (value: T) => void;
   options: { id: T; label: string; description?: string }[];
@@ -237,6 +251,7 @@ interface ButtonGroupProps<T extends string> {
 
 export function ButtonGroup<T extends string>({
   labelledBy,
+  describedBy,
   value,
   onChange,
   options,
@@ -246,6 +261,7 @@ export function ButtonGroup<T extends string>({
     <div
       role={labelledBy ? "group" : undefined}
       aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
       className={cn(
         "grid gap-3",
         columns === 2 && "grid-cols-2",
@@ -285,6 +301,10 @@ export function ButtonGroup<T extends string>({
 interface TextInputProps {
   /** Pairs with <FieldLabel htmlFor>. */
   id?: string;
+  /** Spread from fieldErrorProps(field, error) — same key as the id. */
+  "aria-invalid"?: true;
+  "aria-describedby"?: string;
+
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -292,6 +312,8 @@ interface TextInputProps {
 
 export function TextInput({
   id,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
   value,
   onChange,
   placeholder,
@@ -299,6 +321,8 @@ export function TextInput({
   return (
     <input
       id={id}
+      aria-invalid={ariaInvalid}
+      aria-describedby={ariaDescribedBy}
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}

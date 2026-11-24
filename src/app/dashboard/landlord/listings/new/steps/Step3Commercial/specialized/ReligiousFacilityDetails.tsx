@@ -9,6 +9,7 @@
 
 import { useEffect } from "react";
 import { useWizard } from "../../../context";
+import { FieldError, fieldErrorProps, fieldErrorId } from "../../../FieldError";
 import {
   FormSection,
   PageHeader,
@@ -24,6 +25,7 @@ import {
 
 export function ReligiousFacilityDetails() {
   const { state, updateFormData, setValidation } = useWizard();
+  const stepErrors = state.validation[3]?.errors ?? {};
   const { commercial, commercialType, commercialSubtype } = state.formData;
 
   // Helper to check if field is required
@@ -60,31 +62,44 @@ export function ReligiousFacilityDetails() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <FieldLabel
-                htmlFor="religious-facility-worship-hall-capacity"
+                htmlFor="worshipHallCapacity"
                 label="Worship Hall Capacity"
                 required
               />
               <NumberInput
-                id="religious-facility-worship-hall-capacity"
+                id="worshipHallCapacity"
+                {...fieldErrorProps(
+                  "worshipHallCapacity",
+                  stepErrors.worshipHallCapacity,
+                )}
                 value={commercial.worshipHallCapacity}
                 onChange={(v) => update({ worshipHallCapacity: v })}
                 placeholder="e.g., 500"
                 unit="people"
                 min={10}
               />
+              <FieldError
+                field="worshipHallCapacity"
+                error={stepErrors.worshipHallCapacity}
+              />
             </div>
             <div>
               <FieldLabel
-                htmlFor="religious-facility-prayer-hall-area"
+                htmlFor="prayerHallSqm"
                 label="Prayer Hall Area"
                 required
               />
               <NumberInput
-                id="religious-facility-prayer-hall-area"
+                id="prayerHallSqm"
+                {...fieldErrorProps("prayerHallSqm", stepErrors.prayerHallSqm)}
                 value={commercial.prayerHallSqm}
                 onChange={(v) => update({ prayerHallSqm: v })}
                 placeholder="e.g., 300"
                 unit="sqm"
+              />
+              <FieldError
+                field="prayerHallSqm"
+                error={stepErrors.prayerHallSqm}
               />
             </div>
           </div>
@@ -141,16 +156,22 @@ export function ReligiousFacilityDetails() {
         {/* Administrative Spaces */}
         <FormSection title="Administrative Spaces">
           <div>
-            <FieldLabel
-              id="religious-facility-office-rooms"
-              label="Office Rooms"
-            />
+            <FieldLabel id="officeRoomsReligious-label" label="Office Rooms" />
             <CounterInput
-              labelledBy="religious-facility-office-rooms"
+              labelledBy="officeRoomsReligious-label"
+              describedBy={
+                stepErrors.officeRoomsReligious
+                  ? fieldErrorId("officeRoomsReligious")
+                  : undefined
+              }
               value={commercial.officeRoomsReligious || 0}
               onChange={(v) => update({ officeRoomsReligious: v })}
               min={0}
               max={20}
+            />
+            <FieldError
+              field="officeRoomsReligious"
+              error={stepErrors.officeRoomsReligious}
             />
           </div>
         </FormSection>
@@ -159,15 +180,24 @@ export function ReligiousFacilityDetails() {
         <FormSection title="Parking & Access">
           <div>
             <FieldLabel
-              id="religious-facility-parking-capacity"
+              id="parkingCapacityReligious-label"
               label="Parking Capacity"
             />
             <CounterInput
-              labelledBy="religious-facility-parking-capacity"
+              labelledBy="parkingCapacityReligious-label"
+              describedBy={
+                stepErrors.parkingCapacityReligious
+                  ? fieldErrorId("parkingCapacityReligious")
+                  : undefined
+              }
               value={commercial.parkingCapacityReligious || 0}
               onChange={(v) => update({ parkingCapacityReligious: v })}
               min={0}
               max={500}
+            />
+            <FieldError
+              field="parkingCapacityReligious"
+              error={stepErrors.parkingCapacityReligious}
             />
           </div>
           <div className="mt-4">
