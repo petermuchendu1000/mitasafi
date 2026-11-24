@@ -152,6 +152,67 @@ export function normaliseKenyanPhone(raw: string): string | null {
   return local === null ? null : `+254${local}`;
 }
 
+/**
+ * An identity document number, tidied the way people write them.
+ *
+ * Kenyan ID numbers are commonly written with spaces ("12 345 678") and
+ * passports in either case. Neither difference is meaningful, so both are
+ * removed before anything is compared or stored.
+ */
+export function normaliseIdNumber(raw: string): string {
+  return text(raw).replace(/[\s-]/g, "").toUpperCase();
+}
+
+/**
+ * Is this a plausible number for the chosen document? null when it is fine.
+ *
+ * MEASURED: before this, the ONLY check on id_number was length > 40. Driving
+ * the add-tenant form through to a real tenancy, the National ID field
+ * accepted the literal text "Tenancy Probe" and stored it; the unit page then
+ * displayed "National ID Tenancy Probe" next to the tenant's name.
+ *
+ * WHERE THE LINES ARE, AND WHY THEY ARE NOT TIGHTER
+ *   national_id  Kenyan national ID numbers are digits. Older holders have
+ *                seven, current issuance is eight. The range is widened by one
+ *                either side rather than pinned at 7-8, because rejecting a
+ *                real tenant's ID at the point of signing a lease is a much
+ *                worse failure than storing an implausible one.
+ *   alien_id     Also digits, same reasoning.
+ *   passport     Deliberately loose. A tenant may hold any country's passport
+ *                and the formats differ widely, so this only requires letters
+ *                and digits with no spaces or punctuation. It will not catch
+ *                a plausible-looking wrong value, and is not meant to.
+ *
+ * What every rule DOES catch is the thing that actually happened: ordinary
+ * prose typed into the box.
+ */
+export function validateIdNumber(
+  idType: string,
+  normalised: string,
+): string | null {
+  if (normalised === "") return null; // optional; absence is not an error
+
+  if (idType === "passport") {
+    return /^[A-Z0-9]{6,12}$/.test(normalised)
+      ? null
+      : "A passport number is 6-12 letters and digits.";
+  }
+
+  // national_id and alien_id, and the national_id default the builder applies
+  // when a number is given with no type chosen.
+  if (!/^\d+$/.test(normalised)) {
+    return idType === "alien_id"
+      ? "An alien ID number is digits only."
+      : "A national ID number is digits only.";
+  }
+  if (normalised.length < 6 || normalised.length > 9) {
+    return idType === "alien_id"
+      ? "An alien ID number is 6-9 digits."
+      : "A national ID number is 6-9 digits.";
+  }
+  return null;
+}
+
 /** Build both rows, or say what is wrong with the form. */
 export function buildTenancy(
   form: TenancyFormValues,
@@ -186,9 +247,17 @@ export function buildTenancy(
   ) {
     errors.id_type = "Choose an ID type.";
   }
-  const idNumber = optionalText(form.id_number);
+  // Normalise first, so "12 345 678" and "12345678" are the same number and
+  // the stored value is the tidy one.
+  const idNumberRaw = text(form.id_number);
+  const idNumber = idNumberRaw === "" ? null : normaliseIdNumber(idNumberRaw);
   if (idNumber && idNumber.length > 40) {
     errors.id_number = "That ID number is too long.";
+  } else if (idNumber) {
+    // The builder defaults a missing type to national_id below, so validate
+    // against the type that will actually be stored.
+    const problem = validateIdNumber(idType || "national_id", idNumber);
+    if (problem) errors.id_number = problem;
   }
 
   const emergencyPhoneRaw = text(form.emergency_phone);

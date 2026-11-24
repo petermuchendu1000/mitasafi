@@ -20,6 +20,8 @@
 import {
   buildTenancy,
   normaliseKenyanPhone,
+  normaliseIdNumber,
+  validateIdNumber,
   ID_TYPE_VALUES,
   type TenancyFormValues,
 } from "../tenancy-form";
@@ -301,5 +303,91 @@ describe("the payment method", () => {
     expect(
       build({ payment_method: "crypto" }).errors.payment_method,
     ).toBeTruthy();
+  });
+});
+
+describe("the ID number", () => {
+  /**
+   * THE CASE THAT ACTUALLY HAPPENED. Driving the add-tenant form through to a
+   * real tenancy, the National ID field accepted the literal text "Tenancy
+   * Probe" and stored it; the unit page then showed "National ID Tenancy
+   * Probe" beside the tenant's name.
+   */
+  it("rejects prose typed into the National ID box", () => {
+    expect(
+      build({ id_type: "national_id", id_number: "Tenancy Probe" }).errors
+        .id_number,
+    ).toBeTruthy();
+  });
+
+  it("accepts both the seven- and eight-digit forms in circulation", () => {
+    for (const n of ["1234567", "12345678"]) {
+      const r = build({ id_type: "national_id", id_number: n });
+      expect(r.errors.id_number).toBeUndefined();
+      expect(r.tenant!.id_number).toBe(n);
+    }
+  });
+
+  it("treats spacing as noise and stores the tidy value", () => {
+    const r = build({ id_type: "national_id", id_number: "12 345 678" });
+    expect(r.errors.id_number).toBeUndefined();
+    expect(r.tenant!.id_number).toBe("12345678");
+  });
+
+  it("pins the stated range at its edges, so it cannot be narrowed unnoticed", () => {
+    // The rule is 6-9 digits: seven and eight are what circulate, with one
+    // either side as margin. Without these two the margin is undefended and a
+    // later edit could quietly tighten it onto real holders.
+    for (const n of ["123456", "123456789"]) {
+      expect(
+        build({ id_type: "national_id", id_number: n }).errors.id_number,
+      ).toBeUndefined();
+    }
+  });
+
+  it("rejects digit counts no Kenyan ID has", () => {
+    for (const n of ["12345", "1234567890"]) {
+      expect(
+        build({ id_type: "national_id", id_number: n }).errors.id_number,
+      ).toBeTruthy();
+    }
+  });
+
+  it("validates as a national ID when no type was chosen, matching the default the builder applies", () => {
+    const r = build({ id_type: "", id_number: "Tenancy Probe" });
+    expect(r.errors.id_number).toBeTruthy();
+  });
+
+  it("names the right document when an alien ID is wrong", () => {
+    expect(
+      build({ id_type: "alien_id", id_number: "not-a-number" }).errors
+        .id_number,
+    ).toMatch(/alien/i);
+  });
+
+  it("accepts a passport and upper-cases it", () => {
+    const r = build({ id_type: "passport", id_number: "a1234567" });
+    expect(r.errors.id_number).toBeUndefined();
+    expect(r.tenant!.id_number).toBe("A1234567");
+  });
+
+  it("is deliberately loose on passports, because a tenant may hold any country's", () => {
+    // Letters and digits in any arrangement pass; this rule exists to catch
+    // prose, not to recognise every national format.
+    expect(validateIdNumber("passport", "X9Y8Z7Q6")).toBeNull();
+  });
+
+  it("still rejects a passport with punctuation or spaces", () => {
+    expect(validateIdNumber("passport", "A 123 4567")).toBeTruthy();
+  });
+
+  it("leaves an absent ID number alone, because it is optional", () => {
+    const r = build({ id_type: "", id_number: "" });
+    expect(r.errors.id_number).toBeUndefined();
+    expect(r.tenant!.id_number).toBeNull();
+  });
+
+  it("normaliseIdNumber strips spaces and hyphens and upper-cases", () => {
+    expect(normaliseIdNumber("  a1-234 567 ")).toBe("A1234567");
   });
 });
