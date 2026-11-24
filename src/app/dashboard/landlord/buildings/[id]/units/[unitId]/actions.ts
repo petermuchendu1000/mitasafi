@@ -9,20 +9,26 @@
  *   page's "Record Payment" button opened a modal reading "Payment recording
  *   form coming soon..." with a Save button that closed it and did nothing.
  *
- * THREE WRITES, AND WHY THEY ARE NOT ATOMIC
+ * ONE WRITE, IN ONE TRANSACTION
  *   A tenancy is a tenants row, a leases row pointing at it and the unit, and
- *   units.status = 'occupied'. PostgREST has no multi-table transaction, so
- *   these run in order and each failure undoes what came before it. That is
- *   compensation, not atomicity: a crash between two of these calls can still
- *   leave a tenant with no lease. Making it genuinely atomic means a Postgres
- *   function, which is a schema change and is deliberately not bundled here.
- *   The order is chosen so the worst survivable outcome is the least harmful:
- *   an orphan tenant row shows up on the tenants list and can be reused, while
- *   a lease with no tenant would break every page that joins them.
+ *   units.status = 'occupied'. This used to run them as three PostgREST calls
+ *   with hand-rolled compensating DELETEs, which is not atomicity. It could
+ *   not survive the process dying between two of them, a compensating DELETE
+ *   that itself failed, or two requests both passing the live-lease check and
+ *   leaving one unit with two live leases.
+ *
+ *   20260354000000_tenancy_integrity.sql added create_tenancy(), which does
+ *   all three inside one transaction and locks the unit row BEFORE checking
+ *   for a live lease, so that last race cannot happen. This calls it.
+ *
+ *   The function is SECURITY INVOKER: it runs with exactly the permissions
+ *   this session already had. It adds no privilege, it only makes the writes
+ *   that were already happening into a single transaction.
  */
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/types/database";
 import {
   buildTenancy,
   type TenancyFormValues,
@@ -40,8 +46,6 @@ export interface TenancyActionResult {
   errors?: TenancyErrors;
   message?: string;
 }
-
-const LIVE_LEASE_STATUSES = ["active", "pending_signature"];
 
 export async function createTenancy(
   unitId: string,
@@ -72,84 +76,47 @@ export async function createTenancy(
     };
   }
 
-  // Two live leases on one unit would double-count the rent due on every page
-  // that sums them, so the second one is refused rather than merged.
-  const { data: existing } = await supabase
-    .from("leases")
-    .select("id, status")
-    .eq("unit_id", unitId)
-    .in("status", LIVE_LEASE_STATUSES)
-    .limit(1);
+  // One call, one transaction. The live-lease check, both inserts and the unit
+  // status all happen inside it, after the unit row is locked.
+  //
+  // The payloads go through untouched: buildTenancy() returns no ownership
+  // columns at all, and the function sets created_by / landlord_id / unit_id /
+  // tenant_id from the session rather than trusting anything sent to it.
+  const { error } = await supabase.rpc("create_tenancy", {
+    p_unit_id: unitId,
+    p_tenant: tenant as unknown as Json,
+    p_lease: lease as unknown as Json,
+  });
 
-  if (existing && existing.length > 0) {
-    return {
-      ok: false,
-      message: `Unit ${unit.unit_number} already has a live lease. End it before starting a new one.`,
-    };
-  }
-
-  // 1. the tenant
-  const { data: tenantRow, error: tenantError } = await supabase
-    .from("tenants")
-    .insert({ ...tenant, created_by: user.id })
-    .select("id")
-    .single();
-
-  if (tenantError || !tenantRow) {
+  if (error) {
     console.error(
-      "[createTenancy] tenant insert failed:",
-      tenantError?.code,
-      tenantError?.message,
+      "[createTenancy] create_tenancy failed:",
+      error.code,
+      error.message,
     );
+
+    // The function raises a distinct SQLSTATE per refusal, so the landlord is
+    // told which thing went wrong instead of "something went wrong".
+    if (error.code === "28000") {
+      return { ok: false, message: "Your session has expired. Sign in again." };
+    }
+    if (error.code === "P0002") {
+      return {
+        ok: false,
+        message: "That unit could not be found on your account.",
+      };
+    }
+    if (error.code === "23505" && /live lease/i.test(error.message)) {
+      return {
+        ok: false,
+        message: `Unit ${unit.unit_number} already has a live lease. End it before starting a new one.`,
+      };
+    }
+    // 23505 from the new unique index, or anything else: nothing was written,
+    // because the whole function is one transaction.
     return {
       ok: false,
-      message: "Could not save the tenant. Nothing was created.",
-    };
-  }
-
-  // 2. the lease
-  const { data: leaseRow, error: leaseError } = await supabase
-    .from("leases")
-    .insert({
-      ...lease,
-      unit_id: unitId,
-      tenant_id: tenantRow.id,
-      landlord_id: user.id,
-    })
-    .select("id")
-    .single();
-
-  if (leaseError || !leaseRow) {
-    console.error(
-      "[createTenancy] lease insert failed:",
-      leaseError?.code,
-      leaseError?.message,
-    );
-    await supabase.from("tenants").delete().eq("id", tenantRow.id);
-    return {
-      ok: false,
-      message: "Could not save the lease, so the tenant was not kept either.",
-    };
-  }
-
-  // 3. the unit is now occupied
-  const { error: unitError } = await supabase
-    .from("units")
-    .update({ status: "occupied" })
-    .eq("id", unitId)
-    .eq("landlord_id", user.id);
-
-  if (unitError) {
-    console.error(
-      "[createTenancy] unit status failed:",
-      unitError.code,
-      unitError.message,
-    );
-    await supabase.from("leases").delete().eq("id", leaseRow.id);
-    await supabase.from("tenants").delete().eq("id", tenantRow.id);
-    return {
-      ok: false,
-      message: "Could not mark the unit occupied, so nothing was kept.",
+      message: "Could not start the tenancy. Nothing was created.",
     };
   }
 

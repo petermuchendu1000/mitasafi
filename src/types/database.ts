@@ -1600,20 +1600,6 @@ export type Database = {
             referencedRelation: "bookings_with_legacy_busy";
             referencedColumns: ["id"];
           },
-          {
-            foreignKeyName: "booking_status_history_changed_by_fkey";
-            columns: ["changed_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "booking_status_history_changed_by_fkey";
-            columns: ["changed_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles_public";
-            referencedColumns: ["id"];
-          },
         ];
       };
       bookings: {
@@ -7291,6 +7277,10 @@ export type Database = {
         };
         Returns: string;
       };
+      create_tenancy: {
+        Args: { p_lease: Json; p_tenant: Json; p_unit_id: string };
+        Returns: Json;
+      };
       credit_provider_wallet: {
         Args: { p_amount: number; p_provider_id: string };
         Returns: undefined;
@@ -7303,6 +7293,11 @@ export type Database = {
       debit_provider_wallet: {
         Args: { p_amount: number; p_provider_id: string };
         Returns: undefined;
+      };
+      derive_primary_role: { Args: { p_user_id: string }; Returns: string };
+      erase_account: {
+        Args: { p_reason: string; p_user_id: string };
+        Returns: Json;
       };
       expire_phone_verifications: { Args: never; Returns: number };
       expire_stale_booking_payments: {
@@ -7356,6 +7351,10 @@ export type Database = {
         Returns: number;
       };
       get_user_roles: { Args: { p_user_id: string }; Returns: string[] };
+      grant_admin_role: {
+        Args: { p_reason: string; p_user_id: string };
+        Returns: Json;
+      };
       increment_listing_views: {
         Args: { listing_id: string };
         Returns: undefined;
@@ -7405,6 +7404,10 @@ export type Database = {
           p_provider_id: string;
           p_reference: string;
         };
+        Returns: Json;
+      };
+      revoke_admin_role: {
+        Args: { p_reason: string; p_user_id: string };
         Returns: Json;
       };
       set_config: { Args: { setting: string; value: string }; Returns: string };
