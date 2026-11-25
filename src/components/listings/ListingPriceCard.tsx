@@ -1,25 +1,26 @@
 /**
  * Listing Price Card Component
- * 
+ *
  * Sticky sidebar with:
  * - Price breakdown (rent, service charge, total)
  * - Move-in cost calculation
  * - Included amenities
  * - CTA buttons (Contact, Schedule)
- * 
+ *
  * Theme: 70% Teal, 30% Orange (CTA buttons in orange)
  */
 
 "use client";
 
 import { useState } from "react";
-import { 
-  MessageCircle, 
-  Calendar, 
+import {
+  MessageCircle,
+  Calendar,
   Phone,
   CheckCircle,
   Info,
-  ArrowRight
+  ArrowRight,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PriceBreakdown } from "@/lib/listings/types";
@@ -29,6 +30,8 @@ interface ListingPriceCardProps {
   availableNow: boolean;
   availableFrom: string | null;
   onContact: () => void;
+  /** Omitted when the listing cannot take applications. */
+  onApply?: () => void;
   onScheduleViewing: () => void;
   isAuthenticated: boolean;
   isUnavailable?: boolean;
@@ -61,6 +64,7 @@ export function ListingPriceCard({
   availableNow,
   availableFrom,
   onContact,
+  onApply,
   onScheduleViewing,
   isAuthenticated,
   isUnavailable = false,
@@ -69,10 +73,12 @@ export function ListingPriceCard({
   const [showMoveInDetails, setShowMoveInDetails] = useState(false);
 
   return (
-    <div className={cn(
-      "bg-white rounded-xl border border-gray-200 overflow-hidden",
-      className
-    )}>
+    <div
+      className={cn(
+        "bg-white rounded-xl border border-gray-200 overflow-hidden",
+        className,
+      )}
+    >
       {/* Price Header */}
       <div className="p-5 border-b border-gray-100">
         <div className="flex items-baseline gap-2">
@@ -87,15 +93,21 @@ export function ListingPriceCard({
           <div className="mt-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Rent</span>
-              <span className="text-gray-700">{formatPrice(price.rent, price.currency)}</span>
+              <span className="text-gray-700">
+                {formatPrice(price.rent, price.currency)}
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Service charge</span>
-              <span className="text-gray-700">{formatPrice(price.serviceCharge, price.currency)}</span>
+              <span className="text-gray-700">
+                {formatPrice(price.serviceCharge, price.currency)}
+              </span>
             </div>
             <div className="border-t border-dashed border-gray-200 pt-2 flex justify-between font-medium">
               <span className="text-gray-700">Total monthly</span>
-              <span className="text-brand-600">{formatPrice(price.totalMonthly, price.currency)}</span>
+              <span className="text-brand-600">
+                {formatPrice(price.totalMonthly, price.currency)}
+              </span>
             </div>
           </div>
         )}
@@ -103,8 +115,8 @@ export function ListingPriceCard({
         {/* Rent includes */}
         {price.rentIncludes.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {price.rentIncludes.map(item => (
-              <span 
+            {price.rentIncludes.map((item) => (
+              <span
                 key={item}
                 className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded"
               >
@@ -137,10 +149,12 @@ export function ListingPriceCard({
             <span className="text-lg font-bold text-gray-900">
               {formatPrice(price.moveInCost, price.currency)}
             </span>
-            <ArrowRight className={cn(
-              "w-4 h-4 text-gray-400 transition-transform",
-              showMoveInDetails && "rotate-90"
-            )} />
+            <ArrowRight
+              className={cn(
+                "w-4 h-4 text-gray-400 transition-transform",
+                showMoveInDetails && "rotate-90",
+              )}
+            />
           </div>
         </button>
 
@@ -149,17 +163,24 @@ export function ListingPriceCard({
           <div className="mt-3 space-y-2 pt-3 border-t border-gray-200">
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">First month</span>
-              <span className="text-gray-700">{formatPrice(price.totalMonthly, price.currency)}</span>
+              <span className="text-gray-700">
+                {formatPrice(price.totalMonthly, price.currency)}
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">
-                Deposit ({price.depositMonths} {price.depositMonths === 1 ? "month" : "months"})
+                Deposit ({price.depositMonths}{" "}
+                {price.depositMonths === 1 ? "month" : "months"})
               </span>
-              <span className="text-gray-700">{formatPrice(price.depositAmount, price.currency)}</span>
+              <span className="text-gray-700">
+                {formatPrice(price.depositAmount, price.currency)}
+              </span>
             </div>
             <div className="border-t border-dashed border-gray-200 pt-2 flex justify-between font-medium">
               <span className="text-gray-700">Total</span>
-              <span className="text-gray-900">{formatPrice(price.moveInCost, price.currency)}</span>
+              <span className="text-gray-900">
+                {formatPrice(price.moveInCost, price.currency)}
+              </span>
             </div>
           </div>
         )}
@@ -178,7 +199,7 @@ export function ListingPriceCard({
                 {new Date(availableFrom).toLocaleDateString("en-KE", {
                   month: "short",
                   day: "numeric",
-                  year: "numeric"
+                  year: "numeric",
                 })}
               </span>
             </span>
@@ -207,6 +228,20 @@ export function ListingPriceCard({
         ) : (
           /* Available - Contact CTAs */
           <>
+            {/* Applying is the stronger act, so it leads. It is rendered here
+                and not only in the mobile sticky bar — the first version of
+                this put Apply inside a `lg:hidden` container, where no desktop
+                visitor could ever reach it. */}
+            {onApply && (
+              <button
+                onClick={onApply}
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                <FileText className="w-5 h-5" />
+                Apply
+              </button>
+            )}
+
             {/* Primary CTA - Orange */}
             <button
               onClick={onContact}

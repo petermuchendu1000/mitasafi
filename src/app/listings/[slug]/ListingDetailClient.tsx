@@ -395,6 +395,7 @@ export function ListingDetailClient({
                       ? () => setUnavailableModalOpen(true)
                       : () => setInquiryOpenedByUser(true)
                   }
+                  onApply={isUnavailable ? undefined : () => setApplyOpen(true)}
                   onScheduleViewing={
                     isUnavailable
                       ? () => setUnavailableModalOpen(true)
@@ -438,6 +439,7 @@ export function ListingDetailClient({
                       ? () => setUnavailableModalOpen(true)
                       : () => setInquiryOpenedByUser(true)
                   }
+                  onApply={isUnavailable ? undefined : () => setApplyOpen(true)}
                   onScheduleViewing={
                     isUnavailable
                       ? () => setUnavailableModalOpen(true)
