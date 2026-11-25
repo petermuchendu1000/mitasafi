@@ -13,7 +13,13 @@
  * pass here and fail there.
  */
 
-import { useMemo, useState, useTransition } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -78,6 +84,26 @@ const inputClass = (invalid: boolean) =>
       : "border-gray-200 focus:border-teal-500 focus:ring-teal-500/20",
   );
 
+/**
+ * A labelled control and whatever it has to say for itself.
+ *
+ * WHY THE ARIA IS INJECTED HERE AND NOT WRITTEN AT EACH CALL SITE
+ *   Measured: this form displayed its errors in red and told a screen reader
+ *   nothing. Rejecting a National ID left #id_number with aria-invalid=null
+ *   and no aria-describedby, so the message existed only for sighted users --
+ *   the same defect fixed in the two wizards, which did not cover this form.
+ *
+ *   All eighteen fields pass their control as the direct child, and every
+ *   control's id already equals the htmlFor given here (both verified before
+ *   writing this). So the message id can be DERIVED from htmlFor and injected,
+ *   rather than hand-written eighteen times -- which is where wrong pairings
+ *   come from. One source of truth, and nothing for a call site to get wrong.
+ *
+ *   It clones only a valid element, and only the direct child, so a future
+ *   field that wraps its control in a div gets nothing rather than aria on the
+ *   wrapper. That is the failure this is most likely to meet, and silence is
+ *   the safe answer to it: the guard test below catches it instead.
+ */
 function Field({
   label,
   htmlFor,
@@ -91,6 +117,19 @@ function Field({
   hint?: string;
   children: React.ReactNode;
 }) {
+  const messageId = error
+    ? `${htmlFor}-error`
+    : hint
+      ? `${htmlFor}-hint`
+      : undefined;
+
+  const control = isValidElement(children)
+    ? cloneElement(children as React.ReactElement<Record<string, unknown>>, {
+        "aria-invalid": error ? true : undefined,
+        "aria-describedby": messageId,
+      })
+    : children;
+
   return (
     <div>
       <label
@@ -99,11 +138,15 @@ function Field({
       >
         {label}
       </label>
-      {children}
+      {control}
       {error ? (
-        <p className="mt-1.5 text-sm text-red-600">{error}</p>
+        <p id={messageId} className="mt-1.5 text-sm text-red-600">
+          {error}
+        </p>
       ) : hint ? (
-        <p className="mt-1.5 text-xs text-gray-500">{hint}</p>
+        <p id={messageId} className="mt-1.5 text-xs text-gray-500">
+          {hint}
+        </p>
       ) : null}
     </div>
   );
