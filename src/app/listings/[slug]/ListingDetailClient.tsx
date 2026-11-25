@@ -20,6 +20,7 @@ import {
   Share2,
   Heart,
   MessageCircle,
+  FileText,
   AlertTriangle,
   Clock,
   Bell,
@@ -36,6 +37,7 @@ import {
   SimilarListings,
 } from "@/components/listings";
 import { UnavailableListingModal } from "@/components/listings/UnavailableListingModal";
+import { ApplyModal } from "@/components/listings/ApplyModal";
 import type {
   Listing,
   ListingCard,
@@ -102,6 +104,7 @@ export function ListingDetailClient({
   // An explicit open from one of the Contact buttons, as opposed to the URL flag.
   const [inquiryOpenedByUser, setInquiryOpenedByUser] = useState(false);
   const [unavailableModalOpen, setUnavailableModalOpen] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
 
   // Subscribed, not sampled at mount. This page renders THREE readers of the saved key at
   // once — this heart, the Navbar count, and the SimilarListings cards — and this was the
@@ -489,13 +492,24 @@ export function ListingDetailClient({
                 Notify Me
               </button>
             ) : (
-              <button
-                onClick={() => setInquiryOpenedByUser(true)}
-                className="bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 text-white font-semibold py-3 px-6 rounded-xl flex items-center gap-2 transition-all shadow-md"
-              >
-                <MessageCircle className="w-5 h-5" />
-                Contact
-              </button>
+              <div className="flex items-center gap-3">
+                {/* Contact asks a question; Apply makes an offer. They are
+                    different acts, so they are different buttons. */}
+                <button
+                  onClick={() => setInquiryOpenedByUser(true)}
+                  className="bg-white hover:bg-gray-50 text-gray-800 font-semibold py-3 px-6 rounded-xl flex items-center gap-2 transition-all border border-gray-300"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  Contact
+                </button>
+                <button
+                  onClick={() => setApplyOpen(true)}
+                  className="bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 text-white font-semibold py-3 px-6 rounded-xl flex items-center gap-2 transition-all shadow-md"
+                >
+                  <FileText className="w-5 h-5" />
+                  Apply
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -514,6 +528,17 @@ export function ListingDetailClient({
         landlordId={listing.landlord?.id || listing.landlord_id}
         isAuthenticated={isAuthenticated}
         userId={userId}
+        userName={userName}
+        userEmail={userEmail}
+        userPhone={userPhone}
+      />
+
+      <ApplyModal
+        isOpen={applyOpen}
+        onClose={() => setApplyOpen(false)}
+        listingId={listing.id}
+        listingTitle={listing.title}
+        isAuthenticated={isAuthenticated}
         userName={userName}
         userEmail={userEmail}
         userPhone={userPhone}

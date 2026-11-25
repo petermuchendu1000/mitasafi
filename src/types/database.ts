@@ -4547,6 +4547,69 @@ export type Database = {
           },
         ];
       };
+      rental_applications: {
+        Row: {
+          applicant_id: string;
+          created_at: string;
+          decided_at: string | null;
+          email: string | null;
+          employer: string | null;
+          full_name: string;
+          household_size: number | null;
+          id: string;
+          landlord_id: string;
+          landlord_notes: string | null;
+          lease_months: number | null;
+          listing_id: string;
+          message: string | null;
+          monthly_income: number | null;
+          move_in_date: string | null;
+          occupation: string | null;
+          phone: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          email?: string | null;
+          employer?: string | null;
+          full_name: string;
+          household_size?: number | null;
+          lease_months?: number | null;
+          listing_id: string;
+          message?: string | null;
+          monthly_income?: number | null;
+          move_in_date?: string | null;
+          occupation?: string | null;
+          phone: string;
+        };
+        Update: {
+          landlord_notes?: string | null;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "rental_applications_applicant_id_fkey";
+            columns: ["applicant_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "rental_applications_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "rental_applications_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "listings";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       review_helpful_votes: {
         Row: {
           created_at: string | null;
