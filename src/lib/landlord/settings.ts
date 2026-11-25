@@ -124,6 +124,139 @@ export function sanitisePreferences(
   return Object.keys(out).length === 0 ? null : out;
 }
 
+// ---------------------------------------------------------------------------
+// landlord_settings: what a patch from the browser may contain
+// ---------------------------------------------------------------------------
+
+type FieldSpec =
+  | { kind: "boolean" }
+  | { kind: "number"; min: number; max: number }
+  | { kind: "enum"; values: readonly string[] }
+  | { kind: "money" };
+
+/**
+ * The whitelist. A key absent from here cannot reach the database however the
+ * request is shaped — which matters because this table sits next to `profiles`
+ * in the same session and a patch is a bag of keys from a browser.
+ */
+export const SETTING_FIELDS: Record<string, FieldSpec> = {
+  tenant_maintenance_access: { kind: "boolean" },
+  application_screening: { kind: "boolean" },
+  accept_partial_payment: { kind: "boolean" },
+  accept_future_payments: { kind: "boolean" },
+  enable_chat: { kind: "boolean" },
+  require_renters_insurance: { kind: "boolean" },
+  enable_staff_access: { kind: "boolean" },
+
+  late_fee_enabled: { kind: "boolean" },
+  late_fee_type: {
+    kind: "enum",
+    values: ["none", "fixed", "percentage", "daily"],
+  },
+  late_fee_amount: { kind: "money" },
+  late_fee_percentage: { kind: "number", min: 0, max: 100 },
+  grace_period_days: { kind: "number", min: 0, max: 60 },
+  late_fee_applies_to: {
+    kind: "enum",
+    values: ["all_line_items", "rent_only"],
+  },
+
+  mpesa_fee_payer: { kind: "enum", values: ["landlord", "tenant"] },
+  card_fee_payer: { kind: "enum", values: ["landlord", "tenant"] },
+
+  notify_all_tenants_signed: { kind: "boolean" },
+  notify_any_tenant_signs: { kind: "boolean" },
+  notify_lease_expiring: { kind: "boolean" },
+  lease_expiry_notice_days: { kind: "number", min: 1, max: 365 },
+
+  notify_payment_made: { kind: "boolean" },
+  notify_payment_failed: { kind: "boolean" },
+  notify_payment_resubmitted: { kind: "boolean" },
+  notify_overdue_summary: { kind: "boolean" },
+  overdue_summary_day_1: { kind: "number", min: 1, max: 28 },
+  overdue_summary_day_2: { kind: "number", min: 1, max: 28 },
+  notify_refund_debited: { kind: "boolean" },
+  notify_refund_received: { kind: "boolean" },
+  notify_funds_disbursed: { kind: "boolean" },
+
+  notify_maintenance_submitted: { kind: "boolean" },
+  notify_maintenance_resolved: { kind: "boolean" },
+  notify_maintenance_reopened: { kind: "boolean" },
+  notify_maintenance_updated: { kind: "boolean" },
+  notify_maintenance_comment: { kind: "boolean" },
+
+  notify_application_submitted: { kind: "boolean" },
+  notify_insurance_provided_requested: { kind: "boolean" },
+  notify_insurance_provided_unrequested: { kind: "boolean" },
+
+  marketing_sms_opt_in: { kind: "boolean" },
+
+  tenant_notify_invoice_due_day: { kind: "boolean" },
+  tenant_notify_invoice_late: { kind: "boolean" },
+  tenant_notify_invoice_due_soon: { kind: "boolean" },
+  tenant_invoice_due_notice_days: { kind: "number", min: 1, max: 30 },
+  tenant_notify_lease_expiring: { kind: "boolean" },
+  tenant_lease_expiry_notice_days: { kind: "number", min: 1, max: 365 },
+};
+
+export type SettingsPatch = Record<string, boolean | number | string | null>;
+
+/**
+ * Keep only known keys carrying a value of the right shape and inside the
+ * declared range. Returns null when nothing survives, so a caller never issues
+ * an empty UPDATE.
+ */
+export function sanitiseSettingsPatch(
+  input: Record<string, unknown>,
+): SettingsPatch | null {
+  const out: SettingsPatch = {};
+
+  for (const [key, spec] of Object.entries(SETTING_FIELDS)) {
+    if (!(key in input)) continue;
+    const v = input[key];
+
+    if (spec.kind === "boolean") {
+      if (typeof v === "boolean") out[key] = v;
+    } else if (spec.kind === "enum") {
+      if (typeof v === "string" && spec.values.includes(v)) out[key] = v;
+    } else if (spec.kind === "number") {
+      // Number("") is 0 and finite, so the empty string is excluded first.
+      if (
+        typeof v === "number" &&
+        Number.isInteger(v) &&
+        v >= spec.min &&
+        v <= spec.max
+      ) {
+        out[key] = v;
+      }
+    } else {
+      // money: null clears it, otherwise a non-negative finite number
+      if (v === null) out[key] = null;
+      else if (typeof v === "number" && Number.isFinite(v) && v >= 0)
+        out[key] = v;
+    }
+  }
+
+  return Object.keys(out).length === 0 ? null : out;
+}
+
+/**
+ * A late-fee policy that cannot be applied is refused by a CHECK constraint,
+ * which would surface as an opaque 23514. Catching it here gives the landlord
+ * a sentence instead of a code.
+ */
+export function lateFeeProblem(patch: SettingsPatch): string | null {
+  if (patch.late_fee_enabled !== true) return null;
+  const type = patch.late_fee_type;
+  if (type === "percentage" && patch.late_fee_percentage == null) {
+    return "Set the percentage to charge.";
+  }
+  if ((type === "fixed" || type === "daily") && patch.late_fee_amount == null) {
+    return "Set the amount to charge.";
+  }
+  return null;
+}
+
 export const VERIFICATION_LABELS: Record<string, string> = {
   none: "Not verified",
   phone: "Phone verified",

@@ -6,6 +6,8 @@ import {
   validateProfileDraft,
   sanitisePreferences,
   verificationLabel,
+  sanitiseSettingsPatch,
+  lateFeeProblem,
   MAX_NAME_LENGTH,
 } from "../settings";
 
@@ -102,5 +104,90 @@ describe("verification label", () => {
     expect(verificationLabel("id")).toBe("ID verified");
     expect(verificationLabel(null)).toBe("Not verified");
     expect(verificationLabel("something-else")).toBe("Not verified");
+  });
+});
+
+describe("the settings patch whitelist", () => {
+  it("keeps known keys of the right shape", () => {
+    expect(
+      sanitiseSettingsPatch({
+        application_screening: false,
+        grace_period_days: 7,
+        late_fee_type: "fixed",
+        mpesa_fee_payer: "landlord",
+      }),
+    ).toEqual({
+      application_screening: false,
+      grace_period_days: 7,
+      late_fee_type: "fixed",
+      mpesa_fee_payer: "landlord",
+    });
+  });
+
+  it("drops a key that is not a setting at all", () => {
+    // landlord_id is the one that matters: this table is keyed on it and a
+    // patch is a bag of keys from a browser.
+    expect(
+      sanitiseSettingsPatch({
+        landlord_id: "00000000-0000-0000-0000-000000000000",
+        is_verified: true,
+        enable_chat: true,
+      }),
+    ).toEqual({ enable_chat: true });
+  });
+
+  it("drops an enum value that is not on the list", () => {
+    expect(
+      sanitiseSettingsPatch({ mpesa_fee_payer: "somebody_else" }),
+    ).toBeNull();
+  });
+
+  it("drops a number outside its declared range", () => {
+    expect(sanitiseSettingsPatch({ grace_period_days: 9999 })).toBeNull();
+    expect(sanitiseSettingsPatch({ late_fee_percentage: -1 })).toBeNull();
+    expect(sanitiseSettingsPatch({ grace_period_days: 0 })).toEqual({
+      grace_period_days: 0,
+    });
+  });
+
+  it("does not let a string masquerade as a boolean or a number", () => {
+    expect(
+      sanitiseSettingsPatch({ enable_chat: "true", grace_period_days: "7" }),
+    ).toBeNull();
+  });
+
+  it("lets a money field be cleared but not go negative", () => {
+    expect(sanitiseSettingsPatch({ late_fee_amount: null })).toEqual({
+      late_fee_amount: null,
+    });
+    expect(sanitiseSettingsPatch({ late_fee_amount: -5 })).toBeNull();
+  });
+});
+
+describe("the late fee policy check", () => {
+  it("passes when the fee is off", () => {
+    expect(lateFeeProblem({ late_fee_enabled: false })).toBeNull();
+  });
+
+  it("catches a percentage fee with no percentage", () => {
+    expect(
+      lateFeeProblem({ late_fee_enabled: true, late_fee_type: "percentage" }),
+    ).toMatch(/percentage/i);
+  });
+
+  it("catches a fixed fee with no amount", () => {
+    expect(
+      lateFeeProblem({ late_fee_enabled: true, late_fee_type: "fixed" }),
+    ).toMatch(/amount/i);
+  });
+
+  it("passes a complete policy", () => {
+    expect(
+      lateFeeProblem({
+        late_fee_enabled: true,
+        late_fee_type: "percentage",
+        late_fee_percentage: 10,
+      }),
+    ).toBeNull();
   });
 });

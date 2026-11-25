@@ -21,14 +21,17 @@ import { createClient } from "@/lib/supabase/server";
 import {
   validateProfileDraft,
   sanitisePreferences,
+  sanitiseSettingsPatch,
+  lateFeeProblem,
   type ProfileFieldErrors,
   type NotificationPreferences,
 } from "@/lib/landlord/settings";
+import { normaliseKenyanPhone } from "@/lib/landlord/tenancy-form";
 
 export interface SaveResult {
   success: boolean;
   error?: string;
-  fieldErrors?: ProfileFieldErrors;
+  fieldErrors?: ProfileFieldErrors & { phone?: string };
 }
 
 export async function updateLandlordProfile(
@@ -141,6 +144,179 @@ export async function requestLandlordAccountDeletion(): Promise<SaveResult> {
     return { success: false, error: "Could not submit that request." };
   }
 
+  revalidatePath("/dashboard/landlord/settings");
+  return { success: true };
+}
+
+// ===========================================================================
+// landlord_settings
+// ===========================================================================
+
+/**
+ * Upsert the landlord's settings row.
+ *
+ * The patch is whitelisted by SETTING_FIELDS before it goes near the database.
+ * The column grants would stop the worst of it anyway — landlord_id is not
+ * client-writable and RLS pins the row to auth.uid() — but a key that never
+ * reaches the query cannot be the thing that gets a grant wrong later.
+ */
+export async function saveLandlordSettings(
+  patch: Record<string, unknown>,
+): Promise<SaveResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "You need to be signed in." };
+
+  const clean = sanitiseSettingsPatch(patch);
+  if (!clean) return { success: false, error: "Nothing to change." };
+
+  const problem = lateFeeProblem(clean);
+  if (problem) return { success: false, error: problem };
+
+  const { error } = await supabase
+    .from("landlord_settings")
+    .upsert({ landlord_id: user.id, ...clean }, { onConflict: "landlord_id" });
+
+  if (error) {
+    console.error("[LandlordSettings] save failed:", error.code, error.message);
+    if (error.code === "23514") {
+      return { success: false, error: "Those values are not a usable policy." };
+    }
+    return { success: false, error: "Could not save that." };
+  }
+
+  revalidatePath("/dashboard/landlord/settings");
+  return { success: true };
+}
+
+// ===========================================================================
+// Caretakers and staff
+// ===========================================================================
+
+export interface StaffInput {
+  fullName: string;
+  phone: string;
+  email: string | null;
+  staffRole: string;
+  buildingIds: string[];
+  canManageMaintenance: boolean;
+  canViewTenants: boolean;
+  canRecordPayments: boolean;
+}
+
+const STAFF_ROLE_VALUES = new Set(["caretaker", "manager", "accountant"]);
+
+export async function saveStaffMember(
+  staffId: string | null,
+  input: StaffInput,
+): Promise<SaveResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "You need to be signed in." };
+
+  const fullName = input.fullName.trim().replace(/\s+/g, " ");
+  if (fullName === "") {
+    return { success: false, fieldErrors: { fullName: "Give them a name." } };
+  }
+  const phone = normaliseKenyanPhone(input.phone.trim());
+  if (phone === null) {
+    return {
+      success: false,
+      fieldErrors: { phone: "Enter a Kenyan mobile number, like 0712345678." },
+    };
+  }
+  if (!STAFF_ROLE_VALUES.has(input.staffRole)) {
+    return { success: false, error: "Pick a role." };
+  }
+
+  const row = {
+    full_name: fullName,
+    phone,
+    email: input.email?.trim() || null,
+    staff_role: input.staffRole,
+    // The trigger refuses any building this landlord does not own, so a
+    // forged id fails at the database rather than being filtered here and
+    // quietly dropped.
+    building_ids: input.buildingIds,
+    can_manage_maintenance: input.canManageMaintenance,
+    can_view_tenants: input.canViewTenants,
+    can_record_payments: input.canRecordPayments,
+  };
+
+  const { error } = staffId
+    ? await supabase
+        .from("property_staff")
+        .update(row)
+        .eq("id", staffId)
+        .eq("landlord_id", user.id)
+    : await supabase
+        .from("property_staff")
+        .insert({ ...row, landlord_id: user.id });
+
+  if (error) {
+    console.error("[LandlordStaff] save failed:", error.code, error.message);
+    if (error.code === "28000") {
+      return { success: false, error: "That building is not one of yours." };
+    }
+    if (error.code === "23505") {
+      return {
+        success: false,
+        error: "You already have someone on that number.",
+      };
+    }
+    return { success: false, error: "Could not save that person." };
+  }
+
+  revalidatePath("/dashboard/landlord/settings");
+  return { success: true };
+}
+
+/** Suspend rather than delete: access stops at once, the record survives. */
+export async function setStaffStatus(
+  staffId: string,
+  status: "active" | "suspended",
+): Promise<SaveResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "You need to be signed in." };
+
+  const { error } = await supabase
+    .from("property_staff")
+    .update({ status })
+    .eq("id", staffId)
+    .eq("landlord_id", user.id);
+
+  if (error) {
+    console.error("[LandlordStaff] status failed:", error.message);
+    return { success: false, error: "Could not change that." };
+  }
+  revalidatePath("/dashboard/landlord/settings");
+  return { success: true };
+}
+
+export async function removeStaffMember(staffId: string): Promise<SaveResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "You need to be signed in." };
+
+  const { error } = await supabase
+    .from("property_staff")
+    .delete()
+    .eq("id", staffId)
+    .eq("landlord_id", user.id);
+
+  if (error) {
+    console.error("[LandlordStaff] remove failed:", error.message);
+    return { success: false, error: "Could not remove that person." };
+  }
   revalidatePath("/dashboard/landlord/settings");
   return { success: true };
 }

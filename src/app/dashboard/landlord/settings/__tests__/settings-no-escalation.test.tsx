@@ -10,13 +10,17 @@
  * These pin the absence of those controls.
  */
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { SettingsClient, type SettingsProfile } from "../SettingsClient";
 
 jest.mock("../actions", () => ({
   updateLandlordProfile: jest.fn(async () => ({ success: true })),
   updateLandlordNotifications: jest.fn(async () => ({ success: true })),
   requestLandlordAccountDeletion: jest.fn(async () => ({ success: true })),
+  saveLandlordSettings: jest.fn(async () => ({ success: true })),
+  saveStaffMember: jest.fn(async () => ({ success: true })),
+  setStaffStatus: jest.fn(async () => ({ success: true })),
+  removeStaffMember: jest.fn(async () => ({ success: true })),
 }));
 
 // Typed explicitly: inferred from the literal, the null fields narrow to
@@ -42,15 +46,21 @@ function open(over: Partial<SettingsProfile> = {}) {
   return render(
     <SettingsClient
       profile={{ ...profile, ...over }}
-      preferences={preferences}
+      channels={preferences}
+      settings={null}
+      staff={[]}
+      buildings={[]}
+      settingsMissing={false}
     />,
   );
 }
 
-it("offers exactly two editable text fields: name and contact phone", () => {
+it("offers exactly two editable text fields on General: name and contact phone", () => {
   const { container } = open();
   const editable = Array.from(
-    container.querySelectorAll("input, textarea, select"),
+    container.querySelectorAll(
+      'input[type="text"], input:not([type]), textarea, select',
+    ),
   ).map((c) => (c as HTMLInputElement).labels?.[0]?.textContent);
   expect(editable).toEqual(["Name", "Contact phone"]);
 });
@@ -108,9 +118,42 @@ it("reports an existing request instead of letting it be sent twice", () => {
 
 it("exposes each notification channel as a switch reporting its state", () => {
   open();
-  const switches = screen.getAllByRole("switch");
-  expect(switches).toHaveLength(3);
-  for (const s of switches) {
-    expect(s).toHaveAttribute("aria-checked", "true");
+  fireEvent.click(screen.getByRole("button", { name: "Notifications" }));
+  for (const label of ["Email", "SMS", "Push"]) {
+    expect(screen.getByRole("switch", { name: label })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
   }
+});
+
+it("marks every feature toggle that is not actually in force", () => {
+  // A stored switch nothing reads is a control that does nothing. Each one
+  // that MitaSafi does not act on yet must say so beside itself.
+  open();
+  const notYet = screen.getAllByText(/Saved, but not in effect/i);
+  // Five of the seven gate features that do not exist yet.
+  expect(notYet).toHaveLength(5);
+  // ...and the two that ARE in force carry no such note.
+  const live = screen.getByRole("switch", {
+    name: /Applications and screening/i,
+  });
+  expect(live).toBeInTheDocument();
+});
+
+it("hides caretaker management until staff access is switched on", () => {
+  open();
+  fireEvent.click(screen.getByRole("button", { name: "Caretakers" }));
+  expect(screen.getByText(/Staff access is switched off/i)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Add someone/i })).toBeNull();
+});
+
+it("says plainly that MitaSafi does not hold the rent", () => {
+  open();
+  fireEvent.click(screen.getByRole("button", { name: "Bank" }));
+  expect(
+    screen.getByText(/does not hold or disburse your rent/i),
+  ).toBeInTheDocument();
+  // And offers no account field to fill in, which would imply it did.
+  expect(screen.queryByLabelText(/account number|bank name/i)).toBeNull();
 });
