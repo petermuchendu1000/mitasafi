@@ -1,6 +1,6 @@
 /**
  * LandlordDashboardHeader Component
- * 
+ *
  * Top header bar for the landlord dashboard.
  * Features:
  * - Mobile menu toggle button
@@ -12,7 +12,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Menu, Bell, Search, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Menu, Bell, PanelLeftClose, PanelLeft } from "lucide-react";
 
 interface LandlordDashboardHeaderProps {
   /** Current page title */
@@ -42,7 +42,7 @@ export function LandlordDashboardHeader({
       className={cn(
         "sticky top-0 z-30 h-16 bg-white border-b border-gray-200",
         "flex items-center justify-between px-4 lg:px-6",
-        "transition-all duration-300"
+        "transition-all duration-300",
       )}
     >
       {/* Left section */}
@@ -51,10 +51,14 @@ export function LandlordDashboardHeader({
         <button
           onClick={onMenuToggle}
           className={cn(
-            "md:hidden p-2 -ml-2 rounded-lg",
+            // 44px square. At p-2 around a 24px icon this was a 40px target,
+            // which is under every thumb guideline going, on the one control
+            // a phone user needs most.
+            "md:hidden -ml-2 rounded-lg",
+            "min-w-[44px] min-h-[44px] flex items-center justify-center",
             "text-gray-600 hover:text-gray-900 hover:bg-gray-100",
             "transition-colors",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
           )}
           aria-label="Toggle navigation menu"
         >
@@ -69,9 +73,11 @@ export function LandlordDashboardHeader({
               "hidden md:flex items-center justify-center p-2 -ml-2 rounded-lg",
               "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
               "transition-colors",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
             )}
-            aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={
+              isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+            }
             title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isSidebarCollapsed ? (
@@ -92,18 +98,11 @@ export function LandlordDashboardHeader({
 
       {/* Right section */}
       <div className="flex items-center gap-2 sm:gap-4">
-        {/* Search button (optional, can expand to search bar) */}
-        <button
-          className={cn(
-            "p-2 rounded-lg",
-            "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
-            "transition-colors",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
-          )}
-          aria-label="Search"
-        >
-          <Search className="w-5 h-5" />
-        </button>
+        {/* There was a magnifying-glass button here. It had no onClick, no
+            href and no form around it, so tapping it did nothing at all, on
+            every landlord page. A control that looks live and is not is worse
+            than no control, so it is gone rather than wired: a header search
+            is a feature, not a mobile fix. */}
 
         {/* Custom notification component or default bell */}
         {children || (
@@ -112,20 +111,20 @@ export function LandlordDashboardHeader({
               "relative p-2 rounded-lg",
               "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
               "transition-colors",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
             )}
             aria-label={`Notifications${notificationCount > 0 ? ` (${notificationCount} unread)` : ""}`}
           >
             <Bell className="w-5 h-5" />
-            
+
             {/* Notification badge */}
             {notificationCount > 0 && (
-              <span 
+              <span
                 className={cn(
                   "absolute top-1 right-1 min-w-[18px] h-[18px]",
                   "flex items-center justify-center",
                   "bg-orange-500 text-white text-[10px] font-bold rounded-full",
-                  "px-1"
+                  "px-1",
                 )}
                 aria-hidden="true"
               >

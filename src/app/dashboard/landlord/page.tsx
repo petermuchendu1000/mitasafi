@@ -56,6 +56,7 @@ import {
   Home,
   MessageSquare,
   CalendarClock,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -69,7 +70,7 @@ import {
   type ActivityItem,
   type PortfolioLease,
 } from "@/lib/landlord/portfolio";
-import { formatKes } from "@/lib/landlord/labels";
+import { formatKes, formatKesCompact } from "@/lib/landlord/labels";
 
 /** PostgREST returns numeric as a string; null must not quietly become 0. */
 function num(value: number | string | null | undefined): number {
@@ -255,9 +256,12 @@ export default async function LandlordDashboardPage() {
     return {
       id: `payment:${p.id}`,
       kind: "payment",
+      // Short on purpose. These titles sit next to a relative timestamp in a
+      // column that is 360px wide on a phone, and "Rent payment received"
+      // wrapped to two lines to say what "Rent received" says in one.
       title:
         p.payment_type === "rent"
-          ? "Rent payment received"
+          ? "Rent received"
           : `${p.payment_type.replace(/_/g, " ")} received`,
       description: [place, who, formatKes(num(p.amount))]
         .filter(Boolean)
@@ -272,7 +276,7 @@ export default async function LandlordDashboardPage() {
     .map((m) => ({
       id: `maintenance:${m.id}`,
       kind: "maintenance" as const,
-      title: "Maintenance request",
+      title: "Repair reported",
       description: [m.title, whereIs(m.unit_id)].filter(Boolean).join(" · "),
       at: m.reported_at ?? "",
       href: buildingHref(m.unit_id),
@@ -294,7 +298,7 @@ export default async function LandlordDashboardPage() {
   const inquiryActivity: ActivityItem[] = inquiries.slice(0, 20).map((i) => ({
     id: `inquiry:${i.id}`,
     kind: "inquiry" as const,
-    title: "New inquiry",
+    title: "Inquiry",
     description: i.name,
     at: i.created_at ?? "",
     href: "/dashboard/inquiries",
@@ -342,194 +346,289 @@ export default async function LandlordDashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Welcome back, {firstName}!
+            Hi {firstName}
           </h1>
-          <p className="text-gray-500 mt-1">
-            {hasNothing
-              ? "Add your first building and the figures here start filling in."
-              : "Here's what's happening with your properties today."}
-          </p>
+          {/* The standing line here used to be "Here's what's happening with
+              your properties today." It said nothing the figures below do not
+              say better, and on a phone it cost two lines above the fold. Only
+              the empty-state sentence survives, because an empty page needs
+              telling what to do next. */}
+          {hasNothing && (
+            <p className="text-gray-500 mt-1">
+              Add a building and these figures start filling in.
+            </p>
+          )}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <Link
             href="/dashboard/landlord/listings/new"
             className={cn(
-              "inline-flex items-center gap-2 px-4 py-2.5 rounded-lg",
+              "flex-1 sm:flex-none inline-flex items-center justify-center gap-2",
+              "px-4 min-h-[44px] rounded-lg",
               "bg-cta-500 hover:bg-cta-600 text-white font-semibold text-sm",
               "transition-colors shadow-sm",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-cta-400 focus-visible:ring-offset-2",
             )}
           >
-            <Megaphone className="w-5 h-5" />
-            List a Vacancy
+            <Megaphone className="w-5 h-5 shrink-0" />
+            List a vacancy
           </Link>
           <Link
             href="/dashboard/landlord/buildings/new"
             className={cn(
-              "inline-flex items-center gap-2 px-4 py-2.5 rounded-lg",
+              "flex-1 sm:flex-none inline-flex items-center justify-center gap-2",
+              "px-4 min-h-[44px] rounded-lg",
               "bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm",
               "transition-colors shadow-sm",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2",
             )}
           >
-            <Home className="w-5 h-5" />
-            Add Property
+            <Home className="w-5 h-5 shrink-0" />
+            Add building
           </Link>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats.
+
+          Two columns on a phone, not one. Four full-width cards put roughly
+          500px of scroll between the landlord and the first thing they can
+          act on, for four numbers that each need about a line.
+
+          Every card is laid out the same way so the eye can skip down the
+          column: icon and a short badge on the top row, the number, what the
+          number is, then at most one line of detail. */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Link
           href="/dashboard/landlord/buildings"
-          className="bg-white rounded-xl border border-gray-200 p-5 hover:border-gray-300 hover:shadow-sm transition-all"
+          className="min-w-0 bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all"
         >
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-teal-100 rounded-lg">
+          <div className="flex items-center justify-between gap-2">
+            <div className="p-2 bg-teal-100 rounded-lg shrink-0">
               <Building2 className="w-5 h-5 text-teal-600" />
             </div>
-            <span className="text-sm font-medium text-gray-500">
-              {stats.totalUnits === 0
-                ? "no units yet"
-                : `${stats.occupancyRate}% occupied`}
-            </span>
-          </div>
-          <div className="mt-3">
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.totalUnits}
-            </p>
-            <p className="text-sm text-gray-500">
-              {stats.totalUnits === 1 ? "Unit" : "Units"} across{" "}
-              {stats.buildings}{" "}
-              {stats.buildings === 1 ? "building" : "buildings"}
-            </p>
-          </div>
-          <div className="mt-2 flex items-center gap-1 text-xs flex-wrap">
-            <span className="text-success-600 font-medium">
-              {stats.occupiedUnits}
-            </span>
-            <span className="text-gray-400">occupied</span>
-            <span className="text-gray-300 mx-1">•</span>
-            <span className="text-gray-500 font-medium">
-              {stats.vacantUnits}
-            </span>
-            <span className="text-gray-400">vacant</span>
-            {stats.unavailableUnits > 0 && (
-              <>
-                <span className="text-gray-300 mx-1">•</span>
-                <span className="text-orange-600 font-medium">
-                  {stats.unavailableUnits}
-                </span>
-                <span className="text-gray-400">out of service</span>
-              </>
+            {stats.totalUnits > 0 && (
+              <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
+                {stats.occupancyRate}% full
+              </span>
             )}
           </div>
+          <p className="mt-3 text-xl sm:text-2xl font-bold text-gray-900 tabular-nums">
+            {stats.totalUnits}
+          </p>
+          <p className="text-sm text-gray-500">
+            {stats.totalUnits === 1 ? "Unit" : "Units"}
+          </p>
+          {/* The badge already gives occupancy, so the count of let units
+              would only repeat it. Empty units are the number worth showing:
+              they are the ones the landlord can do something about. */}
+          <p className="mt-1 text-xs text-gray-500">
+            {stats.buildings} {stats.buildings === 1 ? "building" : "buildings"}
+            , {stats.vacantUnits} empty
+            {stats.unavailableUnits > 0
+              ? `, ${stats.unavailableUnits} closed`
+              : ""}
+          </p>
         </Link>
 
         <Link
           href="/dashboard/landlord/tenants"
-          className="bg-white rounded-xl border border-gray-200 p-5 hover:border-gray-300 hover:shadow-sm transition-all"
+          className="min-w-0 bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all"
         >
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="w-5 h-5 text-blue-600" />
-            </div>
+          <div className="p-2 bg-blue-100 rounded-lg w-fit">
+            <Users className="w-5 h-5 text-blue-600" />
           </div>
-          <div className="mt-3">
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.activeTenants}
-            </p>
-            <p className="text-sm text-gray-500">Active tenants</p>
-          </div>
-          <div className="mt-2 text-sm text-gray-500">
+          <p className="mt-3 text-xl sm:text-2xl font-bold text-gray-900 tabular-nums">
+            {stats.activeTenants}
+          </p>
+          <p className="text-sm text-gray-500">Tenants</p>
+          <p className="mt-1 text-xs text-gray-500">
             {stats.activeTenants === 0
-              ? "No leases recorded yet"
-              : `on ${stats.occupiedUnits} occupied ${
+              ? "No leases yet"
+              : `On ${stats.occupiedUnits} ${
                   stats.occupiedUnits === 1 ? "unit" : "units"
                 }`}
-          </div>
+          </p>
         </Link>
 
         <Link
           href="/dashboard/landlord/rent"
-          className="bg-white rounded-xl border border-gray-200 p-5 hover:border-gray-300 hover:shadow-sm transition-all"
+          className="min-w-0 bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all"
         >
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-success-100 rounded-lg">
+          <div className="flex items-center justify-between gap-2">
+            <div className="p-2 bg-success-100 rounded-lg shrink-0">
               <Wallet className="w-5 h-5 text-success-600" />
             </div>
             {stats.collectionRate !== null && (
               <span
                 className={cn(
-                  "text-sm font-medium",
+                  "text-xs font-medium whitespace-nowrap",
                   stats.collectionRate >= 80
                     ? "text-success-600"
                     : "text-orange-500",
                 )}
               >
-                {stats.collectionRate}% collected
+                {stats.collectionRate}% paid
               </span>
             )}
           </div>
-          <div className="mt-3">
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.collectionRate === null
-                ? "—"
-                : formatKes(stats.rentCollected)}
-            </p>
-            <p className="text-sm text-gray-500">Rent this month</p>
-          </div>
-          <div className="mt-2 text-sm text-gray-500">
+          {/* The placeholder here was an em dash. A landlord with no lease in
+              force is not collecting nothing, there is nothing to collect, and
+              the words say so. */}
+          <p className="mt-3 text-xl sm:text-2xl font-bold text-gray-900 tabular-nums">
             {stats.collectionRate === null
-              ? "Nothing is due — no leases in force"
-              : `of ${formatKes(stats.rentExpected)} due`}
-          </div>
+              ? "Nothing"
+              : formatKesCompact(stats.rentCollected)}
+          </p>
+          <p className="text-sm text-gray-500">Rent this month</p>
+          <p className="mt-1 text-xs text-gray-500">
+            {stats.collectionRate === null
+              ? "No lease in force"
+              : `of ${formatKesCompact(stats.rentExpected)}`}
+          </p>
         </Link>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Clock className="w-5 h-5 text-orange-600" />
-            </div>
+        <div className="min-w-0 bg-white rounded-xl border border-gray-200 p-4">
+          <div className="p-2 bg-orange-100 rounded-lg w-fit">
+            <Clock className="w-5 h-5 text-orange-600" />
           </div>
-          <div className="mt-3">
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.openMaintenance + stats.unansweredInquiries}
-            </p>
-            <p className="text-sm text-gray-500">Needs your attention</p>
-          </div>
-          <div className="mt-2 flex items-center gap-3 text-sm">
+          <p className="mt-3 text-xl sm:text-2xl font-bold text-gray-900 tabular-nums">
+            {stats.openMaintenance + stats.unansweredInquiries}
+          </p>
+          <p className="text-sm text-gray-500">To handle</p>
+          {/* These two go to different places, so the card cannot be one
+              link. They get a 44px row each instead, pulled back with a
+              negative margin so the card does not grow. */}
+          <div className="mt-1 flex flex-col text-xs">
             {stats.openMaintenance > 0 && (
               <Link
                 href="/dashboard/landlord/maintenance"
-                className="flex items-center gap-1 text-orange-600 hover:underline"
+                className="-my-1 min-h-[44px] flex items-center gap-1 text-orange-600 hover:underline"
               >
-                <Wrench className="w-3.5 h-3.5" />
-                {stats.openMaintenance} open
+                <Wrench className="w-3.5 h-3.5 shrink-0" />
+                {stats.openMaintenance}{" "}
+                {stats.openMaintenance === 1 ? "repair" : "repairs"}
               </Link>
             )}
             {stats.unansweredInquiries > 0 && (
               <Link
                 href="/dashboard/inquiries"
-                className="flex items-center gap-1 text-teal-600 hover:underline"
+                className="-my-1 min-h-[44px] flex items-center gap-1 text-teal-600 hover:underline"
               >
-                <MessageSquare className="w-3.5 h-3.5" />
-                {stats.unansweredInquiries} unanswered
+                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                {stats.unansweredInquiries}{" "}
+                {stats.unansweredInquiries === 1 ? "inquiry" : "inquiries"}
               </Link>
             )}
             {stats.openMaintenance === 0 && stats.unansweredInquiries === 0 && (
-              <span className="text-gray-400">Nothing outstanding</span>
+              <span className="text-gray-400">All clear</span>
             )}
           </div>
         </div>
       </div>
 
+      {/* Attention needed.
+
+          This used to sit at the bottom of the page, under eight activity
+          rows and six quick actions. On a phone that put the only two things
+          asking the landlord to act about 1,900px below the fold. It now
+          comes straight after the figures it follows from, on every width.
+
+          Each tile is one link rather than a paragraph with a small text
+          link in the corner: the whole tile is the target, which is how it
+          reads on a phone anyway, and "View details" and "Review" were
+          20px-tall tap targets saying nothing the tile did not.
+
+          Each of these is derived, so none of them can fire at a landlord
+          who does not have the problem. */}
+      {(stats.rentOutstanding > 0 ||
+        stats.urgentMaintenance > 0 ||
+        expiring.length > 0) && (
+        <div className="space-y-2">
+          <h2 className="font-semibold text-gray-900">Needs you</h2>
+
+          {stats.rentOutstanding > 0 && (
+            <Link
+              href="/dashboard/landlord/rent"
+              className="flex items-center gap-3 p-4 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors"
+            >
+              <AlertCircle className="w-5 h-5 text-orange-500 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-orange-800">
+                  {formatKes(stats.rentOutstanding)} rent unpaid
+                </p>
+                <p className="text-sm text-orange-700">
+                  {stats.collectionRate}% of {formatKes(stats.rentExpected)}{" "}
+                  paid
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-orange-400 shrink-0" />
+            </Link>
+          )}
+
+          {stats.urgentMaintenance > 0 && (
+            <Link
+              href="/dashboard/landlord/maintenance"
+              className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors"
+            >
+              <Wrench className="w-5 h-5 text-blue-500 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-blue-800">
+                  {stats.urgentMaintenance} urgent repair
+                  {stats.urgentMaintenance === 1 ? "" : "s"}
+                </p>
+                <p className="text-sm text-blue-700">
+                  {stats.openMaintenance} open in all
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-blue-400 shrink-0" />
+            </Link>
+          )}
+
+          {expiring.length > 0 && (
+            <Link
+              href="/dashboard/landlord/leases"
+              className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors"
+            >
+              <CalendarClock className="w-5 h-5 text-amber-500 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-amber-900">
+                  {expiring.length} lease{expiring.length === 1 ? "" : "s"} end
+                  {expiring.length === 1 ? "s" : ""} within 60 days
+                </p>
+                {/* Unit names only. The old version listed the tenant in
+                    brackets and a raw 2026-01-15 after an em dash, three of
+                    them joined by dots, which on a phone was four lines of
+                    small amber text nobody reads. The dates are on the page
+                    this links to. */}
+                <p className="text-sm text-amber-800 truncate">
+                  {expiring
+                    .slice(0, 3)
+                    .map((l) => whereIs(l.unit_id))
+                    .filter(Boolean)
+                    .join(", ")}
+                  {expiring.length > 3
+                    ? ` and ${expiring.length - 3} more`
+                    : ""}
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-amber-400 shrink-0" />
+            </Link>
+          )}
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Recent activity */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200">
+        {/* min-w-0 is load-bearing. A grid item defaults to
+            min-width: auto, so the single column on a phone was sized to
+            the widest content inside it: the track became 526px in a 360px
+            viewport and pushed the whole page sideways. With it the item
+            can shrink and the truncate below actually truncates. */}
+        <div className="min-w-0 lg:col-span-2 bg-white rounded-xl border border-gray-200">
           <div className="px-5 py-4 border-b border-gray-100">
             <h2 className="font-semibold text-gray-900">Recent activity</h2>
           </div>
@@ -540,8 +639,7 @@ export default async function LandlordDashboardPage() {
               </div>
               <p className="font-medium text-gray-900 mb-1">Nothing yet</p>
               <p className="text-sm text-gray-500 max-w-sm mx-auto">
-                Payments, maintenance requests, new leases and inquiries show up
-                here as they happen.
+                Payments, repairs, leases and inquiries land here.
               </p>
             </div>
           ) : (
@@ -554,13 +652,22 @@ export default async function LandlordDashboardPage() {
                     <div className={cn("p-2 rounded-lg shrink-0", style.bg)}>
                       <ActivityIcon className={cn("w-4 h-4", style.color)} />
                     </div>
+                    {/* The timestamp held a column of its own at every
+                        width. At 320px that left the description 120px to
+                        live in, so every row read "A101, Riverside Court ·
+                        Br…" and the feed told the landlord nothing. Below
+                        sm: the time goes under the text and the description
+                        gets the full row. */}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900">{item.title}</p>
                       <p className="text-sm text-gray-500 truncate">
                         {item.description}
                       </p>
+                      <p className="sm:hidden text-xs text-gray-400 mt-0.5">
+                        {relativeTime(item.at, now)}
+                      </p>
                     </div>
-                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                    <span className="hidden sm:block text-xs text-gray-400 whitespace-nowrap">
                       {relativeTime(item.at, now)}
                     </span>
                   </>
@@ -569,14 +676,14 @@ export default async function LandlordDashboardPage() {
                   <Link
                     key={item.id}
                     href={item.href}
-                    className="px-5 py-4 flex items-start gap-4 hover:bg-gray-50 transition-colors"
+                    className="px-4 sm:px-5 py-4 flex items-start gap-3 sm:gap-4 hover:bg-gray-50 transition-colors"
                   >
                     {body}
                   </Link>
                 ) : (
                   <div
                     key={item.id}
-                    className="px-5 py-4 flex items-start gap-4"
+                    className="px-4 sm:px-5 py-4 flex items-start gap-3 sm:gap-4"
                   >
                     {body}
                   </div>
@@ -587,7 +694,7 @@ export default async function LandlordDashboardPage() {
         </div>
 
         {/* Quick actions */}
-        <div className="bg-white rounded-xl border border-gray-200">
+        <div className="min-w-0 bg-white rounded-xl border border-gray-200">
           <div className="px-5 py-4 border-b border-gray-100">
             <h2 className="font-semibold text-gray-900">Quick actions</h2>
           </div>
@@ -603,16 +710,12 @@ export default async function LandlordDashboardPage() {
               <div className="p-2 bg-cta-100 rounded-lg">
                 <Megaphone className="w-4 h-4 text-cta-600" />
               </div>
-              <div>
-                <span className="font-medium">List a vacancy</span>
-                <p className="text-xs text-gray-500">
-                  {stats.vacantUnits > 0
-                    ? `${stats.vacantUnits} vacant ${
-                        stats.vacantUnits === 1 ? "unit" : "units"
-                      } to advertise`
-                    : "Advertise an empty unit"}
-                </p>
-              </div>
+              <span className="font-medium">List a vacancy</span>
+              {stats.vacantUnits > 0 && (
+                <span className="ml-auto px-2 py-0.5 text-xs font-semibold bg-gray-100 text-gray-600 rounded-full">
+                  {stats.vacantUnits} empty
+                </span>
+              )}
             </Link>
 
             <Link
@@ -626,12 +729,7 @@ export default async function LandlordDashboardPage() {
               <div className="p-2 bg-brand-100 rounded-lg">
                 <Plus className="w-4 h-4 text-brand-600" />
               </div>
-              <div>
-                <span className="font-medium">Add a building</span>
-                <p className="text-xs text-gray-500">
-                  Register a property to manage
-                </p>
-              </div>
+              <span className="font-medium">Add a building</span>
             </Link>
 
             <Link
@@ -664,10 +762,7 @@ export default async function LandlordDashboardPage() {
               <div className="p-2 bg-orange-100 rounded-lg">
                 <MessageSquare className="w-4 h-4 text-orange-600" />
               </div>
-              <div>
-                <span className="font-medium">Inquiries</span>
-                <p className="text-xs text-gray-500">View tenant leads</p>
-              </div>
+              <span className="font-medium">Inquiries</span>
               {stats.unansweredInquiries > 0 && (
                 <span className="ml-auto px-2 py-0.5 text-xs font-semibold bg-orange-100 text-orange-600 rounded-full">
                   {stats.unansweredInquiries}
@@ -687,9 +782,12 @@ export default async function LandlordDashboardPage() {
                 <Wallet className="w-4 h-4 text-success-600" />
               </div>
               <span className="font-medium">Rent collection</span>
+              {/* Compact, because this badge lives in a narrow sidebar
+                  column: the full "KES 165,000" wrapped onto two lines and
+                  pushed the row out of line with the five above it. */}
               {stats.rentOutstanding > 0 && (
-                <span className="ml-auto px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-600 rounded-full">
-                  {formatKes(stats.rentOutstanding)}
+                <span className="ml-auto px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-600 rounded-full whitespace-nowrap">
+                  {formatKesCompact(stats.rentOutstanding)}
                 </span>
               )}
             </Link>
@@ -715,88 +813,6 @@ export default async function LandlordDashboardPage() {
           </div>
         </div>
       </div>
-
-      {/* Attention needed — each of these is derived, so none of them can fire
-          at a landlord who does not have the problem. */}
-      {(stats.rentOutstanding > 0 ||
-        stats.urgentMaintenance > 0 ||
-        expiring.length > 0) && (
-        <div className="space-y-3">
-          <h2 className="font-semibold text-gray-900">Attention needed</h2>
-
-          {stats.rentOutstanding > 0 && (
-            <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-200 rounded-xl">
-              <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <p className="font-medium text-orange-800">
-                  {formatKes(stats.rentOutstanding)} of this month&apos;s rent
-                  is still outstanding
-                </p>
-                <p className="text-sm text-orange-700 mt-0.5">
-                  {stats.collectionRate}% of {formatKes(stats.rentExpected)} has
-                  been collected so far.
-                </p>
-              </div>
-              <Link
-                href="/dashboard/landlord/rent"
-                className="text-sm font-medium text-orange-600 hover:text-orange-700 whitespace-nowrap"
-              >
-                View details →
-              </Link>
-            </div>
-          )}
-
-          {stats.urgentMaintenance > 0 && (
-            <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <Wrench className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <p className="font-medium text-blue-800">
-                  {stats.urgentMaintenance} urgent maintenance request
-                  {stats.urgentMaintenance === 1 ? "" : "s"}
-                </p>
-                <p className="text-sm text-blue-700 mt-0.5">
-                  {stats.openMaintenance} open in total. Urgent jobs are the
-                  ones marked high or emergency.
-                </p>
-              </div>
-              <Link
-                href="/dashboard/landlord/maintenance"
-                className="text-sm font-medium text-blue-600 hover:text-blue-700 whitespace-nowrap"
-              >
-                Review →
-              </Link>
-            </div>
-          )}
-
-          {expiring.length > 0 && (
-            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-              <CalendarClock className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <p className="font-medium text-amber-900">
-                  {expiring.length} lease{expiring.length === 1 ? "" : "s"} end
-                  {expiring.length === 1 ? "s" : ""} within 60 days
-                </p>
-                <p className="text-sm text-amber-800 mt-0.5">
-                  {expiring
-                    .slice(0, 3)
-                    .map(
-                      (l) =>
-                        `${whereIs(l.unit_id)}${
-                          l.tenants?.full_name
-                            ? ` (${l.tenants.full_name})`
-                            : ""
-                        } — ${l.end_date}`,
-                    )
-                    .join(" · ")}
-                  {expiring.length > 3
-                    ? ` · and ${expiring.length - 3} more`
-                    : ""}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
