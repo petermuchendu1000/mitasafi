@@ -12,6 +12,7 @@ import {
   parseMpesaMessage,
   splitMessages,
   normaliseRef,
+  periodToSettle,
   type LeaseCandidate,
   type InboundPayment,
 } from "../reconciliation";
@@ -204,5 +205,102 @@ describe("end to end on the text", () => {
       lease({ leaseId: "L2", unitNumber: "A2", tenantPhone: "+254700111222" }),
     ]);
     expect(r).toMatchObject({ matched: true, leaseId: "L1" });
+  });
+});
+
+describe("which month a reconciled payment settles", () => {
+  const terms = {
+    monthlyRent: 30000,
+    rentDueDay: 5,
+    gracePeriodDays: 5,
+    startDate: "2026-06-01",
+    endDate: null as string | null,
+  };
+  const today = { year: 2026, month: 11, day: 20 };
+
+  it("credits the current month when nothing has ever been recorded", () => {
+    // No ledger exists, so there is no arrear to apply this against. The
+    // alternative — walking back to the lease start — would declare five
+    // months unpaid on the strength of no evidence at all.
+    expect(periodToSettle(terms, new Map(), today)).toEqual({
+      year: 2026,
+      month: 11,
+    });
+  });
+
+  it("never treats months before the first recorded rent as debt", () => {
+    // THE REAL CASE THIS EXISTS FOR: a lease running since February whose
+    // landlord only began recording in August. February to July are not
+    // arrears; they are months with no records. The next payment belongs to
+    // September, the first month actually owing inside the ledger.
+    const early = { ...terms, startDate: "2026-02-01" };
+    const paid = new Map([["2026-8", 30000]]);
+    expect(periodToSettle(early, paid, today)).toEqual({
+      year: 2026,
+      month: 9,
+    });
+  });
+
+  it("settles the oldest month still owing once a ledger exists", () => {
+    const paid = new Map([
+      ["2026-6", 30000],
+      ["2026-8", 30000],
+    ]);
+    expect(periodToSettle(terms, paid, today)).toEqual({
+      year: 2026,
+      month: 7,
+    });
+  });
+
+  it("stays on a month that is only part paid", () => {
+    // 10,000 of 30,000. The month is not settled, so the next payment
+    // belongs to it — not to the month after.
+    const paid = new Map([["2026-6", 10000]]);
+    expect(periodToSettle(terms, paid, today)).toEqual({
+      year: 2026,
+      month: 6,
+    });
+  });
+
+  it("falls to the current month when the tenant is paid up", () => {
+    const paid = new Map<string, number>();
+    for (let m = 6; m <= 11; m++) paid.set(`2026-${m}`, 30000);
+    expect(periodToSettle(terms, paid, today)).toEqual({
+      year: 2026,
+      month: 11,
+    });
+  });
+
+  it("never credits a month before the tenancy began", () => {
+    const late = { ...terms, startDate: "2026-10-14" };
+    const paid = new Map([["2026-10", 5000]]);
+    expect(periodToSettle(late, paid, today)).toEqual({
+      year: 2026,
+      month: 10,
+    });
+  });
+
+  it("credits an ended lease's last real month, not today", () => {
+    // A lease that ended in August cannot owe November rent, and filing a
+    // late payment against November would invent a tenancy.
+    const ended = { ...terms, endDate: "2026-08-31" };
+    const paid = new Map([
+      ["2026-6", 30000],
+      ["2026-7", 30000],
+      ["2026-8", 30000],
+    ]);
+    expect(periodToSettle(ended, paid, today)).toEqual({
+      year: 2026,
+      month: 8,
+    });
+  });
+
+  it("crosses the year boundary correctly", () => {
+    const old = { ...terms, startDate: "2025-01-01" };
+    const jan = { year: 2026, month: 1, day: 20 };
+    // The ledger starts Feb 2025 and that month is settled, so the next
+    // month owing is March 2025 — a year-crossing walk, not a reset.
+    const paid = new Map([["2025-2", 30000]]);
+    expect(periodToSettle(old, paid, jan)).toEqual({ year: 2025, month: 3 });
   });
 });

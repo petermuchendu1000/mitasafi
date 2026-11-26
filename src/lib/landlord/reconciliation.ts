@@ -17,6 +17,12 @@
  *   sends the money is often not the person on the lease.
  */
 
+import {
+  leaseCoversPeriod,
+  recentPeriods,
+  type CivilDate,
+} from "./rent-status";
+
 export interface InboundPayment {
   transId: string;
   amount: number;
@@ -190,6 +196,117 @@ export function parseMpesaMessage(text: string): InboundPayment | null {
     // the time it was ingested is used instead and the raw text is kept.
     transTime: new Date().toISOString(),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Which month's rent does this settle?
+// ---------------------------------------------------------------------------
+
+/**
+ * THE PERIOD IS NOT THE PAYMENT DATE, and a payment with no period at all is
+ * worse than either.
+ *
+ * `payments` carries both `payment_date` (when the money arrived) and
+ * (period_year, period_month) (which month it settles). Every rent-status
+ * calculation in the product keys on the PERIOD and skips rows where it is
+ * null — `rent/page.tsx` and the building page both `continue` on a null
+ * period, and `rollUpPortfolio` filters on it.
+ *
+ * The first version of the reconcile action set neither. The payment was
+ * created, the money showed on the Income page (which keys on payment_date),
+ * and the tenant still read as OVERDUE on the Rent Collection page. A
+ * reconciliation feature whose payments do not clear the arrears it exists to
+ * clear is not reconciling anything.
+ *
+ * The manual form asks the landlord which month. Matching cannot ask, so it
+ * uses the rule a landlord would apply to an unallocated payment: settle the
+ * OLDEST month that is still owing. A tenant two months behind who pays is
+ * credited against the older debt first, not the current one.
+ *
+ * AND THE PART THAT STOPS THAT RULE INVENTING DEBT
+ *   "Still owing" is only meaningful where a ledger exists. A real lease on
+ *   this project starts 1 February with its first recorded rent in August:
+ *   the landlord was collecting all along and only began recording in August.
+ *   Walking back to the lease start would call February through July unpaid
+ *   and quietly file today's money against February — six months of debt
+ *   conjured out of an absence of records, and the current month left looking
+ *   unpaid.
+ *
+ *   So the ledger begins at the FIRST RECORDED rent period, never before it.
+ *   With no recorded rent at all there is no ledger to be behind in, and the
+ *   payment settles the current month.
+ *
+ * It deliberately does NOT split one payment across two months. That is
+ * apportioning, it is listed as not built, and guessing at it here would put
+ * invented figures into two periods instead of one honest one.
+ */
+export interface LeaseRentTerms {
+  monthlyRent: number;
+  rentDueDay: number;
+  gracePeriodDays: number;
+  startDate: string;
+  endDate: string | null;
+}
+
+export interface PeriodKey {
+  year: number;
+  month: number;
+}
+
+/** "YYYY-M", the key shape used for already-credited rent. */
+export function periodKey(p: PeriodKey): string {
+  return `${p.year}-${p.month}`;
+}
+
+export function periodToSettle(
+  terms: LeaseRentTerms,
+  /** Confirmed rent already credited, by `periodKey`. */
+  paidByPeriod: Map<string, number>,
+  today: CivilDate,
+  lookbackMonths = 12,
+): PeriodKey {
+  const current: PeriodKey = { year: today.year, month: today.month };
+  const covered = recentPeriods(current, Math.max(1, lookbackMonths)).filter(
+    (p) =>
+      leaseCoversPeriod(
+        { start_date: terms.startDate, end_date: terms.endDate },
+        p,
+      ),
+  );
+
+  // Where the ledger starts. With nothing recorded, `current` means the loop
+  // below considers only the current month — there is no history to be
+  // behind in, so none is invented.
+  const ledgerStart = earliestRecorded(paidByPeriod) ?? current;
+
+  for (const p of covered) {
+    if (beforePeriod(p, ledgerStart)) continue;
+    const owed = Math.max(0, terms.monthlyRent);
+    const paid = Math.max(0, paidByPeriod.get(periodKey(p)) ?? 0);
+    if (owed - paid > 0) return p;
+  }
+
+  // Nothing owing. Credit the last month the lease was actually in force —
+  // for an ended lease that is not today, and saying it is would file money
+  // against a month with no tenancy in it.
+  return covered.length > 0 ? covered[covered.length - 1] : current;
+}
+
+function beforePeriod(a: PeriodKey, b: PeriodKey): boolean {
+  return a.year * 12 + a.month < b.year * 12 + b.month;
+}
+
+/** The earliest period any rent has been recorded against, or null. */
+function earliestRecorded(paidByPeriod: Map<string, number>): PeriodKey | null {
+  let best: PeriodKey | null = null;
+  for (const key of paidByPeriod.keys()) {
+    const m = /^(\d{4})-(\d{1,2})$/.exec(key);
+    if (!m) continue;
+    const p = { year: Number(m[1]), month: Number(m[2]) };
+    if (p.month < 1 || p.month > 12) continue;
+    if (best === null || beforePeriod(p, best)) best = p;
+  }
+  return best;
 }
 
 /** Split a pasted block into individual confirmations. */

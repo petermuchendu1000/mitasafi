@@ -21,8 +21,12 @@ import {
   splitMessages,
   parseMpesaMessage,
   matchPayment,
+  periodToSettle,
+  periodKey,
   type LeaseCandidate,
+  type PeriodKey,
 } from "@/lib/landlord/reconciliation";
+import { nairobiToday } from "@/lib/landlord/rent-status";
 
 export interface IngestResult {
   success: boolean;
@@ -174,6 +178,55 @@ export async function ingestPastedPayments(
 }
 
 /**
+ * Which month's rent this lease's next payment settles.
+ *
+ * Reads the lease's terms and the rent already confirmed against it, then
+ * applies `periodToSettle`. Returns null only if the lease cannot be read, in
+ * which case the payment is written with no period rather than a guessed one
+ * — a wrong period credits the wrong month, which is worse than none.
+ */
+async function periodForLease(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  leaseId: string,
+): Promise<PeriodKey | null> {
+  const { data: lease } = await supabase
+    .from("leases")
+    .select(
+      "monthly_rent, rent_due_day, grace_period_days, start_date, end_date",
+    )
+    .eq("id", leaseId)
+    .single();
+  if (!lease) return null;
+
+  const { data: priorRows } = await supabase
+    .from("payments")
+    .select("amount, period_year, period_month")
+    .eq("lease_id", leaseId)
+    .eq("payment_type", "rent")
+    .eq("status", "confirmed")
+    .limit(2000);
+
+  const paidByPeriod = new Map<string, number>();
+  for (const p of priorRows ?? []) {
+    if (p.period_year === null || p.period_month === null) continue;
+    const k = periodKey({ year: p.period_year, month: p.period_month });
+    paidByPeriod.set(k, (paidByPeriod.get(k) ?? 0) + Number(p.amount ?? 0));
+  }
+
+  return periodToSettle(
+    {
+      monthlyRent: Number(lease.monthly_rent ?? 0),
+      rentDueDay: Number(lease.rent_due_day ?? 5),
+      gracePeriodDays: Number(lease.grace_period_days ?? 5),
+      startDate: lease.start_date,
+      endDate: lease.end_date,
+    },
+    paidByPeriod,
+    nairobiToday(),
+  );
+}
+
+/**
  * Creates the payment and links the inbox row to it.
  *
  * `auto` is not decoration. It is the difference between "the matcher placed
@@ -198,6 +251,8 @@ async function attachToLease(
     .single();
   if (!row) return false;
 
+  const settles = await periodForLease(supabase, leaseId);
+
   const { data: payment, error: payError } = await supabase
     .from("payments")
     .insert({
@@ -205,6 +260,11 @@ async function attachToLease(
       amount: row.trans_amount,
       payment_type: "rent",
       payment_method: "mpesa",
+      // WHICH MONTH THIS SETTLES. Without it the payment is invisible to
+      // every rent-status calculation in the product — they all skip a null
+      // period — so the tenant would still read as overdue having paid.
+      period_year: settles?.year ?? null,
+      period_month: settles?.month ?? null,
       // The money has arrived — Safaricom's confirmation is what "confirmed"
       // means. Recording it as pending would understate what was received.
       status: "confirmed",
@@ -216,7 +276,10 @@ async function attachToLease(
       // The column has existed since the schema was written and nothing has
       // ever set it. This is the only thing that could.
       auto_matched: auto,
-      received_by: landlordId,
+      // received_by is a free-text column nothing else in the product writes
+      // or reads. Putting a UUID in it looked like provenance and was really
+      // just an id in an unlabelled field; who matched the row is recorded on
+      // mpesa_inbox.matched_by, which is a real foreign key.
     })
     .select("id")
     .single();
