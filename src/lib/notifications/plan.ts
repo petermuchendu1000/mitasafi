@@ -90,6 +90,52 @@ export interface NotifyPreferences {
   tenant_lease_expiry_notice_days: number;
 }
 
+/**
+ * Preferences for a landlord, falling back to the SCHEMA DEFAULTS when they
+ * have no settings row.
+ *
+ * WHY THE FALLBACK EXISTS
+ *   landlord_settings holds a row only once a landlord has saved something.
+ *   On this project that is nobody: the table is empty, while the Settings
+ *   page shows every notification switch already on, because it renders the
+ *   column defaults. Driving the notifier off the existence of a row would
+ *   therefore promise notifications in the UI and send none, for ever, to
+ *   everybody — and it would look exactly like a notifier with nothing to do.
+ *
+ *   The values below are the column defaults from migration 20260356000000.
+ *   They have to stay in step with it; `landlord_settings_staff_test.sql`
+ *   covers the column side.
+ */
+export function preferencesFrom(
+  landlordId: string,
+  row: Record<string, unknown> | null | undefined,
+): NotifyPreferences {
+  const r = row ?? {};
+  const bool = (k: string, dflt: boolean): boolean =>
+    typeof r[k] === "boolean" ? (r[k] as boolean) : dflt;
+  const int = (k: string, dflt: number): number => {
+    const n = Number(r[k]);
+    return Number.isFinite(n) ? n : dflt;
+  };
+  return {
+    landlord_id: landlordId,
+    notify_overdue_summary: bool("notify_overdue_summary", true),
+    overdue_summary_day_1: int("overdue_summary_day_1", 5),
+    overdue_summary_day_2: int("overdue_summary_day_2", 10),
+    notify_lease_expiring: bool("notify_lease_expiring", true),
+    lease_expiry_notice_days: int("lease_expiry_notice_days", 90),
+    tenant_notify_invoice_due_soon: bool(
+      "tenant_notify_invoice_due_soon",
+      true,
+    ),
+    tenant_notify_invoice_due_day: bool("tenant_notify_invoice_due_day", true),
+    tenant_notify_invoice_late: bool("tenant_notify_invoice_late", true),
+    tenant_notify_lease_expiring: bool("tenant_notify_lease_expiring", true),
+    tenant_invoice_due_notice_days: int("tenant_invoice_due_notice_days", 5),
+    tenant_lease_expiry_notice_days: int("tenant_lease_expiry_notice_days", 90),
+  };
+}
+
 export interface PlannedNotice {
   kind: NoticeKind;
   landlordId: string;
@@ -265,9 +311,19 @@ export function planNotices(input: PlanInput): PlannedNotice[] {
       const ledgerStart = earliestRecordedPeriod(paidMap);
       const insideLedger =
         ledgerStart !== null && !beforePeriod(period, ledgerStart);
+      // `daysLate > 0` and NOT `status === "overdue"`.
+      //
+      // rentStatusForPeriod labels a tenant who paid SOMETHING as "partial",
+      // never "overdue", however late they are — the label is about whether
+      // money arrived, not about the calendar. Keying on it meant a tenant
+      // 70,000 short and sixteen days past grace was never told anything,
+      // which is the commonest real case there is. A live dry run found it.
+      //
+      // daysLate is non-zero only when the grace period has passed AND a
+      // balance remains, which is exactly the predicate wanted here.
       if (
         prefs.tenant_notify_invoice_late &&
-        status.status === "overdue" &&
+        status.daysLate > 0 &&
         insideLedger
       ) {
         out.push({

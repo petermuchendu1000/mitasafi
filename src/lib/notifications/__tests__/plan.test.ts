@@ -1,5 +1,6 @@
 import {
   planNotices,
+  preferencesFrom,
   dedupeKey,
   stillOwing,
   type NotifyLease,
@@ -138,6 +139,22 @@ describe("the notices nobody should ever receive", () => {
     // the 20th, so the calendar alone would call this overdue.
     const p = planNotices(input({ payments: [] }));
     expect(kinds(p)).not.toContain("invoice_late");
+  });
+
+  it("DOES tell a part-payer who is past grace that rent is outstanding", () => {
+    // The gap a live dry run found. rentStatusForPeriod calls this tenant
+    // "partial", never "overdue", so a check on the status label skipped
+    // them entirely — and a tenant who pays half is the commonest case
+    // there is. Due on the 5th, 5 days' grace, today the 20th, 11,000 of
+    // 30,000 paid.
+    const p = planNotices(
+      input({
+        payments: [rent("l1", 2026, 10, 30000), rent("l1", 2026, 11, 11000)],
+      }),
+    );
+    const late = p.find((n) => n.kind === "invoice_late");
+    expect(late).toBeDefined();
+    expect(late?.data.balance).toBe(19000);
   });
 
   it("does accuse them once the ledger reaches this month", () => {
@@ -433,5 +450,57 @@ describe("every planned notice is deliverable", () => {
       // CHECK constraint, so it would fail at insert time instead of here.
       if (n.recipientKind === "tenant") expect(n.tenantId).toBeTruthy();
     }
+  });
+});
+
+describe("preferences when a landlord has never saved any", () => {
+  it("falls back to the documented defaults, not to silence", () => {
+    // landlord_settings holds a row only once somebody saves. On this
+    // project that was NOBODY, while the Settings page showed every switch
+    // on. A notifier driven off the row's existence would promise
+    // notifications in the UI and send none, to everyone, for ever.
+    const p = preferencesFrom("ll1", null);
+    expect(p).toEqual({
+      landlord_id: "ll1",
+      notify_overdue_summary: true,
+      overdue_summary_day_1: 5,
+      overdue_summary_day_2: 10,
+      notify_lease_expiring: true,
+      lease_expiry_notice_days: 90,
+      tenant_notify_invoice_due_soon: true,
+      tenant_notify_invoice_due_day: true,
+      tenant_notify_invoice_late: true,
+      tenant_notify_lease_expiring: true,
+      tenant_invoice_due_notice_days: 5,
+      tenant_lease_expiry_notice_days: 90,
+    });
+  });
+
+  it("honours a saved FALSE rather than treating it as missing", () => {
+    // The bug this guards: `row.x !== false` and `row.x || default` both
+    // turn a deliberate "off" back on when the value is false or 0.
+    const p = preferencesFrom("ll1", {
+      tenant_notify_invoice_late: false,
+      notify_overdue_summary: false,
+      tenant_invoice_due_notice_days: 0,
+    });
+    expect(p.tenant_notify_invoice_late).toBe(false);
+    expect(p.notify_overdue_summary).toBe(false);
+    expect(p.tenant_invoice_due_notice_days).toBe(0);
+  });
+
+  it("keeps the defaults for the keys a partial row does not mention", () => {
+    const p = preferencesFrom("ll1", { tenant_notify_invoice_late: false });
+    expect(p.tenant_notify_invoice_due_soon).toBe(true);
+    expect(p.lease_expiry_notice_days).toBe(90);
+  });
+
+  it("plans a full set of notices for a landlord with no settings row", () => {
+    const planned = planNotices({
+      ...input(),
+      prefs: preferencesFrom("ll1", null),
+      today: { year: 2026, month: 11, day: 20 },
+    });
+    expect(planned.length).toBeGreaterThan(0);
   });
 });

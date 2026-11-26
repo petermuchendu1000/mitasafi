@@ -29,10 +29,10 @@ import { sendNotificationEmail } from "@/lib/email";
 import { nairobiToday } from "@/lib/landlord/rent-status";
 import {
   planNotices,
+  preferencesFrom,
   stillOwing,
   type NotifyLease,
   type NotifyPayment,
-  type NotifyPreferences,
   type PlannedNotice,
 } from "@/lib/notifications/plan";
 import { renderNotice } from "@/lib/notifications/render";
@@ -67,23 +67,44 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const today = nairobiToday();
 
-  let settingsQuery = admin
-    .from("landlord_settings")
-    // prettier-ignore
-    .select(
-      "landlord_id, notify_overdue_summary, overdue_summary_day_1, overdue_summary_day_2, notify_lease_expiring, lease_expiry_notice_days, tenant_notify_invoice_due_soon, tenant_notify_invoice_due_day, tenant_notify_invoice_late, tenant_notify_lease_expiring, tenant_invoice_due_notice_days, tenant_lease_expiry_notice_days",
-    );
+  // WHO IS CONSIDERED: every landlord who has a lease, plus anyone who has
+  // saved settings. NOT the settings table alone — it holds a row only once
+  // somebody has saved something, which on this project was nobody, while
+  // the Settings page shows every switch already on because it renders the
+  // column defaults. Driving off the table alone would promise
+  // notifications in the UI and send none, for ever, to everybody — and it
+  // would look exactly like a notifier with nothing to do.
+  let leaseOwners = admin.from("leases").select("landlord_id").limit(20000);
+  if (onlyLandlord) leaseOwners = leaseOwners.eq("landlord_id", onlyLandlord);
+  let savedSettings = admin.from("landlord_settings").select("*");
   if (onlyLandlord)
-    settingsQuery = settingsQuery.eq("landlord_id", onlyLandlord);
+    savedSettings = savedSettings.eq("landlord_id", onlyLandlord);
 
-  const { data: settingsRows, error: settingsError } = await settingsQuery;
-  if (settingsError) {
-    console.error("[Notify] settings query failed:", settingsError.message);
-    return NextResponse.json(
-      { error: "settings query failed" },
-      { status: 500 },
+  const [
+    { data: ownerRows, error: ownerError },
+    { data: settingsRows, error: settingsError },
+  ] = await Promise.all([leaseOwners, savedSettings]);
+
+  if (ownerError || settingsError) {
+    console.error(
+      "[Notify] query failed:",
+      ownerError?.message ?? settingsError?.message,
     );
+    return NextResponse.json({ error: "query failed" }, { status: 500 });
   }
+
+  const settingsByLandlord = new Map<string, Record<string, unknown>>(
+    (settingsRows ?? []).map((r) => [
+      (r as { landlord_id: string }).landlord_id,
+      r as unknown as Record<string, unknown>,
+    ]),
+  );
+  const landlordIds = [
+    ...new Set([
+      ...(ownerRows ?? []).map((r) => r.landlord_id as string),
+      ...settingsByLandlord.keys(),
+    ]),
+  ].filter(Boolean);
 
   const summary = {
     dryRun,
@@ -97,32 +118,12 @@ export async function GET(request: NextRequest) {
     byKind: {} as Record<string, number>,
   };
 
-  for (const raw of settingsRows ?? []) {
-    const landlordId = raw.landlord_id as string;
+  for (const landlordId of landlordIds) {
     summary.landlords += 1;
-
-    const prefs: NotifyPreferences = {
-      landlord_id: landlordId,
-      notify_overdue_summary: raw.notify_overdue_summary !== false,
-      overdue_summary_day_1: num(raw.overdue_summary_day_1, 5),
-      overdue_summary_day_2: num(raw.overdue_summary_day_2, 10),
-      notify_lease_expiring: raw.notify_lease_expiring !== false,
-      lease_expiry_notice_days: num(raw.lease_expiry_notice_days, 90),
-      tenant_notify_invoice_due_soon:
-        raw.tenant_notify_invoice_due_soon !== false,
-      tenant_notify_invoice_due_day:
-        raw.tenant_notify_invoice_due_day !== false,
-      tenant_notify_invoice_late: raw.tenant_notify_invoice_late !== false,
-      tenant_notify_lease_expiring: raw.tenant_notify_lease_expiring !== false,
-      tenant_invoice_due_notice_days: num(
-        raw.tenant_invoice_due_notice_days,
-        5,
-      ),
-      tenant_lease_expiry_notice_days: num(
-        raw.tenant_lease_expiry_notice_days,
-        90,
-      ),
-    };
+    const prefs = preferencesFrom(
+      landlordId,
+      settingsByLandlord.get(landlordId),
+    );
 
     const [{ data: leaseRows }, { data: profileRow }] = await Promise.all([
       admin
