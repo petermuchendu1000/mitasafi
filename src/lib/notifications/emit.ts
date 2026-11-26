@@ -157,3 +157,144 @@ export async function notifyApplicationSubmitted(input: {
     console.error("[Notify] application notification threw:", e);
   }
 }
+
+/**
+ * Tell a landlord a tenant has reported a repair.
+ *
+ * Takes the request id and nothing else: the landlord, the unit and the
+ * tenant are read back from the row the database just derived, so the
+ * caller cannot choose who is told or what they are told about.
+ */
+export async function notifyRepairReported(input: {
+  requestId: string;
+}): Promise<void> {
+  try {
+    const admin = createAdminClient();
+
+    const { data: req } = await admin
+      .from("maintenance_requests")
+      // prettier-ignore
+      .select(
+        "id, landlord_id, tenant_id, unit_id, category, title, description, urgency",
+      )
+      .eq("id", input.requestId)
+      .maybeSingle();
+    if (!req?.landlord_id) return;
+
+    const landlordId = req.landlord_id as string;
+
+    const [
+      { data: profile },
+      { data: settings },
+      { data: tenant },
+      { data: unit },
+    ] = await Promise.all([
+      admin.from("profiles").select("email").eq("id", landlordId).maybeSingle(),
+      admin
+        .from("landlord_settings")
+        .select("*")
+        .eq("landlord_id", landlordId)
+        .maybeSingle(),
+      req.tenant_id
+        ? admin
+            .from("tenants")
+            .select("full_name")
+            .eq("id", req.tenant_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      req.unit_id
+        ? admin
+            .from("units")
+            .select("unit_number, building_id")
+            .eq("id", req.unit_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    const to = profile?.email;
+    if (!to) return;
+
+    const prefs = preferencesFrom(
+      landlordId,
+      settings as Record<string, unknown> | null,
+    );
+    if (!prefs.notify_maintenance_submitted) return;
+
+    const { data: building } = unit?.building_id
+      ? await admin
+          .from("buildings")
+          .select("name")
+          .eq("id", unit.building_id)
+          .maybeSingle()
+      : { data: null };
+
+    // One notice per request. A request is created once, so this is belt
+    // and braces against a retried action rather than a real duplicate.
+    const key = dedupeKey({
+      kind: "maintenance_submitted",
+      recipient: landlordId,
+      subjectId: req.id,
+      period: null,
+    });
+
+    const { data: already } = await admin
+      .from("notification_log")
+      .select("id")
+      .eq("landlord_id", landlordId)
+      .eq("dedupe_key", key)
+      .eq("status", "sent")
+      .maybeSingle();
+    if (already) return;
+
+    const notice: PlannedNotice = {
+      kind: "maintenance_submitted",
+      landlordId,
+      recipientKind: "landlord",
+      tenantId: (req.tenant_id as string | null) ?? null,
+      toEmail: to,
+      subjectType: "lease",
+      subjectId: req.id,
+      period: null,
+      dedupeKey: key,
+      data: {
+        tenant: tenant?.full_name ?? "Your tenant",
+        unit: unit?.unit_number ?? "",
+        building: building?.name ?? "",
+        category: String(req.category ?? "").replace(/_/g, " "),
+        title: String(req.title ?? "Repair"),
+        description: String(req.description ?? ""),
+        urgency: String(req.urgency ?? "normal"),
+      },
+    };
+
+    const rendered = renderNotice(notice);
+    const result = await sendNotificationEmail({
+      to,
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
+    });
+
+    const { error } = await admin.from("notification_log").insert({
+      landlord_id: landlordId,
+      recipient_kind: "landlord",
+      tenant_id: (req.tenant_id as string | null) ?? null,
+      channel: "email",
+      kind: "maintenance_submitted",
+      dedupe_key: key,
+      subject_type: "maintenance_request",
+      subject_id: req.id,
+      period: null,
+      status: result.success ? "sent" : "failed",
+      error: result.success ? null : (result.error ?? "unknown").slice(0, 500),
+    });
+    if (error && error.code !== "23505") {
+      console.error("[Notify] repair log write failed:", error.message);
+    }
+    if (!result.success) {
+      console.error("[Notify] repair email failed:", result.error);
+    }
+  } catch (e) {
+    console.error("[Notify] repair notification threw:", e);
+  }
+}

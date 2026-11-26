@@ -211,6 +211,33 @@ export function renderNotice(notice: PlannedNotice): RenderedNotice {
       };
     }
 
+    case "maintenance_submitted": {
+      const subject = `Repair reported: ${d.title}`;
+      const body = `${d.tenant} reported a ${d.category} problem at ${where || "their unit"}: ${d.title}.`;
+      return {
+        subject,
+        text: [
+          body,
+          ``,
+          String(d.description ?? ""),
+          ``,
+          `Urgency: ${d.urgency}`,
+          ``,
+          `${SITE_URL}/dashboard/landlord/maintenance`,
+          ``,
+          LANDLORD_FOOTER,
+        ].join("\n"),
+        html: shell(
+          subject,
+          `<p style="margin:0 0 12px">${escape(body)}</p>
+           <p style="margin:0 0 12px;white-space:pre-wrap">${escape(String(d.description ?? ""))}</p>
+           <p style="margin:0 0 20px;color:#6b7280">Urgency: ${escape(String(d.urgency))}</p>
+           <p style="margin:0"><a href="${SITE_URL}/dashboard/landlord/maintenance" style="background:#0d9488;color:#ffffff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block">Open maintenance</a></p>`,
+          LANDLORD_FOOTER,
+        ),
+      };
+    }
+
     case "overdue_summary": {
       const n = Number(d.leasesBehind);
       const subject = `${n} lease${n === 1 ? "" : "s"} behind on rent`;

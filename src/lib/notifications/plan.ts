@@ -53,7 +53,8 @@ export type NoticeKind =
   | "invoice_late"
   | "overdue_summary"
   | "lease_expiring"
-  | "application_submitted";
+  | "application_submitted"
+  | "maintenance_submitted";
 
 export interface NotifyLease {
   id: string;
@@ -93,6 +94,7 @@ export interface NotifyPreferences {
   notify_lease_expiring: boolean;
   lease_expiry_notice_days: number;
   notify_application_submitted: boolean;
+  notify_maintenance_submitted: boolean;
   tenant_notify_invoice_due_soon: boolean;
   tenant_notify_invoice_due_day: boolean;
   tenant_notify_invoice_late: boolean;
@@ -136,6 +138,7 @@ export function preferencesFrom(
     notify_lease_expiring: bool("notify_lease_expiring", true),
     lease_expiry_notice_days: int("lease_expiry_notice_days", 90),
     notify_application_submitted: bool("notify_application_submitted", true),
+    notify_maintenance_submitted: bool("notify_maintenance_submitted", true),
     tenant_notify_invoice_due_soon: bool(
       "tenant_notify_invoice_due_soon",
       true,

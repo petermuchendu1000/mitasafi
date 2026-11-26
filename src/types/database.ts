@@ -3463,7 +3463,14 @@ export type Database = {
           due_date?: string | null;
           estimated_cost?: number | null;
           id?: string;
-          landlord_id: string;
+          /**
+           * NOT NULL in the schema, but a TENANT must not send it: the
+           * BEFORE INSERT trigger derives it from their live lease, and a
+           * client that names it is treated as a landlord logging the job.
+           * Optional here so the tenant path type-checks. See
+           * 20260362000000_tenant_repair_requests.sql.
+           */
+          landlord_id?: string;
           metadata?: Json | null;
           parts_used?: string[] | null;
           photos?: string[] | null;
@@ -3476,7 +3483,8 @@ export type Database = {
           tenant_id?: string | null;
           tenant_rating?: number | null;
           title: string;
-          unit_id: string;
+          /** Derived from the tenant's lease; see landlord_id above. */
+          unit_id?: string;
           updated_at?: string | null;
           urgency?: string | null;
           work_performed?: string | null;

@@ -13,6 +13,16 @@
  */
 
 import { render, screen, within, fireEvent } from "@testing-library/react";
+
+// The component imports a "use server" module; loading it under jsdom pulls
+// next/cache in and the suite cannot start. The action itself is exercised
+// against the real database by the SQL suite and the browser run.
+const submitRepairRequest = jest.fn(async (_input?: unknown) => ({
+  success: true,
+}));
+jest.mock("../actions", () => ({
+  submitRepairRequest: (input: unknown) => submitRepairRequest(input),
+}));
 import { RentClient } from "../RentClient";
 import type { PayoutDestination } from "@/lib/landlord/payment-instructions";
 import { tenancySummary } from "@/lib/tenant/summary";
@@ -151,6 +161,8 @@ describe("paying", () => {
 });
 
 describe("the tenant cannot write anything", () => {
+  beforeEach(() => submitRepairRequest.mockClear());
+
   it("offers no way to record a payment", () => {
     ok({
       payments: [
@@ -179,16 +191,64 @@ describe("the tenant cannot write anything", () => {
     expect(screen.getByText(/you cannot add it here/i)).toBeInTheDocument();
   });
 
-  it("says a repair cannot be raised here, rather than offering a dead button", () => {
+  it("offers no way to set a cost, an assignee or a status on a repair", () => {
+    // A tenant reports a problem. Everything about handling it is the
+    // landlord's, and the form must not even ask.
     ok();
     fireEvent.click(screen.getByRole("tab", { name: /Repairs/ }));
-    expect(screen.getByText(/not built yet/i)).toBeInTheDocument();
-    const buttons = screen
-      .queryAllByRole("button")
-      .map((b) => b.textContent ?? "");
-    expect(buttons.some((b) => /report|raise|new request/i.test(b))).toBe(
+    fireEvent.click(screen.getByRole("button", { name: "Report a repair" }));
+    const labels = Array.from(document.querySelectorAll("label")).map(
+      (l) => l.textContent ?? "",
+    );
+    expect(labels.some((l) => /cost|assign|status|contractor/i.test(l))).toBe(
       false,
     );
+  });
+
+  it("sends only what the tenant typed, and no ids", () => {
+    ok();
+    fireEvent.click(screen.getByRole("tab", { name: /Repairs/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Report a repair" }));
+    fireEvent.change(screen.getByLabelText("What is wrong"), {
+      target: { value: "Kitchen tap drips" },
+    });
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "It drips all night and the sink stains." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(submitRepairRequest).toHaveBeenCalledTimes(1);
+    const sent = submitRepairRequest.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
+    expect(sent).toMatchObject({
+      category: "plumbing",
+      urgency: "normal",
+      title: "Kitchen tap drips",
+    });
+    // The three ids the database derives must never leave the browser.
+    for (const forbidden of [
+      "unitId",
+      "unit_id",
+      "landlordId",
+      "landlord_id",
+      "tenantId",
+      "tenant_id",
+      "status",
+    ]) {
+      expect(sent).not.toHaveProperty(forbidden);
+    }
+  });
+
+  it("says photos are not supported rather than offering a dead control", () => {
+    ok();
+    fireEvent.click(screen.getByRole("tab", { name: /Repairs/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Report a repair" }));
+    expect(
+      screen.getByText(/Photos are not supported yet/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/photo/i)).toBeNull();
   });
 });
 

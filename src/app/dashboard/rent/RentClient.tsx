@@ -14,7 +14,8 @@
  * tenant follows another is how rent reaches the wrong account.
  */
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Copy,
   Check,
@@ -32,6 +33,12 @@ import {
 } from "@/lib/landlord/payment-instructions";
 import type { Statement } from "@/lib/landlord/statement";
 import { duePhrase, type TenancySummary } from "@/lib/tenant/summary";
+import { submitRepairRequest } from "./actions";
+import {
+  REPAIR_CATEGORIES,
+  REPAIR_URGENCIES,
+  CATEGORY_LABEL,
+} from "@/lib/tenant/repairs";
 
 export interface RentPayment {
   id: string;
@@ -86,6 +93,202 @@ function CopyButton({ value, label }: { value: string; label: string }) {
  * provides the main landmark — a second one gives the page two, and a screen
  * reader user then has to guess which is the content.
  */
+/**
+ * Reporting a repair.
+ *
+ * It asks for six things and sends none of the ids: the unit, the landlord
+ * and the tenant are derived by the database from the reporter's own lease,
+ * so this form cannot file a repair against anybody else.
+ */
+function RepairForm({ onDone }: { onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [category, setCategory] = useState("plumbing");
+  const [urgency, setUrgency] = useState("normal");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [preferredTime, setPreferredTime] = useState("");
+  const [access, setAccess] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [busy, start] = useTransition();
+
+  if (!open) {
+    return (
+      <div className="px-5 py-4 border-b border-gray-200">
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true);
+            setSent(false);
+          }}
+          className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium"
+        >
+          Report a repair
+        </button>
+        {sent && (
+          <p role="status" className="mt-2 text-sm text-teal-800">
+            Sent. Your landlord has been told.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <form
+      className="px-5 py-4 border-b border-gray-200 space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        start(async () => {
+          const r = await submitRepairRequest({
+            category,
+            title,
+            description,
+            urgency,
+            preferredTime,
+            accessInstructions: access,
+          });
+          if (r.success) {
+            setOpen(false);
+            setSent(true);
+            setTitle("");
+            setDescription("");
+            setPreferredTime("");
+            setAccess("");
+            onDone();
+          } else {
+            setError(r.error ?? "Could not send that.");
+          }
+        });
+      }}
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="rp-cat" className="block text-xs text-gray-600">
+            Category
+          </label>
+          <select
+            id="rp-cat"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          >
+            {REPAIR_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {CATEGORY_LABEL[c] ?? c}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="rp-urg" className="block text-xs text-gray-600">
+            Urgency
+          </label>
+          <select
+            id="rp-urg"
+            value={urgency}
+            onChange={(e) => setUrgency(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          >
+            {REPAIR_URGENCIES.map((u) => (
+              <option key={u} value={u}>
+                {u === "emergency"
+                  ? "Emergency"
+                  : u[0].toUpperCase() + u.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label htmlFor="rp-title" className="block text-xs text-gray-600">
+          What is wrong
+        </label>
+        <input
+          id="rp-title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={200}
+          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          placeholder="Kitchen tap drips"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="rp-desc" className="block text-xs text-gray-600">
+          Details
+        </label>
+        <textarea
+          id="rp-desc"
+          rows={3}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          maxLength={4000}
+          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          placeholder="When it started, how bad it is."
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="rp-time" className="block text-xs text-gray-600">
+            Best time (optional)
+          </label>
+          <input
+            id="rp-time"
+            value={preferredTime}
+            onChange={(e) => setPreferredTime(e.target.value)}
+            maxLength={200}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            placeholder="Weekday mornings"
+          />
+        </div>
+        <div>
+          <label htmlFor="rp-acc" className="block text-xs text-gray-600">
+            Access (optional)
+          </label>
+          <input
+            id="rp-acc"
+            value={access}
+            onChange={(e) => setAccess(e.target.value)}
+            maxLength={500}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            placeholder="Spare key with the caretaker"
+          />
+        </div>
+      </div>
+
+      {error && (
+        <p role="alert" className="text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={busy}
+          className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium disabled:opacity-50"
+        >
+          {busy ? "Sending…" : "Send"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700"
+        >
+          Cancel
+        </button>
+      </div>
+      <p className="text-xs text-gray-500">
+        Photos are not supported yet. An emergency needs a phone call as well.
+      </p>
+    </form>
+  );
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
   return <div className="max-w-4xl space-y-6">{children}</div>;
 }
@@ -152,6 +355,7 @@ export function RentClient(
   props: { state: "not-a-tenant" } | { state: "no-lease" } | RentOkProps,
 ) {
   const [tab, setTab] = useState<TabId>("pay");
+  const router = useRouter();
 
   if (props.state === "not-a-tenant") {
     return (
@@ -631,6 +835,7 @@ export function RentClient(
         {/* ---------------- repairs ---------------- */}
         {tab === "repairs" && (
           <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <RepairForm onDone={() => router.refresh()} />
             {maintenance.length === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-gray-500">
                 No repair requests.
@@ -668,8 +873,8 @@ export function RentClient(
                 aria-hidden="true"
                 className="w-3.5 h-3.5 shrink-0 mt-0.5"
               />
-              Raising a repair here is not built yet. Contact your landlord
-              directly; anything they log appears here.
+              Your landlord is emailed when you report one. Everything after
+              that — who comes, when, and what it costs — is theirs to record.
             </p>
           </section>
         )}
