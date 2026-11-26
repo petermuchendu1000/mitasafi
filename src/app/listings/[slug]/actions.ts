@@ -16,6 +16,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { notifyApplicationSubmitted } from "@/lib/notifications/emit";
 
 export interface ApplicationInput {
   listingId: string;
@@ -112,6 +113,19 @@ export async function submitRentalApplication(
     }
     return { success: false, error: "Could not send your application." };
   }
+
+  // The application is saved. Telling the landlord is a best-effort step
+  // AFTER that fact: it is awaited so the work finishes before the server
+  // action returns, but it cannot throw and cannot change what the
+  // applicant is told. A landlord who misses an application loses the
+  // tenant to whoever answered first, which is why it is worth doing at
+  // all — and why it must never turn a successful submission into an error
+  // on the applicant's screen.
+  await notifyApplicationSubmitted({
+    listingId: input.listingId,
+    applicantUserId: user.id,
+    applicantName: fullName,
+  });
 
   return { success: true };
 }

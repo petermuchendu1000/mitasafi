@@ -323,8 +323,16 @@ export const HELP_SECTIONS: HelpSection[] = [
  */
 export const NOT_BUILT: { what: string; why: string }[] = [
   {
-    what: "Notification emails and SMS",
-    why: "The preferences under Settings decide what would be sent. Nothing sends them yet, so treat them as a plan rather than a promise.",
+    what: "SMS notifications",
+    why: "No SMS gateway is connected, so nothing under Settings can reach a phone. Email works; the SMS switches do not.",
+  },
+  {
+    what: "Most of the event notifications",
+    why: "A new rental application does email you. The rest cannot fire, because nothing in MitaSafi creates the event they describe: no maintenance request is ever raised here, a payment can only be recorded by you, and there is no lease signing. The switches are real; the events behind them are not, yet.",
+  },
+  {
+    what: "Scheduled reminders, until they are switched on",
+    why: "Rent reminders, late notices, lease expiry warnings and your arrears summary are built and tested, but the daily schedule has to be enabled before anything is sent on its own.",
   },
   {
     what: "Staff invitations",

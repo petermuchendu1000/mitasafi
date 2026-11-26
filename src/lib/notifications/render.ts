@@ -182,6 +182,35 @@ export function renderNotice(notice: PlannedNotice): RenderedNotice {
       };
     }
 
+    case "application_submitted": {
+      // The top of the funnel. A landlord who misses this loses a tenant to
+      // whoever answered first, so it names the listing and the applicant
+      // and does nothing else.
+      const subject =
+        `New application for ${escape(String(d.listing))}`.replace(
+          /&amp;/g,
+          "&",
+        );
+      const body = `${d.applicant} has applied for ${d.listing}${d.area ? `, ${d.area}` : ""}.`;
+      return {
+        subject: `New application for ${d.listing}`,
+        text: [
+          body,
+          ``,
+          `Read it and decide here:`,
+          `${SITE_URL}/dashboard/landlord/applications`,
+          ``,
+          LANDLORD_FOOTER,
+        ].join("\n"),
+        html: shell(
+          subject,
+          `<p style="margin:0 0 20px">${escape(body)}</p>
+           <p style="margin:0"><a href="${SITE_URL}/dashboard/landlord/applications" style="background:#0d9488;color:#ffffff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block">Read the application</a></p>`,
+          LANDLORD_FOOTER,
+        ),
+      };
+    }
+
     case "overdue_summary": {
       const n = Number(d.leasesBehind);
       const subject = `${n} lease${n === 1 ? "" : "s"} behind on rent`;

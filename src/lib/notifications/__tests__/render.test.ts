@@ -132,3 +132,61 @@ describe("what goes in the message", () => {
     expect(r.html).not.toContain("<script>bad()");
   });
 });
+
+describe("the application notice", () => {
+  const applied = (over: Record<string, string> = {}) =>
+    renderNotice({
+      kind: "application_submitted",
+      landlordId: "ll1",
+      recipientKind: "landlord",
+      tenantId: null,
+      toEmail: "landlord@example.test",
+      subjectType: "lease",
+      subjectId: "listing-1",
+      period: null,
+      dedupeKey: "k",
+      data: {
+        applicant: "Wanjiru Kariuki",
+        listing: "2 bed in Kilimani",
+        area: "Kilimani",
+        ...over,
+      },
+    } as PlannedNotice);
+
+  it("names the applicant and the listing", () => {
+    const r = applied();
+    expect(r.subject).toBe("New application for 2 bed in Kilimani");
+    expect(r.text).toContain(
+      "Wanjiru Kariuki has applied for 2 bed in Kilimani",
+    );
+    expect(r.text).toContain("Kilimani");
+  });
+
+  it("points at the applications page, not the dashboard root", () => {
+    expect(applied().text).toContain("/dashboard/landlord/applications");
+  });
+
+  it("is addressed as a landlord notice IN BOTH PARTS, not a tenant one", () => {
+    // Getting this wrong tells a landlord to speak to their landlord. The
+    // first version of this test read only the text part, so a mutant that
+    // swapped the HTML footer alone survived it — and HTML is what most
+    // mail clients actually render.
+    const r = applied();
+    for (const part of [r.text, r.html]) {
+      expect(part).toContain("turn these off under Settings");
+      expect(part).not.toContain("speak to your landlord");
+    }
+  });
+
+  it("escapes an applicant name containing markup", () => {
+    const r = applied({ applicant: "<script>bad()</script>" });
+    expect(r.html).not.toContain("<script>bad()");
+    expect(r.html).toContain("&lt;script");
+  });
+
+  it("copes with a listing that has no area", () => {
+    const r = applied({ area: "" });
+    expect(r.text).toContain("has applied for 2 bed in Kilimani.");
+    expect(r.text).not.toContain(", .");
+  });
+});

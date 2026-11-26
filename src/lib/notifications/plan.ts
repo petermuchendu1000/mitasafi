@@ -38,12 +38,22 @@ import {
 
 export const LIVE_LEASE_STATUSES = ["active", "pending_signature"];
 
+/**
+ * Every notice the product can send.
+ *
+ * The first five are SCHEDULED — state-based, re-derived from the data by
+ * the planner each run. The last is EVENT-DRIVEN: it fires from the action
+ * that caused it and the planner never produces one. They share this union,
+ * and therefore the renderer and the log, because the parts that must not
+ * diverge are the idempotency key and the words that reach a person.
+ */
 export type NoticeKind =
   | "invoice_due_soon"
   | "invoice_due_day"
   | "invoice_late"
   | "overdue_summary"
-  | "lease_expiring";
+  | "lease_expiring"
+  | "application_submitted";
 
 export interface NotifyLease {
   id: string;
@@ -82,6 +92,7 @@ export interface NotifyPreferences {
   overdue_summary_day_2: number;
   notify_lease_expiring: boolean;
   lease_expiry_notice_days: number;
+  notify_application_submitted: boolean;
   tenant_notify_invoice_due_soon: boolean;
   tenant_notify_invoice_due_day: boolean;
   tenant_notify_invoice_late: boolean;
@@ -124,6 +135,7 @@ export function preferencesFrom(
     overdue_summary_day_2: int("overdue_summary_day_2", 10),
     notify_lease_expiring: bool("notify_lease_expiring", true),
     lease_expiry_notice_days: int("lease_expiry_notice_days", 90),
+    notify_application_submitted: bool("notify_application_submitted", true),
     tenant_notify_invoice_due_soon: bool(
       "tenant_notify_invoice_due_soon",
       true,
