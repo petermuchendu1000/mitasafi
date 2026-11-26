@@ -1,34 +1,34 @@
 /**
- * My rent — the tenant's side of the gateway.
+ * The tenant's tenancy dashboard.
  *
- * WHY THIS PAGE EXISTS
- *   20260358000000 let a landlord say where rent should be sent. Until now
- *   there was nobody to say it to: a tenant could read their lease and
- *   nothing else — not their unit, not a payment they had made, and not the
- *   paybill they are expected to use. This is the other half.
- *
- * WHAT IT WILL NOT DO
- *   Invent a destination. If the landlord has not set one, it says so and
- *   tells the tenant to ask them, because a guessed paybill number sends
- *   somebody's rent to a stranger.
+ * WHY EVERYTHING IS HERE AND NOT ON /dashboard
+ *   /dashboard is the services customer's home — bookings, providers, spend.
+ *   A tenant's tenancy has nothing to do with it, and until now had no
+ *   surface of its own beyond a payment instruction.
  *
  * AUTHORIZATION
- *   Everything here is reached through the tenant's own record:
- *   tenants.user_id = auth.uid() -> leases -> units -> buildings. Four RLS
- *   policies in 20260359000000 do the work; this page adds no filtering of
- *   its own that the database is not already enforcing.
+ *   Everything hangs off tenants.user_id = auth.uid(): tenant -> leases ->
+ *   units -> buildings -> payments, plus the landlord's payout method, all
+ *   enforced by the RLS policies added in 20260359000000. This page adds no
+ *   filtering the database is not already doing, and could not: the tenant's
+ *   own key is the only thing it holds.
  */
 
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { nairobiToday } from "@/lib/landlord/rent-status";
+import { buildStatement, type StatementLease } from "@/lib/landlord/statement";
+import { tenancySummary } from "@/lib/tenant/summary";
 import {
   destinationFor,
   type PayoutDestination,
 } from "@/lib/landlord/payment-instructions";
+import { getCustomerUnreadMessageCount } from "@/lib/services/dashboard";
+import { CustomerDashboardShell } from "@/components/dashboard/services";
 import { RentClient } from "./RentClient";
 
-export const metadata: Metadata = { title: "My rent | MitaSafi" };
+export const metadata: Metadata = { title: "My home | MitaSafi" };
 
 function num(v: number | string | null | undefined): number {
   if (v === null || v === undefined || v === "") return 0;
@@ -43,50 +43,88 @@ export default async function RentPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?redirectTo=/dashboard/rent");
 
-  // The tenant record is the anchor for everything below it.
+  // The same sidebar as the rest of the tenant's dashboard. Without it this
+  // page is a dead end: it was reachable only by typing the URL, and once
+  // there was no way back to anything else.
+  const [{ data: profile }, unreadMessageCount] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("full_name, email, avatar_url")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getCustomerUnreadMessageCount(user.id),
+  ]);
+  const shell = {
+    userId: user.id,
+    name: profile?.full_name || user.email?.split("@")[0] || "You",
+    email: profile?.email || user.email || "",
+    avatarUrl: profile?.avatar_url ?? null,
+    unreadMessageCount,
+  };
+
   const { data: tenant } = await supabase
     .from("tenants")
     .select("id, full_name, phone")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (!tenant) {
-    return <RentClient state="not-a-tenant" />;
-  }
+  if (!tenant)
+    return (
+      <CustomerDashboardShell profile={shell}>
+        <RentClient state="not-a-tenant" />
+      </CustomerDashboardShell>
+    );
 
   const { data: leases } = await supabase
     .from("leases")
+    // prettier-ignore
     .select(
-      "id, unit_id, status, start_date, end_date, monthly_rent, rent_due_day",
+      "id, unit_id, status, start_date, end_date, monthly_rent, rent_due_day, grace_period_days, deposit_amount, deposit_status, notice_period_months, lease_document_url, payment_method, inclusions, special_conditions",
     )
     .eq("tenant_id", tenant.id)
     .order("start_date", { ascending: false });
 
   const lease = (leases ?? []).find((l) => l.status !== "terminated") ?? null;
-  if (!lease) {
-    return <RentClient state="no-lease" />;
-  }
+  if (!lease)
+    return (
+      <CustomerDashboardShell profile={shell}>
+        <RentClient state="no-lease" />
+      </CustomerDashboardShell>
+    );
 
-  const [{ data: unit }, { data: payments }, { data: destinations }] =
-    await Promise.all([
-      supabase
-        .from("units")
-        .select("id, unit_number, building_id")
-        .eq("id", lease.unit_id)
-        .maybeSingle(),
-      supabase
-        .from("payments")
-        .select("id, amount, payment_type, status, payment_date, mpesa_receipt")
-        .eq("lease_id", lease.id)
-        .order("payment_date", { ascending: false })
-        .limit(12),
-      supabase.from("landlord_payout_methods").select("*"),
-    ]);
+  const [
+    { data: unit },
+    { data: payments },
+    { data: destinations },
+    { data: maintenance },
+  ] = await Promise.all([
+    supabase
+      .from("units")
+      .select("id, unit_number, building_id, bedrooms, bathrooms, unit_type")
+      .eq("id", lease.unit_id)
+      .maybeSingle(),
+    supabase
+      .from("payments")
+      // prettier-ignore
+      .select(
+        "id, amount, payment_type, status, payment_date, payment_method, reference_number, mpesa_receipt, period_year, period_month",
+      )
+      .eq("lease_id", lease.id)
+      .order("payment_date", { ascending: false })
+      .limit(500),
+    supabase.from("landlord_payout_methods").select("*"),
+    supabase
+      .from("maintenance_requests")
+      .select("id, title, category, status, urgency, reported_at, completed_at")
+      .eq("tenant_id", tenant.id)
+      .order("reported_at", { ascending: false })
+      .limit(20),
+  ]);
 
   const { data: building } = unit?.building_id
     ? await supabase
         .from("buildings")
-        .select("name")
+        .select("name, area, access_instructions")
         .eq("id", unit.building_id)
         .maybeSingle()
     : { data: null };
@@ -96,24 +134,81 @@ export default async function RentPage() {
     unit?.building_id ?? null,
   );
 
+  const shaped: StatementLease = {
+    id: lease.id,
+    unit_label: unit?.unit_number ?? "—",
+    building_label: building?.name ?? "",
+    start_date: lease.start_date,
+    end_date: lease.end_date,
+    monthly_rent: num(lease.monthly_rent),
+    rent_due_day: num(lease.rent_due_day) || 5,
+    grace_period_days: num(lease.grace_period_days),
+    deposit_amount: num(lease.deposit_amount),
+  };
+
+  const shapedPayments = (payments ?? []).map((p) => ({
+    id: p.id,
+    amount: num(p.amount),
+    payment_type: p.payment_type,
+    status: p.status,
+    period_year: p.period_year,
+    period_month: p.period_month,
+    payment_date: p.payment_date,
+    payment_method: p.payment_method,
+    reference_number: p.reference_number,
+    mpesa_receipt: p.mpesa_receipt,
+  }));
+
+  const today = nairobiToday();
+
   return (
-    <RentClient
-      state="ok"
-      tenantName={tenant.full_name}
-      tenantPhone={tenant.phone}
-      unitNumber={unit?.unit_number ?? null}
-      buildingName={building?.name ?? null}
-      monthlyRent={num(lease.monthly_rent)}
-      rentDueDay={lease.rent_due_day ?? null}
-      destination={destination}
-      payments={(payments ?? []).map((p) => ({
-        id: p.id,
-        amount: num(p.amount),
-        type: p.payment_type ?? "rent",
-        status: p.status ?? "pending",
-        date: p.payment_date,
-        receipt: p.mpesa_receipt,
-      }))}
-    />
+    <CustomerDashboardShell profile={shell}>
+      <RentClient
+        state="ok"
+        tenantName={tenant.full_name}
+        tenantPhone={tenant.phone}
+        unitNumber={unit?.unit_number ?? null}
+        buildingName={building?.name ?? null}
+        area={building?.area ?? null}
+        accessInstructions={building?.access_instructions ?? null}
+        bedrooms={unit?.bedrooms ?? null}
+        bathrooms={unit?.bathrooms ? Number(unit.bathrooms) : null}
+        monthlyRent={num(lease.monthly_rent)}
+        rentDueDay={lease.rent_due_day ?? null}
+        gracePeriodDays={num(lease.grace_period_days)}
+        leaseStart={lease.start_date}
+        leaseEnd={lease.end_date}
+        leaseStatus={lease.status ?? "active"}
+        noticePeriodMonths={lease.notice_period_months ?? null}
+        leaseDocumentUrl={lease.lease_document_url ?? null}
+        depositStatus={lease.deposit_status ?? null}
+        destination={destination}
+        summary={tenancySummary(shaped, shapedPayments, today)}
+        statement={buildStatement(shaped, shapedPayments, today)}
+        payments={shapedPayments.map((p) => ({
+          id: p.id,
+          amount: p.amount,
+          type: p.payment_type ?? "rent",
+          status: p.status ?? "pending",
+          date: p.payment_date,
+          receipt: p.mpesa_receipt ?? p.reference_number,
+          method: p.payment_method,
+          period:
+            p.period_year && p.period_month
+              ? `${p.period_year}-${String(p.period_month).padStart(2, "0")}`
+              : null,
+        }))}
+        maintenance={(maintenance ?? []).map((m) => ({
+          id: m.id,
+          title: m.title,
+          category: m.category,
+          status: m.status,
+          urgency: m.urgency,
+          reportedAt: m.reported_at,
+          completedAt: m.completed_at,
+        }))}
+        today={`${today.year}-${String(today.month).padStart(2, "0")}-${String(today.day).padStart(2, "0")}`}
+      />
+    </CustomerDashboardShell>
   );
 }

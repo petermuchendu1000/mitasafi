@@ -24,6 +24,7 @@ import { ToastProvider } from "@/components/ui";
 import { NotificationCenter } from "@/components/shared/NotificationCenter";
 import {
   LayoutDashboard,
+  Home,
   Briefcase,
   Heart,
   MessageSquare,
@@ -66,6 +67,13 @@ const navItems = [
     href: "/dashboard",
     icon: LayoutDashboard,
     exact: true,
+  },
+  {
+    // A tenant's tenancy had no entry in this sidebar at all, so
+    // /dashboard/rent was reachable only by typing the URL.
+    label: "My Home",
+    href: "/dashboard/rent",
+    icon: Home,
   },
   {
     label: "My Bookings",
@@ -152,7 +160,7 @@ export function CustomerDashboardShell({
           className={cn(
             "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out",
             "md:translate-x-0",
-            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
           {/* Logo */}
@@ -179,9 +187,9 @@ export function CustomerDashboardShell({
 
               // Resolve badge count from profile
               const badgeCount = item.badgeKey
-                ? (profile as unknown as Record<string, unknown>)[
+                ? (((profile as unknown as Record<string, unknown>)[
                     item.badgeKey
-                  ] as number ?? 0
+                  ] as number) ?? 0)
                 : 0;
 
               return (
@@ -193,14 +201,14 @@ export function CustomerDashboardShell({
                     "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     isActive
                       ? "bg-brand-50 text-brand-700"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
                   )}
                 >
                   <div className="flex items-center gap-3">
                     <item.icon
                       className={cn(
                         "w-5 h-5",
-                        isActive ? "text-brand-600" : "text-gray-400"
+                        isActive ? "text-brand-600" : "text-gray-400",
                       )}
                     />
                     {item.label}
@@ -248,7 +256,7 @@ export function CustomerDashboardShell({
               <ChevronDown
                 className={cn(
                   "w-4 h-4 text-gray-400 transition-transform",
-                  isProfileMenuOpen && "rotate-180"
+                  isProfileMenuOpen && "rotate-180",
                 )}
               />
             </button>
