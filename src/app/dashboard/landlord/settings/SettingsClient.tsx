@@ -27,11 +27,6 @@ import {
 } from "@/lib/landlord/settings";
 import { Card, Switch, NumberField, Radio, SaveBar, NotEnabled } from "./parts";
 import {
-  CaretakersTab,
-  type StaffRow,
-  type BuildingRef,
-} from "./CaretakersTab";
-import {
   updateLandlordProfile,
   updateLandlordNotifications,
   requestLandlordAccountDeletion,
@@ -114,15 +109,11 @@ export function SettingsClient({
   profile,
   channels,
   settings: initialSettings,
-  staff,
-  buildings,
   settingsMissing,
 }: {
   profile: SettingsProfile;
   channels: NotificationPreferences;
   settings: Settings | null;
-  staff: StaffRow[];
-  buildings: BuildingRef[];
   settingsMissing: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("General");
@@ -466,16 +457,27 @@ export function SettingsClient({
             </>
           )}
 
-          {tab === "Caretakers" &&
-            (settingsMissing ? (
-              <NotEnabled what="Caretakers" />
-            ) : (
-              <CaretakersTab
-                staff={staff}
-                buildings={buildings}
-                enabled={bool("enable_staff_access")}
-              />
-            ))}
+          {tab === "Caretakers" && (
+            <Card title="Caretakers and staff">
+              <p className="text-sm text-gray-700">
+                Managing who can see your blocks lives on its own page, because
+                it is not a preference — it decides what another person can see
+                about other people&apos;s homes.
+              </p>
+              <a
+                href="/dashboard/landlord/users"
+                className="mt-4 inline-block px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium"
+              >
+                Open Users
+              </a>
+              {!bool("enable_staff_access") && (
+                <p className="mt-3 text-xs text-amber-700">
+                  Staff access is currently switched off under General, so the
+                  page will not let you add anyone yet.
+                </p>
+              )}
+            </Card>
+          )}
 
           {tab === "Late fee" &&
             (settingsMissing ? (

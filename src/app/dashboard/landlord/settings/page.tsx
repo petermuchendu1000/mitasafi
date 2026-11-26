@@ -38,8 +38,6 @@ export default async function LandlordSettingsPage() {
     { data: profile },
     { data: prefs },
     { data: settings, error: settingsError },
-    { data: staff, error: staffError },
-    { data: buildings },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -58,23 +56,9 @@ export default async function LandlordSettingsPage() {
       .select("*")
       .eq("landlord_id", userId)
       .maybeSingle(),
-    supabase
-      .from("property_staff")
-      .select(
-        "id, full_name, phone, email, staff_role, status, building_ids, can_manage_maintenance, can_view_tenants, can_record_payments, user_id, invited_at",
-      )
-      .eq("landlord_id", userId)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("buildings")
-      .select("id, name")
-      .eq("landlord_id", userId)
-      .order("name"),
   ]);
 
-  const settingsMissing =
-    MISSING_TABLE.has(settingsError?.code ?? "") ||
-    MISSING_TABLE.has(staffError?.code ?? "");
+  const settingsMissing = MISSING_TABLE.has(settingsError?.code ?? "");
 
   const metadata = (profile?.metadata as Record<string, unknown>) ?? {};
 
@@ -100,20 +84,6 @@ export default async function LandlordSettingsPage() {
         push_notifications: prefs?.push_notifications ?? true,
       }}
       settings={(settings as Record<string, unknown> | null) ?? null}
-      staff={(staff ?? []).map((s) => ({
-        id: s.id,
-        fullName: s.full_name,
-        phone: s.phone,
-        email: s.email,
-        staffRole: s.staff_role,
-        status: s.status,
-        buildingIds: s.building_ids ?? [],
-        canManageMaintenance: s.can_manage_maintenance,
-        canViewTenants: s.can_view_tenants,
-        canRecordPayments: s.can_record_payments,
-        linked: s.user_id !== null,
-      }))}
-      buildings={(buildings ?? []).map((b) => ({ id: b.id, name: b.name }))}
     />
   );
 }

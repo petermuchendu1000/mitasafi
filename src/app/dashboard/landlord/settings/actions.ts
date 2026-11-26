@@ -201,12 +201,15 @@ export interface StaffInput {
   email: string | null;
   staffRole: string;
   buildingIds: string[];
-  canManageMaintenance: boolean;
-  canViewTenants: boolean;
-  canRecordPayments: boolean;
+  allProperties: boolean;
+  /** One level per module, keyed by column name. Whitelisted below. */
+  levels: Record<string, string>;
+  maintenanceCategories: string[];
 }
 
-const STAFF_ROLE_VALUES = new Set(["caretaker", "manager", "accountant"]);
+import { ACCESS_MODULES, ROLE_PRESETS } from "@/lib/landlord/settings-schema";
+
+const STAFF_ROLE_VALUES = new Set(ROLE_PRESETS.map((r) => r.value));
 
 export async function saveStaffMember(
   staffId: string | null,
@@ -233,6 +236,15 @@ export async function saveStaffMember(
     return { success: false, error: "Pick a role." };
   }
 
+  // Only known module keys carrying a known level survive. The column grants
+  // and RLS would stop the rest, but a key that never reaches the query
+  // cannot be the thing a future grant gets wrong.
+  const levels: Record<string, string> = {};
+  for (const m of ACCESS_MODULES) {
+    const v = input.levels[m.key];
+    if (v === "all" || v === "view" || v === "none") levels[m.key] = v;
+  }
+
   const row = {
     full_name: fullName,
     phone,
@@ -241,10 +253,10 @@ export async function saveStaffMember(
     // The trigger refuses any building this landlord does not own, so a
     // forged id fails at the database rather than being filtered here and
     // quietly dropped.
-    building_ids: input.buildingIds,
-    can_manage_maintenance: input.canManageMaintenance,
-    can_view_tenants: input.canViewTenants,
-    can_record_payments: input.canRecordPayments,
+    building_ids: input.allProperties ? [] : input.buildingIds,
+    all_properties: input.allProperties,
+    maintenance_categories: input.maintenanceCategories,
+    ...levels,
   };
 
   const { error } = staffId

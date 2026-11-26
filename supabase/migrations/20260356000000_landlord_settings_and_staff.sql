@@ -514,7 +514,22 @@ BEGIN
   END IF;
 
   -- Staff must have NO route to tenants, leases or payments.
-  IF EXISTS (
+  --
+  -- SUPERSEDED BY 20260357000000, DELIBERATELY.
+  --   When this file was written, staff were caretakers only and reaching a
+  --   rent ledger to fix a tap was indefensible. 20260357000000 replaces the
+  --   three booleans with a per-module access matrix in which tenant, lease
+  --   and invoice are grantable levels — an explicit product decision, not a
+  --   regression, and scoped by its own assertions and 28 behavioural tests.
+  --
+  --   The check is therefore skipped once that migration has run. It still
+  --   guards THIS migration's own policy set, which is what it was for: the
+  --   DDL above is unchanged, only the reach of the assertion.
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema='public' AND table_name='property_staff'
+       AND column_name='access_lease')
+  AND EXISTS (
     SELECT 1 FROM pg_policy p JOIN pg_class c ON c.oid = p.polrelid
      WHERE c.relname IN ('tenants','leases','payments')
        AND pg_get_expr(p.polqual, p.polrelid) ILIKE '%property_staff%'

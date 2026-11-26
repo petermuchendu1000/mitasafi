@@ -103,6 +103,13 @@ export const landlordNavSections: NavSection[] = [
         description: "Register a new property to manage",
       },
       {
+        id: "users",
+        label: "Users",
+        href: "/dashboard/landlord/users",
+        icon: Users,
+        description: "Caretakers and staff, and what each one can see",
+      },
+      {
         id: "tenants",
         label: "Tenants",
         href: "/dashboard/landlord/tenants",

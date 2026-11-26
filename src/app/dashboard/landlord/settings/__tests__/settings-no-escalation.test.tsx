@@ -48,8 +48,6 @@ function open(over: Partial<SettingsProfile> = {}) {
       profile={{ ...profile, ...over }}
       channels={preferences}
       settings={null}
-      staff={[]}
-      buildings={[]}
       settingsMissing={false}
     />,
   );
@@ -144,8 +142,10 @@ it("marks every feature toggle that is not actually in force", () => {
 it("hides caretaker management until staff access is switched on", () => {
   open();
   fireEvent.click(screen.getByRole("button", { name: "Caretakers" }));
-  expect(screen.getByText(/Staff access is switched off/i)).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /Add someone/i })).toBeNull();
+  // Managing people moved to its own page; the tab points there and warns
+  // when the feature is off rather than pretending to manage anyone.
+  expect(screen.getByText(/lives on its own page/i)).toBeInTheDocument();
+  expect(screen.getByText(/currently switched off/i)).toBeInTheDocument();
 });
 
 it("says plainly that MitaSafi does not hold the rent", () => {

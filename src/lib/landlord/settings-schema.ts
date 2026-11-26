@@ -303,3 +303,232 @@ export const FEE_PAYERS = [
   { value: "tenant", label: "Tenant pays" },
   { value: "landlord", label: "I pay" },
 ] as const;
+
+// ---------------------------------------------------------------------------
+// Access levels
+// ---------------------------------------------------------------------------
+
+export type AccessLevel = "all" | "view" | "none";
+
+export interface AccessModule {
+  key: string;
+  label: string;
+  blurb: string;
+  /** True when RLS actually acts on this level today. */
+  enforced: boolean;
+  notYet?: string;
+  /** Tenant access cannot be scoped to a block; see the migration header. */
+  portfolioWideOnly?: boolean;
+  /** Visible only once another module is granted. */
+  requires?: { key: string; why: string };
+}
+
+export const ACCESS_MODULES: AccessModule[] = [
+  {
+    key: "access_property",
+    label: "Properties",
+    blurb:
+      "Edit blocks and units. They can always SEE the block a job or lease sits in.",
+    enforced: true,
+  },
+  {
+    key: "access_maintenance",
+    label: "Maintenance",
+    blurb: "See and update maintenance for their blocks.",
+    enforced: true,
+  },
+  {
+    key: "access_lease",
+    label: "Leases",
+    blurb: "Agreements on their blocks.",
+    enforced: true,
+  },
+  {
+    key: "access_tenant",
+    label: "Tenants",
+    blurb: "Names and contact details.",
+    enforced: true,
+    portfolioWideOnly: true,
+  },
+  {
+    key: "access_invoice",
+    label: "Invoices and payments",
+    blurb: "Rent recorded against leases they can see.",
+    enforced: true,
+    requires: {
+      key: "access_lease",
+      why: "A payment reaches a block only through its lease, so this needs at least Leases: View.",
+    },
+  },
+  {
+    key: "access_listing",
+    label: "Listings",
+    blurb: "Vacancies advertised for their blocks.",
+    enforced: true,
+  },
+  {
+    key: "access_application",
+    label: "Applications",
+    blurb: "People applying to those listings.",
+    enforced: true,
+  },
+  {
+    key: "access_expense",
+    label: "Expenses",
+    blurb: "Maintenance spend.",
+    enforced: false,
+    notYet:
+      "Recorded only: expenses ARE maintenance costs on the same rows, so Maintenance already governs them.",
+  },
+  {
+    key: "access_report",
+    label: "Reports",
+    blurb: "Portfolio reporting.",
+    enforced: false,
+    notYet: "Recorded only: MitaSafi has no reporting module yet.",
+  },
+  {
+    key: "access_messaging",
+    label: "Messaging",
+    blurb: "Talking to tenants.",
+    enforced: false,
+    notYet: "Recorded only: landlord-to-tenant messaging has not been built.",
+  },
+  {
+    key: "access_bank",
+    label: "Bank",
+    blurb: "Payout details.",
+    enforced: false,
+    notYet: "Recorded only: MitaSafi does not hold or disburse rent.",
+  },
+];
+
+export const ACCESS_CHOICES: {
+  value: AccessLevel;
+  label: string;
+  blurb: string;
+}[] = [
+  { value: "all", label: "All", blurb: "View, edit and delete." },
+  { value: "view", label: "View", blurb: "Can look, cannot change." },
+  { value: "none", label: "None", blurb: "No access at all." },
+];
+
+export type RolePreset = {
+  value: string;
+  label: string;
+  blurb: string;
+  /** null for Custom: the landlord sets every level themselves. */
+  levels: Record<string, AccessLevel> | null;
+  allProperties?: boolean;
+};
+
+const none = (
+  over: Record<string, AccessLevel>,
+): Record<string, AccessLevel> => {
+  const base: Record<string, AccessLevel> = {};
+  for (const m of ACCESS_MODULES) base[m.key] = "none";
+  return { ...base, ...over };
+};
+
+/**
+ * Presets, shaped after Innago's access table but honest about this schema:
+ * tenant access forces all_properties, because it cannot be scoped to a block.
+ */
+export const ROLE_PRESETS: RolePreset[] = [
+  {
+    value: "manager",
+    label: "Property Manager",
+    blurb: "Runs the blocks for you. Full access to everything you give them.",
+    allProperties: true,
+    levels: none({
+      access_property: "all",
+      access_maintenance: "all",
+      access_lease: "all",
+      access_tenant: "all",
+      access_invoice: "all",
+      access_listing: "all",
+      access_application: "all",
+      access_expense: "all",
+      access_report: "all",
+    }),
+  },
+  {
+    value: "lease_manager",
+    label: "Lease Manager",
+    blurb: "Fills vacancies and handles agreements. No maintenance, no money.",
+    allProperties: true,
+    levels: none({
+      access_property: "view",
+      access_lease: "all",
+      access_tenant: "all",
+      access_listing: "all",
+      access_application: "all",
+    }),
+  },
+  {
+    value: "caretaker",
+    label: "Maintenance Staff",
+    blurb: "The caretaker. Maintenance on their blocks and nothing else.",
+    levels: none({ access_maintenance: "all" }),
+  },
+  {
+    value: "owner",
+    label: "Property Owner",
+    blurb: "A co-owner who watches but does not act. View only, throughout.",
+    allProperties: true,
+    levels: none({
+      access_property: "view",
+      access_maintenance: "view",
+      access_lease: "view",
+      access_tenant: "view",
+      access_invoice: "view",
+      access_listing: "view",
+      access_application: "view",
+      access_expense: "view",
+      access_report: "all",
+    }),
+  },
+  {
+    value: "accountant",
+    label: "Bookkeeper",
+    blurb: "Keeps the books. Sees the money, not the maintenance.",
+    allProperties: true,
+    levels: none({
+      access_lease: "view",
+      access_invoice: "all",
+      access_tenant: "view",
+      access_expense: "view",
+      access_report: "all",
+    }),
+  },
+  {
+    value: "custom",
+    label: "Custom",
+    blurb: "Set each one yourself.",
+    levels: null,
+  },
+];
+
+/** The warnings a chosen combination earns, computed not hard-coded. */
+export function accessWarnings(
+  levels: Record<string, string>,
+  allProperties: boolean,
+): string[] {
+  const out: string[] = [];
+  const on = (k: string) => levels[k] === "all" || levels[k] === "view";
+
+  if (on("access_tenant") && !allProperties) {
+    out.push(
+      "Tenants cannot be limited to selected blocks — a tenant belongs to a lease, not a building. With specific blocks chosen they will see no tenants at all. Give them all properties, or set Tenants to None.",
+    );
+  }
+  if (on("access_invoice") && !on("access_lease")) {
+    out.push(
+      "Invoices reach a block only through their lease, so with Leases set to None they will see no payments. Give them at least Leases: View.",
+    );
+  }
+  if (!ACCESS_MODULES.some((m) => m.enforced && on(m.key))) {
+    out.push("Nothing is granted, so this person will see nothing.");
+  }
+  return out;
+}
