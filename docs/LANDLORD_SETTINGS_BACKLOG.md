@@ -41,9 +41,10 @@ product claims to do something on this list.
 MitaSafi now records where rent is collected and can state the exact
 instruction a tenant should follow. What is **not** built:
 
-- **No tenant-facing view of it.** There is no tenant portal at all, so the
-  instruction is visible to the landlord and their staff only. Showing it to
-  a tenant is the next piece.
+- ~~No tenant-facing view~~ — **built.** `/dashboard/rent` shows a tenant
+  their unit, their rent, the exact instruction, and every payment the
+  landlord has recorded. Four RLS policies in 20260359000000 scope it through
+  `tenants.user_id = auth.uid()`.
 - **No automatic reconciliation.** A paybill payment carrying the unit number
   _could_ be matched to a lease by a C2B callback; nothing listens for one, so
   payments are still recorded by hand.
@@ -53,6 +54,19 @@ instruction a tenant should follow. What is **not** built:
   relationship, which is a commercial decision, not a coding one.
 - MitaSafi deliberately **never holds the money**. There is no balance, no
   float and no payout to withhold, and there is no plan here to add one.
+
+### Found while building the gateway, deliberately not acted on
+
+- **`anon` holds table-level SELECT on `payments`.** It returns nothing —
+  payments has no anon policy and RLS is on, both asserted in
+  20260359000000 — but the grant itself is untidy. Revoking it would turn a
+  silent empty result into an error for any caller relying on it, which is a
+  change that migration had no business making on its own.
+- **`leases.building_id` is derived, not protected.** A column-level REVOKE is
+  inert while `authenticated` holds table-level UPDATE on leases, so instead
+  of re-cutting privileges on a live table the column is recomputed from the
+  unit on every write. A client write is overwritten rather than refused;
+  proven behaviourally (T14).
 
 ### Other known gaps
 
