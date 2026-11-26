@@ -247,6 +247,49 @@ export function leaseCoversPeriod(
   return compareCivil(end, monthStart) >= 0;
 }
 
+/** "YYYY-M". The key shape used everywhere rent is bucketed by period. */
+export function periodKey(p: { year: number; month: number }): string {
+  return `${p.year}-${p.month}`;
+}
+
+/** True if `a` falls in an earlier month than `b`. */
+export function beforePeriod(
+  a: { year: number; month: number },
+  b: { year: number; month: number },
+): boolean {
+  return a.year * 12 + a.month < b.year * 12 + b.month;
+}
+
+/**
+ * The earliest month any rent has been recorded against, or null.
+ *
+ * WHY THIS IS SHARED AND NOT A LOCAL HELPER
+ *   It is the floor under every "what is owed" walk in the product, and the
+ *   answer has to be the same one in all of them. A real lease here starts in
+ *   February with its first recorded rent in August: the landlord was
+ *   collecting all along and only began recording in August. Anything that
+ *   walks back past this point reports February to July as arrears — debt
+ *   conjured from an absence of records.
+ *
+ *   Reconciliation uses it to choose which month a payment settles; the
+ *   arrears report uses it to decide which months to count. If the two
+ *   disagree, a payment lands on a month the report does not think is owed
+ *   and the arrears total does not move.
+ */
+export function earliestRecordedPeriod(
+  paidByPeriod: Map<string, number>,
+): { year: number; month: number } | null {
+  let best: { year: number; month: number } | null = null;
+  for (const key of paidByPeriod.keys()) {
+    const m = /^(\d{4})-(\d{1,2})$/.exec(key);
+    if (!m) continue;
+    const p = { year: Number(m[1]), month: Number(m[2]) };
+    if (p.month < 1 || p.month > 12) continue;
+    if (best === null || beforePeriod(p, best)) best = p;
+  }
+  return best;
+}
+
 /** The N months ending with `period`, oldest first. */
 export function recentPeriods(
   period: { year: number; month: number },

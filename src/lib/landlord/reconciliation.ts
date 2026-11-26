@@ -20,6 +20,9 @@
 import {
   leaseCoversPeriod,
   recentPeriods,
+  earliestRecordedPeriod,
+  beforePeriod,
+  periodKey,
   type CivilDate,
 } from "./rent-status";
 
@@ -253,11 +256,6 @@ export interface PeriodKey {
   month: number;
 }
 
-/** "YYYY-M", the key shape used for already-credited rent. */
-export function periodKey(p: PeriodKey): string {
-  return `${p.year}-${p.month}`;
-}
-
 export function periodToSettle(
   terms: LeaseRentTerms,
   /** Confirmed rent already credited, by `periodKey`. */
@@ -277,7 +275,7 @@ export function periodToSettle(
   // Where the ledger starts. With nothing recorded, `current` means the loop
   // below considers only the current month — there is no history to be
   // behind in, so none is invented.
-  const ledgerStart = earliestRecorded(paidByPeriod) ?? current;
+  const ledgerStart = earliestRecordedPeriod(paidByPeriod) ?? current;
 
   for (const p of covered) {
     if (beforePeriod(p, ledgerStart)) continue;
@@ -290,23 +288,6 @@ export function periodToSettle(
   // for an ended lease that is not today, and saying it is would file money
   // against a month with no tenancy in it.
   return covered.length > 0 ? covered[covered.length - 1] : current;
-}
-
-function beforePeriod(a: PeriodKey, b: PeriodKey): boolean {
-  return a.year * 12 + a.month < b.year * 12 + b.month;
-}
-
-/** The earliest period any rent has been recorded against, or null. */
-function earliestRecorded(paidByPeriod: Map<string, number>): PeriodKey | null {
-  let best: PeriodKey | null = null;
-  for (const key of paidByPeriod.keys()) {
-    const m = /^(\d{4})-(\d{1,2})$/.exec(key);
-    if (!m) continue;
-    const p = { year: Number(m[1]), month: Number(m[2]) };
-    if (p.month < 1 || p.month > 12) continue;
-    if (best === null || beforePeriod(p, best)) best = p;
-  }
-  return best;
 }
 
 /** Split a pasted block into individual confirmations. */

@@ -40,7 +40,6 @@ const KNOWN_MISSING: ReadonlyArray<string> = [
   "/careers",
   "/cookies",
   "/dashboard/landlord/help",
-  "/dashboard/landlord/reports",
   "/developers",
   "/guides/landlords",
   "/help",

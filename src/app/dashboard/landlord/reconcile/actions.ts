@@ -22,11 +22,10 @@ import {
   parseMpesaMessage,
   matchPayment,
   periodToSettle,
-  periodKey,
   type LeaseCandidate,
   type PeriodKey,
 } from "@/lib/landlord/reconciliation";
-import { nairobiToday } from "@/lib/landlord/rent-status";
+import { nairobiToday, periodKey } from "@/lib/landlord/rent-status";
 
 export interface IngestResult {
   success: boolean;
