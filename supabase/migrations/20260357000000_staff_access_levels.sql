@@ -652,3 +652,66 @@ BEGIN
   END IF;
 END
 $assert3$;
+
+-- =============================================================================
+-- Re-grant, AFTER every column exists
+-- =============================================================================
+-- THE BUG THIS FIXES, AND HOW IT HID
+--   The grant block near the top of this file builds its column list from the
+--   catalogue, which is what makes it survive new columns — but only columns
+--   that exist WHEN IT RUNS. The folded-in work adds first_name, last_name,
+--   maintenance_category_mode and allow_custom_category several hundred lines
+--   later, so none of them was ever granted. Every staff insert failed with
+--   "permission denied for table property_staff".
+--
+--   It hid because `local-pg.sh idem` re-applies every migration against the
+--   finished schema, and that second pass granted the missing columns. The
+--   suite was run after an idem check and passed; a single clean apply, which
+--   is what production got, did not. The lesson is narrow and worth keeping:
+--   an idempotency check mutates the database it checks, so a suite run after
+--   one is not a from-scratch result.
+DO $regrant$
+DECLARE cols text;
+BEGIN
+  SELECT string_agg(quote_ident(column_name), ', ') INTO cols
+    FROM information_schema.columns
+   WHERE table_schema='public' AND table_name='property_staff'
+     AND column_name NOT IN ('id','landlord_id','user_id','created_at',
+                             'updated_at','invited_at','accepted_at');
+  EXECUTE format('GRANT INSERT (%s) ON public.property_staff TO authenticated', cols);
+  EXECUTE format('GRANT UPDATE (%s) ON public.property_staff TO authenticated', cols);
+END
+$regrant$;
+
+DO $assert4$
+DECLARE c text;
+BEGIN
+  -- Every column the landlord's form writes must be writable. Named one by
+  -- one rather than counted, so a future column that is forgotten fails here
+  -- instead of at a landlord's keyboard.
+  FOREACH c IN ARRAY ARRAY['first_name','last_name','email','phone','staff_role',
+      'status','building_ids','all_properties','maintenance_categories',
+      'maintenance_category_mode','allow_custom_category','notes',
+      'access_property','access_tenant','access_lease','access_invoice',
+      'access_application','access_maintenance','access_listing',
+      'access_expense','access_report','access_messaging','access_bank',
+      'access_settings'] LOOP
+    IF NOT has_column_privilege('authenticated','public.property_staff',c,'INSERT') THEN
+      RAISE EXCEPTION 'FAILED: a landlord cannot insert property_staff.%', c;
+    END IF;
+    IF NOT has_column_privilege('authenticated','public.property_staff',c,'UPDATE') THEN
+      RAISE EXCEPTION 'FAILED: a landlord cannot update property_staff.%', c;
+    END IF;
+  END LOOP;
+
+  -- ...and the identity columns must still be out of reach.
+  FOREACH c IN ARRAY ARRAY['landlord_id','user_id'] LOOP
+    IF has_column_privilege('authenticated','public.property_staff',c,'INSERT')
+       OR has_column_privilege('authenticated','public.property_staff',c,'UPDATE') THEN
+      RAISE EXCEPTION 'FAILED: a client can write property_staff.%', c;
+    END IF;
+  END LOOP;
+
+  RAISE NOTICE 'property_staff column grants complete and identity columns closed.';
+END
+$assert4$;
