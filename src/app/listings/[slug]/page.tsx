@@ -1,9 +1,9 @@
 /**
  * Listing Detail Page
- * 
+ *
  * Public page displaying full listing details for tenants.
  * URL: /listings/[slug]
- * 
+ *
  * Features:
  * - SEO optimized with dynamic metadata
  * - Photo gallery with lightbox
@@ -13,15 +13,19 @@
  * - Landlord info
  * - Inquiry modal
  * - Similar listings recommendations
- * 
+ *
  * Layout: Mobile-first cards, Desktop 2-column with sticky sidebar
  */
 
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { resolveListingRef } from "@/lib/listings/id-prefix";
 import { getListingById } from "@/lib/listings/get-listing";
 import { getSimilarListings } from "@/lib/listings/get-similar";
-import { calculatePriceBreakdown, generateListingSlug } from "@/lib/listings/types";
+import {
+  calculatePriceBreakdown,
+  generateListingSlug,
+} from "@/lib/listings/types";
 import { createClient } from "@/lib/supabase/server";
 import { ListingDetailClient } from "./ListingDetailClient";
 
@@ -30,17 +34,10 @@ interface PageProps {
 }
 
 // Generate metadata for SEO
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  
-  // Extract ID from slug (last segment)
-  const idPart = slug.split("-").pop() || "";
-  
-  // Find listing by ID prefix - use LIKE on text-cast UUID
-  const supabase = await createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: listings } = await (supabase as any)
-    .rpc("find_listing_by_id_prefix", { id_prefix: idPart });
 
   interface MetadataListing {
     id: string;
@@ -55,21 +52,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     cover_photo: string | null;
   }
 
-  // If RPC doesn't exist, fall back to direct query  
-  let listing: MetadataListing | null = listings?.[0] as MetadataListing | null;
-  
-  if (!listing) {
-    // Fallback: fetch all active and filter client-side
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: allListings } = await (supabase as any)
+  // One index range scan on the primary key. This used to call an RPC and
+  // then fall back to fetching 100 active listings and filtering them in
+  // JavaScript; see lib/listings/id-prefix.ts for why that was unsound.
+  const ref = resolveListingRef(slug);
+  let listing: MetadataListing | null = null;
+
+  if (ref) {
+    const supabase = await createClient();
+    const base = supabase
       .from("listings")
-      .select("id, title, description, area, city, bedrooms, property_type, rent_amount, currency, cover_photo")
-      .eq("status", "active")
-      .limit(100);
-    
-    listing = (allListings as MetadataListing[] | null)?.find(
-      l => l.id.startsWith(idPart)
-    ) || null;
+      .select(
+        "id, title, description, area, city, bedrooms, property_type, rent_amount, currency, cover_photo",
+      )
+      .eq("status", "active");
+    const query =
+      ref.kind === "id"
+        ? base.eq("id", ref.id)
+        : base.gte("id", ref.lo).lte("id", ref.hi).order("id");
+    const { data } = await query.limit(1).maybeSingle();
+    listing = (data as MetadataListing | null) ?? null;
   }
 
   if (!listing) {
@@ -108,28 +110,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ListingDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  
-  // Extract ID from slug
-  const idPart = slug.split("-").pop() || "";
-  
-  if (!idPart || idPart.length < 8) {
+
+  // THE SAME RANGE LOOKUP, across every status this page resolves.
+  //
+  // The RPC `find_listing_by_id_prefix` does this arithmetic too, but it
+  // filters status = 'active' and this page deliberately resolves paused,
+  // rented and archived listings as well, so the range is built here.
+  const ref = resolveListingRef(slug);
+  if (!ref) {
     notFound();
   }
 
-  // Find full listing ID - check ALL statuses (not just active)
   const supabase = await createClient();
-  
-  // Fetch listings (including unavailable) and filter by ID prefix
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: allListings } = await (supabase as any)
+  const base = supabase
     .from("listings")
     .select("id, status")
-    .in("status", ["active", "rented", "paused", "archived"])
-    .limit(200);
+    .in("status", ["active", "rented", "paused", "archived"]);
+  const lookup =
+    ref.kind === "id"
+      ? base.eq("id", ref.id)
+      : base.gte("id", ref.lo).lte("id", ref.hi).order("id");
 
-  const matchedListing = (allListings as { id: string; status: string }[] | null)?.find(
-    l => l.id.startsWith(idPart)
-  );
+  const { data: matchedListing } = await lookup.limit(1).maybeSingle();
 
   if (!matchedListing) {
     notFound();
@@ -139,9 +141,9 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const listingStatus = matchedListing.status;
 
   // Fetch full listing data (including unavailable)
-  const { listing, error } = await getListingById(listingId, { 
+  const { listing, error } = await getListingById(listingId, {
     includeUnavailable: true,
-    incrementViews: listingStatus === "active" // Only count views for active listings
+    incrementViews: listingStatus === "active", // Only count views for active listings
   });
 
   if (error || !listing) {
@@ -168,7 +170,9 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const priceBreakdown = calculatePriceBreakdown(listing);
 
   // Check if user is authenticated
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const isAuthenticated = !!user;
 
   // Get user profile info if authenticated
@@ -182,9 +186,14 @@ export default async function ListingDetailPage({ params }: PageProps) {
       .select("phone, full_name, email")
       .eq("id", user.id)
       .single();
-    const profileData = profile as { phone: string | null; full_name: string | null; email: string | null } | null;
+    const profileData = profile as {
+      phone: string | null;
+      full_name: string | null;
+      email: string | null;
+    } | null;
     userPhone = profileData?.phone || undefined;
-    userName = profileData?.full_name || user.user_metadata?.full_name || undefined;
+    userName =
+      profileData?.full_name || user.user_metadata?.full_name || undefined;
     userEmail = profileData?.email || user.email || undefined;
   }
 

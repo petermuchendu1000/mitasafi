@@ -6,6 +6,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { resolveListingRef } from "./id-prefix";
 import type { Listing, LandlordInfo, PropertyType } from "./types";
 import {
   parseListingPhotos,
@@ -251,38 +252,29 @@ export async function getListingById(
 export async function getListingBySlug(
   slug: string,
 ): Promise<GetListingResult> {
-  // Extract the ID portion (last segment after final hyphen, should be 8+ chars)
-  const parts = slug.split("-");
-  const potentialId = parts[parts.length - 1];
+  // An index range scan on the primary key, not a page of rows filtered in
+  // JavaScript. See the note at the top of lib/listings/id-prefix.ts for why
+  // the old form was unsound rather than merely slow.
+  const ref = resolveListingRef(slug);
+  if (!ref) return { listing: null, error: "Invalid listing URL" };
 
-  if (!potentialId || potentialId.length < 8) {
-    return { listing: null, error: "Invalid listing URL" };
-  }
+  if (ref.kind === "id") return getListingById(ref.id);
 
-  // Try to find listing where ID starts with this prefix
   const supabase = await createClient();
-
-  // Fetch active listings and filter by ID prefix
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: allListings, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("listings")
     .select("id")
+    .gte("id", ref.lo)
+    .lte("id", ref.hi)
     .eq("status", "active")
-    .limit(100);
+    .order("id")
+    .limit(1)
+    .maybeSingle();
 
-  if (error) {
-    return { listing: null, error: "Failed to search listings" };
-  }
+  if (error) return { listing: null, error: "Failed to search listings" };
+  if (!data) return { listing: null, error: "Listing not found" };
 
-  const matchedListing = (allListings as { id: string }[] | null)?.find((l) =>
-    l.id.startsWith(potentialId),
-  );
-
-  if (!matchedListing) {
-    return { listing: null, error: "Listing not found" };
-  }
-
-  return getListingById(matchedListing.id);
+  return getListingById(data.id);
 }
 
 /**
