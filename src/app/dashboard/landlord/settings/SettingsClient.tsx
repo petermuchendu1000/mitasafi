@@ -28,6 +28,8 @@ import {
 import { Card, Switch, NumberField, Radio, SaveBar, NotEnabled } from "./parts";
 import { LateFeesTab, type LateFeeRule } from "./LateFeesTab";
 import { HelpSidebar } from "./HelpSidebar";
+import { BankTab } from "./BankTab";
+import type { PayoutDestination } from "@/lib/landlord/payment-instructions";
 import {
   updateLandlordProfile,
   updateLandlordNotifications,
@@ -142,6 +144,8 @@ export function SettingsClient({
   settings: initialSettings,
   lateFeeRules,
   buildings,
+  payoutDestinations,
+  sampleUnit,
   settingsMissing,
 }: {
   profile: SettingsProfile;
@@ -149,6 +153,8 @@ export function SettingsClient({
   settings: Settings | null;
   lateFeeRules: LateFeeRule[];
   buildings: { id: string; name: string }[];
+  payoutDestinations: PayoutDestination[];
+  sampleUnit: string | null;
   settingsMissing: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("General");
@@ -683,23 +689,11 @@ export function SettingsClient({
             ))}
 
           {tab === "Bank" && (
-            <Card title="Bank and payouts">
-              <p className="text-sm text-gray-700">
-                MitaSafi does not hold or disburse your rent. Tenants pay you
-                directly and MitaSafi records what was paid, so there is no
-                payout account to set up and no balance waiting to be released.
-              </p>
-              <p className="mt-3 text-sm text-gray-600">
-                Across the whole database the only payout machinery that exists
-                belongs to the home-services side, for paying service providers.
-                Nothing in it touches rent.
-              </p>
-              <p className="mt-3 text-sm text-gray-600">
-                If MitaSafi ever does collect on your behalf, this is where the
-                account would go — and you would be told before a shilling
-                moved.
-              </p>
-            </Card>
+            <BankTab
+              destinations={payoutDestinations}
+              buildings={buildings}
+              sampleUnit={sampleUnit}
+            />
           )}
 
           {tab === "Integrations" && (

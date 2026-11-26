@@ -19,6 +19,8 @@ jest.mock("../actions", () => ({
   requestLandlordAccountDeletion: jest.fn(async () => ({ success: true })),
   saveLandlordSettings: jest.fn(async () => ({ success: true })),
   saveLateFeeRule: jest.fn(async () => ({ success: true })),
+  savePayoutMethod: jest.fn(async () => ({ success: true })),
+  deletePayoutMethod: jest.fn(async () => ({ success: true })),
   deleteLateFeeRule: jest.fn(async () => ({ success: true })),
   saveStaffMember: jest.fn(async () => ({ success: true })),
   setStaffStatus: jest.fn(async () => ({ success: true })),
@@ -52,6 +54,8 @@ function open(over: Partial<SettingsProfile> = {}) {
       settings={null}
       lateFeeRules={[]}
       buildings={[]}
+      payoutDestinations={[]}
+      sampleUnit={"A1"}
       settingsMissing={false}
     />,
   );
@@ -159,9 +163,11 @@ it("hides caretaker management until staff access is switched on", () => {
 it("says plainly that MitaSafi does not hold the rent", () => {
   open();
   fireEvent.click(screen.getByRole("button", { name: "Bank" }));
-  expect(
-    screen.getByText(/does not hold or disburse your rent/i),
-  ).toBeInTheDocument();
-  // And offers no account field to fill in, which would imply it did.
-  expect(screen.queryByLabelText(/account number|bank name/i)).toBeNull();
+  // The Bank tab is now a real form, so the claim moved: MitaSafi routes the
+  // rent and never receives it. The absence of a BALANCE is what says it does
+  // not hold money, not the absence of a form.
+  expect(screen.getByText(/MitaSafi never receives it/i)).toBeInTheDocument();
+  expect(screen.getByText(/owes you no payout/i)).toBeInTheDocument();
+  const names = screen.getAllByRole("button").map((b) => b.textContent ?? "");
+  expect(names.some((n) => /withdraw|payout|balance/i.test(n))).toBe(false);
 });

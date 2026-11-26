@@ -34,8 +34,25 @@ product claims to do something on this list.
   second switch on one thing.
 - **Reports** — no reporting module exists.
 - **Messaging** — see above.
-- **Bank** — MitaSafi does not hold or disburse rent.
 - **Settings** — staff have no settings surface of their own.
+
+### The gateway, and what is left of it
+
+MitaSafi now records where rent is collected and can state the exact
+instruction a tenant should follow. What is **not** built:
+
+- **No tenant-facing view of it.** There is no tenant portal at all, so the
+  instruction is visible to the landlord and their staff only. Showing it to
+  a tenant is the next piece.
+- **No automatic reconciliation.** A paybill payment carrying the unit number
+  _could_ be matched to a lease by a C2B callback; nothing listens for one, so
+  payments are still recorded by hand.
+- **No STK push for rent.** The Daraja code in `src/lib/payments` belongs to
+  the home-services side and pushes to MitaSafi's own shortcode. Pushing to a
+  landlord's paybill needs per-landlord Daraja credentials and an aggregator
+  relationship, which is a commercial decision, not a coding one.
+- MitaSafi deliberately **never holds the money**. There is no balance, no
+  float and no payout to withhold, and there is no plan here to add one.
 
 ### Other known gaps
 

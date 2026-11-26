@@ -2317,6 +2317,72 @@ export type Database = {
           },
         ];
       };
+      landlord_payout_methods: {
+        Row: {
+          id: string;
+          landlord_id: string;
+          label: string;
+          method: string;
+          paybill_number: string | null;
+          till_number: string | null;
+          mpesa_phone: string | null;
+          account_reference_mode: string;
+          account_reference: string | null;
+          bank_name: string | null;
+          bank_account_name: string | null;
+          bank_account_number: string | null;
+          bank_branch: string | null;
+          instructions: string | null;
+          is_default: boolean;
+          all_properties: boolean;
+          building_ids: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          landlord_id: string;
+          label: string;
+          method: string;
+          paybill_number?: string | null;
+          till_number?: string | null;
+          mpesa_phone?: string | null;
+          account_reference_mode?: string;
+          account_reference?: string | null;
+          bank_name?: string | null;
+          bank_account_name?: string | null;
+          bank_account_number?: string | null;
+          bank_branch?: string | null;
+          instructions?: string | null;
+          is_default?: boolean;
+          all_properties?: boolean;
+          building_ids?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          landlord_id?: string;
+          label?: string;
+          method?: string;
+          paybill_number?: string | null;
+          till_number?: string | null;
+          mpesa_phone?: string | null;
+          account_reference_mode?: string;
+          account_reference?: string | null;
+          bank_name?: string | null;
+          bank_account_name?: string | null;
+          bank_account_number?: string | null;
+          bank_branch?: string | null;
+          instructions?: string | null;
+          is_default?: boolean;
+          all_properties?: boolean;
+          building_ids?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       landlord_settings: {
         Row: {
           landlord_id: string;

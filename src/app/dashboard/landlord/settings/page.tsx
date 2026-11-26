@@ -40,6 +40,8 @@ export default async function LandlordSettingsPage() {
     { data: settings, error: settingsError },
     { data: lateFeeRules },
     { data: buildings },
+    { data: payouts },
+    { data: sampleUnitRow },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -68,6 +70,19 @@ export default async function LandlordSettingsPage() {
       .select("id, name")
       .eq("landlord_id", userId)
       .order("name"),
+    supabase
+      .from("landlord_payout_methods")
+      .select("*")
+      .eq("landlord_id", userId)
+      .order("created_at", { ascending: true }),
+    // One real unit, so the preview shows the reference a tenant will type
+    // rather than a placeholder.
+    supabase
+      .from("units")
+      .select("unit_number")
+      .eq("landlord_id", userId)
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const settingsMissing = MISSING_TABLE.has(settingsError?.code ?? "");
@@ -108,6 +123,11 @@ export default async function LandlordSettingsPage() {
         building_ids: r.building_ids ?? [],
       }))}
       buildings={(buildings ?? []).map((b) => ({ id: b.id, name: b.name }))}
+      payoutDestinations={
+        (payouts ??
+          []) as unknown as import("@/lib/landlord/payment-instructions").PayoutDestination[]
+      }
+      sampleUnit={sampleUnitRow?.unit_number ?? null}
     />
   );
 }

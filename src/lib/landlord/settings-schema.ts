@@ -399,9 +399,12 @@ export const ACCESS_MODULES: AccessModule[] = [
   {
     key: "access_bank",
     label: "Bank",
-    blurb: "Payout details.",
-    enforced: false,
-    notYet: "Recorded only: MitaSafi does not hold or disburse rent.",
+    blurb:
+      "Where your rent is collected — paybill, till or bank account. Read only; nobody but you can change it.",
+    // Enforced from 20260358000000: landlord_payout_methods exists, and this
+    // level is the policy that governs reading it. It was "recorded only"
+    // while there was no bank data to govern.
+    enforced: true,
   },
   {
     key: "access_settings",

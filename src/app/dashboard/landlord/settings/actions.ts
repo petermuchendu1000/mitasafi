@@ -460,3 +460,152 @@ export async function deleteLateFeeRule(id: string): Promise<SaveResult> {
   revalidatePath("/dashboard/landlord/settings");
   return { success: true };
 }
+
+// ===========================================================================
+// Where the rent goes
+// ===========================================================================
+// MitaSafi never receives it. These rows say where the tenant should send it.
+
+export interface PayoutInput {
+  id: string | null;
+  label: string;
+  method: string;
+  paybillNumber: string;
+  tillNumber: string;
+  mpesaPhone: string;
+  accountReferenceMode: string;
+  accountReference: string;
+  bankName: string;
+  bankAccountName: string;
+  bankAccountNumber: string;
+  bankBranch: string;
+  instructions: string;
+  isDefault: boolean;
+  allProperties: boolean;
+  buildingIds: string[];
+}
+
+const PAYOUT_METHOD_VALUES = new Set([
+  "mpesa_paybill",
+  "mpesa_till",
+  "mpesa_send_money",
+  "bank",
+]);
+const REF_MODES = new Set(["unit_number", "tenant_phone", "custom"]);
+
+export async function savePayoutMethod(
+  input: PayoutInput,
+): Promise<SaveResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "You need to be signed in." };
+
+  if (!PAYOUT_METHOD_VALUES.has(input.method)) {
+    return { success: false, error: "Pick how you collect rent." };
+  }
+  if (!REF_MODES.has(input.accountReferenceMode)) {
+    return { success: false, error: "Pick what the tenant should reference." };
+  }
+  const label = input.label.trim();
+  if (label === "") {
+    return { success: false, fieldErrors: { label: "Required" } };
+  }
+
+  // Each method needs its own one number. Checked here so the landlord gets a
+  // sentence against the field rather than the CHECK constraint's 23514.
+  const blank = (v: string) => v.trim() === "";
+  if (input.method === "mpesa_paybill" && blank(input.paybillNumber)) {
+    return { success: false, fieldErrors: { paybillNumber: "Required" } };
+  }
+  if (input.method === "mpesa_till" && blank(input.tillNumber)) {
+    return { success: false, fieldErrors: { tillNumber: "Required" } };
+  }
+  if (input.method === "mpesa_send_money") {
+    if (normaliseKenyanPhone(input.mpesaPhone) === null) {
+      return {
+        success: false,
+        fieldErrors: { mpesaPhone: "Enter a Kenyan mobile number." },
+      };
+    }
+  }
+  if (input.method === "bank") {
+    if (blank(input.bankName)) {
+      return { success: false, fieldErrors: { bankName: "Required" } };
+    }
+    if (blank(input.bankAccountName)) {
+      return { success: false, fieldErrors: { bankAccountName: "Required" } };
+    }
+    if (blank(input.bankAccountNumber)) {
+      return { success: false, fieldErrors: { bankAccountNumber: "Required" } };
+    }
+  }
+
+  const row = {
+    label,
+    method: input.method,
+    paybill_number: input.paybillNumber.trim() || null,
+    till_number: input.tillNumber.trim() || null,
+    mpesa_phone: input.mpesaPhone.trim() || null,
+    account_reference_mode: input.accountReferenceMode,
+    account_reference: input.accountReference.trim() || null,
+    bank_name: input.bankName.trim() || null,
+    bank_account_name: input.bankAccountName.trim() || null,
+    bank_account_number: input.bankAccountNumber.trim() || null,
+    bank_branch: input.bankBranch.trim() || null,
+    instructions: input.instructions.trim() || null,
+    is_default: input.isDefault,
+    all_properties: input.allProperties,
+    // The trigger refuses any block this landlord does not own.
+    building_ids: input.allProperties ? [] : input.buildingIds,
+  };
+
+  const { error } = input.id
+    ? await supabase
+        .from("landlord_payout_methods")
+        .update(row)
+        .eq("id", input.id)
+        .eq("landlord_id", user.id)
+    : await supabase
+        .from("landlord_payout_methods")
+        .insert({ ...row, landlord_id: user.id });
+
+  if (error) {
+    console.error("[Payout] save failed:", error.code, error.message);
+    if (error.code === "28000") {
+      return { success: false, error: "That block is not one of yours." };
+    }
+    if (error.code === "23514") {
+      return {
+        success: false,
+        error: "That destination is missing something a tenant would need.",
+      };
+    }
+    return { success: false, error: "Could not save that." };
+  }
+
+  revalidatePath("/dashboard/landlord/settings");
+  return { success: true };
+}
+
+export async function deletePayoutMethod(id: string): Promise<SaveResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "You need to be signed in." };
+
+  const { error } = await supabase
+    .from("landlord_payout_methods")
+    .delete()
+    .eq("id", id)
+    .eq("landlord_id", user.id);
+
+  if (error) {
+    console.error("[Payout] delete failed:", error.message);
+    return { success: false, error: "Could not remove that." };
+  }
+  revalidatePath("/dashboard/landlord/settings");
+  return { success: true };
+}
