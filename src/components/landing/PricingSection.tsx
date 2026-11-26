@@ -152,7 +152,8 @@ const plans = {
 };
 
 export function PricingSection() {
-  const [activeCategory, setActiveCategory] = useState<PlanCategory>("landlord");
+  const [activeCategory, setActiveCategory] =
+    useState<PlanCategory>("landlord");
 
   return (
     <Section background="white" id="pricing">
@@ -165,14 +166,17 @@ export function PricingSection() {
 
         {/* Category Toggle */}
         <div className="flex justify-center mt-8 mb-12">
-          <div className="inline-flex bg-gray-100 rounded-xl p-1">
+          {/* flex-wrap, not inline-flex. Three fixed-width buttons came to
+              363px and pushed the whole home page sideways in a 320px
+              viewport. They wrap onto two lines there instead. */}
+          <div className="flex flex-wrap justify-center bg-gray-100 rounded-xl p-1">
             <button
               onClick={() => setActiveCategory("tenant")}
               className={cn(
-                "px-6 py-2.5 rounded-lg font-medium transition-all duration-200",
+                "px-4 sm:px-6 min-h-[44px] rounded-lg font-medium transition-all duration-200",
                 activeCategory === "tenant"
                   ? "bg-white text-gray-900 shadow-soft"
-                  : "text-gray-600 hover:text-gray-900"
+                  : "text-gray-600 hover:text-gray-900",
               )}
             >
               For Tenants
@@ -180,10 +184,10 @@ export function PricingSection() {
             <button
               onClick={() => setActiveCategory("landlord")}
               className={cn(
-                "px-6 py-2.5 rounded-lg font-medium transition-all duration-200",
+                "px-4 sm:px-6 min-h-[44px] rounded-lg font-medium transition-all duration-200",
                 activeCategory === "landlord"
                   ? "bg-white text-gray-900 shadow-soft"
-                  : "text-gray-600 hover:text-gray-900"
+                  : "text-gray-600 hover:text-gray-900",
               )}
             >
               For Landlords
@@ -191,10 +195,10 @@ export function PricingSection() {
             <button
               onClick={() => setActiveCategory("provider")}
               className={cn(
-                "px-6 py-2.5 rounded-lg font-medium transition-all duration-200",
+                "px-4 sm:px-6 min-h-[44px] rounded-lg font-medium transition-all duration-200",
                 activeCategory === "provider"
                   ? "bg-white text-gray-900 shadow-soft"
-                  : "text-gray-600 hover:text-gray-900"
+                  : "text-gray-600 hover:text-gray-900",
               )}
             >
               For Providers
@@ -208,7 +212,7 @@ export function PricingSection() {
             "grid gap-8",
             activeCategory === "tenant"
               ? "max-w-md mx-auto"
-              : "lg:grid-cols-3 max-w-5xl mx-auto"
+              : "lg:grid-cols-3 max-w-5xl mx-auto",
           )}
         >
           {plans[activeCategory].map((plan, index) => (
@@ -218,7 +222,7 @@ export function PricingSection() {
                 "relative bg-white rounded-2xl border-2 p-8 transition-all duration-300",
                 plan.popular
                   ? "border-brand-600 shadow-medium scale-105 lg:scale-110"
-                  : "border-gray-100 shadow-soft hover:border-gray-200"
+                  : "border-gray-100 shadow-soft hover:border-gray-200",
               )}
             >
               {/* Popular Badge */}
@@ -254,7 +258,7 @@ export function PricingSection() {
                     key={featureIndex}
                     className={cn(
                       "flex items-start gap-3",
-                      !feature.included && "opacity-50"
+                      !feature.included && "opacity-50",
                     )}
                   >
                     {feature.included ? (
@@ -265,7 +269,7 @@ export function PricingSection() {
                     <span
                       className={cn(
                         "text-sm",
-                        feature.included ? "text-gray-700" : "text-gray-400"
+                        feature.included ? "text-gray-700" : "text-gray-400",
                       )}
                     >
                       {feature.text}
@@ -282,7 +286,7 @@ export function PricingSection() {
                     variant: plan.popular ? "primary" : "secondary",
                     size: "lg",
                     fullWidth: true,
-                  })
+                  }),
                 )}
               >
                 {plan.cta}

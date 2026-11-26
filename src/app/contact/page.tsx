@@ -9,7 +9,6 @@ import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import {
   Mail,
-  Phone,
   MapPin,
   MessageSquare,
   Building2,
@@ -313,32 +312,22 @@ export default function ContactPage() {
                       </h3>
                       <a
                         href={`mailto:${CONTACT_EMAIL}`}
-                        className="text-brand-600 hover:text-brand-700"
+                        className="inline-flex items-center min-h-[44px] text-brand-600 hover:text-brand-700"
                       >
                         {CONTACT_EMAIL}
                       </a>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Phone className="w-6 h-6 text-brand-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-1">
-                        Phone
-                      </h3>
-                      <a
-                        href="tel:+254700000000"
-                        className="text-brand-600 hover:text-brand-700"
-                      >
-                        +254 700 000 000
-                      </a>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Mon-Fri, 9am-6pm EAT
-                      </p>
-                    </div>
-                  </div>
+                  {/* THE PHONE BLOCK IS GONE, NOT FIXED.
+                      It read "+254 700 000 000" behind tel:+254700000000.
+                      700 000 000 is not a number anybody answers: it is the
+                      placeholder a template ships with. On the contact page
+                      of a rental platform that is worse than no number at
+                      all, because somebody with a problem taps it, hears
+                      nothing, and concludes the company is not real.
+                      Put a real line back here and this block returns with
+                      it; inventing one was not an option. */}
 
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -373,7 +362,7 @@ export default function ContactPage() {
                   </p>
                   <Link
                     href="/signup?role=landlord"
-                    className="text-cta-600 hover:text-cta-700 font-medium text-sm inline-flex items-center gap-1"
+                    className="text-cta-600 hover:text-cta-700 font-medium text-sm inline-flex items-center min-h-[44px] gap-1"
                   >
                     Learn about Enterprise
                     <ArrowRight className="w-4 h-4" />

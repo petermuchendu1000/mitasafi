@@ -49,7 +49,11 @@ function SavedCountBadge() {
   return (
     <Link
       href="/saved"
-      className="relative p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+      className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+      // A title is not an accessible name you can rely on: a touch device
+      // never shows it, and this link has no text of its own, so the whole
+      // control announced as "link" and nothing else.
+      aria-label={count > 0 ? `Saved properties, ${count}` : "Saved properties"}
       title={
         count > 0
           ? `${count} saved ${count === 1 ? "property" : "properties"}`
@@ -79,7 +83,11 @@ export function Navbar() {
       <Container>
         <nav className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
+          <Link
+            href="/"
+            aria-label="MitaSafi home"
+            className="flex items-center gap-2 min-h-[44px] -ml-1 pl-1 pr-1"
+          >
             <Logo variant="full" color="teal" size="sm" />
           </Link>
 
@@ -89,7 +97,7 @@ export function Navbar() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="font-medium transition-colors duration-200 text-gray-600 hover:text-brand-600 focus:outline-none focus-visible:outline-none"
+                className="inline-flex items-center min-h-[44px] font-medium transition-colors duration-200 text-gray-600 hover:text-brand-600 focus:outline-none focus-visible:outline-none"
               >
                 {link.label}
               </Link>
@@ -102,7 +110,7 @@ export function Navbar() {
             <SavedCountBadge />
             <Link
               href="/login"
-              className="font-medium transition-colors duration-200 text-gray-600 hover:text-brand-600 px-3 py-2"
+              className="inline-flex items-center min-h-[44px] font-medium transition-colors duration-200 text-gray-600 hover:text-brand-600 px-3"
             >
               Log In
             </Link>
@@ -120,8 +128,9 @@ export function Navbar() {
             <SavedCountBadge />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
-              aria-label="Toggle menu"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
+              aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={isMobileMenuOpen}
             >
               {isMobileMenuOpen ? (
                 <X className="w-6 h-6" />
@@ -135,8 +144,12 @@ export function Navbar() {
         {/* Mobile Menu */}
         <div
           className={cn(
+            // max-h-96 is 384px. Five links and two buttons at 44px each,
+            // with the gaps and the two dividers, come to about 416px, so
+            // raising every row to a thumb-sized target would have pushed
+            // "Create Account" behind the clip. Measured, not guessed.
             "lg:hidden overflow-hidden transition-all duration-300",
-            isMobileMenuOpen ? "max-h-96 pb-6" : "max-h-0",
+            isMobileMenuOpen ? "max-h-[36rem] pb-6" : "max-h-0",
           )}
         >
           <div className="flex flex-col gap-4 pt-4 border-t border-gray-200">
@@ -145,7 +158,7 @@ export function Navbar() {
                 key={link.label}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="font-medium py-2 text-gray-600 hover:text-brand-600 transition-colors"
+                className="flex items-center min-h-[44px] font-medium text-gray-600 hover:text-brand-600 transition-colors"
               >
                 {link.label}
               </Link>
@@ -154,7 +167,7 @@ export function Navbar() {
               <Link
                 href="/login"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="font-medium py-2 text-center text-gray-600 hover:text-brand-600"
+                className="flex items-center justify-center min-h-[44px] font-medium text-gray-600 hover:text-brand-600"
               >
                 Log In
               </Link>

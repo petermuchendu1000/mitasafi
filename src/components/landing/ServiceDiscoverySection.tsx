@@ -11,13 +11,13 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Container } from "@/components/ui";
-import { 
-  Search, 
-  ArrowRight, 
+import {
+  Search,
+  ArrowRight,
   Sparkles,
   TrendingUp,
   Clock,
-  CheckCircle
+  CheckCircle,
 } from "lucide-react";
 
 // =============================================================================
@@ -26,7 +26,7 @@ import {
 
 const TRENDING_SEARCHES = [
   "Plumber",
-  "Electrician", 
+  "Electrician",
   "House cleaning",
   "Moving services",
   "Security guard",
@@ -44,14 +44,17 @@ function ServiceSearchBar() {
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
 
-  const handleSearch = useCallback((searchQuery?: string) => {
-    const q = searchQuery || query;
-    if (q.trim()) {
-      router.push(`/services/browse?search=${encodeURIComponent(q.trim())}`);
-    } else {
-      router.push("/services/browse");
-    }
-  }, [query, router]);
+  const handleSearch = useCallback(
+    (searchQuery?: string) => {
+      const q = searchQuery || query;
+      if (q.trim()) {
+        router.push(`/services/browse?search=${encodeURIComponent(q.trim())}`);
+      } else {
+        router.push("/services/browse");
+      }
+    },
+    [query, router],
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -62,7 +65,7 @@ function ServiceSearchBar() {
   return (
     <div className="relative max-w-2xl mx-auto">
       {/* Search Input Container */}
-      <div 
+      <div
         className={`
           relative flex items-center bg-white rounded-full shadow-lg
           transition-all duration-200
@@ -84,7 +87,8 @@ function ServiceSearchBar() {
         />
         <button
           onClick={() => handleSearch()}
-          className="m-1.5 px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-full transition-colors flex items-center gap-2"
+          aria-label="Search services"
+          className="m-1.5 px-6 min-h-[44px] bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-full transition-colors flex items-center gap-2"
         >
           <span className="hidden sm:inline">Search</span>
           <ArrowRight className="w-4 h-4" />
@@ -104,7 +108,7 @@ function ServiceSearchBar() {
               setQuery(term);
               handleSearch(term);
             }}
-            className="px-3 py-1 text-sm text-gray-600 bg-white/80 hover:bg-white hover:text-brand-600 rounded-full border border-gray-200 hover:border-brand-300 transition-colors"
+            className="inline-flex items-center px-3 min-h-[44px] text-sm text-gray-600 bg-white/80 hover:bg-white hover:text-brand-600 rounded-full border border-gray-200 hover:border-brand-300 transition-colors"
           >
             {term}
           </button>
@@ -135,7 +139,7 @@ export function ServiceDiscoverySection() {
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800" />
       <div className="absolute inset-0 bg-[url('/images/pattern-dots.svg')] opacity-10" />
-      
+
       {/* Decorative Elements */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
@@ -147,13 +151,13 @@ export function ServiceDiscoverySection() {
             <Sparkles className="w-4 h-4" />
             Find trusted service providers for your property
           </div>
-          
+
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
             Need a Service Provider?
           </h2>
           <p className="text-lg text-white/80 max-w-2xl mx-auto">
-            Search from over 700 services. Verified professionals. Transparent pricing. 
-            Quality guaranteed.
+            Search from over 700 services. Verified professionals. Transparent
+            pricing. Quality guaranteed.
           </p>
         </div>
 
@@ -179,16 +183,14 @@ export function ServiceDiscoverySection() {
         {/* Stats */}
         <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6">
           {STATS.map((stat) => (
-            <div 
+            <div
               key={stat.label}
               className="text-center p-4 bg-white/10 backdrop-blur-sm rounded-xl"
             >
               <div className="text-2xl sm:text-3xl font-bold text-white">
                 {stat.value}
               </div>
-              <div className="text-sm text-white/70">
-                {stat.label}
-              </div>
+              <div className="text-sm text-white/70">{stat.label}</div>
             </div>
           ))}
         </div>

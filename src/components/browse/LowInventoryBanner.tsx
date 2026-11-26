@@ -1,9 +1,9 @@
 /**
  * Low Inventory Banner Component
- * 
+ *
  * Shows when search results are limited (< 5 properties).
  * Clean, factual messaging - no manufactured urgency.
- * 
+ *
  * UX Principles:
  * - Factual, not promotional
  * - Plain language (no idioms like "snapped up")
@@ -70,29 +70,34 @@ export function LowInventoryBanner({
 
   return (
     <>
-      <div className={cn(
-        "relative flex items-center justify-between gap-4 p-4 bg-gray-50 border border-gray-200 rounded-lg mb-6",
-        className
-      )}>
+      <div
+        className={cn(
+          "relative flex items-center justify-between gap-4 p-4 bg-gray-50 border border-gray-200 rounded-lg mb-6",
+          className,
+        )}
+      >
         {/* Message */}
         <p className="text-sm text-gray-700">
-          Only <span className="font-medium text-gray-900">{resultCount}</span> {resultCount === 1 ? "property matches" : "properties match"} your search.
-          {" "}
-          <span className="text-gray-500">Get notified when more are listed.</span>
+          Only <span className="font-medium text-gray-900">{resultCount}</span>{" "}
+          {resultCount === 1 ? "property matches" : "properties match"} your
+          search.{" "}
+          <span className="text-gray-500">
+            Get notified when more are listed.
+          </span>
         </p>
 
         {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-md transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 min-h-[44px] bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-md transition-colors"
           >
             <Bell className="w-3.5 h-3.5" />
             Notify Me
           </button>
           <button
             onClick={() => setDismissed(true)}
-            className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors rounded"
             aria-label="Dismiss"
           >
             <X className="w-4 h-4" />

@@ -1,4 +1,9 @@
-import { Section, SectionHeader, Container, ProblemCard } from "@/components/ui";
+import {
+  Section,
+  SectionHeader,
+  Container,
+  ProblemCard,
+} from "@/components/ui";
 import { buttonVariants } from "@/components/ui/Button";
 import { Camera, HandCoins, Receipt, Wrench } from "lucide-react";
 import Link from "next/link";
@@ -14,13 +19,13 @@ const problems = [
     icon: <HandCoins className="w-6 h-6" />,
     title: "The Bribe Game",
     description:
-      'KES 500 just to view. Another KES 1,000 to "secure" it. The caretaker\'s cut. The agent\'s cut. Everyone takes a slice before you even move in.',
+      "KES 500 just to view. Another KES 1,000 to \"secure\" it. The caretaker's cut. The agent's cut. Everyone takes a slice before you even move in.",
   },
   {
     icon: <Receipt className="w-6 h-6" />,
     title: "Payment Without Proof",
     description:
-      'You send rent to the caretaker\'s personal M-Pesa. No receipt. Next month: "We didn\'t receive your payment." Your word against theirs.',
+      "You send rent to the caretaker's personal M-Pesa. No receipt. Next month: \"We didn't receive your payment.\" Your word against theirs.",
   },
   {
     icon: <Wrench className="w-6 h-6" />,
@@ -58,13 +63,15 @@ export function ProblemSection() {
             This isn&apos;t bad luck.{" "}
             <span className="text-gray-900">It&apos;s a broken system.</span>
             <br />
-            <span className="text-brand-600">And we built MitaSafi to fix it.</span>
+            <span className="text-brand-600">
+              And we built MitaSafi to fix it.
+            </span>
           </p>
           <Link
             href="#for-tenants"
             className={buttonVariants({ variant: "secondary" })}
           >
-            See How We&apos;re Different →
+            See How We&apos;re Different
           </Link>
         </div>
       </Container>

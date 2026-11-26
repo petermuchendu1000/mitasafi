@@ -101,9 +101,9 @@ export function FAQSection() {
           <p className="text-gray-600 mb-2">Still have questions?</p>
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
-            className="text-brand-600 font-semibold hover:text-brand-700 transition-colors"
+            className="inline-flex items-center min-h-[44px] text-brand-600 font-semibold hover:text-brand-700 transition-colors"
           >
-            Contact our support team →
+            Contact our support team
           </a>
         </div>
       </Container>

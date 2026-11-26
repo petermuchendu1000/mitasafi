@@ -50,6 +50,18 @@ const PILL_PAGES: PageName[] = [
   "applications",
 ];
 
+/**
+ * Vertical padding that cannot reach a 44px box.
+ *
+ * py-3 is 12px each side; around text-sm's 20px line box that is 44px and
+ * around text-base's 24px it is 48px, which is why the browser run never
+ * flagged a py-3 control. Anything below it can be short, so anything
+ * below it has to say min-h-[44px] out loud. Flagging py-3 as well was
+ * stricter than the measurement and would have forced a redundant class
+ * onto controls that were already the right size.
+ */
+const TOO_SHORT = /\bpy-(0|0\.5|1|1\.5|2|2\.5)\b/;
+
 describe("the landlord list pages", () => {
   it("is reading all six files", () => {
     // Without this a rename would turn every check below green.
@@ -110,7 +122,7 @@ describe("the landlord list pages", () => {
         ].map((m) => m[1]);
         expect(controls.length).toBeGreaterThan(0);
         const small = controls.filter(
-          (cls) => /\bpy-[\d.]+/.test(cls) && !/min-h-\[44px\]/.test(cls),
+          (cls) => TOO_SHORT.test(cls) && !/min-h-\[44px\]/.test(cls),
         );
         expect(small).toEqual([]);
       },

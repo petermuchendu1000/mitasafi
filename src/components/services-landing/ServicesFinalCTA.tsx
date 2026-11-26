@@ -63,7 +63,7 @@ export function ServicesFinalCTA() {
               href="/login"
               className="font-medium text-white hover:underline underline-offset-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-cta-700 rounded"
             >
-              Log in →
+              Log in
             </Link>
           </p>
         </div>

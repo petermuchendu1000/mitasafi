@@ -124,7 +124,7 @@ export function ServicesNavbar() {
           {/* ── Logo ──────────────────────────────────────────────── */}
           <Link
             href="/"
-            className="flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-lg"
+            className="flex-shrink-0 inline-flex items-center min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-lg"
             aria-label="MitaSafi — Home"
           >
             <Logo

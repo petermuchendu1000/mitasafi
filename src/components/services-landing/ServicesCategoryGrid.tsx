@@ -55,17 +55,72 @@ interface ExtendedCategoryItem {
  * queries once the `service_providers` table is populated.
  */
 const PRIMARY_CATEGORIES: CategoryItem[] = [
-  { name: "Plumbing", slug: "plumbing", imageKey: "catPlumbing", providerCount: "12 providers" },
-  { name: "Electrical", slug: "electrical", imageKey: "catElectrical", providerCount: "8 providers" },
-  { name: "Water & Gas Delivery", slug: "water-gas-delivery", imageKey: "catWaterGas", providerCount: "3 providers" },
-  { name: "Cleaning", slug: "cleaning", imageKey: "catCleaning", providerCount: "24 providers" },
-  { name: "Laundry", slug: "laundry", imageKey: "catLaundry", providerCount: "6 providers" },
-  { name: "Pest Control", slug: "pest-control", imageKey: "catPestControl", providerCount: "5 providers" },
-  { name: "Carpentry", slug: "carpentry", imageKey: "catCarpentry", providerCount: "7 providers" },
-  { name: "Painting", slug: "painting", imageKey: "catPainting", providerCount: "10 providers" },
-  { name: "Moving & Relocation", slug: "moving-relocation", imageKey: "catMoving", providerCount: "15 providers" },
-  { name: "Internet & Networking", slug: "internet-networking", imageKey: "catInternet", providerCount: "4 providers" },
-  { name: "Gardening & Landscaping", slug: "gardening-landscaping", imageKey: "catGardening", providerCount: "6 providers" },
+  {
+    name: "Plumbing",
+    slug: "plumbing",
+    imageKey: "catPlumbing",
+    providerCount: "12 providers",
+  },
+  {
+    name: "Electrical",
+    slug: "electrical",
+    imageKey: "catElectrical",
+    providerCount: "8 providers",
+  },
+  {
+    name: "Water & Gas Delivery",
+    slug: "water-gas-delivery",
+    imageKey: "catWaterGas",
+    providerCount: "3 providers",
+  },
+  {
+    name: "Cleaning",
+    slug: "cleaning",
+    imageKey: "catCleaning",
+    providerCount: "24 providers",
+  },
+  {
+    name: "Laundry",
+    slug: "laundry",
+    imageKey: "catLaundry",
+    providerCount: "6 providers",
+  },
+  {
+    name: "Pest Control",
+    slug: "pest-control",
+    imageKey: "catPestControl",
+    providerCount: "5 providers",
+  },
+  {
+    name: "Carpentry",
+    slug: "carpentry",
+    imageKey: "catCarpentry",
+    providerCount: "7 providers",
+  },
+  {
+    name: "Painting",
+    slug: "painting",
+    imageKey: "catPainting",
+    providerCount: "10 providers",
+  },
+  {
+    name: "Moving & Relocation",
+    slug: "moving-relocation",
+    imageKey: "catMoving",
+    providerCount: "15 providers",
+  },
+  {
+    name: "Internet & Networking",
+    slug: "internet-networking",
+    imageKey: "catInternet",
+    providerCount: "4 providers",
+  },
+  {
+    name: "Gardening & Landscaping",
+    slug: "gardening-landscaping",
+    imageKey: "catGardening",
+    providerCount: "6 providers",
+  },
 ];
 
 /**
@@ -147,10 +202,7 @@ function MoreCategoriesCard({
     if (!isOpen) return;
 
     function handleClickOutside(event: MouseEvent) {
-      if (
-        cardRef.current &&
-        !cardRef.current.contains(event.target as Node)
-      ) {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
         onToggle();
       }
     }
@@ -219,7 +271,7 @@ function MoreCategoriesCard({
                 key={slug}
                 href={`/services/browse?category=${slug}`}
                 role="menuitem"
-                className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-600 transition-colors focus-visible:outline-none focus-visible:bg-brand-50 focus-visible:text-brand-700"
+                className="flex items-center px-4 min-h-[44px] text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-600 transition-colors focus-visible:outline-none focus-visible:bg-brand-50 focus-visible:text-brand-700"
               >
                 {name}
               </Link>
@@ -257,7 +309,9 @@ export function ServicesCategoryGrid() {
               className={cn(
                 // On mobile (< sm): hide cards beyond the initial count
                 // unless user has toggled "Show more"
-                index >= MOBILE_INITIAL_COUNT && !showAllMobile && "hidden sm:block"
+                index >= MOBILE_INITIAL_COUNT &&
+                  !showAllMobile &&
+                  "hidden sm:block",
               )}
             >
               <CategoryCard category={category} />
@@ -270,7 +324,7 @@ export function ServicesCategoryGrid() {
             className={cn(
               PRIMARY_CATEGORIES.length >= MOBILE_INITIAL_COUNT &&
                 !showAllMobile &&
-                "hidden sm:block"
+                "hidden sm:block",
             )}
           >
             <MoreCategoriesCard
@@ -286,9 +340,10 @@ export function ServicesCategoryGrid() {
             <button
               type="button"
               onClick={() => setShowAllMobile(true)}
-              className="text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-lg"
+              className="inline-flex items-center min-h-[44px] text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-lg"
             >
-              Show {PRIMARY_CATEGORIES.length - MOBILE_INITIAL_COUNT + 1} more categories
+              Show {PRIMARY_CATEGORIES.length - MOBILE_INITIAL_COUNT + 1} more
+              categories
             </button>
           </div>
         )}
@@ -299,11 +354,13 @@ export function ServicesCategoryGrid() {
             href="/services/browse"
             className={cn(
               buttonVariants({ variant: "secondary", size: "lg" }),
-              "inline-flex"
+              "inline-flex",
             )}
           >
             Browse All Services
-            <span className="ml-1" aria-hidden="true">&rarr;</span>
+            <span className="ml-1" aria-hidden="true">
+              &rarr;
+            </span>
           </Link>
         </div>
       </Container>

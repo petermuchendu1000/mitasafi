@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Section, SectionHeader, Container, FeatureCard } from "@/components/ui";
+import {
+  Section,
+  SectionHeader,
+  Container,
+  FeatureCard,
+} from "@/components/ui";
 import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -27,27 +32,48 @@ import {
 type UserType = "tenant" | "landlord" | "service-provider";
 
 const userTypes = [
-  { id: "tenant" as const, label: "I'm a Tenant", icon: <Key className="w-5 h-5" /> },
-  { id: "landlord" as const, label: "I'm a Landlord", icon: <LayoutDashboard className="w-5 h-5" /> },
-  { id: "service-provider" as const, label: "I'm a Service Provider", icon: <Wrench className="w-5 h-5" /> },
+  {
+    id: "tenant" as const,
+    label: "I'm a Tenant",
+    icon: <Key className="w-5 h-5" />,
+  },
+  {
+    id: "landlord" as const,
+    label: "I'm a Landlord",
+    icon: <LayoutDashboard className="w-5 h-5" />,
+  },
+  {
+    id: "service-provider" as const,
+    label: "I'm a Service Provider",
+    icon: <Wrench className="w-5 h-5" />,
+  },
 ];
 
-const features: Record<UserType, {
-  eyebrow: string;
-  title: string;
-  subtitle: string;
-  features: Array<{
-    icon: React.ReactNode;
+const features: Record<
+  UserType,
+  {
+    eyebrow: string;
     title: string;
-    description: string;
-    stat: string;
-  }>;
-  cta: { primary: string; secondary: string; primaryHref: string; secondaryHref: string };
-}> = {
+    subtitle: string;
+    features: Array<{
+      icon: React.ReactNode;
+      title: string;
+      description: string;
+      stat: string;
+    }>;
+    cta: {
+      primary: string;
+      secondary: string;
+      primaryHref: string;
+      secondaryHref: string;
+    };
+  }
+> = {
   tenant: {
     eyebrow: "For Tenants",
     title: "Find Home, Not Headaches",
-    subtitle: "Search with confidence. Move in with clarity. Live without the drama.",
+    subtitle:
+      "Search with confidence. Move in with clarity. Live without the drama.",
     features: [
       {
         icon: <ShieldCheck className="w-6 h-6" />,
@@ -94,7 +120,7 @@ const features: Record<UserType, {
     ],
     cta: {
       primary: "Browse Verified Homes",
-      secondary: "Create Free Account →",
+      secondary: "Create Free Account",
       primaryHref: "/properties",
       secondaryHref: "/signup",
     },
@@ -102,7 +128,8 @@ const features: Record<UserType, {
   landlord: {
     eyebrow: "For Landlords",
     title: "Better Tenants, Less Stress",
-    subtitle: "Fill vacancies faster. Get paid on time. Know what's happening at your property.",
+    subtitle:
+      "Fill vacancies faster. Get paid on time. Know what's happening at your property.",
     features: [
       {
         icon: <UserCheck className="w-6 h-6" />,
@@ -142,7 +169,7 @@ const features: Record<UserType, {
     ],
     cta: {
       primary: "List Your Property — Free",
-      secondary: "See How It Works →",
+      secondary: "See How It Works",
       primaryHref: "/signup?role=landlord&intent=list",
       secondaryHref: "#how-it-works",
     },
@@ -150,7 +177,8 @@ const features: Record<UserType, {
   "service-provider": {
     eyebrow: "For Service Providers",
     title: "Grow Your Business, Not Your Stress",
-    subtitle: "Steady work. Trusted reputation. Guaranteed payment. Join Nairobi's rental service network.",
+    subtitle:
+      "Steady work. Trusted reputation. Guaranteed payment. Join Nairobi's rental service network.",
     features: [
       {
         icon: <Calendar className="w-6 h-6" />,
@@ -183,7 +211,7 @@ const features: Record<UserType, {
     ],
     cta: {
       primary: "Apply as Service Provider",
-      secondary: "See Requirements →",
+      secondary: "See Requirements",
       primaryHref: "/signup?role=provider",
       secondaryHref: "/service-providers",
     },
@@ -195,12 +223,15 @@ export function FeaturesSection() {
   const activeFeatures = features[activeTab];
 
   // Color scheme per user type
-  const tabColors: Record<UserType, { 
-    active: string; 
-    bg: string;
-    buttonVariant: "brand" | "cta" | "success";
-    cardColor: "brand" | "cta" | "success";
-  }> = {
+  const tabColors: Record<
+    UserType,
+    {
+      active: string;
+      bg: string;
+      buttonVariant: "brand" | "cta" | "success";
+      cardColor: "brand" | "cta" | "success";
+    }
+  > = {
     tenant: {
       active: "bg-brand-600 text-white shadow-medium",
       bg: "bg-brand-50/50",
@@ -224,7 +255,11 @@ export function FeaturesSection() {
   const currentColors = tabColors[activeTab];
 
   return (
-    <Section background="white" id="for-tenants" className={cn("transition-colors duration-300", currentColors.bg)}>
+    <Section
+      background="white"
+      id="for-tenants"
+      className={cn("transition-colors duration-300", currentColors.bg)}
+    >
       <Container>
         {/* User Type Selector Header */}
         <div className="text-center mb-10">
@@ -232,8 +267,8 @@ export function FeaturesSection() {
             Built for Everyone in the Rental Ecosystem
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Whether you&apos;re searching for a home, managing properties, or offering
-            services — MitaSafi works for you.
+            Whether you&apos;re searching for a home, managing properties, or
+            offering services — MitaSafi works for you.
           </p>
         </div>
 
@@ -247,7 +282,7 @@ export function FeaturesSection() {
                 "flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200",
                 activeTab === type.id
                   ? tabColors[type.id].active
-                  : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
+                  : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200",
               )}
             >
               {type.icon}
@@ -271,8 +306,8 @@ export function FeaturesSection() {
               activeTab === "tenant"
                 ? "sm:grid-cols-2 lg:grid-cols-3"
                 : activeTab === "landlord"
-                ? "sm:grid-cols-2 lg:grid-cols-3"
-                : "sm:grid-cols-2 lg:grid-cols-2 max-w-4xl mx-auto"
+                  ? "sm:grid-cols-2 lg:grid-cols-3"
+                  : "sm:grid-cols-2 lg:grid-cols-2 max-w-4xl mx-auto",
             )}
           >
             {activeFeatures.features.map((feature, index) => (
@@ -292,7 +327,10 @@ export function FeaturesSection() {
             <div className="inline-flex flex-col sm:flex-row gap-4">
               <Link
                 href={activeFeatures.cta.primaryHref}
-                className={buttonVariants({ variant: currentColors.buttonVariant, size: "lg" })}
+                className={buttonVariants({
+                  variant: currentColors.buttonVariant,
+                  size: "lg",
+                })}
               >
                 {activeFeatures.cta.primary}
               </Link>

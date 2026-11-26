@@ -94,7 +94,7 @@ export function NeighborhoodsSection() {
             href="/properties"
             className={buttonVariants({ variant: "secondary" })}
           >
-            Browse All Areas →
+            Browse All Areas
           </Link>
         </div>
       </Container>

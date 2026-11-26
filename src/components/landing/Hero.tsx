@@ -85,12 +85,12 @@ export function Hero() {
             <div className="mt-6 pt-6 border-t border-white/20">
               <Link
                 href="/signup?role=provider"
-                className="text-sm text-gray-300 hover:text-white transition-colors inline-flex items-center gap-2"
+                className="text-sm text-gray-300 hover:text-white transition-colors inline-flex items-center min-h-[44px] gap-2"
               >
                 <Wrench className="w-4 h-4" />
                 Are you a service provider?
                 <span className="text-brand-400 font-medium">
-                  Join our network →
+                  Join our network
                 </span>
               </Link>
             </div>

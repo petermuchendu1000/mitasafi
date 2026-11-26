@@ -73,8 +73,7 @@ export function ServicesHero() {
           </h1>
           <p className="mt-4 sm:mt-6 text-xl sm:text-2xl text-white/80 leading-relaxed">
             Verified professionals. Transparent pricing.
-            <br className="hidden sm:inline" />
-            {" "}Book in minutes, not days.
+            <br className="hidden sm:inline" /> Book in minutes, not days.
           </p>
         </div>
 
@@ -97,7 +96,10 @@ export function ServicesHero() {
         </div>
 
         {/* ── Popular Tags ──────────────────────────────────────── */}
-        <nav aria-label="Popular service categories" className="flex items-center justify-center gap-2 flex-wrap">
+        <nav
+          aria-label="Popular service categories"
+          className="flex items-center justify-center gap-2 flex-wrap"
+        >
           <span className="text-sm text-white/60 font-medium mr-1">
             Popular:
           </span>
@@ -105,7 +107,7 @@ export function ServicesHero() {
             <Link
               key={href}
               href={href}
-              className="bg-white/20 hover:bg-white/30 text-white text-sm font-medium px-4 py-2 rounded-full backdrop-blur-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="inline-flex items-center bg-white/20 hover:bg-white/30 text-white text-sm font-medium px-4 min-h-[44px] rounded-full backdrop-blur-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
             >
               {label}
             </Link>

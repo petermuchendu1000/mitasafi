@@ -366,7 +366,7 @@ export function ListingCard({
           <button
             onClick={handleSave}
             className={cn(
-              "absolute top-2 right-2 p-2 rounded-full transition-all z-10",
+              "absolute top-2 right-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all z-10",
               isSaved
                 ? "bg-orange-500 text-white shadow-md"
                 : "bg-white/90 text-gray-500 hover:bg-white hover:text-orange-500 shadow-sm",

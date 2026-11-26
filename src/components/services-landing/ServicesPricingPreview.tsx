@@ -41,18 +41,73 @@ interface PricingRow {
 // =============================================================================
 
 const PRICING_DATA: readonly PricingRow[] = [
-  { category: "Plumbing", slug: "plumbing", startingFrom: 500, rangeMax: 5_000 },
-  { category: "Electrical", slug: "electrical", startingFrom: 800, rangeMax: 8_000 },
-  { category: "Cleaning", slug: "cleaning", startingFrom: 1_500, rangeMax: 6_000 },
-  { category: "Moving & Relocation", slug: "moving-relocation", startingFrom: 3_000, rangeMax: 25_000 },
-  { category: "Painting", slug: "painting", startingFrom: 2_000, rangeMax: 15_000 },
-  { category: "Carpentry", slug: "carpentry", startingFrom: 1_000, rangeMax: 10_000 },
+  {
+    category: "Plumbing",
+    slug: "plumbing",
+    startingFrom: 500,
+    rangeMax: 5_000,
+  },
+  {
+    category: "Electrical",
+    slug: "electrical",
+    startingFrom: 800,
+    rangeMax: 8_000,
+  },
+  {
+    category: "Cleaning",
+    slug: "cleaning",
+    startingFrom: 1_500,
+    rangeMax: 6_000,
+  },
+  {
+    category: "Moving & Relocation",
+    slug: "moving-relocation",
+    startingFrom: 3_000,
+    rangeMax: 25_000,
+  },
+  {
+    category: "Painting",
+    slug: "painting",
+    startingFrom: 2_000,
+    rangeMax: 15_000,
+  },
+  {
+    category: "Carpentry",
+    slug: "carpentry",
+    startingFrom: 1_000,
+    rangeMax: 10_000,
+  },
   { category: "Laundry", slug: "laundry", startingFrom: 300, rangeMax: 2_000 },
-  { category: "Pest Control", slug: "pest-control", startingFrom: 2_500, rangeMax: 8_000 },
-  { category: "Water & Gas Delivery", slug: "water-gas-delivery", startingFrom: 200, rangeMax: 3_000 },
-  { category: "Internet & Networking", slug: "internet-networking", startingFrom: 1_000, rangeMax: 5_000 },
-  { category: "Gardening & Landscaping", slug: "gardening-landscaping", startingFrom: 1_500, rangeMax: 8_000 },
-  { category: "Welding & Metal Works", slug: "welding-metal-works", startingFrom: 2_000, rangeMax: 20_000 },
+  {
+    category: "Pest Control",
+    slug: "pest-control",
+    startingFrom: 2_500,
+    rangeMax: 8_000,
+  },
+  {
+    category: "Water & Gas Delivery",
+    slug: "water-gas-delivery",
+    startingFrom: 200,
+    rangeMax: 3_000,
+  },
+  {
+    category: "Internet & Networking",
+    slug: "internet-networking",
+    startingFrom: 1_000,
+    rangeMax: 5_000,
+  },
+  {
+    category: "Gardening & Landscaping",
+    slug: "gardening-landscaping",
+    startingFrom: 1_500,
+    rangeMax: 8_000,
+  },
+  {
+    category: "Welding & Metal Works",
+    slug: "welding-metal-works",
+    startingFrom: 2_000,
+    rangeMax: 20_000,
+  },
 ] as const;
 
 // =============================================================================
@@ -114,7 +169,7 @@ function PricingCard({ row }: { row: PricingRow }) {
       </div>
       <Link
         href={browseHref}
-        className="ml-4 shrink-0 text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 rounded"
+        className="ml-4 shrink-0 inline-flex items-center min-h-[44px] text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 rounded"
       >
         View
       </Link>
@@ -173,8 +228,8 @@ export function ServicesPricingPreview() {
 
         {/* Disclaimer */}
         <p className="mt-8 text-center text-sm text-gray-500">
-          Prices vary by scope, location, and provider experience.
-          All quotes are free and non-binding.
+          Prices vary by scope, location, and provider experience. All quotes
+          are free and non-binding.
         </p>
 
         {/* CTA */}
@@ -183,7 +238,7 @@ export function ServicesPricingPreview() {
             href="/services/browse"
             className={cn(buttonVariants({ variant: "primary", size: "lg" }))}
           >
-            Get a Free Quote →
+            Get a Free Quote
           </Link>
         </div>
       </Container>

@@ -1,9 +1,9 @@
 /**
  * Search Filters Component
- * 
+ *
  * Filter controls for the browse listings page.
  * Responsive: horizontal bar on desktop, drawer on mobile.
- * 
+ *
  * Design: 70% teal, 30% orange accents
  */
 
@@ -11,17 +11,17 @@
 
 import { useState, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { 
-  Search, 
-  SlidersHorizontal, 
-  X, 
+import {
+  Search,
+  SlidersHorizontal,
+  X,
   ChevronDown,
   Home,
   MapPin,
   DollarSign,
   Bed,
   CheckCircle,
-  Filter
+  Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -86,11 +86,16 @@ const POPULAR_AREAS = [
   "Upper Hill",
 ];
 
-export function SearchFilters({ areas = POPULAR_AREAS, propertyTypes, className, hideSearch = false }: SearchFiltersProps) {
+export function SearchFilters({
+  areas = POPULAR_AREAS,
+  propertyTypes,
+  className,
+  hideSearch = false,
+}: SearchFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
+
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
 
@@ -104,22 +109,25 @@ export function SearchFilters({ areas = POPULAR_AREAS, propertyTypes, className,
   const currentAvailable = searchParams.get("available") === "true";
 
   // Update URL params
-  const updateFilters = useCallback((updates: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams.toString());
-    
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === null || value === "") {
-        params.delete(key);
-      } else {
-        params.set(key, value);
-      }
-    });
+  const updateFilters = useCallback(
+    (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
 
-    // Reset to page 1 when filters change
-    params.delete("page");
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === null || value === "") {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      });
 
-    router.push(`${pathname}?${params.toString()}`);
-  }, [router, pathname, searchParams]);
+      // Reset to page 1 when filters change
+      params.delete("page");
+
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [router, pathname, searchParams],
+  );
 
   // Handle search submit
   const handleSearch = (e: React.FormEvent) => {
@@ -178,7 +186,7 @@ export function SearchFilters({ areas = POPULAR_AREAS, propertyTypes, className,
               label="Area"
               icon={<MapPin className="w-4 h-4" />}
               value={currentArea}
-              options={areas.map(area => ({ value: area, label: area }))}
+              options={areas.map((area) => ({ value: area, label: area }))}
               onChange={(value) => updateFilters({ area: value })}
               placeholder="All Areas"
             />
@@ -215,15 +223,19 @@ export function SearchFilters({ areas = POPULAR_AREAS, propertyTypes, className,
 
             {/* Verified Only Toggle */}
             <button
-              onClick={() => updateFilters({ verified: currentVerified ? null : "true" })}
+              onClick={() =>
+                updateFilters({ verified: currentVerified ? null : "true" })
+              }
               className={cn(
                 "inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all",
                 currentVerified
                   ? "bg-brand-50 border-brand-300 text-brand-700"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600",
               )}
             >
-              <CheckCircle className={cn("w-4 h-4", currentVerified && "text-brand-600")} />
+              <CheckCircle
+                className={cn("w-4 h-4", currentVerified && "text-brand-600")}
+              />
               Verified Only
             </button>
 
@@ -267,18 +279,18 @@ export function SearchFilters({ areas = POPULAR_AREAS, propertyTypes, className,
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search listings..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full pl-10 pr-4 min-h-[44px] bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
             </form>
-            
+
             <button
               onClick={() => setShowMobileFilters(true)}
               className={cn(
-                "inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors",
+                "inline-flex items-center gap-2 px-4 min-h-[44px] rounded-lg border text-sm font-medium transition-colors",
                 activeFilterCount > 0
                   ? "bg-brand-50 border-brand-300 text-brand-700"
-                  : "bg-white border-gray-200 text-gray-700"
+                  : "bg-white border-gray-200 text-gray-700",
               )}
             >
               <Filter className="w-4 h-4" />
@@ -293,27 +305,31 @@ export function SearchFilters({ areas = POPULAR_AREAS, propertyTypes, className,
           {/* Quick Filters */}
           <div className="flex gap-2 mt-3 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
             <button
-              onClick={() => updateFilters({ verified: currentVerified ? null : "true" })}
+              onClick={() =>
+                updateFilters({ verified: currentVerified ? null : "true" })
+              }
               className={cn(
-                "flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                "flex-shrink-0 inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-full text-sm font-medium transition-all",
                 currentVerified
                   ? "bg-brand-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200",
               )}
             >
               <CheckCircle className="w-3.5 h-3.5" />
               Verified
             </button>
-            
+
             {["Westlands", "Kilimani", "Lavington"].map((area) => (
               <button
                 key={area}
-                onClick={() => updateFilters({ area: currentArea === area ? null : area })}
+                onClick={() =>
+                  updateFilters({ area: currentArea === area ? null : area })
+                }
                 className={cn(
-                  "flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                  "flex-shrink-0 px-3 min-h-[44px] rounded-full text-sm font-medium transition-all",
                   currentArea === area
                     ? "bg-brand-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200",
                 )}
               >
                 {area}
@@ -352,12 +368,16 @@ export function SearchFilters({ areas = POPULAR_AREAS, propertyTypes, className,
                     {areas.slice(0, 12).map((area) => (
                       <button
                         key={area}
-                        onClick={() => updateFilters({ area: currentArea === area ? null : area })}
+                        onClick={() =>
+                          updateFilters({
+                            area: currentArea === area ? null : area,
+                          })
+                        }
                         className={cn(
                           "px-3 py-2 rounded-lg text-sm font-medium transition-all",
                           currentArea === area
                             ? "bg-brand-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200",
                         )}
                       >
                         {area}
@@ -372,12 +392,16 @@ export function SearchFilters({ areas = POPULAR_AREAS, propertyTypes, className,
                     {PROPERTY_TYPE_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
-                        onClick={() => updateFilters({ type: currentType === opt.value ? null : opt.value })}
+                        onClick={() =>
+                          updateFilters({
+                            type: currentType === opt.value ? null : opt.value,
+                          })
+                        }
                         className={cn(
                           "px-3 py-2 rounded-lg text-sm font-medium transition-all",
                           currentType === opt.value
                             ? "bg-brand-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200",
                         )}
                       >
                         {opt.label}
@@ -392,12 +416,17 @@ export function SearchFilters({ areas = POPULAR_AREAS, propertyTypes, className,
                     {BEDROOM_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
-                        onClick={() => updateFilters({ beds: currentBedrooms === opt.value ? null : opt.value })}
+                        onClick={() =>
+                          updateFilters({
+                            beds:
+                              currentBedrooms === opt.value ? null : opt.value,
+                          })
+                        }
                         className={cn(
                           "px-3 py-2 rounded-lg text-sm font-medium transition-all",
                           currentBedrooms === opt.value
                             ? "bg-brand-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200",
                         )}
                       >
                         {opt.label}
@@ -412,12 +441,17 @@ export function SearchFilters({ areas = POPULAR_AREAS, propertyTypes, className,
                     {PRICE_RANGES.map((opt) => (
                       <button
                         key={opt.value}
-                        onClick={() => updateFilters({ price: currentPrice === opt.value ? null : opt.value })}
+                        onClick={() =>
+                          updateFilters({
+                            price:
+                              currentPrice === opt.value ? null : opt.value,
+                          })
+                        }
                         className={cn(
                           "px-3 py-2 rounded-lg text-sm font-medium transition-all",
                           currentPrice === opt.value
                             ? "bg-brand-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200",
                         )}
                       >
                         {opt.label}
@@ -437,7 +471,7 @@ export function SearchFilters({ areas = POPULAR_AREAS, propertyTypes, className,
                           "w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                           currentSort === opt.value
                             ? "bg-brand-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200",
                         )}
                       >
                         {opt.label}
@@ -482,19 +516,19 @@ interface FilterDropdownProps {
   isSort?: boolean;
 }
 
-function FilterDropdown({ 
-  label, 
-  icon, 
-  value, 
-  options, 
-  onChange, 
-  placeholder = "Any", 
+function FilterDropdown({
+  label,
+  icon,
+  value,
+  options,
+  onChange,
+  placeholder = "Any",
   showClear = true,
-  isSort = false
+  isSort = false,
 }: FilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  
-  const selectedOption = options.find(opt => opt.value === value);
+
+  const selectedOption = options.find((opt) => opt.value === value);
   const displayValue = selectedOption?.label || placeholder;
 
   // Sort dropdown never highlights as "active filter"
@@ -508,13 +542,15 @@ function FilterDropdown({
           "inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all",
           hasActiveSelection
             ? "bg-brand-50 border-brand-300 text-brand-700"
-            : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+            : "bg-white border-gray-200 text-gray-700 hover:border-gray-300",
         )}
       >
         {icon}
         <span className="hidden sm:inline">{label}:</span>
         <span className={cn(!value && "text-gray-500")}>{displayValue}</span>
-        <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
+        <ChevronDown
+          className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")}
+        />
       </button>
 
       {isOpen && (
@@ -526,7 +562,10 @@ function FilterDropdown({
           <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-20 max-h-64 overflow-auto">
             {showClear && value && (
               <button
-                onClick={() => { onChange(""); setIsOpen(false); }}
+                onClick={() => {
+                  onChange("");
+                  setIsOpen(false);
+                }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
               >
                 Clear selection
@@ -535,12 +574,15 @@ function FilterDropdown({
             {options.map((option) => (
               <button
                 key={option.value}
-                onClick={() => { onChange(option.value); setIsOpen(false); }}
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
                 className={cn(
                   "w-full text-left px-4 py-2 text-sm transition-colors",
                   value === option.value
                     ? "bg-brand-50 text-brand-700 font-medium"
-                    : "text-gray-700 hover:bg-gray-50"
+                    : "text-gray-700 hover:bg-gray-50",
                 )}
               >
                 {option.label}
@@ -554,7 +596,13 @@ function FilterDropdown({
 }
 
 // Mobile Filter Section Component
-function MobileFilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+function MobileFilterSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <h4 className="text-sm font-semibold text-gray-900 mb-3">{title}</h4>

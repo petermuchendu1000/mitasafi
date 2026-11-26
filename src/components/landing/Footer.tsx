@@ -94,7 +94,7 @@ export function Footer() {
             <div className="mt-6 space-y-3">
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
-                className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                className="inline-flex items-center gap-2 min-h-[44px] text-gray-400 hover:text-white transition-colors"
               >
                 <Mail className="w-4 h-4" />
                 {CONTACT_EMAIL}
@@ -113,7 +113,7 @@ export function Footer() {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
                   aria-label={social.label}
                 >
                   {social.icon}
@@ -126,12 +126,12 @@ export function Footer() {
           {Object.values(footerLinks).map((section, index) => (
             <div key={index}>
               <h3 className="font-semibold text-white mb-4">{section.title}</h3>
-              <ul className="space-y-3">
+              <ul>
                 {section.links.map((link, linkIndex) => (
                   <li key={linkIndex}>
                     <Link
                       href={link.href}
-                      className="text-gray-400 hover:text-white transition-colors text-sm"
+                      className="inline-flex items-center min-h-[44px] text-gray-400 hover:text-white transition-colors text-sm"
                     >
                       {link.label}
                     </Link>

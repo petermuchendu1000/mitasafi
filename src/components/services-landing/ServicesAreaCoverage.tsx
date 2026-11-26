@@ -34,11 +34,7 @@ import { AREA_GROUPS } from "@/lib/constants";
  * Region group display order.
  * Keys match AREA_GROUPS from constants — iterated in visual order.
  */
-const REGION_ORDER = [
-  "Central & West",
-  "South",
-  "North & East",
-] as const;
+const REGION_ORDER = ["Central & West", "South", "North & East"] as const;
 
 // =============================================================================
 // AREA CHIP
@@ -48,7 +44,7 @@ function AreaChip({ area }: { area: string }) {
   return (
     <Link
       href={`/services/browse?area=${encodeURIComponent(area)}`}
-      className="inline-block border border-gray-200 bg-white hover:border-brand-300 hover:bg-brand-50 text-gray-700 hover:text-brand-700 px-4 py-2 rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+      className="inline-flex items-center border border-gray-200 bg-white hover:border-brand-300 hover:bg-brand-50 text-gray-700 hover:text-brand-700 px-4 min-h-[44px] rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
     >
       {area}
     </Link>
@@ -115,7 +111,7 @@ export function ServicesAreaCoverage() {
             href="#services-hero-heading"
             className={cn(
               buttonVariants({ variant: "secondary", size: "md" }),
-              "group"
+              "group",
             )}
           >
             Search Your Area

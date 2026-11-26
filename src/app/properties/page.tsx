@@ -135,7 +135,7 @@ export default async function BrowsePropertiesPage({
                   />
                   <button
                     type="submit"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-5 min-h-[44px] bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors"
                   >
                     Search
                   </button>

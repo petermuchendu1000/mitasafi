@@ -89,14 +89,16 @@ export function ServicesProviderCTA() {
             <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:justify-center lg:justify-start">
               <Link
                 href="/signup?role=provider"
-                className={cn(buttonVariants({ variant: "primary", size: "lg" }))}
+                className={cn(
+                  buttonVariants({ variant: "primary", size: "lg" }),
+                )}
               >
-                Join as Provider →
+                Join as Provider
               </Link>
               <Link
                 href="/service-providers"
                 className={cn(
-                  buttonVariants({ variant: "outline", size: "lg" })
+                  buttonVariants({ variant: "outline", size: "lg" }),
                 )}
               >
                 Learn More
