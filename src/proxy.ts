@@ -35,6 +35,35 @@ import {
 // CSP is intentionally permissive for development; tighten in production.
 // =============================================================================
 
+/**
+ * Carry the session forward onto a response we are creating ourselves.
+ *
+ * WHY THIS EXISTS
+ *   updateSession() refreshes the access token and writes the new cookies
+ *   onto ITS response object. Every redirect below used to build a fresh
+ *   NextResponse and return that instead, so on any request where a refresh
+ *   happened, the new cookies were thrown away.
+ *
+ *   That signs people out. Supabase ROTATES refresh tokens: once a refresh
+ *   succeeds the old token is spent. Dropping the new cookies leaves the
+ *   browser holding the spent one, so the NEXT request cannot refresh,
+ *   getUser() returns null, and the dashboard layout sends them to /login.
+ *   It looks random from the outside, because it depends on whether that
+ *   particular request happened to be the one that refreshed.
+ *
+ *   https://supabase.com/docs/guides/auth/server-side/nextjs says to copy
+ *   the cookies whenever you return a different response object.
+ */
+function withSession(
+  response: NextResponse,
+  session: NextResponse,
+): NextResponse {
+  for (const cookie of session.cookies.getAll()) {
+    response.cookies.set(cookie);
+  }
+  return response;
+}
+
 function applySecurityHeaders(response: NextResponse): NextResponse {
   const h = response.headers;
 
@@ -143,7 +172,7 @@ export async function proxy(request: NextRequest) {
     redirectUrl.searchParams.set("redirectTo", pathname);
     perf.end("redirect-to-login");
     perf.logSummary(100);
-    return NextResponse.redirect(redirectUrl);
+    return withSession(NextResponse.redirect(redirectUrl), supabaseResponse);
   }
 
   // PERFORMANCE: Only fetch roles ONCE if needed for auth routes OR protected routes
@@ -210,7 +239,10 @@ export async function proxy(request: NextRequest) {
             request.url,
           );
           perf.logSummary(100);
-          return NextResponse.redirect(redirectUrl);
+          return withSession(
+            NextResponse.redirect(redirectUrl),
+            supabaseResponse,
+          );
         } else {
           perf.end("auth-route-logic", { action: "redirect-upgrade-warning" });
           // User doesn't have this role - redirect to signup with showWarning=true
@@ -225,7 +257,10 @@ export async function proxy(request: NextRequest) {
             upgradeUrl.searchParams.set("redirectTo", redirectToParam);
           }
           perf.logSummary(100);
-          return NextResponse.redirect(upgradeUrl);
+          return withSession(
+            NextResponse.redirect(upgradeUrl),
+            supabaseResponse,
+          );
         }
       }
     }
@@ -234,13 +269,19 @@ export async function proxy(request: NextRequest) {
     // Default: If user has roles, go to dashboard; if no roles, let them access signup
     if (hasRoles) {
       perf.logSummary(100);
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return withSession(
+        NextResponse.redirect(new URL("/dashboard", request.url)),
+        supabaseResponse,
+      );
     }
 
     // User without roles can access signup to select one, but not login
     if (pathname.startsWith("/login")) {
       perf.logSummary(100);
-      return NextResponse.redirect(new URL("/signup", request.url));
+      return withSession(
+        NextResponse.redirect(new URL("/signup", request.url)),
+        supabaseResponse,
+      );
     }
   }
 
@@ -254,7 +295,10 @@ export async function proxy(request: NextRequest) {
     if (roles.length === 0) {
       perf.end("protected-route-role-check", { action: "no-roles-redirect" });
       perf.logSummary(100);
-      return NextResponse.redirect(new URL("/signup", request.url));
+      return withSession(
+        NextResponse.redirect(new URL("/signup", request.url)),
+        supabaseResponse,
+      );
     }
     perf.end("protected-route-role-check", { rolesCount: roles.length });
   }
