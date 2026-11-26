@@ -86,6 +86,19 @@ describe("landlord dashboard home, mobile rules", () => {
     expect(CODE).toMatch(/hidden sm:block text-xs text-gray-400/);
   });
 
+  it("shows five activity rows", () => {
+    // Was 8. At about 80px a row on a phone that was 640px of scroll
+    // between the figures and the quick actions.
+    //
+    // mergeActivity's own tests in src/lib/landlord/__tests__/portfolio.test.ts
+    // already prove the limit is applied after sorting, so what is left to
+    // pin here is the number this page passes it.
+    expect(CODE).toMatch(/const ACTIVITY_ROWS = 5;/);
+    expect(CODE).toMatch(/mergeActivity\(\s*\[[^\]]*\],\s*ACTIVITY_ROWS,/);
+    // A literal at the call site would make the constant above decorative.
+    expect(CODE).not.toMatch(/mergeActivity\(\s*\[[^\]]*\],\s*\d+/);
+  });
+
   it("does not carry the filler line back", () => {
     expect(CODE).not.toContain("what's happening with your properties");
   });

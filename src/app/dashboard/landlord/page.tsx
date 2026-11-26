@@ -72,6 +72,19 @@ import {
 } from "@/lib/landlord/portfolio";
 import { formatKes, formatKesCompact } from "@/lib/landlord/labels";
 
+/**
+ * How many rows the activity feed shows.
+ *
+ * Five, not eight. This is a summary on the way to somewhere else, and on a
+ * phone each row is about 80px: eight of them were 640px of scroll between
+ * the figures and the quick actions. A landlord who wants the full history
+ * goes to the page the row links to.
+ *
+ * The number is named rather than written at the call site so a test can
+ * assert on it, and so the next person changing it reads this first.
+ */
+const ACTIVITY_ROWS = 5;
+
 /** PostgREST returns numeric as a string; null must not quietly become 0. */
 function num(value: number | string | null | undefined): number {
   if (value === null || value === undefined || value === "") return 0;
@@ -306,7 +319,7 @@ export default async function LandlordDashboardPage() {
 
   const activity = mergeActivity(
     [paymentActivity, maintenanceActivity, leaseActivity, inquiryActivity],
-    8,
+    ACTIVITY_ROWS,
   );
 
   const activityStyle: Record<
