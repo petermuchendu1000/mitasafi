@@ -122,3 +122,16 @@ instruction a tenant should follow. What is **not** built:
 
 Both are stated on screen beside the controls and asserted in
 `supabase/tests/landlord_settings_staff_test.sql`.
+
+## The landlord-facing version of this list
+
+`/dashboard/landlord/help` now shows landlords what MitaSafi does **not** do,
+from `NOT_BUILT` in `src/lib/landlord/help-content.ts`. That list and this
+document have to be changed together: shipping a feature without removing its
+entry means the help page tells landlords it is missing when it is not.
+
+`src/lib/landlord/__tests__/help-content.test.ts` checks the shape of that
+list (every entry has a reason) and
+`src/__tests__/internal-links-resolve.test.ts` checks that every route the
+help page links to actually exists — so the page cannot drift into pointing
+at pages that were never built.
