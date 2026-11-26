@@ -175,6 +175,13 @@ export function TenantProfile({ data }: { data: TenantProfileData }) {
                 <span className="hidden sm:inline">Email</span>
               </a>
             )}
+            <Link
+              href={`/dashboard/landlord/tenants/${tenant.id}/statement`}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Statement</span>
+            </Link>
           </div>
         </div>
 
