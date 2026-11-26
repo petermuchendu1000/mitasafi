@@ -158,12 +158,15 @@ export default async function LandlordRentPage() {
       return {
         leaseId: l.id,
         unitId: l.unit_id,
-        unitNumber: unit?.unit_number ?? "—",
+        // Both of these were an em dash. A unit or a tenant that cannot be
+        // resolved is a data problem, and a dash tells the landlord nothing
+        // about which one it is.
+        unitNumber: unit?.unit_number ?? "Unknown unit",
         buildingId,
         buildingName: buildingId
           ? (buildingName.get(buildingId) ?? null)
           : null,
-        tenantName: l.tenants?.full_name ?? "—",
+        tenantName: l.tenants?.full_name ?? "No tenant on file",
         tenantPhone: l.tenants?.phone ?? null,
         due: r.due,
         paid: r.paid,
