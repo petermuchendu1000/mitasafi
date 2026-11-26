@@ -2497,6 +2497,10 @@ export type Database = {
           access_bank: string;
           access_settings: string;
           maintenance_categories: string[];
+          first_name: string | null;
+          last_name: string | null;
+          maintenance_category_mode: string;
+          allow_custom_category: boolean;
         };
         Insert: {
           id?: string;
@@ -2530,6 +2534,10 @@ export type Database = {
           access_bank?: string;
           access_settings?: string;
           maintenance_categories?: string[];
+          first_name?: string | null;
+          last_name?: string | null;
+          maintenance_category_mode?: string;
+          allow_custom_category?: boolean;
         };
         Update: {
           id?: string;
@@ -2563,6 +2571,55 @@ export type Database = {
           access_bank?: string;
           access_settings?: string;
           maintenance_categories?: string[];
+          first_name?: string | null;
+          last_name?: string | null;
+          maintenance_category_mode?: string;
+          allow_custom_category?: boolean;
+        };
+        Relationships: [];
+      };
+      late_fee_rules: {
+        Row: {
+          id: string;
+          landlord_id: string;
+          enabled: boolean;
+          fee_type: string;
+          amount: number | null;
+          percentage: number | null;
+          grace_period_days: number;
+          applies_to: string;
+          all_properties: boolean;
+          building_ids: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          landlord_id: string;
+          enabled?: boolean;
+          fee_type?: string;
+          amount?: number | null;
+          percentage?: number | null;
+          grace_period_days?: number;
+          applies_to?: string;
+          all_properties?: boolean;
+          building_ids?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          landlord_id?: string;
+          enabled?: boolean;
+          fee_type?: string;
+          amount?: number | null;
+          percentage?: number | null;
+          grace_period_days?: number;
+          applies_to?: string;
+          all_properties?: boolean;
+          building_ids?: string[];
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

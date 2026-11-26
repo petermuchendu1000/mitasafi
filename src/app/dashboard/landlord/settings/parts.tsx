@@ -66,23 +66,39 @@ export function Switch({
           </p>
         )}
       </div>
-      <button
-        id={id}
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={`shrink-0 mt-0.5 w-11 h-6 rounded-full transition-colors disabled:opacity-50 ${
-          checked ? "bg-teal-600" : "bg-gray-300"
-        }`}
-      >
+      {/* Innago prints Off and On either side of the control. It costs two
+          words and removes the guess about which way is which. */}
+      <span className="shrink-0 mt-1 flex items-center gap-2">
         <span
-          className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
-            checked ? "translate-x-5" : "translate-x-0.5"
+          aria-hidden="true"
+          className={`text-xs ${checked ? "text-gray-400" : "font-semibold text-gray-700"}`}
+        >
+          Off
+        </span>
+        <button
+          id={id}
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          disabled={disabled}
+          onClick={() => onChange(!checked)}
+          className={`shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-50 ${
+            checked ? "bg-teal-600" : "bg-gray-300"
           }`}
-        />
-      </button>
+        >
+          <span
+            className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+              checked ? "translate-x-5" : "translate-x-0.5"
+            }`}
+          />
+        </button>
+        <span
+          aria-hidden="true"
+          className={`text-xs ${checked ? "font-semibold text-teal-700" : "text-gray-400"}`}
+        >
+          On
+        </span>
+      </span>
     </div>
   );
 }

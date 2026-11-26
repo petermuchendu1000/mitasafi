@@ -6,6 +6,8 @@
 
 import {
   accessWarnings,
+  choicesFor,
+  describeLateFeeRule,
   ROLE_PRESETS,
   ACCESS_MODULES,
 } from "../settings-schema";
@@ -48,12 +50,35 @@ describe("warnings", () => {
 });
 
 describe("the presets", () => {
-  it("gives Maintenance Staff maintenance and nothing else", () => {
+  it("gives Maintenance Staff maintenance and nothing else that bites", () => {
+    // Innago's own matrix gives this role Settings: Limited, which is
+    // recorded-only here. What matters is that no ENFORCED module beyond
+    // maintenance is granted — that is the difference between a caretaker and
+    // somebody with the run of the place.
     const p = ROLE_PRESETS.find((r) => r.value === "caretaker")!;
-    const granted = Object.entries(p.levels!)
-      .filter(([, v]) => v !== "none")
-      .map(([k]) => k);
-    expect(granted).toEqual(["access_maintenance"]);
+    const enforcedGrants = ACCESS_MODULES.filter(
+      (m) => m.enforced && p.levels![m.key] && p.levels![m.key] !== "none",
+    ).map((m) => m.key);
+    expect(enforcedGrants).toEqual(["access_maintenance"]);
+  });
+
+  it("mirrors Innago's Settings column: All or Limited, never None", () => {
+    const settings = ACCESS_MODULES.find((m) => m.key === "access_settings")!;
+    expect(choicesFor(settings).map((c) => c.value)).toEqual([
+      "all",
+      "limited",
+    ]);
+  });
+
+  it("offers All/View/None everywhere else", () => {
+    for (const m of ACCESS_MODULES) {
+      if (m.key === "access_settings") continue;
+      expect(choicesFor(m).map((c) => c.value)).toEqual([
+        "all",
+        "view",
+        "none",
+      ]);
+    }
   });
 
   it("never gives a non-owner role write access to money without leases", () => {
@@ -88,5 +113,40 @@ describe("the presets", () => {
 
   it("offers Custom with no levels of its own", () => {
     expect(ROLE_PRESETS.find((r) => r.value === "custom")!.levels).toBeNull();
+  });
+});
+
+describe("the late fee summary line", () => {
+  it("describes a percentage rule the way Innago prints it", () => {
+    expect(
+      describeLateFeeRule({
+        fee_type: "percentage",
+        percentage: 10,
+        amount: null,
+        grace_period_days: 5,
+      }),
+    ).toBe("10% of the total amount with a grace period of 5 days.");
+  });
+
+  it("describes a fixed rule in shillings", () => {
+    expect(
+      describeLateFeeRule({
+        fee_type: "fixed",
+        percentage: null,
+        amount: 1000,
+        grace_period_days: 1,
+      }),
+    ).toBe("KES 1,000 with a grace period of 1 day.");
+  });
+
+  it("says 'no grace period' rather than '0 days'", () => {
+    expect(
+      describeLateFeeRule({
+        fee_type: "daily",
+        percentage: null,
+        amount: 200,
+        grace_period_days: 0,
+      }),
+    ).toBe("KES 200 per day late with no grace period.");
   });
 });

@@ -105,8 +105,8 @@ BEGIN
   BEGIN
     PERFORM set_config('request.jwt.claim.sub', v_ll::text, true);
     SET LOCAL ROLE authenticated;
-    INSERT INTO public.property_staff (full_name,phone,building_ids)
-    VALUES ('Thief','+254799999999',ARRAY[v_b3]);
+    INSERT INTO public.property_staff (first_name,last_name,email,phone,building_ids)
+    VALUES ('Th','Ief','thief@test.invalid','+254799999999',ARRAY[v_b3]);
     RESET ROLE;
     fail:=fail+1; rep:=rep||'FAIL S5  assigned someone else''s building'||E'\n';
   EXCEPTION WHEN invalid_authorization_specification THEN
@@ -117,8 +117,8 @@ BEGIN
   BEGIN
     PERFORM set_config('request.jwt.claim.sub', v_ll::text, true);
     SET LOCAL ROLE authenticated;
-    INSERT INTO public.property_staff (full_name,phone,user_id)
-    VALUES ('Hijack','+254788000000', v_ll2);
+    INSERT INTO public.property_staff (first_name,last_name,email,phone,user_id)
+    VALUES ('Hi','Jack','hijack@test.invalid','+254788000000', v_ll2);
     RESET ROLE;
     fail:=fail+1; rep:=rep||'FAIL S6  a landlord attached access to an arbitrary account'||E'\n';
   EXCEPTION WHEN insufficient_privilege THEN
@@ -129,8 +129,8 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', v_ll::text, true);
   SET LOCAL ROLE authenticated;
   INSERT INTO public.property_staff
-    (full_name, phone, staff_role, building_ids, access_maintenance)
-  VALUES ('Mwangi Caretaker','+254711222333','caretaker',ARRAY[v_b1],'all')
+    (first_name, last_name, email, phone, staff_role, building_ids, access_maintenance)
+  VALUES ('Mwangi','Caretaker','mwangi@test.invalid','+254711222333','caretaker',ARRAY[v_b1],'all')
   RETURNING id INTO v_staff;
   RESET ROLE;
   SELECT status INTO v_txt FROM public.property_staff WHERE id=v_staff;
@@ -157,14 +157,14 @@ BEGIN
   ELSE fail:=fail+1; rep:=rep||'FAIL S9  sees Block B maintenance'||E'\n'; END IF;
 
   -- ===== S10: maintenance category scoping ===============================
-  UPDATE public.property_staff SET maintenance_categories=ARRAY['plumbing'] WHERE id=v_staff;
+  UPDATE public.property_staff SET maintenance_category_mode='specific', maintenance_categories=ARRAY['plumbing'] WHERE id=v_staff;
   PERFORM set_config('request.jwt.claim.sub', v_care::text, true);
   SET LOCAL ROLE authenticated;
   SELECT count(*) INTO v_n FROM public.maintenance_requests;
   RESET ROLE;
   IF v_n=1 THEN pass:=pass+1; rep:=rep||'PASS S10 specific categories narrow what they see'||E'\n';
   ELSE fail:=fail+1; rep:=rep||'FAIL S10 category scope saw '||v_n||', expected 1'||E'\n'; END IF;
-  UPDATE public.property_staff SET maintenance_categories='{}' WHERE id=v_staff;
+  UPDATE public.property_staff SET maintenance_category_mode='all', maintenance_categories='{}' WHERE id=v_staff;
 
   -- ===== S11: view means view — no write =================================
   UPDATE public.property_staff SET access_maintenance='view' WHERE id=v_staff;
@@ -359,6 +359,90 @@ BEGIN
     pass:=pass+1; rep:=rep||'PASS S27 switching it back on restores applications'||E'\n';
   EXCEPTION WHEN OTHERS THEN
     RESET ROLE; fail:=fail+1; rep:=rep||'FAIL S27 '||SQLERRM||E'\n';
+  END;
+
+
+  -- ===== S28: full_name is derived from the two parts ====================
+  SELECT full_name INTO v_txt FROM public.property_staff WHERE id=v_staff;
+  IF v_txt='Mwangi Caretaker' THEN
+    pass:=pass+1; rep:=rep||'PASS S28 full_name is derived from first + last'||E'\n';
+  ELSE fail:=fail+1; rep:=rep||'FAIL S28 full_name is '||coalesce(v_txt,'NULL')||E'\n'; END IF;
+
+  -- ===== S29: and follows a rename =======================================
+  PERFORM set_config('request.jwt.claim.sub', v_ll::text, true);
+  SET LOCAL ROLE authenticated;
+  UPDATE public.property_staff SET first_name='Joseph' WHERE id=v_staff;
+  RESET ROLE;
+  SELECT full_name INTO v_txt FROM public.property_staff WHERE id=v_staff;
+  IF v_txt='Joseph Caretaker' THEN
+    pass:=pass+1; rep:=rep||'PASS S29 renaming a part updates the display name'||E'\n';
+  ELSE fail:=fail+1; rep:=rep||'FAIL S29 full_name drifted to '||coalesce(v_txt,'NULL')||E'\n'; END IF;
+
+  -- ===== S30: staff must have an email ===================================
+  BEGIN
+    PERFORM set_config('request.jwt.claim.sub', v_ll::text, true);
+    SET LOCAL ROLE authenticated;
+    INSERT INTO public.property_staff (first_name,last_name,phone)
+    VALUES ('No','Email','+254766000000');
+    RESET ROLE;
+    fail:=fail+1; rep:=rep||'FAIL S30 a staff member was saved with no email'||E'\n';
+  EXCEPTION WHEN check_violation THEN
+    RESET ROLE; pass:=pass+1; rep:=rep||'PASS S30 email is required of staff'||E'\n';
+  END;
+
+  -- ===== S31: THE AMBIGUITY THE MODE EXISTS TO END =======================
+  -- "specific categories, none ticked" must mean NOTHING, not everything.
+  -- With an empty array alone the old policy read it as "all".
+  UPDATE public.property_staff
+     SET maintenance_category_mode='specific', maintenance_categories='{}'
+   WHERE id=v_staff;
+  PERFORM set_config('request.jwt.claim.sub', v_care::text, true);
+  SET LOCAL ROLE authenticated;
+  SELECT count(*) INTO v_n FROM public.maintenance_requests;
+  RESET ROLE;
+  IF v_n=0 THEN
+    pass:=pass+1; rep:=rep||'PASS S31 "specific, none chosen" shows nothing, not everything'||E'\n';
+  ELSE fail:=fail+1; rep:=rep||'FAIL S31 empty specific list exposed '||v_n||' job(s)'||E'\n'; END IF;
+  UPDATE public.property_staff SET maintenance_category_mode='all' WHERE id=v_staff;
+
+  -- ===== S32-S35: late fee rules =========================================
+  PERFORM set_config('request.jwt.claim.sub', v_ll::text, true);
+  SET LOCAL ROLE authenticated;
+  INSERT INTO public.late_fee_rules (fee_type, percentage, grace_period_days)
+  VALUES ('percentage', 10, 5);
+  INSERT INTO public.late_fee_rules (fee_type, amount, all_properties, building_ids)
+  VALUES ('fixed', 1000, false, ARRAY[v_b2]);
+  SELECT count(*) INTO v_n FROM public.late_fee_rules;
+  RESET ROLE;
+  IF v_n=2 THEN pass:=pass+1; rep:=rep||'PASS S32 a landlord can hold more than one late fee rule'||E'\n';
+  ELSE fail:=fail+1; rep:=rep||'FAIL S32 sees '||v_n||' rule(s), expected 2'||E'\n'; END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', v_ll2::text, true);
+  SET LOCAL ROLE authenticated;
+  SELECT count(*) INTO v_n FROM public.late_fee_rules;
+  RESET ROLE;
+  IF v_n=0 THEN pass:=pass+1; rep:=rep||'PASS S33 another landlord sees none of them'||E'\n';
+  ELSE fail:=fail+1; rep:=rep||'FAIL S33 another landlord sees '||v_n||E'\n'; END IF;
+
+  BEGIN
+    PERFORM set_config('request.jwt.claim.sub', v_ll::text, true);
+    SET LOCAL ROLE authenticated;
+    INSERT INTO public.late_fee_rules (fee_type, percentage, all_properties, building_ids)
+    VALUES ('percentage', 5, false, ARRAY[v_b3]);
+    RESET ROLE;
+    fail:=fail+1; rep:=rep||'FAIL S34 a rule was assigned to someone else''s block'||E'\n';
+  EXCEPTION WHEN invalid_authorization_specification THEN
+    RESET ROLE; pass:=pass+1; rep:=rep||'PASS S34 a rule cannot name a block you do not own'||E'\n';
+  END;
+
+  BEGIN
+    PERFORM set_config('request.jwt.claim.sub', v_ll::text, true);
+    SET LOCAL ROLE authenticated;
+    INSERT INTO public.late_fee_rules (fee_type, percentage) VALUES ('fixed', NULL);
+    RESET ROLE;
+    fail:=fail+1; rep:=rep||'FAIL S35 a fixed rule with no amount was accepted'||E'\n';
+  EXCEPTION WHEN check_violation THEN
+    RESET ROLE; pass:=pass+1; rep:=rep||'PASS S35 an inapplicable rule is refused'||E'\n';
   END;
 
   RAISE EXCEPTION E'LANDLORD_SETTINGS_STAFF_RESULT pass=% fail=%\n%', pass, fail, rep;

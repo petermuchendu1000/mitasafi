@@ -18,6 +18,8 @@ jest.mock("../actions", () => ({
   updateLandlordNotifications: jest.fn(async () => ({ success: true })),
   requestLandlordAccountDeletion: jest.fn(async () => ({ success: true })),
   saveLandlordSettings: jest.fn(async () => ({ success: true })),
+  saveLateFeeRule: jest.fn(async () => ({ success: true })),
+  deleteLateFeeRule: jest.fn(async () => ({ success: true })),
   saveStaffMember: jest.fn(async () => ({ success: true })),
   setStaffStatus: jest.fn(async () => ({ success: true })),
   removeStaffMember: jest.fn(async () => ({ success: true })),
@@ -48,6 +50,8 @@ function open(over: Partial<SettingsProfile> = {}) {
       profile={{ ...profile, ...over }}
       channels={preferences}
       settings={null}
+      lateFeeRules={[]}
+      buildings={[]}
       settingsMissing={false}
     />,
   );
@@ -129,7 +133,11 @@ it("marks every feature toggle that is not actually in force", () => {
   // A stored switch nothing reads is a control that does nothing. Each one
   // that MitaSafi does not act on yet must say so beside itself.
   open();
-  const notYet = screen.getAllByText(/Saved, but not in effect/i);
+  // Scoped to the notes themselves: the help sidebar has an FAQ that quotes
+  // this phrase, and the first version of this assertion counted it.
+  const notYet = screen
+    .getAllByText(/Saved, but not in effect/i)
+    .filter((el) => el.tagName === "P");
   // Five of the seven gate features that do not exist yet.
   expect(notYet).toHaveLength(5);
   // ...and the two that ARE in force carry no such note.

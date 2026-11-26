@@ -67,6 +67,8 @@ export default async function UsersPage() {
         }
         return {
           id: s.id as string,
+          firstName: (s.first_name as string) ?? "",
+          lastName: (s.last_name as string) ?? "",
           fullName: s.full_name as string,
           phone: s.phone as string,
           email: (s.email as string | null) ?? null,
@@ -74,6 +76,8 @@ export default async function UsersPage() {
           status: s.status as string,
           buildingIds: (s.building_ids as string[]) ?? [],
           allProperties: Boolean(s.all_properties),
+          categoryMode: (s.maintenance_category_mode as string) ?? "all",
+          allowCustomCategory: Boolean(s.allow_custom_category),
           maintenanceCategories: (s.maintenance_categories as string[]) ?? [],
           levels,
           linked: s.user_id !== null,

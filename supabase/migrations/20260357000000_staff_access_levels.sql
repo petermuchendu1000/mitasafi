@@ -398,3 +398,257 @@ $assert$;
 --   ALTER TABLE public.property_staff DROP COLUMN access_property, ... ;
 --   (and restore the three booleans from 20260356000000)
 -- =============================================================================
+
+-- =============================================================================
+-- Folded in: the detail the users/settings screens actually need
+-- =============================================================================
+-- These belong in this file rather than a new one because 20260357000000 has
+-- not been applied anywhere yet. Adding a 358 to patch an unapplied 357 would
+-- be history theatre.
+-- -----------------------------------------------------------------------------
+
+-- ---- a staff member has a first and a last name -----------------------------
+-- full_name is KEPT and maintained by the trigger rather than dropped: it is
+-- what 20260356000000 created, several policies and the app read it, and a
+-- generated-column rebuild would make 356 unreplayable for a second time.
+ALTER TABLE public.property_staff
+  ADD COLUMN IF NOT EXISTS first_name text,
+  ADD COLUMN IF NOT EXISTS last_name  text;
+
+UPDATE public.property_staff
+   SET first_name = COALESCE(first_name, split_part(full_name, ' ', 1)),
+       last_name  = COALESCE(last_name,
+                      NULLIF(substr(full_name, strpos(full_name, ' ') + 1), full_name))
+ WHERE first_name IS NULL OR last_name IS NULL;
+
+-- ---- the maintenance scope is a MODE, not an inference ----------------------
+-- An empty category array meant "all", which is the same value as "specific,
+-- none chosen yet" — two different intentions with one representation. The
+-- mode says which is meant.
+ALTER TABLE public.property_staff
+  ADD COLUMN IF NOT EXISTS maintenance_category_mode text NOT NULL DEFAULT 'all',
+  ADD COLUMN IF NOT EXISTS allow_custom_category boolean NOT NULL DEFAULT false;
+
+ALTER TABLE public.property_staff DROP CONSTRAINT IF EXISTS ps_cat_mode_check;
+ALTER TABLE public.property_staff
+  ADD CONSTRAINT ps_cat_mode_check
+  CHECK (maintenance_category_mode IN ('all','specific'));
+
+-- ---- email is required of staff ---------------------------------------------
+-- Innago requires it, and it is the only channel that reaches someone who has
+-- not yet created an account. Enforced by CHECK rather than NOT NULL so the
+-- column can stay nullable for rows that predate it (there are none, but the
+-- constraint is the honest statement of the rule).
+ALTER TABLE public.property_staff DROP CONSTRAINT IF EXISTS ps_email_required;
+ALTER TABLE public.property_staff
+  ADD CONSTRAINT ps_email_required
+  CHECK (email IS NOT NULL AND length(btrim(email)) > 2);
+
+-- The category policies must read the MODE now, or "specific with none ticked"
+-- silently means "everything" — the exact ambiguity the mode was added to end.
+DROP POLICY IF EXISTS maintenance_staff_read ON public.maintenance_requests;
+CREATE POLICY maintenance_staff_read ON public.maintenance_requests
+  FOR SELECT TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.property_staff s
+     JOIN public.units u ON u.id = maintenance_requests.unit_id
+     WHERE s.user_id = auth.uid() AND s.status = 'active'
+       AND s.access_maintenance IN ('all','view')
+       AND maintenance_requests.landlord_id = s.landlord_id
+       AND (s.all_properties OR u.building_id = ANY (s.building_ids))
+       AND (s.maintenance_category_mode = 'all'
+            OR maintenance_requests.category = ANY (s.maintenance_categories))));
+
+DROP POLICY IF EXISTS maintenance_staff_update ON public.maintenance_requests;
+CREATE POLICY maintenance_staff_update ON public.maintenance_requests
+  FOR UPDATE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.property_staff s
+     JOIN public.units u ON u.id = maintenance_requests.unit_id
+     WHERE s.user_id = auth.uid() AND s.status = 'active'
+       AND s.access_maintenance = 'all'
+       AND maintenance_requests.landlord_id = s.landlord_id
+       AND (s.all_properties OR u.building_id = ANY (s.building_ids))
+       AND (s.maintenance_category_mode = 'all'
+            OR maintenance_requests.category = ANY (s.maintenance_categories))));
+
+-- ---- late fees are a LIST, each assigned to blocks --------------------------
+-- landlord_settings carries one policy. Innago has many, each "Assigned to"
+-- properties, which is how a landlord charges 10% in town and a flat 1,000 in
+-- the suburbs. Those columns on landlord_settings are left in place and
+-- deprecated rather than dropped, for the same replay reason as above.
+CREATE TABLE IF NOT EXISTS public.late_fee_rules (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  landlord_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  enabled     boolean NOT NULL DEFAULT true,
+  fee_type    text    NOT NULL DEFAULT 'percentage',
+  amount      numeric(12,2),
+  percentage  numeric(5,2),
+  grace_period_days integer NOT NULL DEFAULT 5,
+  applies_to  text    NOT NULL DEFAULT 'all_line_items',
+  all_properties boolean NOT NULL DEFAULT true,
+  building_ids uuid[] NOT NULL DEFAULT '{}',
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+
+  CONSTRAINT lfr_type_check CHECK (fee_type IN ('fixed','percentage','daily')),
+  CONSTRAINT lfr_applies_check CHECK (applies_to IN ('all_line_items','rent_only')),
+  CONSTRAINT lfr_grace_check CHECK (grace_period_days BETWEEN 0 AND 60),
+  CONSTRAINT lfr_pct_check CHECK (percentage IS NULL OR (percentage >= 0 AND percentage <= 100)),
+  CONSTRAINT lfr_amount_check CHECK (amount IS NULL OR amount >= 0),
+  -- The same refusal landlord_settings makes: a policy that cannot be applied
+  -- is not a policy.
+  CONSTRAINT lfr_applicable CHECK (
+    NOT enabled
+    OR (fee_type = 'percentage' AND percentage IS NOT NULL)
+    OR (fee_type IN ('fixed','daily') AND amount IS NOT NULL))
+);
+
+CREATE INDEX IF NOT EXISTS idx_late_fee_rules_landlord
+  ON public.late_fee_rules (landlord_id);
+
+CREATE OR REPLACE FUNCTION public.late_fee_rules_before_write()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp AS $$
+DECLARE v_bad uuid;
+BEGIN
+  NEW.landlord_id := COALESCE(NEW.landlord_id, auth.uid());
+  -- Same rule as staff: you may only name blocks you own.
+  SELECT b INTO v_bad FROM unnest(NEW.building_ids) AS b
+   WHERE NOT EXISTS (SELECT 1 FROM public.buildings bl
+                      WHERE bl.id = b AND bl.landlord_id = NEW.landlord_id)
+   LIMIT 1;
+  IF v_bad IS NOT NULL THEN
+    RAISE EXCEPTION 'building % is not yours to assign', v_bad USING ERRCODE = '28000';
+  END IF;
+  IF NEW.all_properties THEN NEW.building_ids := '{}'; END IF;
+  NEW.updated_at := now();
+  RETURN NEW;
+END; $$;
+
+REVOKE ALL ON FUNCTION public.late_fee_rules_before_write() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS late_fee_rules_biu ON public.late_fee_rules;
+CREATE TRIGGER late_fee_rules_biu
+  BEFORE INSERT OR UPDATE ON public.late_fee_rules
+  FOR EACH ROW EXECUTE FUNCTION public.late_fee_rules_before_write();
+
+REVOKE ALL ON public.late_fee_rules FROM anon, authenticated;
+GRANT SELECT, DELETE ON public.late_fee_rules TO authenticated;
+DO $g$
+DECLARE cols text;
+BEGIN
+  SELECT string_agg(quote_ident(column_name), ', ') INTO cols
+    FROM information_schema.columns
+   WHERE table_schema='public' AND table_name='late_fee_rules'
+     AND column_name NOT IN ('id','landlord_id','created_at','updated_at');
+  EXECUTE format('GRANT INSERT (%s) ON public.late_fee_rules TO authenticated', cols);
+  EXECUTE format('GRANT UPDATE (%s) ON public.late_fee_rules TO authenticated', cols);
+END $g$;
+
+ALTER TABLE public.late_fee_rules ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS late_fee_rules_own ON public.late_fee_rules;
+CREATE POLICY late_fee_rules_own ON public.late_fee_rules
+  FOR ALL TO authenticated
+  USING (landlord_id = auth.uid())
+  WITH CHECK (landlord_id = auth.uid());
+
+COMMENT ON COLUMN public.landlord_settings.late_fee_enabled IS
+  'DEPRECATED by 20260357000000 — superseded by public.late_fee_rules.';
+
+-- ---- assertions for the folded-in work --------------------------------------
+DO $assert2$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public'
+                  AND tablename='late_fee_rules' AND rowsecurity) THEN
+    RAISE EXCEPTION 'FAILED: RLS off on late_fee_rules';
+  END IF;
+  IF has_table_privilege('anon','public.late_fee_rules','SELECT') THEN
+    RAISE EXCEPTION 'FAILED: anon can read late fee rules';
+  END IF;
+  IF has_column_privilege('authenticated','public.late_fee_rules','landlord_id','UPDATE') THEN
+    RAISE EXCEPTION 'FAILED: a client can move a late fee rule to another landlord';
+  END IF;
+  -- The category mode must be read by BOTH maintenance policies, or "specific
+  -- with nothing ticked" quietly means everything.
+  IF (SELECT count(*) FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid
+       WHERE c.relname='maintenance_requests'
+         AND coalesce(pg_get_expr(p.polqual,p.polrelid),'') LIKE '%maintenance_category_mode%') <> 2 THEN
+    RAISE EXCEPTION 'FAILED: a maintenance policy ignores the category mode';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                  WHERE table_schema='public' AND table_name='property_staff'
+                    AND column_name IN ('first_name','last_name')) THEN
+    RAISE EXCEPTION 'FAILED: staff names were not split';
+  END IF;
+  RAISE NOTICE 'folded-in work installed: names, category mode, email rule, late fee rules.';
+END
+$assert2$;
+
+-- ---- the staff trigger now also derives full_name ---------------------------
+-- Replaced wholesale rather than patched: full_name is still what the policies
+-- and the app read, so it must follow first/last rather than drift from them.
+CREATE OR REPLACE FUNCTION public.property_staff_before_write()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_bad   uuid;
+  v_match uuid;
+BEGIN
+  NEW.landlord_id := COALESCE(NEW.landlord_id, auth.uid());
+
+  SELECT b INTO v_bad
+    FROM unnest(NEW.building_ids) AS b
+   WHERE NOT EXISTS (
+     SELECT 1 FROM public.buildings bl
+      WHERE bl.id = b AND bl.landlord_id = NEW.landlord_id)
+   LIMIT 1;
+  IF v_bad IS NOT NULL THEN
+    RAISE EXCEPTION 'building % is not yours to assign', v_bad
+      USING ERRCODE = '28000';
+  END IF;
+
+  -- One display string, always derived from the two parts.
+  IF NEW.first_name IS NOT NULL OR NEW.last_name IS NOT NULL THEN
+    NEW.full_name := btrim(coalesce(NEW.first_name,'') || ' ' || coalesce(NEW.last_name,''));
+  END IF;
+
+  -- "All properties" and a list of blocks are contradictory; the flag wins,
+  -- and the list is emptied so a later toggle cannot resurrect a stale scope.
+  IF NEW.all_properties THEN
+    NEW.building_ids := '{}';
+  END IF;
+
+  IF NEW.user_id IS NULL AND NEW.phone IS NOT NULL THEN
+    SELECT p.id INTO v_match
+      FROM public.profiles p
+     WHERE p.phone = NEW.phone AND p.id <> NEW.landlord_id
+     LIMIT 1;
+    IF v_match IS NOT NULL THEN
+      NEW.user_id := v_match;
+      IF NEW.status = 'invited' THEN
+        NEW.status := 'active';
+        NEW.accepted_at := COALESCE(NEW.accepted_at, now());
+      END IF;
+    END IF;
+  END IF;
+
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.property_staff_before_write() FROM PUBLIC, anon, authenticated;
+
+DO $assert3$
+BEGIN
+  IF (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+       WHERE n.nspname='public' AND p.proname='property_staff_before_write'
+         AND pg_get_functiondef(p.oid) LIKE '%full_name :=%') <> 1 THEN
+    RAISE EXCEPTION 'FAILED: the staff trigger does not derive full_name';
+  END IF;
+END
+$assert3$;

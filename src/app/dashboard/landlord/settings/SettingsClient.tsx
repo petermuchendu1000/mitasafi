@@ -26,6 +26,8 @@ import {
   type ProfileFieldErrors,
 } from "@/lib/landlord/settings";
 import { Card, Switch, NumberField, Radio, SaveBar, NotEnabled } from "./parts";
+import { LateFeesTab, type LateFeeRule } from "./LateFeesTab";
+import { HelpSidebar } from "./HelpSidebar";
 import {
   updateLandlordProfile,
   updateLandlordNotifications,
@@ -58,6 +60,13 @@ const TABS = [
 type Tab = (typeof TABS)[number];
 
 /** Server defaults, mirrored so the UI renders before a row exists. */
+/**
+ * The server defaults, mirrored EXACTLY so the page shows what is stored
+ * before a row exists. Generated from the column defaults rather than typed:
+ * the hand-written version omitted every notify_* field, so a landlord with
+ * no settings row saw their notifications switched off while the database
+ * had them on. An end-to-end run caught it.
+ */
 const FALLBACK: Settings = {
   tenant_maintenance_access: true,
   application_screening: true,
@@ -68,18 +77,40 @@ const FALLBACK: Settings = {
   enable_staff_access: false,
   late_fee_enabled: false,
   late_fee_type: "percentage",
-  late_fee_amount: null,
   late_fee_percentage: 10,
   grace_period_days: 5,
   late_fee_applies_to: "all_line_items",
   mpesa_fee_payer: "tenant",
   card_fee_payer: "tenant",
+  notify_all_tenants_signed: true,
+  notify_any_tenant_signs: false,
+  notify_lease_expiring: true,
   lease_expiry_notice_days: 90,
+  notify_payment_made: true,
+  notify_payment_failed: true,
+  notify_payment_resubmitted: true,
+  notify_overdue_summary: true,
   overdue_summary_day_1: 5,
   overdue_summary_day_2: 10,
-  tenant_invoice_due_notice_days: 5,
-  tenant_lease_expiry_notice_days: 90,
+  notify_refund_debited: true,
+  notify_refund_received: true,
+  notify_funds_disbursed: true,
+  notify_maintenance_submitted: true,
+  notify_maintenance_resolved: true,
+  notify_maintenance_reopened: true,
+  notify_maintenance_updated: false,
+  notify_maintenance_comment: false,
+  notify_application_submitted: true,
+  notify_insurance_provided_requested: true,
+  notify_insurance_provided_unrequested: false,
   marketing_sms_opt_in: false,
+  tenant_notify_invoice_due_day: true,
+  tenant_notify_invoice_late: true,
+  tenant_notify_invoice_due_soon: true,
+  tenant_invoice_due_notice_days: 5,
+  tenant_notify_lease_expiring: true,
+  tenant_lease_expiry_notice_days: 90,
+  late_fee_amount: null,
 };
 
 function ReadOnlyFact({
@@ -109,11 +140,15 @@ export function SettingsClient({
   profile,
   channels,
   settings: initialSettings,
+  lateFeeRules,
+  buildings,
   settingsMissing,
 }: {
   profile: SettingsProfile;
   channels: NotificationPreferences;
   settings: Settings | null;
+  lateFeeRules: LateFeeRule[];
+  buildings: { id: string; name: string }[];
   settingsMissing: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("General");
@@ -229,7 +264,7 @@ export function SettingsClient({
               label={n.label}
             />
             {n.numberKey && bool(n.key) && (
-              <div className="pb-3 -mt-1">
+              <div className="pb-3 -mt-1 flex flex-wrap items-center gap-3">
                 <NumberField
                   id={`n-${n.numberKey}`}
                   label={`${n.label}: how many`}
@@ -239,6 +274,20 @@ export function SettingsClient({
                   min={n.min}
                   max={n.max}
                 />
+                {/* The overdue summary goes out TWICE a month in Innago — on
+                    the 5th and the 10th. The second day was stored and had no
+                    control, so it could never be changed. */}
+                {n.numberKey === "overdue_summary_day_1" && (
+                  <NumberField
+                    id="n-overdue_summary_day_2"
+                    label="Second summary day of the month"
+                    value={num("overdue_summary_day_2")}
+                    onChange={(v) => set("overdue_summary_day_2", v)}
+                    suffix="of the month"
+                    min={1}
+                    max={28}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -483,127 +532,8 @@ export function SettingsClient({
             (settingsMissing ? (
               <NotEnabled what="Late fees" />
             ) : (
-              <Card
-                title="Late payment fees"
-                description="The default applied to leases you create from now on. Leases already signed keep the terms they were signed with — changing a policy must not rewrite an agreement."
-              >
-                <Switch
-                  id="late-fee-enabled"
-                  checked={bool("late_fee_enabled")}
-                  onChange={(v) => set("late_fee_enabled", v)}
-                  label="Charge a late fee"
-                />
-
-                {bool("late_fee_enabled") && (
-                  <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
-                    <div>
-                      <label
-                        htmlFor="late-fee-type"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        How it is calculated
-                      </label>
-                      <select
-                        id="late-fee-type"
-                        value={str("late_fee_type")}
-                        onChange={(e) => set("late_fee_type", e.target.value)}
-                        className={input}
-                      >
-                        {LATE_FEE_TYPES.map((t) => (
-                          <option key={t.value} value={t.value}>
-                            {t.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {str("late_fee_type") === "percentage" ? (
-                      <div>
-                        <label
-                          htmlFor="late-fee-pct"
-                          className="block text-sm font-medium text-gray-700"
-                        >
-                          Percentage
-                        </label>
-                        <input
-                          id="late-fee-pct"
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={num("late_fee_percentage")}
-                          onChange={(e) =>
-                            set("late_fee_percentage", Number(e.target.value))
-                          }
-                          className={`${input} w-32`}
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        <label
-                          htmlFor="late-fee-amt"
-                          className="block text-sm font-medium text-gray-700"
-                        >
-                          Amount in KES
-                        </label>
-                        <input
-                          id="late-fee-amt"
-                          type="number"
-                          min={0}
-                          value={num("late_fee_amount")}
-                          onChange={(e) =>
-                            set("late_fee_amount", Number(e.target.value))
-                          }
-                          className={`${input} w-40`}
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        Grace period
-                      </p>
-                      <p className="text-xs text-gray-500 mb-1">
-                        Days after the due date before the fee applies.
-                      </p>
-                      <NumberField
-                        id="grace-days"
-                        label="Grace period in days"
-                        value={num("grace_period_days")}
-                        onChange={(n) => set("grace_period_days", n)}
-                        suffix="days"
-                        min={0}
-                        max={60}
-                      />
-                    </div>
-
-                    <fieldset>
-                      <legend className="text-sm font-medium text-gray-700">
-                        Applies to
-                      </legend>
-                      <div className="mt-2 flex flex-col gap-2">
-                        <Radio
-                          name="applies-to"
-                          value="all_line_items"
-                          current={str("late_fee_applies_to")}
-                          onChange={(v) => set("late_fee_applies_to", v)}
-                          label="Everything on the invoice"
-                        />
-                        <Radio
-                          name="applies-to"
-                          value="rent_only"
-                          current={str("late_fee_applies_to")}
-                          onChange={(v) => set("late_fee_applies_to", v)}
-                          label="Rent only"
-                        />
-                      </div>
-                    </fieldset>
-                  </div>
-                )}
-
-                <div className="mt-4">{settingsBar}</div>
-              </Card>
+              <LateFeesTab rules={lateFeeRules} buildings={buildings} />
             ))}
-
           {tab === "Notifications" && (
             <>
               <Card
@@ -676,46 +606,73 @@ export function SettingsClient({
                 title="Who carries the transaction fee"
                 description="Online payments cost something to process. You can pass that on or absorb it. Whatever a tenant is charged is shown to them before they pay."
               >
-                <div className="divide-y divide-gray-100">
-                  <div className="py-4 first:pt-0">
-                    <p className="text-sm font-medium text-gray-800">M-Pesa</p>
-                    <p className="text-xs text-gray-500 mb-2">
-                      Paybill and STK push transactions.
-                    </p>
-                    <div className="flex gap-6">
-                      {FEE_PAYERS.map((p) => (
-                        <Radio
-                          key={p.value}
-                          name="mpesa-fee"
-                          value={p.value}
-                          current={str("mpesa_fee_payer")}
-                          onChange={(v) => set("mpesa_fee_payer", v)}
-                          label={p.label}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="py-4">
-                    <p className="text-sm font-medium text-gray-800">
-                      Card payments
-                    </p>
-                    <p className="text-xs text-gray-500 mb-2">
-                      Credit and debit cards.
-                    </p>
-                    <div className="flex gap-6">
-                      {FEE_PAYERS.map((p) => (
-                        <Radio
-                          key={p.value}
-                          name="card-fee"
-                          value={p.value}
-                          current={str("card_fee_payer")}
-                          onChange={(v) => set("card_fee_payer", v)}
-                          label={p.label}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <table className="w-full text-sm">
+                  <caption className="sr-only">
+                    Who pays the processing fee, by payment type
+                  </caption>
+                  <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-600">
+                    <tr>
+                      <th scope="col" className="px-4 py-2 font-medium">
+                        Payment type
+                      </th>
+                      <th scope="col" className="px-4 py-2 font-medium">
+                        Charge me
+                      </th>
+                      <th scope="col" className="px-4 py-2 font-medium">
+                        Charge tenant
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {[
+                      {
+                        key: "mpesa_fee_payer",
+                        label: "M-Pesa",
+                        note: "Paybill and STK push transactions.",
+                      },
+                      {
+                        key: "card_fee_payer",
+                        label: "Credit / debit card",
+                        note: "Card payments.",
+                      },
+                    ].map((row) => (
+                      <tr key={row.key}>
+                        <th scope="row" className="px-4 py-3 text-left">
+                          <span className="block font-medium text-gray-800">
+                            {row.label}
+                          </span>
+                          <span className="block text-xs text-gray-500">
+                            {row.note}
+                          </span>
+                          {/* Innago prints the actual fee here ($2, 2.99%).
+                              MitaSafi does not charge one yet, and inventing
+                              a number would be worse than saying so. */}
+                          <span className="block text-xs text-gray-500">
+                            No processing fee is charged today.
+                          </span>
+                        </th>
+                        <td className="px-4 py-3">
+                          <Radio
+                            name={row.key}
+                            value="landlord"
+                            current={str(row.key)}
+                            onChange={(v) => set(row.key, v)}
+                            label="I pay"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <Radio
+                            name={row.key}
+                            value="tenant"
+                            current={str(row.key)}
+                            onChange={(v) => set(row.key, v)}
+                            label="Tenant pays"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
                 <p className="mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
                   Saved, but not yet applied at checkout: MitaSafi does not add
                   a processing fee to invoices today, so this records your
@@ -759,6 +716,8 @@ export function SettingsClient({
             </Card>
           )}
         </div>
+
+        <HelpSidebar />
       </div>
     </div>
   );

@@ -308,7 +308,7 @@ export const FEE_PAYERS = [
 // Access levels
 // ---------------------------------------------------------------------------
 
-export type AccessLevel = "all" | "view" | "none";
+export type AccessLevel = "all" | "view" | "limited" | "none";
 
 export interface AccessModule {
   key: string;
@@ -319,6 +319,8 @@ export interface AccessModule {
   notYet?: string;
   /** Tenant access cannot be scoped to a block; see the migration header. */
   portfolioWideOnly?: boolean;
+  /** Overrides the default All/View/None triple. */
+  choices?: string[];
   /** Visible only once another module is granted. */
   requires?: { key: string; why: string };
 }
@@ -401,6 +403,17 @@ export const ACCESS_MODULES: AccessModule[] = [
     enforced: false,
     notYet: "Recorded only: MitaSafi does not hold or disburse rent.",
   },
+  {
+    key: "access_settings",
+    label: "Settings",
+    blurb: "Your account settings.",
+    enforced: false,
+    notYet:
+      "Recorded only: staff have no settings page yet, so this changes nothing today.",
+    // Innago offers All or Limited here and no None, because everyone with a
+    // login needs some of it. Mirrored.
+    choices: ["all", "limited"],
+  },
 ];
 
 export const ACCESS_CHOICES: {
@@ -410,8 +423,19 @@ export const ACCESS_CHOICES: {
 }[] = [
   { value: "all", label: "All", blurb: "View, edit and delete." },
   { value: "view", label: "View", blurb: "Can look, cannot change." },
+  { value: "limited", label: "Limited", blurb: "Part of the module only." },
   { value: "none", label: "None", blurb: "No access at all." },
 ];
+
+/**
+ * The buttons one module offers. Settings is All/Limited with no None,
+ * because anyone with a login needs some of it — that is Innago's rule and
+ * it is the only module that departs from the triple.
+ */
+export function choicesFor(m: AccessModule) {
+  const allowed = m.choices ?? ["all", "view", "none"];
+  return ACCESS_CHOICES.filter((c) => allowed.includes(c.value));
+}
 
 export type RolePreset = {
   value: string;
@@ -450,6 +474,7 @@ export const ROLE_PRESETS: RolePreset[] = [
       access_application: "all",
       access_expense: "all",
       access_report: "all",
+      access_settings: "all",
     }),
   },
   {
@@ -463,13 +488,14 @@ export const ROLE_PRESETS: RolePreset[] = [
       access_tenant: "all",
       access_listing: "all",
       access_application: "all",
+      access_settings: "limited",
     }),
   },
   {
     value: "caretaker",
     label: "Maintenance Staff",
     blurb: "The caretaker. Maintenance on their blocks and nothing else.",
-    levels: none({ access_maintenance: "all" }),
+    levels: none({ access_maintenance: "all", access_settings: "limited" }),
   },
   {
     value: "owner",
@@ -486,6 +512,7 @@ export const ROLE_PRESETS: RolePreset[] = [
       access_application: "view",
       access_expense: "view",
       access_report: "all",
+      access_settings: "limited",
     }),
   },
   {
@@ -499,6 +526,7 @@ export const ROLE_PRESETS: RolePreset[] = [
       access_tenant: "view",
       access_expense: "view",
       access_report: "all",
+      access_settings: "limited",
     }),
   },
   {
@@ -531,4 +559,45 @@ export function accessWarnings(
     out.push("Nothing is granted, so this person will see nothing.");
   }
   return out;
+}
+
+/** Innago's two-state maintenance scope, now an explicit mode. */
+export const CATEGORY_MODES = [
+  { value: "all", label: "All categories" },
+  { value: "specific", label: "Specific categories" },
+] as const;
+
+export const MAINTENANCE_CATEGORIES = [
+  "plumbing",
+  "electrical",
+  "appliances",
+  "structural",
+  "pest_control",
+  "cleaning",
+  "other",
+] as const;
+
+export const LATE_FEE_APPLIES_TO = [
+  { value: "all_line_items", label: "All line items on rental invoices" },
+  { value: "rent_only", label: "Rent only" },
+] as const;
+
+/** The one-line summary Innago prints above each rule. */
+export function describeLateFeeRule(r: {
+  fee_type: string;
+  amount: number | null;
+  percentage: number | null;
+  grace_period_days: number;
+}): string {
+  const charge =
+    r.fee_type === "percentage"
+      ? `${r.percentage ?? 0}% of the total amount`
+      : r.fee_type === "daily"
+        ? `KES ${(r.amount ?? 0).toLocaleString()} per day late`
+        : `KES ${(r.amount ?? 0).toLocaleString()}`;
+  const grace =
+    r.grace_period_days === 0
+      ? "no grace period"
+      : `a grace period of ${r.grace_period_days} day${r.grace_period_days === 1 ? "" : "s"}`;
+  return `${charge} with ${grace}.`;
 }

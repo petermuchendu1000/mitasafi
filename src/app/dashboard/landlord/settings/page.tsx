@@ -38,6 +38,8 @@ export default async function LandlordSettingsPage() {
     { data: profile },
     { data: prefs },
     { data: settings, error: settingsError },
+    { data: lateFeeRules },
+    { data: buildings },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -56,6 +58,16 @@ export default async function LandlordSettingsPage() {
       .select("*")
       .eq("landlord_id", userId)
       .maybeSingle(),
+    supabase
+      .from("late_fee_rules")
+      .select("*")
+      .eq("landlord_id", userId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("buildings")
+      .select("id, name")
+      .eq("landlord_id", userId)
+      .order("name"),
   ]);
 
   const settingsMissing = MISSING_TABLE.has(settingsError?.code ?? "");
@@ -84,6 +96,18 @@ export default async function LandlordSettingsPage() {
         push_notifications: prefs?.push_notifications ?? true,
       }}
       settings={(settings as Record<string, unknown> | null) ?? null}
+      lateFeeRules={(lateFeeRules ?? []).map((r) => ({
+        id: r.id,
+        enabled: r.enabled,
+        fee_type: r.fee_type,
+        amount: r.amount === null ? null : Number(r.amount),
+        percentage: r.percentage === null ? null : Number(r.percentage),
+        grace_period_days: r.grace_period_days,
+        applies_to: r.applies_to,
+        all_properties: r.all_properties,
+        building_ids: r.building_ids ?? [],
+      }))}
+      buildings={(buildings ?? []).map((b) => ({ id: b.id, name: b.name }))}
     />
   );
 }

@@ -4,17 +4,22 @@
  * Users: the people who work on your portfolio, and exactly what each can see.
  *
  * THE ACCESS TABLE IS NOT DECORATION
- *   Every level here is enforced by a row-level policy, or it is marked
- *   "Recorded only" and says why. The ones that are enforced were proven by
- *   28 behavioural assertions running as the staff member's own role — the
- *   suite caught a draft where "all properties" meant every building in the
- *   database, another landlord's included.
+ *   Every level is enforced by a row-level policy, or it is marked "Recorded
+ *   only" with the reason. The enforced ones were proven by 36 behavioural
+ *   assertions running as the staff member's own role — which is how a draft
+ *   was caught where "all properties" meant every building in the database,
+ *   another landlord's included.
  *
  * THE WARNINGS ARE COMPUTED, NOT WRITTEN
  *   Two combinations produce a person who sees nothing: tenants scoped to
- *   specific blocks, and invoices without leases. Both are consequences of
- *   the schema rather than choices, both are explained in place, and both are
- *   tested. A silent empty list is the failure this prevents.
+ *   specific blocks, and invoices without leases. Both follow from the schema,
+ *   both are explained in place, both are tested. A silent empty list is the
+ *   failure this prevents.
+ *
+ * A ROLE MUST BE CHOSEN
+ *   The form opens on "Select role" and refuses to save without one, so the
+ *   access decision is made deliberately rather than inherited from a default
+ *   nobody looked at.
  */
 
 import { useMemo, useState, useTransition } from "react";
@@ -28,9 +33,11 @@ import {
 } from "lucide-react";
 import {
   ACCESS_MODULES,
-  ACCESS_CHOICES,
   ROLE_PRESETS,
+  CATEGORY_MODES,
+  MAINTENANCE_CATEGORIES,
   accessWarnings,
+  choicesFor,
   type AccessLevel,
 } from "@/lib/landlord/settings-schema";
 import {
@@ -41,6 +48,8 @@ import {
 
 export interface StaffRow {
   id: string;
+  firstName: string;
+  lastName: string;
   fullName: string;
   phone: string;
   email: string | null;
@@ -49,6 +58,8 @@ export interface StaffRow {
   buildingIds: string[];
   allProperties: boolean;
   levels: Record<string, string>;
+  categoryMode: string;
+  allowCustomCategory: boolean;
   maintenanceCategories: string[];
   linked: boolean;
 }
@@ -58,16 +69,6 @@ export interface BuildingRef {
   name: string;
 }
 
-const MAINTENANCE_CATEGORIES = [
-  "plumbing",
-  "electrical",
-  "appliances",
-  "structural",
-  "pest_control",
-  "cleaning",
-  "other",
-];
-
 function emptyLevels(): Record<string, AccessLevel> {
   const l: Record<string, AccessLevel> = {};
   for (const m of ACCESS_MODULES) l[m.key] = "none";
@@ -75,26 +76,121 @@ function emptyLevels(): Record<string, AccessLevel> {
 }
 
 interface Draft {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   phone: string;
   email: string;
   staffRole: string;
   allProperties: boolean;
   buildingIds: string[];
   levels: Record<string, AccessLevel>;
+  categoryMode: string;
+  allowCustomCategory: boolean;
   maintenanceCategories: string[];
 }
 
 const EMPTY: Draft = {
-  fullName: "",
+  firstName: "",
+  lastName: "",
   phone: "",
   email: "",
-  staffRole: "caretaker",
+  staffRole: "",
   allProperties: false,
   buildingIds: [],
-  levels: { ...emptyLevels(), access_maintenance: "all" },
+  levels: emptyLevels(),
+  categoryMode: "all",
+  allowCustomCategory: false,
   maintenanceCategories: [],
 };
+
+/** Innago shows the preset matrix side by side so you can compare before picking. */
+function RoleComparison({ current }: { current: string }) {
+  const presets = ROLE_PRESETS.filter((r) => r.levels);
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+        <h2 className="text-sm font-semibold text-gray-900">Access levels</h2>
+        <p className="text-xs text-gray-500 mt-0.5">
+          What each role gets. Choose Custom to set them yourself.
+        </p>
+      </div>
+      {/* Five role columns do not fit a sidebar; scroll rather than clip. */}
+      <div className="overflow-x-auto max-w-full">
+        <table className="w-full text-xs">
+          <caption className="sr-only">
+            Access each role is given, by module
+          </caption>
+          <thead className="bg-gray-50 text-gray-600">
+            <tr>
+              <th scope="col" className="text-left font-medium px-4 py-2">
+                Feature
+              </th>
+              {presets.map((p) => (
+                <th
+                  key={p.value}
+                  scope="col"
+                  className={`text-left font-medium px-3 py-2 ${
+                    p.value === current ? "bg-teal-50 text-teal-800" : ""
+                  }`}
+                >
+                  {p.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {ACCESS_MODULES.map((m) => (
+              <tr key={m.key}>
+                <th
+                  scope="row"
+                  className="text-left font-normal text-gray-700 px-4 py-2"
+                >
+                  {m.label}
+                  {!m.enforced && (
+                    <span className="block text-[10px] text-amber-700">
+                      recorded only
+                    </span>
+                  )}
+                </th>
+                {presets.map((p) => {
+                  const v = p.levels![m.key] ?? "none";
+                  return (
+                    <td
+                      key={p.value}
+                      className={`px-3 py-2 capitalize ${
+                        p.value === current ? "bg-teal-50 font-medium" : ""
+                      } ${v === "none" ? "text-gray-400" : "text-gray-900"}`}
+                    >
+                      {v}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <dl className="px-4 py-3 border-t border-gray-200 text-xs text-gray-600 space-y-1">
+        <div>
+          <dt className="inline font-medium">All — </dt>
+          <dd className="inline">view, edit and delete.</dd>
+        </div>
+        <div>
+          <dt className="inline font-medium">View — </dt>
+          <dd className="inline">can look, cannot change.</dd>
+        </div>
+        <div>
+          <dt className="inline font-medium">Limited — </dt>
+          <dd className="inline">part of the module only.</dd>
+        </div>
+        <div>
+          <dt className="inline font-medium">None — </dt>
+          <dd className="inline">no access at all.</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
 
 export function UsersClient({
   staff,
@@ -120,17 +216,23 @@ export function UsersClient({
     buildings.find((b) => b.id === id)?.name ?? "a block you no longer own";
 
   function applyPreset(value: string) {
+    // Clear the Required badge the moment the thing it asked for is supplied;
+    // leaving it up tells the landlord they still have a problem they fixed.
+    if (value !== "") {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.staffRole;
+        return next;
+      });
+    }
     const p = ROLE_PRESETS.find((r) => r.value === value);
-    if (!p) return;
     setD((prev) => ({
       ...prev,
       staffRole: value,
-      // Custom keeps whatever is already set; a preset replaces it outright,
-      // so choosing one twice always lands on the same thing.
-      levels: p.levels
+      levels: p?.levels
         ? { ...(p.levels as Record<string, AccessLevel>) }
         : prev.levels,
-      allProperties: p.allProperties ?? prev.allProperties,
+      allProperties: p?.allProperties ?? prev.allProperties,
     }));
   }
 
@@ -144,7 +246,8 @@ export function UsersClient({
   function openEdit(s: StaffRow) {
     setEditing(s.id);
     setD({
-      fullName: s.fullName,
+      firstName: s.firstName,
+      lastName: s.lastName,
       phone: s.phone,
       email: s.email ?? "",
       staffRole: s.staffRole,
@@ -154,6 +257,8 @@ export function UsersClient({
         ...emptyLevels(),
         ...(s.levels as Record<string, AccessLevel>),
       },
+      categoryMode: s.categoryMode,
+      allowCustomCategory: s.allowCustomCategory,
       maintenanceCategories: s.maintenanceCategories,
     });
     setError(null);
@@ -163,15 +268,24 @@ export function UsersClient({
   function save() {
     setError(null);
     setFieldErrors({});
+    // Checked here as well as on the server so the landlord sees "Required"
+    // against the control rather than a sentence at the bottom.
+    if (d.staffRole === "") {
+      setFieldErrors({ staffRole: "Required" });
+      return;
+    }
     start(async () => {
       const r = await saveStaffMember(editing === "new" ? null : editing, {
-        fullName: d.fullName,
+        firstName: d.firstName,
+        lastName: d.lastName,
         phone: d.phone,
-        email: d.email || null,
+        email: d.email,
         staffRole: d.staffRole,
         buildingIds: d.buildingIds,
         allProperties: d.allProperties,
         levels: d.levels,
+        categoryMode: d.categoryMode,
+        allowCustomCategory: d.allowCustomCategory,
         maintenanceCategories: d.maintenanceCategories,
       });
       if (r.success) setEditing(null);
@@ -184,6 +298,7 @@ export function UsersClient({
 
   const input =
     "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500";
+  const req = <span className="text-red-600">*</span>;
 
   if (!staffEnabled) {
     return (
@@ -285,6 +400,17 @@ export function UsersClient({
                               .join(" · ")
                           )}
                         </p>
+                        {s.levels.access_maintenance !== "none" &&
+                          s.categoryMode === "specific" && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              Categories:{" "}
+                              {s.maintenanceCategories.length === 0
+                                ? "none chosen, so no jobs at all"
+                                : s.maintenanceCategories
+                                    .map((c) => c.replace(/_/g, " "))
+                                    .join(", ")}
+                            </p>
+                          )}
                       </div>
                       <div className="flex items-center gap-1">
                         <button
@@ -349,8 +475,7 @@ export function UsersClient({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_28rem] gap-6 items-start">
-          {/* ---- who they are ------------------------------------------- */}
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_34rem] gap-6 items-start">
           <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
             <h2 className="text-base font-semibold text-gray-900">
               {editing === "new" ? "New user" : "Edit user"}
@@ -359,21 +484,70 @@ export function UsersClient({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label
-                  htmlFor="u-name"
+                  htmlFor="u-first"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Name
+                  First name {req}
                 </label>
                 <input
-                  id="u-name"
-                  value={d.fullName}
-                  onChange={(e) => setD({ ...d, fullName: e.target.value })}
-                  aria-invalid={fieldErrors.fullName ? true : undefined}
+                  id="u-first"
+                  value={d.firstName}
+                  onChange={(e) => setD({ ...d, firstName: e.target.value })}
+                  aria-invalid={fieldErrors.firstName ? true : undefined}
                   className={input}
                 />
-                {fieldErrors.fullName && (
+                {fieldErrors.firstName && (
                   <p role="alert" className="mt-1 text-sm text-red-700">
-                    {fieldErrors.fullName}
+                    {fieldErrors.firstName}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label
+                  htmlFor="u-last"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Last name {req}
+                </label>
+                <input
+                  id="u-last"
+                  value={d.lastName}
+                  onChange={(e) => setD({ ...d, lastName: e.target.value })}
+                  aria-invalid={fieldErrors.lastName ? true : undefined}
+                  className={input}
+                />
+                {fieldErrors.lastName && (
+                  <p role="alert" className="mt-1 text-sm text-red-700">
+                    {fieldErrors.lastName}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="u-email"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Email {req}
+                </label>
+                <input
+                  id="u-email"
+                  type="email"
+                  value={d.email}
+                  onChange={(e) => setD({ ...d, email: e.target.value })}
+                  aria-invalid={fieldErrors.email ? true : undefined}
+                  aria-describedby="u-email-hint"
+                  className={input}
+                />
+                {fieldErrors.email ? (
+                  <p role="alert" className="mt-1 text-sm text-red-700">
+                    {fieldErrors.email}
+                  </p>
+                ) : (
+                  <p id="u-email-hint" className="mt-1 text-xs text-gray-500">
+                    The only way to reach someone who has no account yet.
                   </p>
                 )}
               </div>
@@ -382,7 +556,7 @@ export function UsersClient({
                   htmlFor="u-phone"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Phone
+                  Phone {req}
                 </label>
                 <input
                   id="u-phone"
@@ -409,47 +583,47 @@ export function UsersClient({
 
             <div>
               <label
-                htmlFor="u-email"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Email (optional)
-              </label>
-              <input
-                id="u-email"
-                type="email"
-                value={d.email}
-                onChange={(e) => setD({ ...d, email: e.target.value })}
-                className={input}
-              />
-            </div>
-
-            <div>
-              <label
                 htmlFor="u-role"
                 className="block text-sm font-medium text-gray-700"
               >
-                Role
+                Role {req}
               </label>
               <select
                 id="u-role"
                 value={d.staffRole}
                 onChange={(e) => applyPreset(e.target.value)}
+                aria-invalid={fieldErrors.staffRole ? true : undefined}
+                aria-describedby={
+                  fieldErrors.staffRole ? "u-role-error" : undefined
+                }
                 className={input}
               >
+                <option value="">Select role</option>
                 {ROLE_PRESETS.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-gray-500">
-                {ROLE_PRESETS.find((r) => r.value === d.staffRole)?.blurb}
-              </p>
+              {fieldErrors.staffRole ? (
+                <p
+                  id="u-role-error"
+                  role="alert"
+                  className="mt-1 inline-block rounded bg-red-600 px-2 py-0.5 text-xs font-medium text-white"
+                >
+                  {fieldErrors.staffRole}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-500">
+                  {ROLE_PRESETS.find((r) => r.value === d.staffRole)?.blurb ??
+                    "Pick a role to set the access levels, or choose Custom."}
+                </p>
+              )}
             </div>
 
             <fieldset>
               <legend className="text-sm font-medium text-gray-700">
-                Which blocks
+                Assign properties
               </legend>
               <label className="mt-2 flex items-center gap-2 text-sm text-gray-800">
                 <input
@@ -503,39 +677,90 @@ export function UsersClient({
                 <legend className="text-sm font-medium text-gray-700">
                   Maintenance categories
                 </legend>
-                <p className="text-xs text-gray-500">
-                  Leave all unticked for every category.
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {MAINTENANCE_CATEGORIES.map((c) => {
-                    const on = d.maintenanceCategories.includes(c);
-                    return (
-                      <label
-                        key={c}
-                        className={`flex items-center gap-1.5 text-xs border rounded-full px-3 py-1.5 ${
-                          on
-                            ? "bg-teal-50 border-teal-300 text-teal-800"
-                            : "border-gray-200 text-gray-700"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          onChange={() =>
-                            setD({
-                              ...d,
-                              maintenanceCategories: on
-                                ? d.maintenanceCategories.filter((x) => x !== c)
-                                : [...d.maintenanceCategories, c],
-                            })
-                          }
-                          className="w-3 h-3"
-                        />
-                        {c.replace(/_/g, " ")}
-                      </label>
-                    );
-                  })}
+                <div
+                  role="group"
+                  aria-label="Maintenance category scope"
+                  className="mt-2 inline-flex rounded-lg border border-gray-300 overflow-hidden"
+                >
+                  {CATEGORY_MODES.map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      aria-pressed={d.categoryMode === m.value}
+                      onClick={() => setD({ ...d, categoryMode: m.value })}
+                      className={`px-3 py-1.5 text-xs font-medium border-r last:border-r-0 border-gray-300 ${
+                        d.categoryMode === m.value
+                          ? "bg-teal-600 text-white"
+                          : "bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
                 </div>
+
+                {d.categoryMode === "specific" && (
+                  <>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {MAINTENANCE_CATEGORIES.map((c) => {
+                        const on = d.maintenanceCategories.includes(c);
+                        return (
+                          <label
+                            key={c}
+                            className={`flex items-center gap-1.5 text-xs border rounded-full px-3 py-1.5 ${
+                              on
+                                ? "bg-teal-50 border-teal-300 text-teal-800"
+                                : "border-gray-200 text-gray-700"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              onChange={() =>
+                                setD({
+                                  ...d,
+                                  maintenanceCategories: on
+                                    ? d.maintenanceCategories.filter(
+                                        (x) => x !== c,
+                                      )
+                                    : [...d.maintenanceCategories, c],
+                                })
+                              }
+                              className="w-3 h-3"
+                            />
+                            {c.replace(/_/g, " ")}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {d.maintenanceCategories.length === 0 && (
+                      <p className="mt-2 text-xs text-amber-700">
+                        No category chosen, so they will see no maintenance at
+                        all. That is what &ldquo;specific&rdquo; means here — it
+                        is not read as &ldquo;everything&rdquo;.
+                      </p>
+                    )}
+                  </>
+                )}
+
+                <label className="mt-3 flex items-center gap-2 text-sm text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={d.allowCustomCategory}
+                    onChange={() =>
+                      setD({
+                        ...d,
+                        allowCustomCategory: !d.allowCustomCategory,
+                      })
+                    }
+                    className="w-4 h-4"
+                  />
+                  Allow custom category
+                </label>
+                <p className="text-xs text-amber-700 mt-1">
+                  Recorded only: maintenance categories are a fixed list today,
+                  so this changes nothing yet.
+                </p>
               </fieldset>
             )}
 
@@ -581,73 +806,79 @@ export function UsersClient({
             </div>
           </div>
 
-          {/* ---- what they may do --------------------------------------- */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
-              <h2 className="text-sm font-semibold text-gray-900">
-                Access levels
-              </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                All: view, edit and delete · View: look only · None: no access
-              </p>
-            </div>
-            <ul className="divide-y divide-gray-100">
-              {ACCESS_MODULES.map((m) => (
-                <li key={m.key} className="px-5 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-800">
-                        {m.label}
+          {/* Comparison while picking a preset; the editable matrix for Custom. */}
+          {d.staffRole !== "custom" ? (
+            <RoleComparison current={d.staffRole} />
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+                <h2 className="text-sm font-semibold text-gray-900">
+                  Access levels — Custom
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  All: view, edit and delete · View: look only · None: no access
+                </p>
+              </div>
+              <ul className="divide-y divide-gray-100">
+                {ACCESS_MODULES.map((m) => (
+                  <li key={m.key} className="px-5 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800">
+                          {m.label}
+                        </p>
+                        <p className="text-xs text-gray-500">{m.blurb}</p>
+                      </div>
+                      <div
+                        role="group"
+                        aria-label={`${m.label} access`}
+                        className="shrink-0 inline-flex rounded-lg border border-gray-300 overflow-hidden"
+                      >
+                        {choicesFor(m).map((c) => (
+                          <button
+                            key={c.value}
+                            type="button"
+                            aria-pressed={d.levels[m.key] === c.value}
+                            onClick={() =>
+                              setD({
+                                ...d,
+                                levels: {
+                                  ...d.levels,
+                                  [m.key]: c.value as AccessLevel,
+                                },
+                              })
+                            }
+                            className={`px-3 py-1.5 text-xs font-medium border-r last:border-r-0 border-gray-300 ${
+                              d.levels[m.key] === c.value
+                                ? "bg-teal-600 text-white"
+                                : "bg-white text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            {c.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {!m.enforced && (
+                      <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                        {m.notYet}
                       </p>
-                      <p className="text-xs text-gray-500">{m.blurb}</p>
-                    </div>
-                    <div
-                      role="group"
-                      aria-label={`${m.label} access`}
-                      className="shrink-0 inline-flex rounded-lg border border-gray-300 overflow-hidden"
-                    >
-                      {ACCESS_CHOICES.map((c) => (
-                        <button
-                          key={c.value}
-                          type="button"
-                          aria-pressed={d.levels[m.key] === c.value}
-                          onClick={() =>
-                            setD({
-                              ...d,
-                              staffRole: "custom",
-                              levels: { ...d.levels, [m.key]: c.value },
-                            })
-                          }
-                          className={`px-3 py-1.5 text-xs font-medium border-r last:border-r-0 border-gray-300 ${
-                            d.levels[m.key] === c.value
-                              ? "bg-teal-600 text-white"
-                              : "bg-white text-gray-700 hover:bg-gray-50"
-                          }`}
-                        >
-                          {c.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {!m.enforced && (
-                    <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                      {m.notYet}
-                    </p>
-                  )}
-                  {m.portfolioWideOnly && (
-                    <p className="mt-1.5 text-xs text-gray-500">
-                      Cannot be limited to selected blocks.
-                    </p>
-                  )}
-                  {m.requires && (
-                    <p className="mt-1.5 text-xs text-gray-500">
-                      {m.requires.why}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
+                    )}
+                    {m.portfolioWideOnly && (
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        Cannot be limited to selected blocks.
+                      </p>
+                    )}
+                    {m.requires && (
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        {m.requires.why}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

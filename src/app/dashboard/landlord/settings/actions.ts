@@ -31,7 +31,9 @@ import { normaliseKenyanPhone } from "@/lib/landlord/tenancy-form";
 export interface SaveResult {
   success: boolean;
   error?: string;
-  fieldErrors?: ProfileFieldErrors & { phone?: string };
+  /** Keyed by field name; the staff form has more fields than a profile. */
+  /** Keyed by field name; the staff form has more fields than a profile. */
+  fieldErrors?: Record<string, string | undefined>;
 }
 
 export async function updateLandlordProfile(
@@ -46,7 +48,7 @@ export async function updateLandlordProfile(
 
   const checked = validateProfileDraft({ fullName, phone });
   if (!checked.ok) {
-    return { success: false, fieldErrors: checked.errors };
+    return { success: false, fieldErrors: { ...checked.errors } };
   }
 
   // Exactly two columns. Named explicitly so nothing can be widened by
@@ -196,14 +198,17 @@ export async function saveLandlordSettings(
 // ===========================================================================
 
 export interface StaffInput {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   phone: string;
-  email: string | null;
+  email: string;
   staffRole: string;
   buildingIds: string[];
   allProperties: boolean;
   /** One level per module, keyed by column name. Whitelisted below. */
   levels: Record<string, string>;
+  categoryMode: string;
+  allowCustomCategory: boolean;
   maintenanceCategories: string[];
 }
 
@@ -221,9 +226,19 @@ export async function saveStaffMember(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "You need to be signed in." };
 
-  const fullName = input.fullName.trim().replace(/\s+/g, " ");
-  if (fullName === "") {
-    return { success: false, fieldErrors: { fullName: "Give them a name." } };
+  const firstName = input.firstName.trim().replace(/\s+/g, " ");
+  const lastName = input.lastName.trim().replace(/\s+/g, " ");
+  if (firstName === "") {
+    return { success: false, fieldErrors: { firstName: "Required" } };
+  }
+  if (lastName === "") {
+    return { success: false, fieldErrors: { lastName: "Required" } };
+  }
+  // Required here as well as by the CHECK constraint, so the landlord gets a
+  // sentence against the field rather than an opaque 23514.
+  const email = input.email.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { success: false, fieldErrors: { email: "Enter a valid email." } };
   }
   const phone = normaliseKenyanPhone(input.phone.trim());
   if (phone === null) {
@@ -246,15 +261,22 @@ export async function saveStaffMember(
   }
 
   const row = {
-    full_name: fullName,
+    first_name: firstName,
+    last_name: lastName,
+    // Sent so the generated Insert type is satisfied; the trigger recomputes
+    // it from the two parts, so this value can never drift from them.
+    full_name: `${firstName} ${lastName}`,
     phone,
-    email: input.email?.trim() || null,
+    email,
     staff_role: input.staffRole,
     // The trigger refuses any building this landlord does not own, so a
     // forged id fails at the database rather than being filtered here and
     // quietly dropped.
     building_ids: input.allProperties ? [] : input.buildingIds,
     all_properties: input.allProperties,
+    maintenance_category_mode:
+      input.categoryMode === "specific" ? "specific" : "all",
+    allow_custom_category: input.allowCustomCategory,
     maintenance_categories: input.maintenanceCategories,
     ...levels,
   };
@@ -273,6 +295,9 @@ export async function saveStaffMember(
     console.error("[LandlordStaff] save failed:", error.code, error.message);
     if (error.code === "28000") {
       return { success: false, error: "That building is not one of yours." };
+    }
+    if (error.code === "23514") {
+      return { success: false, error: "Those details are not valid." };
     }
     if (error.code === "23505") {
       return {
@@ -328,6 +353,109 @@ export async function removeStaffMember(staffId: string): Promise<SaveResult> {
   if (error) {
     console.error("[LandlordStaff] remove failed:", error.message);
     return { success: false, error: "Could not remove that person." };
+  }
+  revalidatePath("/dashboard/landlord/settings");
+  return { success: true };
+}
+
+// ===========================================================================
+// Late fee rules
+// ===========================================================================
+
+export interface LateFeeRuleInput {
+  id: string | null;
+  enabled: boolean;
+  feeType: string;
+  amount: number | null;
+  percentage: number | null;
+  gracePeriodDays: number;
+  appliesTo: string;
+  allProperties: boolean;
+  buildingIds: string[];
+}
+
+const FEE_TYPES = new Set(["fixed", "percentage", "daily"]);
+const APPLIES_TO = new Set(["all_line_items", "rent_only"]);
+
+export async function saveLateFeeRule(
+  input: LateFeeRuleInput,
+): Promise<SaveResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "You need to be signed in." };
+
+  if (!FEE_TYPES.has(input.feeType)) {
+    return { success: false, error: "Pick how the fee is calculated." };
+  }
+  if (!APPLIES_TO.has(input.appliesTo)) {
+    return { success: false, error: "Pick what the fee applies to." };
+  }
+  // The CHECK constraint refuses an inapplicable rule with an opaque 23514;
+  // this turns it into a sentence against the right field.
+  if (input.enabled) {
+    if (input.feeType === "percentage" && input.percentage == null) {
+      return { success: false, fieldErrors: { percentage: "Required" } };
+    }
+    if (input.feeType !== "percentage" && input.amount == null) {
+      return { success: false, fieldErrors: { amount: "Required" } };
+    }
+  }
+
+  const row = {
+    enabled: input.enabled,
+    fee_type: input.feeType,
+    amount: input.amount,
+    percentage: input.percentage,
+    grace_period_days: input.gracePeriodDays,
+    applies_to: input.appliesTo,
+    all_properties: input.allProperties,
+    // The trigger refuses any block this landlord does not own.
+    building_ids: input.allProperties ? [] : input.buildingIds,
+  };
+
+  const { error } = input.id
+    ? await supabase
+        .from("late_fee_rules")
+        .update(row)
+        .eq("id", input.id)
+        .eq("landlord_id", user.id)
+    : await supabase
+        .from("late_fee_rules")
+        .insert({ ...row, landlord_id: user.id });
+
+  if (error) {
+    console.error("[LateFee] save failed:", error.code, error.message);
+    if (error.code === "28000") {
+      return { success: false, error: "That block is not one of yours." };
+    }
+    if (error.code === "23514") {
+      return { success: false, error: "That is not a usable policy." };
+    }
+    return { success: false, error: "Could not save that rule." };
+  }
+
+  revalidatePath("/dashboard/landlord/settings");
+  return { success: true };
+}
+
+export async function deleteLateFeeRule(id: string): Promise<SaveResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "You need to be signed in." };
+
+  const { error } = await supabase
+    .from("late_fee_rules")
+    .delete()
+    .eq("id", id)
+    .eq("landlord_id", user.id);
+
+  if (error) {
+    console.error("[LateFee] delete failed:", error.message);
+    return { success: false, error: "Could not remove that rule." };
   }
   revalidatePath("/dashboard/landlord/settings");
   return { success: true };
