@@ -76,7 +76,9 @@ function CopyButton({ value, label }: { value: string; label: string }) {
           () => {},
         );
       }}
-      className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+      // 44px tall. At 22px this was the smallest control on the page and
+      // the most tapped one on it.
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-gray-300 px-3 text-sm text-gray-700 hover:bg-gray-50"
     >
       {done ? (
         <Check aria-hidden="true" className="w-3 h-3" />
@@ -283,7 +285,7 @@ function RepairForm({ onDone }: { onDone: () => void }) {
         </button>
       </div>
       <p className="text-xs text-gray-500">
-        Photos are not supported yet. An emergency needs a phone call as well.
+        No photos yet. For an emergency, call your landlord too.
       </p>
     </form>
   );
@@ -293,22 +295,15 @@ function Shell({ children }: { children: React.ReactNode }) {
   return <div className="max-w-4xl space-y-6">{children}</div>;
 }
 
-function Tile({
-  label,
-  value,
-  sub,
-  tone = "text-gray-900",
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: string;
-}) {
+/** A small fact. Three fit across a 360px screen without wrapping. */
+function Fact({ k, v, sub }: { k: string; v: string; sub?: string }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
-      <p className={`mt-1 text-xl font-semibold ${tone}`}>{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-gray-500">{sub}</p>}
+    <div className="rounded-xl border border-gray-200 bg-white px-2 py-3">
+      <dt className="text-[11px] uppercase tracking-wide text-gray-500">{k}</dt>
+      <dd className="mt-0.5 text-sm font-semibold text-gray-900 break-words">
+        {v}
+      </dd>
+      {sub && <dd className="text-[11px] text-gray-500">{sub}</dd>}
     </div>
   );
 }
@@ -363,9 +358,8 @@ export function RentClient(
         <h1 className="text-2xl font-bold text-gray-900">My home</h1>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <p className="text-sm text-gray-700">
-            This account is not attached to a tenancy. If you rent through
-            MitaSafi, ask your landlord to add you with the phone number on this
-            account.
+            No tenancy on this account. Ask your landlord to add you using the
+            phone number you signed up with.
           </p>
         </div>
       </Shell>
@@ -378,7 +372,7 @@ export function RentClient(
         <h1 className="text-2xl font-bold text-gray-900">My home</h1>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <p className="text-sm text-gray-700">
-            No current lease. Past records stay with your landlord.
+            No current lease. Your landlord keeps the older records.
           </p>
         </div>
       </Shell>
@@ -437,7 +431,7 @@ export function RentClient(
             {unitNumber ? `Unit ${unitNumber}` : "My home"}
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            {[buildingName, area].filter(Boolean).join(" · ") || "—"}
+            {[buildingName, area].filter(Boolean).join(" · ") || "-"}
             {bedrooms ? ` · ${bedrooms} bed` : ""}
             {bathrooms ? ` · ${bathrooms} bath` : ""}
           </p>
@@ -447,36 +441,44 @@ export function RentClient(
         </span>
       </div>
 
-      {/* ---- the four numbers ---- */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Tile
-          label="Rent"
-          value={formatKes(monthlyRent)}
-          sub={rentDueDay ? `Day ${rentDueDay}` : "No due day set"}
+      {/* What they owe, then the rest small. On a phone one number should
+          dominate; four equal tiles made every number wrap onto two lines. */}
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <p className="text-xs uppercase tracking-wide text-gray-500">
+          This month
+        </p>
+        <p className={`mt-1 text-3xl font-semibold ${owingTone}`}>
+          {summary.balance > 0 ? formatKes(summary.balance) : "Clear"}
+        </p>
+        <p className="mt-0.5 text-sm text-gray-600">{duePhrase(summary)}</p>
+      </div>
+
+      <dl className="grid grid-cols-3 gap-2 text-center">
+        {/* No "KES" prefix here. At 360px it pushed the figure onto a
+            second line in every one of these; the currency is obvious from
+            the card above and exact on the Lease tab. */}
+        <Fact
+          k="Rent"
+          v={formatKes(monthlyRent).replace("KES ", "")}
+          sub={rentDueDay ? `Day ${rentDueDay}` : "No due day"}
         />
-        <Tile
-          label="This month"
-          value={summary.balance > 0 ? formatKes(summary.balance) : "Clear"}
-          sub={duePhrase(summary)}
-          tone={owingTone}
-        />
-        <Tile
-          label="Deposit"
-          value={formatKes(summary.depositHeld)}
+        <Fact
+          k="Deposit"
+          v={formatKes(summary.depositHeld).replace("KES ", "")}
           sub={depositStatus ?? "held"}
         />
-        <Tile
-          label="Lease ends"
-          value={leaseEnd ?? "Open"}
+        <Fact
+          k="Lease ends"
+          v={leaseEnd ?? "Open"}
           sub={
             summary.daysUntilEnd === null
-              ? "No end date"
+              ? ""
               : summary.daysUntilEnd < 0
-                ? `${Math.abs(summary.daysUntilEnd)} days ago`
-                : `${summary.daysUntilEnd} days`
+                ? `${Math.abs(summary.daysUntilEnd)}d ago`
+                : `${summary.daysUntilEnd}d`
           }
         />
-      </div>
+      </dl>
 
       {summary.daysUntilEnd !== null &&
         summary.daysUntilEnd >= 0 &&
@@ -496,7 +498,7 @@ export function RentClient(
       <div
         role="tablist"
         aria-label="My home"
-        className="flex flex-wrap gap-1 border-b border-gray-200"
+        className="flex gap-1 overflow-x-auto border-b border-gray-200 -mx-4 px-4 sm:mx-0 sm:px-0"
       >
         {TABS.map((t) => (
           <button
@@ -506,7 +508,7 @@ export function RentClient(
             aria-selected={tab === t.id}
             aria-controls={`panel-${t.id}`}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            className={`shrink-0 whitespace-nowrap px-4 min-h-11 text-sm font-medium border-b-2 -mb-px ${
               tab === t.id
                 ? "border-teal-600 text-teal-700"
                 : "border-transparent text-gray-600 hover:text-gray-900"
@@ -534,8 +536,8 @@ export function RentClient(
                   className="w-4 h-4 shrink-0 mt-0.5 text-amber-700"
                 />
                 <p className="text-sm text-amber-900">
-                  Your landlord has not told MitaSafi where rent should be sent.
-                  Ask them directly — do not use a number from anywhere else.
+                  Your landlord has not set where rent should be sent. Ask them.
+                  Do not use a number from anywhere else.
                 </p>
               </div>
             ) : (
@@ -581,7 +583,7 @@ export function RentClient(
                   </p>
                 )}
                 <p className="mt-4 text-xs text-gray-500">
-                  Paid directly to your landlord. MitaSafi never receives or
+                  You pay your landlord directly. MitaSafi never receives or
                   holds your rent, and will never ask for your M-Pesa PIN.
                 </p>
               </>
@@ -599,10 +601,61 @@ export function RentClient(
             ) : (
               <>
                 <p className="px-5 py-2.5 text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
-                  {statement.from} – {statement.to}. Starts at the first month
+                  {statement.from} to {statement.to}. Starts at the first month
                   your landlord recorded rent.
                 </p>
-                <table className="w-full text-sm">
+                {/* Phones: month and balance on one line, the detail
+                    under it. The four column table clipped the balance. */}
+                <ul className="divide-y divide-gray-100 sm:hidden">
+                  {statement.lines.map((l) => (
+                    <li key={l.key} className="px-4 py-3">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-sm text-gray-900">
+                          {l.period}
+                        </span>
+                        <span
+                          className={`text-sm font-medium ${
+                            l.balance > 0
+                              ? "text-amber-900"
+                              : l.balance < 0
+                                ? "text-teal-800"
+                                : "text-gray-400"
+                          }`}
+                        >
+                          {l.balance === 0
+                            ? "Clear"
+                            : l.balance > 0
+                              ? formatKes(l.balance)
+                              : `(${formatKes(-l.balance)})`}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        Charged {formatKes(l.charged)} · Paid{" "}
+                        {l.paid > 0 ? formatKes(l.paid) : "nothing"}
+                      </p>
+                    </li>
+                  ))}
+                  <li className="px-4 py-3 bg-gray-50 flex items-baseline justify-between gap-3">
+                    <span className="text-sm font-medium text-gray-900">
+                      Total
+                    </span>
+                    <span
+                      className={`text-sm font-medium ${
+                        statement.closingBalance > 0
+                          ? "text-amber-900"
+                          : "text-teal-800"
+                      }`}
+                    >
+                      {statement.closingBalance > 0
+                        ? `${formatKes(statement.closingBalance)} owing`
+                        : statement.closingBalance < 0
+                          ? `${formatKes(-statement.closingBalance)} in credit`
+                          : "Clear"}
+                    </span>
+                  </li>
+                </ul>
+
+                <table className="hidden w-full text-sm sm:table">
                   <caption className="sr-only">
                     Rent charged and paid each month, with a running balance
                   </caption>
@@ -641,13 +694,13 @@ export function RentClient(
                           {formatKes(l.charged)}
                         </td>
                         <td className="px-5 py-2.5 text-right text-gray-900">
-                          {l.paid > 0 ? formatKes(l.paid) : "—"}
+                          {l.paid > 0 ? formatKes(l.paid) : "-"}
                         </td>
                         <td
                           className={`px-5 py-2.5 text-right font-medium ${l.balance > 0 ? "text-amber-900" : l.balance < 0 ? "text-teal-800" : "text-gray-400"}`}
                         >
                           {l.balance === 0
-                            ? "—"
+                            ? "-"
                             : l.balance > 0
                               ? formatKes(l.balance)
                               : `(${formatKes(-l.balance)})`}
@@ -682,8 +735,8 @@ export function RentClient(
             {statement.unallocated.length > 0 && (
               <div className="px-5 py-4 border-t border-gray-200 bg-amber-50">
                 <p className="text-sm font-medium text-amber-900">
-                  {formatKes(statement.unallocatedTotal)} received, not yet
-                  applied to a month
+                  {formatKes(statement.unallocatedTotal)} received, not yet put
+                  against a month
                 </p>
                 <ul className="mt-1 space-y-0.5">
                   {statement.unallocated.map((u) => (
@@ -708,68 +761,101 @@ export function RentClient(
                 Nothing recorded yet.
               </p>
             ) : (
-              <table className="w-full text-sm">
-                <caption className="sr-only">
-                  Payments your landlord has recorded against this lease
-                </caption>
-                <thead className="bg-gray-50 text-left text-gray-600">
-                  <tr>
-                    <th scope="col" className="px-5 py-2 font-medium">
-                      Date
-                    </th>
-                    <th scope="col" className="px-5 py-2 font-medium">
-                      For
-                    </th>
-                    <th scope="col" className="px-5 py-2 font-medium">
-                      Month
-                    </th>
-                    <th scope="col" className="px-5 py-2 font-medium">
-                      Code
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-5 py-2 font-medium text-right"
-                    >
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
+              <>
+                {/* Phones: one card per payment. A five column table at
+                    360px clipped the Code column and pushed Amount, the
+                    number people come here for, off the screen entirely. */}
+                <ul className="divide-y divide-gray-100 sm:hidden">
                   {payments.map((p) => (
-                    <tr key={p.id}>
-                      <td className="px-5 py-2.5 text-gray-700">
-                        {p.date ?? "—"}
-                      </td>
-                      <td className="px-5 py-2.5 text-gray-700 capitalize">
-                        {p.type.replace(/_/g, " ")}
-                        {p.status !== "confirmed" && (
-                          <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-amber-50 text-amber-800 border border-amber-200">
-                            {p.status}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-2.5 text-gray-500">
-                        {p.period ?? "—"}
-                      </td>
-                      <td className="px-5 py-2.5 text-gray-500 font-mono text-xs">
-                        {p.receipt ?? "—"}
-                      </td>
-                      <td className="px-5 py-2.5 text-right text-gray-900">
-                        {formatKes(p.amount)}
-                      </td>
-                    </tr>
+                    <li key={p.id} className="px-4 py-3">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-sm font-medium text-gray-900">
+                          {formatKes(p.amount)}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {p.date ?? ""}
+                        </span>
+                      </div>
+                      {/* capitalize only on the type. On the whole line it
+                          also capitalised "for", giving "Rent For 2026-11". */}
+                      <p className="mt-0.5 text-xs text-gray-600">
+                        <span className="capitalize">
+                          {p.type.replace(/_/g, " ")}
+                        </span>
+                        {p.period ? ` for ${p.period}` : ""}
+                        {p.status !== "confirmed" ? ` (${p.status})` : ""}
+                      </p>
+                      {p.receipt && (
+                        <p className="font-mono text-[11px] text-gray-400">
+                          {p.receipt}
+                        </p>
+                      )}
+                    </li>
                   ))}
-                </tbody>
-              </table>
+                </ul>
+
+                <table className="hidden w-full text-sm sm:table">
+                  <caption className="sr-only">
+                    Payments your landlord has recorded against this lease
+                  </caption>
+                  <thead className="bg-gray-50 text-left text-gray-600">
+                    <tr>
+                      <th scope="col" className="px-5 py-2 font-medium">
+                        Date
+                      </th>
+                      <th scope="col" className="px-5 py-2 font-medium">
+                        For
+                      </th>
+                      <th scope="col" className="px-5 py-2 font-medium">
+                        Month
+                      </th>
+                      <th scope="col" className="px-5 py-2 font-medium">
+                        Code
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-5 py-2 font-medium text-right"
+                      >
+                        Amount
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {payments.map((p) => (
+                      <tr key={p.id}>
+                        <td className="px-5 py-2.5 text-gray-700">
+                          {p.date ?? "-"}
+                        </td>
+                        <td className="px-5 py-2.5 text-gray-700 capitalize">
+                          {p.type.replace(/_/g, " ")}
+                          {p.status !== "confirmed" && (
+                            <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-amber-50 text-amber-800 border border-amber-200">
+                              {p.status}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-2.5 text-gray-500">
+                          {p.period ?? "-"}
+                        </td>
+                        <td className="px-5 py-2.5 text-gray-500 font-mono text-xs">
+                          {p.receipt ?? "-"}
+                        </td>
+                        <td className="px-5 py-2.5 text-right text-gray-900">
+                          {formatKes(p.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
             <p className="px-5 py-3 border-t border-gray-100 flex items-start gap-2 text-xs text-gray-500">
               <Receipt
                 aria-hidden="true"
                 className="w-3.5 h-3.5 shrink-0 mt-0.5"
               />
-              What your landlord has recorded. If a payment is missing, send
-              them the code — you cannot add it here, and neither can anyone
-              pretending to be you.
+              What your landlord has recorded. If one is missing, send them the
+              code. You cannot add it here, and nor can anyone else.
             </p>
           </section>
         )}
@@ -778,11 +864,11 @@ export function RentClient(
         {tab === "lease" && (
           <section className="bg-white rounded-xl border border-gray-200 p-5">
             <dl>
-              <Row k="Unit" v={unitNumber ?? "—"} />
-              <Row k="Building" v={buildingName ?? "—"} />
-              <Row k="Area" v={area ?? "—"} />
+              <Row k="Unit" v={unitNumber ?? "-"} />
+              <Row k="Building" v={buildingName ?? "-"} />
+              <Row k="Area" v={area ?? "-"} />
               <Row k="Rent" v={formatKes(monthlyRent)} />
-              <Row k="Due day" v={rentDueDay ? `Day ${rentDueDay}` : "—"} />
+              <Row k="Due day" v={rentDueDay ? `Day ${rentDueDay}` : "-"} />
               <Row k="Grace" v={`${gracePeriodDays} days`} />
               <Row k="Started" v={leaseStart} />
               <Row k="Ends" v={leaseEnd ?? "Open"} />
@@ -791,7 +877,7 @@ export function RentClient(
                 v={
                   noticePeriodMonths
                     ? `${noticePeriodMonths} month${noticePeriodMonths === 1 ? "" : "s"}`
-                    : "—"
+                    : "-"
                 }
               />
               <Row
@@ -873,8 +959,8 @@ export function RentClient(
                 aria-hidden="true"
                 className="w-3.5 h-3.5 shrink-0 mt-0.5"
               />
-              Your landlord is emailed when you report one. Everything after
-              that — who comes, when, and what it costs — is theirs to record.
+              Your landlord is emailed when you report one. They record who
+              comes, when, and what it costs.
             </p>
           </section>
         )}

@@ -118,7 +118,7 @@ describe("paying", () => {
     // how rent goes to the wrong account.
     ok({ destination: null });
     expect(
-      screen.getByText(/has not told MitaSafi where rent should be sent/i),
+      screen.getByText(/has not set where rent should be sent/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/do not use a number from anywhere else/i),
@@ -245,9 +245,7 @@ describe("the tenant cannot write anything", () => {
     ok();
     fireEvent.click(screen.getByRole("tab", { name: /Repairs/ }));
     fireEvent.click(screen.getByRole("button", { name: "Report a repair" }));
-    expect(
-      screen.getByText(/Photos are not supported yet/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No photos yet/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/photo/i)).toBeNull();
   });
 });
@@ -327,7 +325,7 @@ describe("the statement the tenant can read themselves", () => {
     });
     fireEvent.click(screen.getByRole("tab", { name: /Statement/ }));
     const panel = screen.getByRole("tabpanel");
-    expect(within(panel).getByText(/Sep 2026 – Nov 2026/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Sep 2026 to Nov 2026/)).toBeInTheDocument();
     expect(within(panel).queryByText("Jun 2026")).toBeNull();
     expect(within(panel).queryByText("Jul 2026")).toBeNull();
   });
@@ -354,7 +352,7 @@ describe("the statement the tenant can read themselves", () => {
     });
     fireEvent.click(screen.getByRole("tab", { name: /Statement/ }));
     expect(
-      screen.getByText(/KES 17,500 received, not yet applied to a month/),
+      screen.getByText(/KES 17,500 received, not yet put against a month/),
     ).toBeInTheDocument();
     expect(screen.getByText(/SFG12ABCDE/)).toBeInTheDocument();
   });
@@ -390,7 +388,7 @@ describe("the lease tab", () => {
 describe("empty states", () => {
   it("distinguishes an account with no tenancy from one with no lease", () => {
     const { unmount } = render(<RentClient state="not-a-tenant" />);
-    expect(screen.getByText(/not attached to a tenancy/i)).toBeInTheDocument();
+    expect(screen.getByText(/No tenancy on this account/i)).toBeInTheDocument();
     unmount();
     render(<RentClient state="no-lease" />);
     expect(screen.getByText(/No current lease/i)).toBeInTheDocument();

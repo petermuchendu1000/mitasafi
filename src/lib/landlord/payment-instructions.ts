@@ -80,7 +80,7 @@ export const REFERENCE_MODES: {
   {
     value: "unit_number",
     label: "The unit number",
-    blurb: "Recommended — this is what makes a payment reconcilable.",
+    blurb: "Recommended. This is what makes a payment reconcilable.",
   },
   {
     value: "tenant_phone",
@@ -168,7 +168,7 @@ export function buildInstruction(
         `Business number: ${d.paybill_number}`,
         `Account number: ${refText}`,
         "Enter the amount and your M-Pesa PIN.",
-        "Keep the confirmation SMS — the code on it is your receipt.",
+        "Keep the confirmation SMS. The code on it is your receipt.",
       ],
       reference,
       referenceMissing: reference === null,
@@ -209,7 +209,7 @@ export function buildInstruction(
   }
 
   return {
-    headline: `${d.bank_name} — ${d.bank_account_number}`,
+    headline: `${d.bank_name} ${d.bank_account_number}`,
     steps: [
       `Bank: ${d.bank_name}${d.bank_branch ? `, ${d.bank_branch} branch` : ""}`,
       `Account name: ${d.bank_account_name}`,
