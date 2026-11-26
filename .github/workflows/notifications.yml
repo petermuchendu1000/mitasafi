@@ -1,0 +1,128 @@
+name: Scheduled notifications
+
+# Rent reminders, late notices, lease expiries and the landlord's arrears
+# summary.
+#
+# WHY A WORKFLOW AND NOT vercel.json
+#   Production is served by Fly, which does not read vercel.json, so entries
+#   there never fire. Equally important: two declared schedulers for one
+#   endpoint is a latent duplicate-send, and these messages go to tenants.
+#   This file is the only schedule for /api/cron/notifications. Do not add
+#   another.
+#
+# WHY ONCE A DAY, AND WHY AT THIS TIME
+#   Every notice here is state-based — "rent is late" is true all month. The
+#   endpoint is idempotent through notification_log, so a second run in a day
+#   sends nothing; running once is therefore a courtesy to the mail domain's
+#   reputation rather than a correctness requirement.
+#
+#   06:40 UTC is 09:40 in Nairobi: inside working hours, after people are up,
+#   and off the hour because GitHub's shared scheduler is at its most delayed
+#   at :00. A delay costs nothing here — a notice missed at 09:40 goes out on
+#   the next run, because the planner re-derives it from the data rather than
+#   from a window.
+#
+# BEFORE THIS CAN DO ANYTHING
+#   SITE_URL and CRON_SECRET must be set under Settings → Secrets and
+#   variables → Actions, and CRON_SECRET must match the value deployed on the
+#   Fly app. RESEND_API_KEY must be set on the Fly app. Until then every run
+#   fails loudly, which is deliberate: a notifier that is quiet because it was
+#   never configured looks exactly like a notifier with nothing to send.
+
+on:
+  schedule:
+    - cron: "40 6 * * *" # 06:40 UTC = 09:40 EAT, daily
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: Plan and report without sending anything
+        required: true
+        default: "yes"
+        type: choice
+        options: ["yes", "no"]
+      landlord:
+        description: Restrict to one landlord id (optional)
+        required: false
+        type: string
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # A run that overruns a day must not overlap the next one. The log makes
+    # a double send impossible, but two runs would still duplicate the work.
+    concurrency:
+      group: scheduled-notifications
+      cancel-in-progress: false
+    steps:
+      - name: Send due notifications
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          # A scheduled run always sends. Only a manual dispatch may dry-run,
+          # and it defaults to dry-run so that clicking the button out of
+          # curiosity cannot email anybody's tenants.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dryRun == 'yes' && '1' || '0' }}
+          LANDLORD: ${{ github.event.inputs.landlord }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SITE_URL:-}" ]; then
+            echo "::error::SITE_URL secret is not set. Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET secret is not set. It must match CRON_SECRET on the Fly app."
+            exit 1
+          fi
+
+          url="${SITE_URL%/}/api/cron/notifications?dryRun=${DRY_RUN}"
+          if [ -n "${LANDLORD:-}" ]; then
+            url="${url}&landlord=${LANDLORD}"
+          fi
+
+          code=$(curl -sS -o response.json -w '%{http_code}' \
+                   --max-time 300 --retry 2 --retry-connrefused \
+                   -H "Authorization: Bearer ${CRON_SECRET}" \
+                   "$url")
+
+          echo "HTTP $code"
+          cat response.json; echo
+
+          if [ "$code" = "401" ]; then
+            echo "::error::Unauthorized. The CRON_SECRET here does not match the one deployed on the Fly app."
+            exit 1
+          fi
+          if [ "$code" != "200" ]; then
+            echo "::error::Endpoint returned HTTP $code — no notifications were processed."
+            exit 1
+          fi
+
+          # The run summary is the only readable history of what went out. A
+          # green tick alone is also what "sent nothing" looks like.
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          with open("response.json") as fh:
+              d = json.load(fh)
+          print(f"## Notifications — {d.get('day','?')}\n")
+          if d.get("dryRun"):
+              print("**Dry run — nothing was sent.**\n")
+          print(f"- landlords considered: **{d.get('landlords', 0)}**")
+          print(f"- notices planned: **{d.get('planned', 0)}**")
+          print(f"- already sent earlier: **{d.get('alreadySent', 0)}**")
+          print(f"- no longer true at send time: **{d.get('noLongerTrue', 0)}**")
+          print(f"- sent: **{d.get('sent', 0)}**")
+          print(f"- failed: **{d.get('failed', 0)}**")
+          by = d.get("byKind") or {}
+          if by:
+              print("\n| kind | count |\n| --- | --- |")
+              for k, v in sorted(by.items()):
+                  print(f"| {k} | {v} |")
+          PY
+
+          if python3 -c "import json,sys; d=json.load(open('response.json')); sys.exit(0 if d.get('failed',0)==0 else 1)"; then
+            :
+          else
+            echo "::error::Some notifications failed to send. They are logged as failed and will be retried on the next run."
+            exit 1
+          fi

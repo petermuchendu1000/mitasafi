@@ -3547,6 +3547,54 @@ export type Database = {
           },
         ];
       };
+      notification_log: {
+        Row: {
+          id: string;
+          landlord_id: string;
+          recipient_kind: string;
+          tenant_id: string | null;
+          channel: string;
+          kind: string;
+          dedupe_key: string;
+          subject_type: string | null;
+          subject_id: string | null;
+          period: string | null;
+          status: string;
+          error: string | null;
+          sent_at: string;
+        };
+        Insert: {
+          id?: string;
+          landlord_id: string;
+          recipient_kind: string;
+          tenant_id?: string | null;
+          channel?: string;
+          kind: string;
+          dedupe_key: string;
+          subject_type?: string | null;
+          subject_id?: string | null;
+          period?: string | null;
+          status?: string;
+          error?: string | null;
+          sent_at?: string;
+        };
+        Update: {
+          id?: string;
+          landlord_id?: string;
+          recipient_kind?: string;
+          tenant_id?: string | null;
+          channel?: string;
+          kind?: string;
+          dedupe_key?: string;
+          subject_type?: string | null;
+          subject_id?: string | null;
+          period?: string | null;
+          status?: string;
+          error?: string | null;
+          sent_at?: string;
+        };
+        Relationships: [];
+      };
       mpesa_inbox: {
         Row: {
           id: string;

@@ -355,3 +355,48 @@ export async function sendSearchAlertNotification(
     return { success: false, error: String(error) };
   }
 }
+
+/**
+ * A scheduled notification: a rent reminder, a lease-expiry notice, an
+ * arrears summary.
+ *
+ * Kept in this module with every other Resend call, for the reason given on
+ * sendOperationalAlert: the isEmailConfigured() guard, MAIL_FROM and the
+ * error handling are the parts a second sending file forgets.
+ *
+ * UNLIKE the other senders here, this one does NOT soft-fail when Resend is
+ * unconfigured. Those return success so that a missing key cannot block an
+ * inquiry. This one is called by a notifier that writes "sent" to a log the
+ * moment it is told the send succeeded — returning success without sending
+ * would mark the notice delivered for ever and the tenant would never be
+ * told. A missing key has to look like a failure, because it is one.
+ */
+export async function sendNotificationEmail(data: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!isEmailConfigured()) {
+    return { success: false, error: "RESEND_API_KEY is not configured" };
+  }
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { error } = await resend.emails.send({
+      from: MAIL_FROM.notifications,
+      replyTo: SUPPORT_EMAIL,
+      to: data.to,
+      subject: data.subject,
+      text: data.text,
+      html: data.html,
+    });
+    if (error) {
+      console.error("[Email] Notification failed:", error);
+      return { success: false, error: String(error.message ?? error) };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("[Email] Notification threw:", error);
+    return { success: false, error: String(error) };
+  }
+}

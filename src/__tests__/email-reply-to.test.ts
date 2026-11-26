@@ -194,6 +194,13 @@ describe("transactional email is replyable", () => {
     // parameter on the first.
     ["src/lib/email/index.ts", "MAIL_FROM.alerts"],
     ["src/lib/email/index.ts", "MAIL_FROM.alerts"],
+    // sendInquiryNotification.
+    ["src/lib/email/index.ts", "MAIL_FROM.notifications"],
+    // sendNotificationEmail — the scheduled rent reminders, late notices,
+    // lease expiries and arrears summaries. Acknowledged deliberately: this
+    // is the first send site that writes to tenants rather than to the
+    // account holder, so Reply-To pointing at a mailbox that is actually
+    // read matters more here than anywhere else on the list.
     ["src/lib/email/index.ts", "MAIL_FROM.notifications"],
   ];
 
