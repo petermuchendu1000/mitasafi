@@ -3547,6 +3547,72 @@ export type Database = {
           },
         ];
       };
+      mpesa_inbox: {
+        Row: {
+          id: string;
+          landlord_id: string;
+          trans_id: string;
+          trans_amount: number;
+          bill_ref: string | null;
+          short_code: string | null;
+          msisdn: string | null;
+          payer_name: string | null;
+          trans_time: string;
+          raw: Json | null;
+          source: string;
+          status: string;
+          match_reason: string | null;
+          matched_lease_id: string | null;
+          matched_payment_id: string | null;
+          matched_at: string | null;
+          matched_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          landlord_id: string;
+          trans_id: string;
+          trans_amount: number;
+          bill_ref?: string | null;
+          short_code?: string | null;
+          msisdn?: string | null;
+          payer_name?: string | null;
+          trans_time?: string;
+          raw?: Json | null;
+          source?: string;
+          status?: string;
+          match_reason?: string | null;
+          matched_lease_id?: string | null;
+          matched_payment_id?: string | null;
+          matched_at?: string | null;
+          matched_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          landlord_id?: string;
+          trans_id?: string;
+          trans_amount?: number;
+          bill_ref?: string | null;
+          short_code?: string | null;
+          msisdn?: string | null;
+          payer_name?: string | null;
+          trans_time?: string;
+          raw?: Json | null;
+          source?: string;
+          status?: string;
+          match_reason?: string | null;
+          matched_lease_id?: string | null;
+          matched_payment_id?: string | null;
+          matched_at?: string | null;
+          matched_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       neighborhoods: {
         Row: {
           city: string | null;

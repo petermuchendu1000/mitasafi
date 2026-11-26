@@ -45,9 +45,31 @@ instruction a tenant should follow. What is **not** built:
   their unit, their rent, the exact instruction, and every payment the
   landlord has recorded. Four RLS policies in 20260359000000 scope it through
   `tenants.user_id = auth.uid()`.
-- **No automatic reconciliation.** A paybill payment carrying the unit number
-  _could_ be matched to a lease by a C2B callback; nothing listens for one, so
-  payments are still recorded by hand.
+- ~~No automatic reconciliation~~ — **built, with one route in, not two.**
+  `/dashboard/landlord/reconcile` takes pasted M-Pesa confirmations, reads
+  each one, and matches it to a lease by the account reference the tenant
+  typed. `public.mpesa_inbox` (20260360000000) holds what arrived; a match
+  writes a `payments` row and is the only thing that has ever set
+  `payments.auto_matched`. The matcher is a pure function
+  (`src/lib/landlord/reconciliation.ts`) and refuses to guess: an ambiguous
+  reference produces a reason, not a coin toss.
+
+  What is **not** wired, and why:
+  - **The C2B callback.** `mpesa_inbox.source` already allows `'c2b'`, and
+    `src/app/api/payments/mpesa/callback/route.ts` exists with a hardened IP
+    gate — but it serves MitaSafi's own shortcode, and a landlord's paybill
+    sends its confirmations wherever **that landlord** registered them.
+    MitaSafi cannot register a URL on someone else's paybill. Wiring this
+    means a per-landlord C2B registration flow, so pasting is the honest
+    route today and the page says so.
+  - **Nothing reconciles the other direction.** A `payments` row entered by
+    hand is not matched back to an inbox row, so a landlord who records a
+    payment manually and then pastes the same confirmation gets both. The
+    unique index stops a double paste, not a paste-after-manual-entry.
+  - **Partial and overpayments are recorded, not apportioned.** The amount is
+    deliberately never used to match (a tenant who pays half has still paid),
+    and nothing yet splits one payment across two months' rent.
+
 - **No STK push for rent.** The Daraja code in `src/lib/payments` belongs to
   the home-services side and pushes to MitaSafi's own shortcode. Pushing to a
   landlord's paybill needs per-landlord Daraja credentials and an aggregator

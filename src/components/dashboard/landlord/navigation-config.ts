@@ -27,6 +27,7 @@ import {
   ClipboardList,
   Plus,
   MessageSquare,
+  ArrowLeftRight,
 } from "lucide-react";
 import type { NavSection, NavItem } from "./types";
 
@@ -143,6 +144,13 @@ export const landlordNavSections: NavSection[] = [
         href: "/dashboard/landlord/rent",
         icon: Wallet,
         description: "Collect and track rent payments",
+      },
+      {
+        id: "reconcile",
+        label: "Reconcile",
+        href: "/dashboard/landlord/reconcile",
+        icon: ArrowLeftRight,
+        description: "Match money that has arrived to the right lease",
       },
       {
         id: "income",
