@@ -146,4 +146,42 @@ describe("help search", () => {
     }
     expect(missed).toEqual([]);
   });
+
+  it("uses no em dash in anything a landlord reads", () => {
+    // The house rule for copy. help-content.ts carries more prose than any
+    // other file in the dashboard, and thirteen sentences in it were built
+    // around an em dash, so this is the one place it is worth pinning.
+    const offenders: string[] = [];
+    const check = (where: string, text: string) => {
+      if (text.includes("\u2014"))
+        offenders.push(`${where}: ${text.slice(0, 60)}`);
+    };
+    for (const section of HELP_SECTIONS) {
+      check(section.id, section.title);
+      check(section.id, section.blurb);
+      for (const topic of section.topics) {
+        check(topic.id, topic.question);
+        topic.answer.forEach((a) => check(topic.id, a));
+        topic.steps?.forEach((a) => check(topic.id, a));
+        topic.links?.forEach((l) => check(topic.id, l.label));
+      }
+    }
+    for (const n of NOT_BUILT) {
+      check(n.what, n.what);
+      check(n.what, n.why);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("is checking a body of text big enough for that to mean something", () => {
+    // Without this, a help file emptied to nothing would pass the check
+    // above.
+    const words = HELP_SECTIONS.flatMap((s) =>
+      s.topics.flatMap((t) => t.answer),
+    )
+      .join(" ")
+      .split(/\s+/).length;
+    expect(words).toBeGreaterThan(800);
+    expect(NOT_BUILT.length).toBeGreaterThan(5);
+  });
 });

@@ -15,6 +15,7 @@
 
 import { useState, useTransition } from "react";
 import { CheckCircle2, AlertTriangle, Archive, Info } from "lucide-react";
+import { DataTable } from "@/components/dashboard/landlord/DataTable";
 import { formatKes } from "@/lib/landlord/labels";
 import {
   ingestPastedPayments,
@@ -57,7 +58,7 @@ export interface LeaseOption {
  */
 function recordedAt(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "No date";
   return d.toLocaleString("en-GB", {
     timeZone: "Africa/Nairobi",
     day: "numeric",
@@ -92,8 +93,8 @@ export function ReconcileClient({
         <h1 className="text-2xl font-bold text-gray-900">Reconcile</h1>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <p className="text-sm text-gray-700">
-            Reconciliation is not switched on in this environment — the database
-            change that stores incoming payments has not been applied.
+            Reconciliation is not switched on here. The database change that
+            stores incoming payments has not been applied.
           </p>
         </div>
       </div>
@@ -123,25 +124,25 @@ export function ReconcileClient({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Reconcile</h1>
-        <p className="mt-1 text-gray-500">
-          Match money that has arrived to the lease it belongs to
-        </p>
+        <p className="mt-1 text-gray-500">Match money to its lease</p>
       </div>
 
       <section className="bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="text-base font-semibold text-gray-900">
-          Paste your M-Pesa confirmations
+          Paste M-Pesa confirmations
         </h2>
+        {/* This was six lines of prose explaining what the button does,
+            above a box with a worked example already in it. The example is
+            the explanation. What survives is the one thing the screen
+            cannot show: which field the match is made on. */}
         <p className="mt-1 text-sm text-gray-600">
-          One or many — paste the whole lot. MitaSafi reads the code, the amount
-          and the account number, then matches each one to a lease by the unit
+          Paste one or the whole lot. Each is matched to a lease by the account
           number the tenant typed.
         </p>
         <p className="mt-2 flex gap-2 text-xs text-gray-500">
           <Info aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-          Your paybill can send these automatically instead, but only you can
-          register MitaSafi&apos;s address with Safaricom — it is your paybill,
-          not ours. Until then, pasting reconciles exactly as well.
+          Your paybill can send these automatically, but only you can register
+          MitaSafi with Safaricom. Pasting works just as well.
         </p>
 
         <label htmlFor="rc-paste" className="sr-only">
@@ -161,7 +162,7 @@ export function ReconcileClient({
             type="button"
             onClick={ingest}
             disabled={busy || text.trim() === ""}
-            className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium disabled:opacity-50"
+            className="px-4 min-h-[44px] rounded-lg bg-teal-600 text-white text-sm font-medium disabled:opacity-50"
           >
             {busy ? "Reading…" : "Read and match"}
           </button>
@@ -184,7 +185,7 @@ export function ReconcileClient({
               >
                 <span className="font-medium capitalize">{r.outcome}</span>
                 {r.transId && <span className="font-mono"> {r.transId}</span>}
-                {" — "}
+                {". "}
                 {r.detail}
               </li>
             ))}
@@ -211,13 +212,13 @@ export function ReconcileClient({
             )}
           </h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Money that arrived but could not be placed without guessing.
+            Arrived, but could not be placed without guessing.
           </p>
         </div>
 
         {unmatched.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-gray-500">
-            Nothing waiting. Everything recorded so far has been placed.
+            Nothing waiting.
           </p>
         ) : (
           <ul className="divide-y divide-gray-100">
@@ -261,7 +262,7 @@ export function ReconcileClient({
                     onChange={(e) =>
                       setAssigning({ ...assigning, [r.id]: e.target.value })
                     }
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+                    className="w-full sm:w-auto rounded-lg border border-gray-300 px-3 min-h-[44px] text-sm"
                   >
                     <option value="">Choose a lease…</option>
                     {leases.map((l) => (
@@ -278,9 +279,9 @@ export function ReconcileClient({
                         await assignInboxRow(r.id, assigning[r.id]);
                       })
                     }
-                    className="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-sm font-medium disabled:opacity-50"
+                    className="flex-1 sm:flex-none px-3 min-h-[44px] rounded-lg bg-teal-600 text-white text-sm font-medium disabled:opacity-50"
                   >
-                    Post to this lease
+                    Post
                   </button>
                   <button
                     type="button"
@@ -290,7 +291,7 @@ export function ReconcileClient({
                         await ignoreInboxRow(r.id, "Not rent.");
                       })
                     }
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-sm text-gray-700"
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-lg border border-gray-300 text-sm text-gray-700"
                   >
                     <Archive aria-hidden="true" className="w-3.5 h-3.5" />
                     Not rent
@@ -312,57 +313,44 @@ export function ReconcileClient({
             Nothing matched yet.
           </p>
         ) : (
-          <table className="w-full text-sm">
-            <caption className="sr-only">
-              Payments matched to a lease, with the reason each was matched
-            </caption>
-            <thead className="bg-gray-50 text-left text-gray-600">
-              <tr>
-                <th scope="col" className="px-5 py-2 font-medium">
-                  Code
-                </th>
-                <th scope="col" className="px-5 py-2 font-medium">
-                  Recorded
-                </th>
-                <th scope="col" className="px-5 py-2 font-medium">
-                  Payer
-                </th>
-                <th scope="col" className="px-5 py-2 font-medium">
-                  Why
-                </th>
-                <th scope="col" className="px-5 py-2 font-medium text-right">
-                  Amount
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {matched.map((r) => (
-                <tr key={r.id}>
-                  <td className="px-5 py-2.5 font-mono text-xs text-gray-600">
-                    {r.transId}
-                  </td>
-                  <td className="px-5 py-2.5 text-gray-600 text-xs whitespace-nowrap">
-                    {recordedAt(r.transTime)}
-                  </td>
-                  <td className="px-5 py-2.5 text-gray-700">
-                    {r.payerName ?? "—"}
-                  </td>
-                  <td className="px-5 py-2.5 text-gray-600 text-xs">
-                    <span className="inline-flex items-start gap-1.5">
-                      <CheckCircle2
-                        aria-hidden="true"
-                        className="w-3.5 h-3.5 shrink-0 mt-0.5 text-teal-600"
-                      />
-                      {r.reason}
-                    </span>
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-gray-900">
-                    {formatKes(r.amount)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          /* The same five columns measured 749px on the reports page and
+             were clipped outright on a phone. This one is only not clipped
+             today because the test account has nothing matched yet. */
+          <DataTable
+            caption="Payments matched to a lease, with the reason each was matched"
+            titleAt={0}
+            subtitleAt={1}
+            columns={[
+              { label: "Code" },
+              { label: "Recorded" },
+              { label: "Payer" },
+              { label: "Why" },
+              { label: "Amount", right: true },
+            ]}
+            rows={matched.map((r) => ({
+              key: r.id,
+              cells: [
+                <span key="c" className="font-mono text-xs">
+                  {r.transId}
+                </span>,
+                <span key="t" className="whitespace-nowrap">
+                  {recordedAt(r.transTime)}
+                </span>,
+                r.payerName ?? "Unknown payer",
+                <span
+                  key="w"
+                  className="inline-flex items-start gap-1.5 text-xs"
+                >
+                  <CheckCircle2
+                    aria-hidden="true"
+                    className="w-3.5 h-3.5 shrink-0 mt-0.5 text-teal-600"
+                  />
+                  {r.reason}
+                </span>,
+                formatKes(r.amount),
+              ],
+            }))}
+          />
         )}
       </section>
 
@@ -373,7 +361,7 @@ export function ReconcileClient({
             {ignored.map((r) => (
               <li key={r.id} className="text-sm text-gray-600">
                 <span className="font-mono text-xs">{r.transId}</span>{" "}
-                {formatKes(r.amount)} — {r.reason}
+                {formatKes(r.amount)}. {r.reason}
               </li>
             ))}
           </ul>

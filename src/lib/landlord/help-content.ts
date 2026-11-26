@@ -58,7 +58,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           "Add a tenant.",
           "Create a lease: the rent, the day it is due, and how many days' grace you allow.",
           "Tell MitaSafi where rent should be paid, under Settings.",
-          "Give the tenant the instruction — they can also see it themselves once they have an account.",
+          "Give the tenant the instruction. They can also see it themselves once they have an account.",
           "Record what arrives, either by hand or by pasting your M-Pesa messages into Reconcile.",
         ],
         links: [
@@ -77,7 +77,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         question: "What is the difference between a listing and a property?",
         answer: [
           "A listing is public. It advertises a vacancy to people looking for somewhere to rent, and anyone can see it.",
-          "A property is private. It is how you manage a building you already own — its units, its tenants, their leases and their rent. Nobody but you and the staff you give access to can see it.",
+          "A property is private. It is how you manage a building you already own: its units, its tenants, their leases and their rent. Nobody but you and the staff you give access to can see it.",
           "The same unit can be both: advertised while it is empty, managed once somebody moves in.",
         ],
         links: [
@@ -99,7 +99,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         question: "Does MitaSafi hold my rent?",
         answer: [
           "No. Not at any point, and there is no plan to.",
-          "Rent goes straight from your tenant to the paybill, till, M-Pesa number or bank account you nominate. MitaSafi never stands between the two — there is no MitaSafi balance, no float, and nothing to be released or withheld.",
+          "Rent goes straight from your tenant to the paybill, till, M-Pesa number or bank account you nominate. MitaSafi never stands between the two. There is no MitaSafi balance, no float, and nothing to be released or withheld.",
           "What MitaSafi does is tell the tenant exactly where to send it, and then help you work out whose rent each payment was.",
         ],
         keywords: ["escrow", "float", "balance", "hold", "wallet", "payout"],
@@ -109,7 +109,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         question: "How do I tell MitaSafi where rent should be paid?",
         answer: [
           "Under Settings, add a collection method. You can use a Pay Bill number, a Buy Goods till, your own M-Pesa number, or a bank account.",
-          "One method is the default, and that is the one tenants are shown. You can add more than one — for instance a different paybill for a different block.",
+          "One method is the default, and that is the one tenants are shown. You can add more than one, for instance a different paybill for a different block.",
         ],
         links: [{ label: "Settings", href: "/dashboard/landlord/settings" }],
         keywords: [
@@ -136,10 +136,10 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "reconcile",
         question: "How does Reconcile match payments?",
         answer: [
-          "Paste your M-Pesa confirmation messages — one or a hundred — and MitaSafi reads the code, the amount, the payer and the account reference out of each one.",
+          "Paste your M-Pesa confirmation messages, one or a hundred. MitaSafi reads the code, the amount, the payer and the account reference out of each one.",
           "It matches on the account reference the tenant typed. If that reference identifies exactly one unit, the payment is placed. If the reference is missing, the payer's phone number is used instead, but only if that number is on exactly one lease.",
           "It never matches on the amount. A tenant who pays half their rent has still paid, and matching on the amount would strand exactly the people most likely to be chased.",
-          "Anything it cannot place without guessing is left for you under “Needs your decision”, with the reason it could not be matched. Two units whose references look the same produce a question, not a coin toss — putting rent on the wrong account means the tenant who paid still shows as owing, and somebody else's account is quietly wrong.",
+          "Anything it cannot place without guessing is left for you under “Needs your decision”, with the reason it could not be matched. Two units whose references look the same produce a question, not a coin toss. Putting rent on the wrong account means the tenant who paid still shows as owing, and somebody else's account is quietly wrong.",
         ],
         links: [{ label: "Reconcile", href: "/dashboard/landlord/reconcile" }],
         keywords: [
@@ -164,7 +164,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "which-month",
         question: "Which month does a matched payment settle?",
         answer: [
-          "The oldest month that is still owing, which is how an unallocated payment is normally applied — the older debt first.",
+          "The oldest month that is still owing, which is how an unallocated payment is normally applied: the older debt first.",
           "It never reaches back before the first month you recorded rent against that lease. If a tenancy began in February but you only started recording in August, February to July are months with no records, not months of arrears, and money will not be filed against them.",
           "If nothing is owing, the payment settles the current month. One payment is never split across two months.",
         ],
@@ -199,7 +199,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         question: "How do I add a caretaker?",
         answer: [
           "Add them under Users with their name, email and phone number, then choose what they may see.",
-          "They are linked to their MitaSafi account by phone number, so the number you enter has to be the one they signed up with. If they do not have an account yet, create one on that number first — there is no invitation email yet.",
+          "They are linked to their MitaSafi account by phone number, so the number you enter has to be the one they signed up with. If they do not have an account yet, create one on that number first. There is no invitation email yet.",
         ],
         links: [{ label: "Users", href: "/dashboard/landlord/users" }],
         keywords: ["staff", "caretaker", "manager", "agent", "invite", "team"],
@@ -209,7 +209,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         question: "What can a caretaker see?",
         answer: [
           "Exactly what you grant, module by module. You can start from a role and then change any of it.",
-          "Two things are worth knowing. Your collection details — paybill, till or bank account — are hidden unless you grant bank access specifically; it is the most sensitive thing stored here. And suspending somebody removes their access immediately, including to anything they could see a moment earlier.",
+          "Two things are worth knowing. Your collection details, meaning the paybill, till or bank account, are hidden unless you grant bank access specifically. It is the most sensitive thing stored here. And suspending somebody removes their access immediately, including to anything they could see a moment earlier.",
           "A caretaker can never see money that belongs to another landlord, and can never change where your rent is sent.",
         ],
         links: [{ label: "Users", href: "/dashboard/landlord/users" }],
@@ -235,7 +235,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         question: "What can my tenant see?",
         answer: [
           "Their own unit and building, their rent and the day it is due, the exact instruction for paying you, and every payment you have recorded against their lease.",
-          "They cannot record a payment themselves. Only you, or staff you have given the right to, can do that — so what a tenant sees is always what you have confirmed, never what they say they sent.",
+          "They cannot record a payment themselves. Only you, or staff you have given the right to, can do that, so what a tenant sees is always what you have confirmed, never what they say they sent.",
           "They can see nothing about any other tenant, unit or lease.",
         ],
         keywords: ["tenant", "portal", "see", "privacy", "statement"],
@@ -245,7 +245,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         question: "How do people apply for a vacancy?",
         answer: [
           "A listing carries an Apply button. What they send arrives under Applications, where you can read it and decide.",
-          "Nothing in an application creates a tenant or a lease on its own — you still add them deliberately once you have decided.",
+          "Nothing in an application creates a tenant or a lease on its own. You still add them deliberately once you have decided.",
         ],
         links: [
           { label: "Applications", href: "/dashboard/landlord/applications" },
@@ -274,7 +274,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "report-list",
         question: "What reports are there?",
         answer: [
-          "Rent roll — every live lease, with this month's position. Arrears — rent still owed, oldest first. Collections — what was due against what came in, month by month. Deposits held — what you owe back, and to whom. Lease expiries — what ends in the next 90 days, including anything already past its end date. Occupancy — units by status, per building.",
+          "Rent roll: every live lease, with this month's position. Arrears: rent still owed, oldest first. Collections: what was due against what came in, month by month. Deposits held: what you owe back, and to whom. Lease expiries: what ends in the next 90 days, including anything already past its end date. Occupancy: units by status, per building.",
           "Each one downloads as a CSV you can open in Excel or Sheets.",
         ],
         links: [{ label: "Reports", href: "/dashboard/landlord/reports" }],
@@ -292,7 +292,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         question: "Why is there no profit and loss statement?",
         answer: [
           "Because MitaSafi does not record your expenses. The only outgoing it holds anywhere is maintenance cost.",
-          "A statement built from rent minus maintenance would show a bottom line that looks like profit and is not one — and unlike every other figure in MitaSafi, that is the number you would take to a bank. Income and maintenance spend each have their own page, and each says exactly what it covers.",
+          "A statement built from rent minus maintenance would show a bottom line that looks like profit and is not one. Unlike every other figure in MitaSafi, that is the number you would take to a bank. Income and maintenance spend each have their own page, and each says exactly what it covers.",
         ],
         links: [
           { label: "Income", href: "/dashboard/landlord/income" },

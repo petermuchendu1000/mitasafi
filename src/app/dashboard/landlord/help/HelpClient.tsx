@@ -51,7 +51,7 @@ function Topic({
           aria-expanded={open}
           aria-controls={panelId}
           onClick={onToggle}
-          className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-gray-50"
+          className="w-full flex items-center justify-between gap-4 px-4 sm:px-5 py-4 min-h-[44px] text-left hover:bg-gray-50"
         >
           <span className="text-sm font-medium text-gray-900">
             {topic.question}
@@ -72,7 +72,7 @@ function Topic({
           id={panelId}
           role="region"
           aria-labelledby={buttonId}
-          className="px-5 pb-5 space-y-3"
+          className="px-4 sm:px-5 pb-5 space-y-3"
         >
           {topic.answer.map((p, i) => (
             <p key={i} className="text-sm text-gray-700 leading-relaxed">
@@ -105,7 +105,7 @@ function Topic({
                 <Link
                   key={l.href}
                   href={l.href}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-sm text-gray-700 hover:border-teal-500 hover:text-teal-700"
+                  className="inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-lg border border-gray-300 text-sm text-gray-700 hover:border-teal-500 hover:text-teal-700"
                 >
                   {l.label}
                   <ArrowRight aria-hidden="true" className="w-3.5 h-3.5" />
@@ -132,7 +132,7 @@ export function HelpClient({ supportEmail }: { supportEmail: string }) {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Help &amp; support</h1>
         <p className="mt-1 text-gray-500">
-          How MitaSafi works, and what it does not do yet
+          How it works, and what it does not do yet
         </p>
       </div>
 
@@ -149,8 +149,8 @@ export function HelpClient({ supportEmail }: { supportEmail: string }) {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search — try “paybill”, “caretaker”, “arrears”"
-          className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+          placeholder="Search: paybill, caretaker, arrears"
+          className="w-full rounded-lg border border-gray-300 pl-9 pr-3 min-h-[44px] text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
         />
       </div>
 
@@ -208,12 +208,12 @@ export function HelpClient({ supportEmail }: { supportEmail: string }) {
               What MitaSafi does not do yet
             </h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              Listed so you can plan around it, rather than discover it.
+              So you can plan around it.
             </p>
           </div>
           <ul className="divide-y divide-gray-100">
             {NOT_BUILT.map((n) => (
-              <li key={n.what} className="px-5 py-4 flex gap-3">
+              <li key={n.what} className="px-4 sm:px-5 py-4 flex gap-3">
                 <CircleSlash
                   aria-hidden="true"
                   className="w-4 h-4 shrink-0 mt-0.5 text-gray-400"
@@ -231,21 +231,21 @@ export function HelpClient({ supportEmail }: { supportEmail: string }) {
       <section className="bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="text-base font-semibold text-gray-900">Still stuck?</h2>
         <p className="mt-2 text-sm text-gray-600">
-          Email us and say what you were trying to do and what happened instead.
-          If it is about a specific payment, include the M-Pesa code — never
-          your M-Pesa PIN, which nobody at MitaSafi will ever ask you for.
+          Say what you were trying to do and what happened. For a payment,
+          include the M-Pesa code. Never send your PIN. Nobody at MitaSafi will
+          ever ask for it.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <a
             href={`mailto:${supportEmail}`}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg bg-teal-600 text-white text-sm font-medium"
           >
             <Mail aria-hidden="true" className="w-4 h-4" />
             {supportEmail}
           </a>
           <Link
             href="/contact"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg border border-gray-300 text-sm text-gray-700"
           >
             Other ways to reach us
           </Link>
