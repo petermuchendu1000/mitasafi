@@ -69,6 +69,11 @@ instruction a tenant should follow. What is **not** built:
   - **Partial and overpayments are recorded, not apportioned.** The amount is
     deliberately never used to match (a tenant who pays half has still paid),
     and nothing yet splits one payment across two months' rent.
+  - **The message's own timestamp is not parsed.** `trans_time` is the time
+    MitaSafi recorded the payment, and the column is labelled "Recorded" for
+    that reason. Safaricom's stamp is `4/11/26 at 9:15 AM` — a two-digit year,
+    no time zone, and a day/month order that is not safe to assume for money.
+    Parsing it needs a confirmed statement of the format, not a guess.
 
 - **No STK push for rent.** The Daraja code in `src/lib/payments` belongs to
   the home-services side and pushes to MitaSafi's own shortcode. Pushing to a

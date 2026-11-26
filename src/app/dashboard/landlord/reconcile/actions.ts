@@ -102,7 +102,13 @@ export async function ingestPastedPayments(
     const { data: inbox, error: inboxError } = await supabase
       .from("mpesa_inbox")
       .insert({
-        landlord_id: user.id,
+        // landlord_id is DELIBERATELY ABSENT. A client holds no INSERT
+        // privilege on that column — that is what stops money being filed to
+        // someone else — so naming it here is "permission denied for table
+        // mpesa_inbox" for the whole statement, not a silently ignored field.
+        // The BEFORE trigger derives it from auth.uid(), and the policy's
+        // WITH CHECK confirms it. Asserted by I10 and I18 in
+        // supabase/tests/mpesa_inbox_test.sql.
         trans_id: parsed.transId,
         trans_amount: parsed.amount,
         bill_ref: parsed.billRef,
@@ -152,6 +158,7 @@ export async function ingestPastedPayments(
       inbox.id,
       decision.leaseId,
       decision.reason,
+      true,
     );
     report.push({
       transId: parsed.transId,
@@ -166,13 +173,22 @@ export async function ingestPastedPayments(
   return { success: true, report };
 }
 
-/** Creates the payment and links the inbox row to it. */
+/**
+ * Creates the payment and links the inbox row to it.
+ *
+ * `auto` is not decoration. It is the difference between "the matcher placed
+ * this" and "a person decided this", and it is the only record of which. A
+ * row the landlord assigned by hand must not later tell an auditor the system
+ * matched it — that is the one question `payments.auto_matched` exists to
+ * answer.
+ */
 async function attachToLease(
   supabase: Awaited<ReturnType<typeof createClient>>,
   landlordId: string,
   inboxId: string,
   leaseId: string,
   reason: string,
+  auto: boolean,
 ): Promise<boolean> {
   const { data: row } = await supabase
     .from("mpesa_inbox")
@@ -199,7 +215,7 @@ async function attachToLease(
       reference_number: row.bill_ref,
       // The column has existed since the schema was written and nothing has
       // ever set it. This is the only thing that could.
-      auto_matched: true,
+      auto_matched: auto,
       received_by: landlordId,
     })
     .select("id")
@@ -245,6 +261,7 @@ export async function assignInboxRow(
     inboxId,
     leaseId,
     "Assigned by you.",
+    false,
   );
   revalidatePath("/dashboard/landlord/reconcile");
   return ok

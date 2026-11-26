@@ -260,6 +260,24 @@ BEGIN
     pass:=pass+1; rep:=rep||'PASS I17 the landlord sees their own row and only their own'||E'\n';
   ELSE fail:=fail+1; rep:=rep||'FAIL I17 the landlord sees '||v_n||' of the 2 fixture rows, expected 1'||E'\n'; END IF;
 
+  -- ===== I18: naming landlord_id on INSERT is refused outright ===========
+  -- This is here because the first version of the reconcile action DID name
+  -- it, "helpfully", and every insert came back "permission denied for table
+  -- mpesa_inbox". I1 could not catch that: it inserts the way the privileges
+  -- require, not the way the product code happened to be written. A client
+  -- that names the column fails the whole statement — it is not ignored.
+  BEGIN
+    PERFORM set_config('request.jwt.claim.sub', v_ll::text, true);
+    SET LOCAL ROLE authenticated;
+    INSERT INTO public.mpesa_inbox (landlord_id, trans_id, trans_amount)
+    VALUES (v_ll, 'NAMEDLL001', 500);
+    RESET ROLE;
+    fail:=fail+1; rep:=rep||'FAIL I18 a client inserted landlord_id itself'||E'\n';
+  EXCEPTION WHEN insufficient_privilege THEN
+    RESET ROLE; pass:=pass+1;
+    rep:=rep||'PASS I18 a client naming landlord_id on INSERT is refused (42501)'||E'\n';
+  END;
+
   RAISE EXCEPTION E'MPESA_INBOX_RESULT pass=% fail=%\n%', pass, fail, rep;
 END
 $MI$;

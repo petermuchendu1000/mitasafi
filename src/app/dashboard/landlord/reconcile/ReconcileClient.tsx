@@ -42,12 +42,20 @@ export interface LeaseOption {
 }
 
 /**
- * When the money arrived. Two payments from the same tenant for the same
- * amount are told apart by nothing else, and a row sitting unmatched for
- * three weeks is a different problem from one that landed this morning.
- * Rendered in Nairobi time, because that is the clock the landlord is on.
+ * When MitaSafi RECORDED the payment — not when M-Pesa says it was sent.
+ *
+ * The label matters. `trans_time` is the ingest time, because the
+ * confirmation's own stamp is "4/11/26 at 9:15 AM": a two-digit year, no
+ * zone, and a day/month order this code is not willing to assume for money.
+ * Calling this column "Arrived" would print "26 Nov" beside a message that
+ * plainly says 4 Nov, so it is called what it is.
+ *
+ * Two payments from the same tenant for the same amount are told apart by
+ * nothing else, and a row sitting unplaced for three weeks is a different
+ * problem from one recorded this morning. Nairobi time, which is the clock
+ * the landlord is on.
  */
-function arrivedAt(iso: string): string {
+function recordedAt(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("en-GB", {
@@ -229,7 +237,7 @@ export function ReconcileClient({
                       {r.billRef
                         ? ` · account "${r.billRef}"`
                         : " · no account given"}
-                      {` · arrived ${arrivedAt(r.transTime)}`}
+                      {` · recorded ${recordedAt(r.transTime)}`}
                     </p>
                     {r.reason && (
                       <p className="mt-1 flex gap-1.5 text-xs text-amber-800">
@@ -314,7 +322,7 @@ export function ReconcileClient({
                   Code
                 </th>
                 <th scope="col" className="px-5 py-2 font-medium">
-                  Arrived
+                  Recorded
                 </th>
                 <th scope="col" className="px-5 py-2 font-medium">
                   Payer
@@ -334,7 +342,7 @@ export function ReconcileClient({
                     {r.transId}
                   </td>
                   <td className="px-5 py-2.5 text-gray-600 text-xs whitespace-nowrap">
-                    {arrivedAt(r.transTime)}
+                    {recordedAt(r.transTime)}
                   </td>
                   <td className="px-5 py-2.5 text-gray-700">
                     {r.payerName ?? "—"}

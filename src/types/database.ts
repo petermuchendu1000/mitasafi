@@ -3571,7 +3571,15 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          landlord_id: string;
+          /**
+           * NOT NULL in the schema, but a client must NEVER send it: it holds
+           * no INSERT privilege on this column, and naming it fails the whole
+           * statement with "permission denied for table mpesa_inbox". The
+           * BEFORE trigger fills it from auth.uid(). Marked optional here on
+           * purpose — a generator reading only nullability would write
+           * `landlord_id: string` and point callers straight at that error.
+           */
+          landlord_id?: string;
           trans_id: string;
           trans_amount: number;
           bill_ref?: string | null;
