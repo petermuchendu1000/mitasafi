@@ -5,6 +5,14 @@
 -- answer is whether the RIGHT tenant sees it: the boundary runs through
 -- tenants.user_id, and a policy that reads correctly but matches the wrong
 -- rows looks identical in the catalogue.
+--
+-- EVERY COUNT IS SCOPED TO THIS SUITE'S OWN FIXTURES.
+--   The first version counted every visible row and passed locally on an
+--   empty cluster. Against production it failed five assertions, because
+--   `units` carries a pre-existing "Public can view listed units" policy and
+--   two advertised units are visible to any signed-in person. That is not a
+--   leak and never was — but a suite that only holds on an empty database is
+--   not a suite, so every count below names the rows it means.
 -- =============================================================================
 
 DO $TR$
@@ -55,7 +63,7 @@ BEGIN
   -- ===== T1: the tenant sees the unit they rent ==========================
   PERFORM set_config('request.jwt.claim.sub', v_u::text, true);
   SET LOCAL ROLE authenticated;
-  SELECT count(*) INTO v_n FROM public.units;
+  SELECT count(*) INTO v_n FROM public.units WHERE id IN (v_un1, v_un2);
   RESET ROLE;
   IF v_n=1 THEN pass:=pass+1; rep:=rep||'PASS T1  the tenant sees exactly the unit they rent'||E'\n';
   ELSE fail:=fail+1; rep:=rep||'FAIL T1  sees '||v_n||' unit(s), expected 1'||E'\n'; END IF;
@@ -63,7 +71,7 @@ BEGIN
   -- ===== T2: and it is the right one, not the landlord's other unit ======
   PERFORM set_config('request.jwt.claim.sub', v_u::text, true);
   SET LOCAL ROLE authenticated;
-  SELECT unit_number INTO v_txt FROM public.units LIMIT 1;
+  SELECT unit_number INTO v_txt FROM public.units WHERE id IN (v_un1, v_un2);
   RESET ROLE;
   IF v_txt='A1' THEN pass:=pass+1; rep:=rep||'PASS T2  it is A1, not the unlet B1'||E'\n';
   ELSE fail:=fail+1; rep:=rep||'FAIL T2  sees '||coalesce(v_txt,'nothing')||E'\n'; END IF;
@@ -71,7 +79,7 @@ BEGIN
   -- ===== T3: the building it is in =======================================
   PERFORM set_config('request.jwt.claim.sub', v_u::text, true);
   SET LOCAL ROLE authenticated;
-  SELECT count(*) INTO v_n FROM public.buildings;
+  SELECT count(*) INTO v_n FROM public.buildings WHERE id IN (v_b1, v_b2, v_b3);
   RESET ROLE;
   IF v_n=1 THEN pass:=pass+1; rep:=rep||'PASS T3  one building, the one they live in'||E'\n';
   ELSE fail:=fail+1; rep:=rep||'FAIL T3  sees '||v_n||' building(s)'||E'\n'; END IF;
@@ -79,7 +87,7 @@ BEGIN
   -- ===== T4: their own payments ==========================================
   PERFORM set_config('request.jwt.claim.sub', v_u::text, true);
   SET LOCAL ROLE authenticated;
-  SELECT count(*) INTO v_n FROM public.payments;
+  SELECT count(*) INTO v_n FROM public.payments WHERE lease_id = v_l1;
   RESET ROLE;
   IF v_n=1 THEN pass:=pass+1; rep:=rep||'PASS T4  the tenant can see what they have paid'||E'\n';
   ELSE fail:=fail+1; rep:=rep||'FAIL T4  sees '||v_n||' payment(s)'||E'\n'; END IF;
@@ -97,7 +105,8 @@ BEGIN
   -- ===== T6: the destination to pay into =================================
   PERFORM set_config('request.jwt.claim.sub', v_u::text, true);
   SET LOCAL ROLE authenticated;
-  SELECT count(*) INTO v_n FROM public.landlord_payout_methods;
+  SELECT count(*) INTO v_n FROM public.landlord_payout_methods
+   WHERE landlord_id IN (v_ll, v_ll2);
   RESET ROLE;
   IF v_n=1 THEN pass:=pass+1; rep:=rep||'PASS T6  the tenant sees one destination'||E'\n';
   ELSE fail:=fail+1; rep:=rep||'FAIL T6  sees '||v_n||' destination(s), expected 1'||E'\n'; END IF;
@@ -105,7 +114,8 @@ BEGIN
   -- ===== T7: and it is THEIR landlord's, never another's ==================
   PERFORM set_config('request.jwt.claim.sub', v_u::text, true);
   SET LOCAL ROLE authenticated;
-  SELECT paybill_number INTO v_txt FROM public.landlord_payout_methods LIMIT 1;
+  SELECT paybill_number INTO v_txt FROM public.landlord_payout_methods
+   WHERE landlord_id IN (v_ll, v_ll2);
   RESET ROLE;
   IF v_txt='522533' THEN
     pass:=pass+1; rep:=rep||'PASS T7  it is their own landlord''s paybill'||E'\n';
@@ -126,10 +136,11 @@ BEGIN
   -- nothing, or every past tenant keeps sight of the landlord's accounts.
   PERFORM set_config('request.jwt.claim.sub', v_u2::text, true);
   SET LOCAL ROLE authenticated;
-  SELECT (SELECT count(*) FROM public.units)
-       + (SELECT count(*) FROM public.buildings)
-       + (SELECT count(*) FROM public.payments)
-       + (SELECT count(*) FROM public.landlord_payout_methods) INTO v_n;
+  SELECT (SELECT count(*) FROM public.units WHERE id IN (v_un1,v_un2))
+       + (SELECT count(*) FROM public.buildings WHERE id IN (v_b1,v_b2,v_b3))
+       + (SELECT count(*) FROM public.payments WHERE lease_id = v_l1)
+       + (SELECT count(*) FROM public.landlord_payout_methods
+           WHERE landlord_id IN (v_ll,v_ll2)) INTO v_n;
   RESET ROLE;
   IF v_n=0 THEN
     pass:=pass+1; rep:=rep||'PASS T9  a tenant record without a lease grants nothing'||E'\n';
@@ -172,7 +183,8 @@ BEGIN
   -- ===== T13: the landlord is unaffected =================================
   PERFORM set_config('request.jwt.claim.sub', v_ll::text, true);
   SET LOCAL ROLE authenticated;
-  SELECT (SELECT count(*) FROM public.units) + (SELECT count(*) FROM public.buildings) INTO v_n;
+  SELECT (SELECT count(*) FROM public.units WHERE id IN (v_un1,v_un2))
+       + (SELECT count(*) FROM public.buildings WHERE id IN (v_b1,v_b2)) INTO v_n;
   RESET ROLE;
   IF v_n=4 THEN pass:=pass+1; rep:=rep||'PASS T13 the landlord still sees 2 units and 2 blocks'||E'\n';
   ELSE fail:=fail+1; rep:=rep||'FAIL T13 the landlord sees '||v_n||' of 4'||E'\n'; END IF;
@@ -196,7 +208,7 @@ BEGIN
   -- ===== T15: and the tenant's view is unchanged by the attempt =========
   PERFORM set_config('request.jwt.claim.sub', v_u::text, true);
   SET LOCAL ROLE authenticated;
-  SELECT count(*) INTO v_n FROM public.units;
+  SELECT count(*) INTO v_n FROM public.units WHERE id IN (v_un1, v_un2);
   RESET ROLE;
   IF v_n=1 THEN
     pass:=pass+1; rep:=rep||'PASS T15 the tenant still sees exactly their unit'||E'\n';

@@ -211,9 +211,15 @@ BEGIN
   END IF;
 
   -- No lease policy may read `units` again, or the cycle comes back.
+  --
+  -- MATCHED AS A WORD, NOT AS '%public.units%'. pg_get_expr renders a policy
+  -- with the search_path applied, so a policy written as `JOIN public.units`
+  -- comes back as `JOIN units u` — the first version of this check could
+  -- never have fired, which is the whole failure mode it exists to catch.
   IF EXISTS (SELECT 1 FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid
               WHERE c.relname='leases'
-                AND coalesce(pg_get_expr(p.polqual,p.polrelid),'') ILIKE '%public.units%') THEN
+                AND coalesce(pg_get_expr(p.polqual,p.polrelid),'')
+                    ~* '(^|[^_[:alnum:]])units([^_[:alnum:]]|$)') THEN
     RAISE EXCEPTION 'FAILED: a lease policy reads units — units <-> leases will recurse';
   END IF;
 
