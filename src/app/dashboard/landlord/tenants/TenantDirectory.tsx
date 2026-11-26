@@ -39,6 +39,8 @@ import {
   UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DataTable } from "@/components/dashboard/landlord/DataTable";
+import { FilterPills } from "@/components/dashboard/landlord/FilterPills";
 import {
   tenantMatches,
   TENANT_STATUS_LABELS,
@@ -71,9 +73,11 @@ const MONTH_SHORT = [
 
 /** "23 Nov 2026", from a fixed list — see the note on hydration above. */
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  // Returns "" rather than an em dash. The caller decides what an absent
+  // date means: on the lease-ends column it means the lease is open.
+  if (!iso) return "";
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-  if (!m) return "—";
+  if (!m) return "";
   return `${Number(m[3])} ${MONTH_SHORT[Number(m[2]) - 1]} ${m[1]}`;
 }
 
@@ -127,9 +131,18 @@ function StatCard({
   hint?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
+    // min-w-0 is what stopped the page scrolling sideways. A grid item
+    // defaults to min-width: auto, so the hint "1 part paid, 1 not due yet"
+    // sized its own column to its widest unbreakable run and pushed the
+    // whole page to 407px in a 360px viewport.
+    <div className="min-w-0 bg-white rounded-xl border border-gray-200 p-4">
       <p className="text-sm text-gray-500 mb-1">{label}</p>
-      <p className={cn("text-2xl font-bold", tone ?? "text-gray-900")}>
+      <p
+        className={cn(
+          "text-xl sm:text-2xl font-bold tabular-nums",
+          tone ?? "text-gray-900",
+        )}
+      >
         {value}
       </p>
       {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
@@ -201,9 +214,9 @@ export function TenantDirectory({
         </div>
         <Link
           href="/dashboard/landlord/buildings"
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          className="shrink-0 inline-flex items-center gap-2 px-4 min-h-[44px] text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          <Building2 className="w-4 h-4" />
+          <Building2 className="w-4 h-4 shrink-0" />
           Buildings
         </Link>
       </div>
@@ -217,8 +230,8 @@ export function TenantDirectory({
             No tenants yet
           </h2>
           <p className="text-gray-500 max-w-md mx-auto mb-6">
-            A tenant is added to a unit, which records their lease and starts
-            tracking the rent. Open a building, pick a vacant unit, and add one.
+            Open a building, pick a vacant unit and add one. That records the
+            lease and starts tracking the rent.
           </p>
           <Link
             href="/dashboard/landlord/buildings"
@@ -241,7 +254,7 @@ export function TenantDirectory({
             </div>
           )}
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <StatCard
               label="Housed"
               value={String(stats.housed)}
@@ -278,7 +291,7 @@ export function TenantDirectory({
             <StatCard
               label="Deposits held"
               value={formatKesCompact(stats.depositsHeld)}
-              hint="refundable, on live leases"
+              hint="Held, refundable"
             />
           </div>
 
@@ -290,35 +303,20 @@ export function TenantDirectory({
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search name, phone, ID, unit, building…"
+                  placeholder="Name, phone, ID, unit or building"
                   aria-label="Search tenants"
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm"
+                  className="w-full pl-10 pr-4 min-h-[44px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm"
                 />
               </div>
 
-              <div className="flex items-center gap-1 flex-wrap">
-                {stateFilters.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => setStateFilter(f.id)}
-                    aria-pressed={stateFilter === f.id}
-                    className={cn(
-                      "px-3 py-2 text-sm rounded-lg transition-colors",
-                      stateFilter === f.id
-                        ? "bg-teal-50 text-teal-700 font-medium"
-                        : "text-gray-600 hover:bg-gray-100",
-                    )}
-                  >
-                    {f.label}
-                    <span className="ml-1.5 text-xs text-gray-400">
-                      {f.count}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              <FilterPills
+                label="Filter tenants"
+                value={stateFilter}
+                onChange={setStateFilter}
+                options={stateFilters}
+              />
 
-              <div className="flex items-center gap-2">
+              <div className="grid grid-cols-2 gap-2 lg:flex lg:items-center">
                 <div className="relative">
                   <select
                     value={rentFilter}
@@ -326,9 +324,9 @@ export function TenantDirectory({
                       setRentFilter(e.target.value as RentFilter)
                     }
                     aria-label="Filter by rent position"
-                    className="appearance-none pl-3 pr-9 py-2.5 border border-gray-200 rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                    className="w-full appearance-none pl-3 pr-9 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   >
-                    <option value="any">Any rent position</option>
+                    <option value="any">Any rent</option>
                     <option value="owing">Owing anything</option>
                     <option value="overdue">Overdue</option>
                     <option value="partial">Part paid</option>
@@ -342,7 +340,7 @@ export function TenantDirectory({
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortKey)}
                     aria-label="Sort tenants"
-                    className="appearance-none pl-3 pr-9 py-2.5 border border-gray-200 rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                    className="w-full appearance-none pl-3 pr-9 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   >
                     <option value="name">Sort by name</option>
                     <option value="rent">Sort by rent</option>
@@ -365,183 +363,171 @@ export function TenantDirectory({
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-              <table className="w-full min-w-[860px]">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    {[
-                      "Tenant",
-                      "Standing",
-                      "Unit",
-                      "Rent",
-                      `${periodLabel}`,
-                      "Lease ends",
-                      "Contact",
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap"
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <DataTable
+                caption="Tenants, with their unit, rent and standing"
+                titleAt={0}
+                columns={[
+                  { label: "Tenant" },
+                  { label: "Standing" },
+                  { label: "Unit" },
+                  { label: "Rent", right: true },
+                  { label: periodLabel },
+                  { label: "Lease ends" },
+                  { label: "Contact" },
+                ]}
+                rows={visible.map((t) => ({
+                  key: t.id,
+                  cells: [
+                    <span key="who" className="flex items-center gap-3">
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0",
+                          t.status === "blacklisted"
+                            ? "bg-red-50 text-red-700"
+                            : "bg-teal-50 text-teal-700",
+                        )}
                       >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {visible.map((t) => (
-                    <tr key={t.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={cn(
-                              "w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0",
-                              t.status === "blacklisted"
-                                ? "bg-red-50 text-red-700"
-                                : "bg-teal-50 text-teal-700",
+                        {t.initial}
+                      </span>
+                      <span className="min-w-0">
+                        <Link
+                          href={`/dashboard/landlord/tenants/${t.id}`}
+                          className="font-medium text-gray-900 hover:text-teal-600 inline-flex items-center gap-1"
+                        >
+                          {t.name}
+                          <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+                        </Link>
+                        <span className="block text-xs text-gray-500 font-normal">
+                          {labelFor(
+                            verificationLevelLabels,
+                            t.verificationLevel,
+                          )}
+                          {t.occupation ? `, ${t.occupation}` : ""}
+                        </span>
+                      </span>
+                    </span>,
+                    <span key="standing" className="whitespace-nowrap">
+                      <span
+                        className={cn(
+                          "px-2 py-1 text-xs font-medium rounded-full",
+                          stateStyle[t.state].bg,
+                          stateStyle[t.state].text,
+                        )}
+                        title={stateStyle[t.state].hint}
+                      >
+                        {stateStyle[t.state].label}
+                      </span>
+                      {t.status !== "active" && (
+                        <span
+                          className={cn(
+                            "ml-1.5 px-2 py-1 text-xs font-medium rounded-full",
+                            t.status === "blacklisted"
+                              ? "bg-red-50 text-red-700"
+                              : "bg-gray-100 text-gray-600",
+                          )}
+                        >
+                          {labelFor(TENANT_STATUS_LABELS, t.status)}
+                        </span>
+                      )}
+                    </span>,
+                    t.places.length === 0 ? (
+                      // Was an em dash in all three of these.
+                      <span key="unit" className="text-gray-400">
+                        No unit
+                      </span>
+                    ) : (
+                      <span key="unit" className="block space-y-0.5">
+                        {t.places.map((p) => (
+                          <span key={p.unitId} className="block">
+                            {p.buildingId ? (
+                              <Link
+                                href={`/dashboard/landlord/buildings/${p.buildingId}/units/${p.unitId}`}
+                                className="font-medium text-gray-900 hover:text-teal-600 inline-flex items-center gap-1.5"
+                              >
+                                <Home className="w-3.5 h-3.5 text-gray-400" />
+                                {p.unitNumber}
+                              </Link>
+                            ) : (
+                              <span className="font-medium text-gray-900">
+                                {p.unitNumber}
+                              </span>
                             )}
-                          >
-                            {t.initial}
-                          </div>
-                          <div className="min-w-0">
-                            <Link
-                              href={`/dashboard/landlord/tenants/${t.id}`}
-                              className="font-medium text-gray-900 hover:text-teal-600 inline-flex items-center gap-1"
-                            >
-                              {t.name}
-                              <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-                            </Link>
-                            <p className="text-xs text-gray-500">
-                              {labelFor(
-                                verificationLevelLabels,
-                                t.verificationLevel,
-                              )}
-                              {t.occupation ? ` · ${t.occupation}` : ""}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                            {p.buildingName && (
+                              <span className="block text-xs text-gray-500">
+                                {p.buildingName}
+                              </span>
+                            )}
+                          </span>
+                        ))}
+                      </span>
+                    ),
+                    t.rent ? (
+                      <span key="rent" className="font-medium text-gray-900">
+                        {formatKes(t.rent.due)}
+                      </span>
+                    ) : (
+                      <span key="rent" className="text-gray-400">
+                        No lease
+                      </span>
+                    ),
+                    t.rent ? (
+                      <span key="pos" className="whitespace-nowrap">
                         <span
                           className={cn(
                             "px-2 py-1 text-xs font-medium rounded-full",
-                            stateStyle[t.state].bg,
-                            stateStyle[t.state].text,
+                            rentStatusStyle[t.rent.status].bg,
+                            rentStatusStyle[t.rent.status].text,
                           )}
-                          title={stateStyle[t.state].hint}
                         >
-                          {stateStyle[t.state].label}
+                          {rentStatusStyle[t.rent.status].label}
                         </span>
-                        {t.status !== "active" && (
-                          <span
-                            className={cn(
-                              "ml-1.5 px-2 py-1 text-xs font-medium rounded-full",
-                              t.status === "blacklisted"
-                                ? "bg-red-50 text-red-700"
-                                : "bg-gray-100 text-gray-600",
-                            )}
-                          >
-                            {labelFor(TENANT_STATUS_LABELS, t.status)}
+                        {/*
+                          Only where money is actually owed. A `pending` row
+                          has paid nothing by definition, so its balance
+                          always equals the Rent column and the badge already
+                          says "Not due yet". Repeating the figure said
+                          nothing, and calling it "owed" said something false.
+                        */}
+                        {t.rent.balance > 0 && t.rent.status !== "pending" && (
+                          <span className="block text-xs text-gray-500 mt-1 tabular-nums">
+                            {formatKes(t.rent.balance)} owed
+                            {t.rent.daysLate > 0
+                              ? `, ${t.rent.daysLate}d late`
+                              : ""}
                           </span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap">
-                        {t.places.length === 0 ? (
-                          <span className="text-gray-400">—</span>
-                        ) : (
-                          <div className="space-y-0.5">
-                            {t.places.map((p) => (
-                              <div key={p.unitId}>
-                                {p.buildingId ? (
-                                  <Link
-                                    href={`/dashboard/landlord/buildings/${p.buildingId}/units/${p.unitId}`}
-                                    className="font-medium text-gray-900 hover:text-teal-600 inline-flex items-center gap-1.5"
-                                  >
-                                    <Home className="w-3.5 h-3.5 text-gray-400" />
-                                    {p.unitNumber}
-                                  </Link>
-                                ) : (
-                                  <span className="font-medium text-gray-900">
-                                    {p.unitNumber}
-                                  </span>
-                                )}
-                                <p className="text-xs text-gray-500 pl-5">
-                                  {p.buildingName ?? "—"}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap tabular-nums">
-                        {t.rent ? (
-                          <span className="font-medium text-gray-900">
-                            {formatKes(t.rent.due)}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {t.rent ? (
-                          <>
-                            <span
-                              className={cn(
-                                "px-2 py-1 text-xs font-medium rounded-full",
-                                rentStatusStyle[t.rent.status].bg,
-                                rentStatusStyle[t.rent.status].text,
-                              )}
-                            >
-                              {rentStatusStyle[t.rent.status].label}
-                            </span>
-                            {/*
-                              Only where money is actually owed. A `pending`
-                              row has paid nothing by definition, so its
-                              balance always equals the Rent column and the
-                              badge already says "Not due yet" — repeating the
-                              figure said nothing, and calling it "owed" said
-                              something false.
-                            */}
-                            {t.rent.balance > 0 &&
-                              t.rent.status !== "pending" && (
-                                <p className="text-xs text-gray-500 mt-1 tabular-nums">
-                                  {formatKes(t.rent.balance)} owed
-                                  {t.rent.daysLate > 0
-                                    ? ` · ${t.rent.daysLate}d late`
-                                    : ""}
-                                </p>
-                              )}
-                          </>
-                        ) : (
-                          <span className="text-gray-400 text-sm">
-                            Nothing due
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
-                        {t.leaseEnds ? formatDate(t.leaseEnds) : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
+                      </span>
+                    ) : (
+                      <span key="pos" className="text-gray-400">
+                        Nothing due
+                      </span>
+                    ),
+                    formatDate(t.leaseEnds) || "Open",
+                    <span key="contact" className="block">
+                      <a
+                        href={`tel:${t.phone}`}
+                        aria-label={`Call ${t.name}`}
+                        className="inline-flex items-center gap-1.5 min-h-[44px] text-gray-600 hover:text-teal-600"
+                      >
+                        <Phone className="w-3.5 h-3.5 shrink-0" />
+                        {t.phone}
+                      </a>
+                      {t.email && (
                         <a
-                          href={`tel:${t.phone}`}
-                          className="flex items-center gap-1.5 text-gray-600 hover:text-teal-600 w-fit"
+                          href={`mailto:${t.email}`}
+                          aria-label={`Email ${t.name}`}
+                          className="flex items-center gap-1.5 min-h-[44px] text-gray-500 hover:text-teal-600 text-xs"
                         >
-                          <Phone className="w-3.5 h-3.5" />
-                          {t.phone}
+                          <Mail className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{t.email}</span>
                         </a>
-                        {t.email && (
-                          <a
-                            href={`mailto:${t.email}`}
-                            className="flex items-center gap-1.5 text-gray-500 hover:text-teal-600 text-xs mt-1 w-fit"
-                          >
-                            <Mail className="w-3 h-3" />
-                            {t.email}
-                          </a>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      )}
+                    </span>,
+                  ],
+                }))}
+              />
             </div>
           )}
         </>

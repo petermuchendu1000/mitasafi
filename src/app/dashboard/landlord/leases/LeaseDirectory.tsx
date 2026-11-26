@@ -15,6 +15,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { FileText, AlertTriangle, Search } from "lucide-react";
+import { DataTable } from "@/components/dashboard/landlord/DataTable";
+import { FilterPills } from "@/components/dashboard/landlord/FilterPills";
 import { formatKes } from "@/lib/landlord/labels";
 import {
   leaseMatches,
@@ -46,7 +48,7 @@ function Tile({
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
       <p
-        className={`mt-1 text-2xl font-semibold ${
+        className={`mt-1 text-xl sm:text-2xl font-semibold tabular-nums ${
           tone === "warn" ? "text-amber-700" : "text-gray-900"
         }`}
       >
@@ -113,24 +115,21 @@ export function LeaseDirectory({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Leases</h1>
-        <p className="mt-1 text-gray-500">
-          Every agreement on your portfolio, and what each one still needs
+        <p className="mt-1 text-sm text-gray-500">
+          Every agreement, and what each one still needs
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <Tile label="Leases" value={String(stats.total)} />
         <Tile label="Live" value={String(stats.live)} />
         <Tile
-          label={`Ending in ${EXPIRING_WINDOW_DAYS} days`}
+          label={`Ending in ${EXPIRING_WINDOW_DAYS}d`}
           value={String(stats.expiring)}
           tone={stats.expiring > 0 ? "warn" : undefined}
         />
-        <Tile
-          label="Monthly rent roll"
-          value={formatKes(stats.monthlyRentRoll)}
-        />
-        <Tile label="Deposits held" value={formatKes(stats.depositsHeld)} />
+        <Tile label="Rent roll" value={formatKes(stats.monthlyRentRoll)} />
+        <Tile label="Deposits" value={formatKes(stats.depositsHeld)} />
       </div>
 
       {stats.withoutDocument > 0 && (
@@ -142,23 +141,12 @@ export function LeaseDirectory({
       )}
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setFilter(f.id)}
-              aria-pressed={filter === f.id}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                filter === f.id
-                  ? "bg-teal-600 text-white border-teal-600"
-                  : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <FilterPills
+          label="Filter leases"
+          value={filter}
+          onChange={setFilter}
+          options={FILTERS}
+        />
 
         <div className="relative sm:w-72">
           <Search
@@ -170,8 +158,8 @@ export function LeaseDirectory({
             aria-label="Search leases"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Tenant, unit, building…"
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            placeholder="Tenant, unit or building"
+            className="w-full pl-9 pr-3 min-h-[44px] rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
       </div>
@@ -184,114 +172,128 @@ export function LeaseDirectory({
               : "No lease matches that."}
           </p>
         ) : (
-          <table className="w-full text-sm">
-            <caption className="sr-only">Leases, soonest to end first</caption>
-            <thead className="bg-gray-50 text-left text-gray-600">
-              <tr>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Tenant
-                </th>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Unit
-                </th>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Term
-                </th>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Rent
-                </th>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Deposit
-                </th>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Status
-                </th>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Document
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {shown.map((l) => (
-                <tr key={l.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3">
-                    {l.tenantId ? (
-                      <Link
-                        href={`/dashboard/landlord/tenants/${l.tenantId}`}
-                        className="font-medium text-gray-900 hover:text-teal-700"
-                      >
-                        {l.tenantName}
-                      </Link>
-                    ) : (
-                      <span className="text-gray-500">{l.tenantName}</span>
-                    )}
-                    {l.tenantPhone && (
-                      <span className="block text-xs text-gray-500">
-                        {l.tenantPhone}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3">
-                    {l.unitId && l.buildingId ? (
-                      <Link
-                        href={`/dashboard/landlord/buildings/${l.buildingId}/units/${l.unitId}`}
-                        className="text-gray-900 hover:text-teal-700"
-                      >
-                        {l.unitNumber}
-                      </Link>
-                    ) : (
-                      <span className="text-gray-500">{l.unitNumber}</span>
-                    )}
+          <DataTable
+            caption="Leases, soonest to end first"
+            titleAt={1}
+            subtitleAt={0}
+            columns={[
+              { label: "Tenant" },
+              { label: "Unit" },
+              { label: "Term" },
+              { label: "Rent", right: true },
+              { label: "Deposit", right: true },
+              { label: "Status" },
+              { label: "Document" },
+            ]}
+            rows={shown.map((l) => ({
+              key: l.id,
+              cells: [
+                <span key="t">
+                  {l.tenantId ? (
+                    <Link
+                      href={`/dashboard/landlord/tenants/${l.tenantId}`}
+                      className="font-medium text-gray-900 hover:text-teal-700"
+                    >
+                      {l.tenantName}
+                    </Link>
+                  ) : (
+                    <span className="text-gray-500">{l.tenantName}</span>
+                  )}
+                  {l.tenantPhone && (
                     <span className="block text-xs text-gray-500">
-                      {l.buildingName}
+                      {l.tenantPhone}
                     </span>
-                  </td>
-                  <td className="px-5 py-3 text-gray-700">
-                    {l.term}
-                    {l.endDate && (
-                      <span className="block text-xs text-gray-500">
-                        to {l.endDate}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-gray-900">
-                    {formatKes(l.monthlyRent)}
-                  </td>
-                  <td className="px-5 py-3 text-gray-700">
-                    {l.depositAmount === 0 ? (
-                      <span className="text-gray-400">—</span>
-                    ) : (
-                      <>
-                        {formatKes(l.depositAmount)}
-                        <span
-                          className={`block text-xs ${
-                            l.depositHeld ? "text-gray-500" : "text-amber-700"
-                          }`}
-                        >
-                          {l.depositHeld ? "Held" : "Not held"}
-                        </span>
-                      </>
-                    )}
-                  </td>
-                  <td className="px-5 py-3">
-                    <StateBadge lease={l} />
-                  </td>
-                  <td className="px-5 py-3">
-                    {l.documentCount > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-gray-700">
-                        <FileText aria-hidden="true" className="w-4 h-4" />
-                        {l.documentCount}
-                      </span>
-                    ) : (
-                      <span className="text-amber-700">None filed</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  )}
+                </span>,
+                <span key="u">
+                  {l.unitId && l.buildingId ? (
+                    <Link
+                      href={`/dashboard/landlord/buildings/${l.buildingId}/units/${l.unitId}`}
+                      className="text-gray-900 hover:text-teal-700"
+                    >
+                      {l.unitNumber}
+                    </Link>
+                  ) : (
+                    <span className="text-gray-500">{l.unitNumber}</span>
+                  )}
+                  <span className="block text-xs text-gray-500">
+                    {l.buildingName}
+                  </span>
+                </span>,
+                <span key="term">
+                  {l.term}
+                  {l.endDate && (
+                    <span className="block text-xs text-gray-500">
+                      to {shortDate(l.endDate)}
+                    </span>
+                  )}
+                </span>,
+                formatKes(l.monthlyRent),
+                // Was an em dash when there is no deposit. "None" says the
+                // same thing and reads aloud.
+                l.depositAmount === 0 ? (
+                  <span key="d" className="text-gray-400">
+                    None
+                  </span>
+                ) : (
+                  <span key="d">
+                    {formatKes(l.depositAmount)}
+                    <span
+                      className={`block text-xs ${
+                        l.depositHeld ? "text-gray-500" : "text-amber-700"
+                      }`}
+                    >
+                      {l.depositHeld ? "Held" : "Not held"}
+                    </span>
+                  </span>
+                ),
+                <StateBadge key="s" lease={l} />,
+                l.documentCount > 0 ? (
+                  <span
+                    key="doc"
+                    className="inline-flex items-center gap-1 text-gray-700"
+                  >
+                    <FileText aria-hidden="true" className="w-4 h-4" />
+                    {l.documentCount}
+                  </span>
+                ) : (
+                  <span key="doc" className="text-amber-700">
+                    None filed
+                  </span>
+                ),
+              ],
+            }))}
+          />
         )}
       </div>
     </div>
   );
+}
+
+/**
+ * "31 Jan 2027" from "2027-01-31".
+ *
+ * Parsed by hand rather than with Date, because this component renders on
+ * the server and again in the browser, and toLocaleDateString can disagree
+ * between the two. The ISO form stays in the data.
+ */
+const MONTH_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+function shortDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  return `${Number(m[3])} ${MONTH_SHORT[Number(m[2]) - 1]} ${m[1]}`;
 }

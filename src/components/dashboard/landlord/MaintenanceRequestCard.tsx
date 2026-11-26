@@ -132,7 +132,12 @@ export function MaintenanceRequestCard({
             </span>
           </div>
           <p className="text-sm text-gray-600 mb-2">{item.description}</p>
-          <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-gray-500">
+          {/* The three links in this strip are 12px icons beside 12px text
+              and measured 16px tall. min-h-[44px] on the links alone would
+              leave them sitting oddly against the plain spans beside them,
+              so the row gives every item the same height and the links
+              become real targets by filling it. */}
+          <div className="flex items-center gap-x-4 flex-wrap text-xs text-gray-500 [&>*]:min-h-[44px] [&>*]:inline-flex [&>*]:items-center [&_a]:min-h-[44px]">
             {showBuilding && item.buildingName && (
               <Link
                 href={`/dashboard/landlord/buildings/${item.buildingId}`}

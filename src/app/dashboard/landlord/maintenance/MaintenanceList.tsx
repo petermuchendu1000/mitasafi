@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Wrench, Search, Plus, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FilterPills } from "@/components/dashboard/landlord/FilterPills";
 import {
   MaintenanceRequestCard,
   type MaintenanceCardItem,
@@ -110,9 +111,9 @@ export function MaintenanceList({
         </div>
         <Link
           href="/dashboard/landlord/buildings"
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          className="shrink-0 inline-flex items-center gap-2 px-4 min-h-[44px] text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          <Building2 className="w-4 h-4" />
+          <Building2 className="w-4 h-4 shrink-0" />
           Buildings
         </Link>
       </div>
@@ -171,40 +172,25 @@ export function MaintenanceList({
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by job, unit or contractor…"
+                  placeholder="Job, unit or contractor"
                   aria-label="Search maintenance requests"
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm"
+                  className="w-full pl-10 pr-4 min-h-[44px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm"
                 />
               </div>
 
-              <div className="flex items-center gap-1 flex-wrap">
-                {FILTERS.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => setFilter(f.id)}
-                    aria-pressed={filter === f.id}
-                    className={cn(
-                      "px-3 py-2 text-sm rounded-lg transition-colors",
-                      filter === f.id
-                        ? "bg-teal-50 text-teal-700 font-medium"
-                        : "text-gray-600 hover:bg-gray-100",
-                    )}
-                  >
-                    {f.label}
-                    <span className="ml-1.5 text-xs text-gray-400">
-                      {counts[f.id]}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              <FilterPills
+                label="Filter repairs"
+                value={filter}
+                onChange={setFilter}
+                options={FILTERS.map((f) => ({ ...f, count: counts[f.id] }))}
+              />
 
               {buildings.length > 1 && (
                 <select
                   value={buildingId}
                   onChange={(e) => setBuildingId(e.target.value)}
                   aria-label="Filter by building"
-                  className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                  className="px-3 min-h-[44px] border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                 >
                   <option value="all">All buildings</option>
                   {buildings.map((b) => (

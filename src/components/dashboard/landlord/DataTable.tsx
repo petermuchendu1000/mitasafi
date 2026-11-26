@@ -74,7 +74,16 @@ export function DataTable({
       <div className="sm:hidden divide-y divide-gray-100">
         <h3 className="sr-only">{caption}</h3>
         {rows.map((row) => (
-          <div key={row.key} className="px-4 py-3">
+          // Every link in a card gets a 44px box. The cells come from the
+          // callers and most of them hand over a bare text link, which on a
+          // phone measured 15 to 24px tall: a tenant name, a unit number, a
+          // phone number. Doing it here rather than in each caller is the
+          // same argument as taking the columns as data, and it cannot be
+          // forgotten by the next report added.
+          <div
+            key={row.key}
+            className="px-4 py-3 [&_a]:min-h-[44px] [&_a]:inline-flex [&_a]:items-center"
+          >
             <div className="flex items-baseline justify-between gap-2">
               <p className="min-w-0 font-medium text-gray-900 truncate">
                 {row.cells[titleAt]}

@@ -72,8 +72,14 @@ it("does not put the higher earner first", () => {
 });
 
 it("says on every income that nobody has checked it", () => {
+  // The wording shortened in the mobile pass, from "This figure is what the
+  // applicant entered; MitaSafi has not verified it." The claim is the same
+  // one and is what this test is for: the figure is unverified, and the page
+  // says so every time.
   renderQueue([row({ monthly_income: 90000 })]);
-  expect(screen.getByText(/MitaSafi has not verified it/i)).toBeInTheDocument();
+  expect(
+    screen.getByText(/Entered by the applicant\. Not verified\./i),
+  ).toBeInTheDocument();
   // And shows the ratio as arithmetic rather than a verdict.
   expect(screen.getByText(/2\.0× the asking rent/)).toBeInTheDocument();
   expect(screen.queryByText(/strong|weak|good|poor|risk/i)).toBeNull();

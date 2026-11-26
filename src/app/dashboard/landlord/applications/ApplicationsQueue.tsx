@@ -20,6 +20,7 @@ import {
   Users,
   CalendarDays,
 } from "lucide-react";
+import { FilterPills } from "@/components/dashboard/landlord/FilterPills";
 import { formatKes } from "@/lib/landlord/labels";
 import {
   applicationMatches,
@@ -148,12 +149,11 @@ function ApplicationCard({ application }: { application: QueueApplication }) {
           </span>{" "}
           a month
           {application.incomeToRent !== null && (
-            <> — {application.incomeToRent.toFixed(1)}× the asking rent</>
+            <>, {application.incomeToRent.toFixed(1)}× the asking rent</>
           )}
           . {/* Said plainly, every time, because nobody has checked it. */}
           <span className="text-gray-500">
-            This figure is what the applicant entered; MitaSafi has not verified
-            it.
+            Entered by the applicant. Not verified.
           </span>
         </p>
       )}
@@ -180,7 +180,7 @@ function ApplicationCard({ application }: { application: QueueApplication }) {
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}
             placeholder="Only you can see this."
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 min-h-[44px] text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
           {error && (
             <p id={errorId} role="alert" className="mt-1 text-sm text-red-700">
@@ -195,7 +195,7 @@ function ApplicationCard({ application }: { application: QueueApplication }) {
                 type="button"
                 disabled={pending || d === application.status}
                 onClick={() => decide(d)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors disabled:opacity-50 ${
+                className={`px-3 min-h-[44px] rounded-lg text-sm font-medium border transition-colors disabled:opacity-50 ${
                   d === "approved"
                     ? "bg-teal-600 text-white border-teal-600 hover:bg-teal-700"
                     : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
@@ -259,23 +259,12 @@ export function ApplicationsQueue({
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setFilter(f.id)}
-              aria-pressed={filter === f.id}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                filter === f.id
-                  ? "bg-teal-600 text-white border-teal-600"
-                  : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <FilterPills
+          label="Filter applications"
+          value={filter}
+          onChange={setFilter}
+          options={FILTERS}
+        />
 
         <div className="relative sm:w-72">
           <Search
@@ -287,8 +276,8 @@ export function ApplicationsQueue({
             aria-label="Search applications"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Name, listing, phone…"
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            placeholder="Name, listing or phone"
+            className="w-full pl-9 pr-3 min-h-[44px] rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
       </div>
@@ -297,7 +286,7 @@ export function ApplicationsQueue({
         <div className="bg-white rounded-xl border border-gray-200 px-5 py-12 text-center">
           <p className="text-gray-500">
             {applications.length === 0
-              ? "No applications yet. They arrive when someone applies to one of your active listings."
+              ? "No applications yet. They arrive when somebody applies to an active listing."
               : "No application matches that."}
           </p>
         </div>

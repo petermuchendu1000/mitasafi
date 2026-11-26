@@ -37,6 +37,7 @@ import {
   Building,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FilterPills } from "@/components/dashboard/landlord/FilterPills";
 // Shared with the detail page so the two cannot disagree about what a
 // building_type value is called. See src/lib/landlord/labels.ts.
 import { buildingTypeLabels } from "@/lib/landlord/labels";
@@ -118,21 +119,20 @@ export function BuildingsList({ buildings }: { buildings: BuildingSummary[] }) {
       <header className="bg-white border-b border-gray-200 sticky top-16 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-4 flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                My Buildings
-              </h1>
-              <p className="text-sm text-gray-500">
-                Manage your multi-unit properties
-              </p>
-            </div>
+            <h1 className="text-xl font-semibold text-gray-900">Buildings</h1>
 
+            {/* Below sm: the label is hidden and this was a bare plus icon
+                with no accessible name at all, so a screen reader announced
+                "link" and nothing else. The aria-label covers both widths;
+                it is not redundant with the visible text because the
+                visible text is not always there. */}
             <Link
               href="/dashboard/landlord/buildings/new"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white font-medium rounded-xl hover:bg-teal-700 transition-colors"
+              aria-label="Add building"
+              className="shrink-0 inline-flex items-center justify-center gap-2 px-4 min-h-[44px] bg-teal-600 text-white font-medium rounded-xl hover:bg-teal-700 transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Add Building</span>
+              <Plus className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Add building</span>
             </Link>
           </div>
         </div>
@@ -194,42 +194,33 @@ export function BuildingsList({ buildings }: { buildings: BuildingSummary[] }) {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by name or area..."
+                placeholder="Name or area"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm"
+                className="w-full pl-10 pr-4 min-h-[44px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm"
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              {(
-                [
-                  ["all", "All"],
-                  ["active", "Active"],
-                  ["inactive", "Inactive"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  onClick={() => setFilterStatus(value)}
-                  className={cn(
-                    "px-3 py-2 text-sm rounded-lg transition-colors",
-                    filterStatus === value
-                      ? "bg-teal-50 text-teal-700 font-medium"
-                      : "text-gray-600 hover:bg-gray-100",
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {/* These three had no aria-pressed at all, so a screen reader
+                was told there were three buttons and nothing about which
+                filter was on. */}
+            <FilterPills
+              label="Filter buildings"
+              value={filterStatus}
+              onChange={setFilterStatus}
+              options={[
+                { id: "all", label: "All" },
+                { id: "active", label: "Active" },
+                { id: "inactive", label: "Inactive" },
+              ]}
+            />
 
             <div className="relative">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortKey)}
                 aria-label="Sort buildings"
-                className="appearance-none pl-4 pr-10 py-2.5 border border-gray-200 rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                className="w-full appearance-none pl-4 pr-10 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
               >
                 <option value="name">Sort by Name</option>
                 <option value="created">Sort by Date Added</option>

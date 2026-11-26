@@ -401,11 +401,14 @@ export default function InquiriesPage() {
           </div>
 
           {/* Manual refresh button */}
+          {/* The label is hidden below sm:, so without aria-label this was
+              an unnamed 30px icon button on a phone. */}
           <button
             onClick={() => fetchInquiries(true)}
             disabled={isRefreshing}
+            aria-label="Refresh inquiries"
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+              "flex items-center justify-center gap-1.5 px-3 min-h-[44px] min-w-[44px] rounded-lg text-sm font-medium transition-colors",
               "border border-gray-300 hover:bg-gray-50",
               isRefreshing && "opacity-50 cursor-not-allowed",
             )}
@@ -448,10 +451,10 @@ export default function InquiriesPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by name, email, phone, or listing..."
+            placeholder="Name, email, phone or listing"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="w-full pl-10 pr-4 min-h-[44px] border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
           />
         </div>
         <div className="relative">
@@ -459,13 +462,14 @@ export default function InquiriesPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="appearance-none pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            aria-label="Filter inquiries by status"
+            className="w-full appearance-none pl-10 pr-10 min-h-[44px] border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
           >
-            <option value="all">All Status</option>
+            <option value="all">All</option>
             <option value="new">New</option>
             <option value="viewed">Viewed</option>
             <option value="contacted">Contacted</option>
-            <option value="viewing_scheduled">Viewing Scheduled</option>
+            <option value="viewing_scheduled">Viewing scheduled</option>
             <option value="converted">Converted</option>
             <option value="archived">Archived</option>
           </select>

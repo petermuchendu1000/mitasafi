@@ -175,4 +175,35 @@ describe("DataTable", () => {
       within(container.querySelector("table")!).getByText("hidden on a phone"),
     ).toBeTruthy();
   });
+
+  it("gives every link in a card a 44px box", () => {
+    // The cells come from the callers and most hand over a bare text link:
+    // a tenant name, a unit number, a phone number. Those measured 15 to
+    // 24px tall on a phone. Doing it here means the next report added
+    // cannot forget.
+    const { container } = render(
+      <DataTable
+        caption="x"
+        columns={[{ label: "Unit" }, { label: "Tenant" }]}
+        rows={[
+          {
+            key: "a",
+            cells: [
+              <a key="u" href="/units/1">
+                A101
+              </a>,
+              <a key="t" href="/tenants/1">
+                Brian Kamau
+              </a>,
+            ],
+          },
+        ]}
+      />,
+    );
+    const card = cardList(container).querySelector("div")!;
+    expect(card.className).toMatch(/\[&_a\]:min-h-\[44px\]/);
+    expect(card.className).toMatch(/\[&_a\]:inline-flex/);
+    // Both links are inside that box: the heading one and the value one.
+    expect(within(card).getAllByRole("link")).toHaveLength(2);
+  });
 });
