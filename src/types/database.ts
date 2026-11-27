@@ -7558,6 +7558,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      tenant_self: {
+        Row: {
+          created_at: string | null;
+          email: string | null;
+          full_name: string | null;
+          id: string | null;
+          phone: string | null;
+          phone_secondary: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          email?: string | null;
+          full_name?: string | null;
+          id?: string | null;
+          phone?: string | null;
+          phone_secondary?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          email?: string | null;
+          full_name?: string | null;
+          id?: string | null;
+          phone?: string | null;
+          phone_secondary?: string | null;
+        };
+        Relationships: [];
+      };
+      tenant_private_notes: {
+        Row: {
+          blacklist_reason: string | null;
+          notes: string | null;
+          tenant_id: string | null;
+        };
+        Insert: {
+          blacklist_reason?: string | null;
+          notes?: string | null;
+          tenant_id?: string | null;
+        };
+        Update: {
+          blacklist_reason?: string | null;
+          notes?: string | null;
+          tenant_id?: string | null;
+        };
+        Relationships: [];
+      };
       provider_capacity_status: {
         Row: {
           available_for_regular: number | null;

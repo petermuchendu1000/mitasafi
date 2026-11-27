@@ -62,13 +62,22 @@ export default async function RentPage() {
     unreadMessageCount,
   };
 
+  // tenant_self, not tenants. The view carries only the columns a tenant owns:
+  // notes and blacklist_reason are not readable by any client role after
+  // 20260363000000, and the view is the named contract that keeps a future
+  // column grant from reaching a tenant screen by accident. It filters on
+  // user_id itself, so there is no .eq() here to get wrong.
   const { data: tenant } = await supabase
-    .from("tenants")
+    .from("tenant_self")
     .select("id, full_name, phone")
-    .eq("user_id", user.id)
     .maybeSingle();
 
-  if (!tenant)
+  // Narrowed once, here. Every column on a view is nullable in the generated
+  // types, because Postgres cannot promise otherwise through a view, even for
+  // a primary key. That is a fact about the type generator and not about the
+  // data, so it is answered with a guard rather than a cast: a row without an
+  // id is not a tenancy this page can show.
+  if (!tenant?.id)
     return (
       <CustomerDashboardShell profile={shell}>
         <RentClient state="not-a-tenant" />
@@ -165,7 +174,7 @@ export default async function RentPage() {
     <CustomerDashboardShell profile={shell}>
       <RentClient
         state="ok"
-        tenantName={tenant.full_name}
+        tenantName={tenant.full_name ?? "You"}
         tenantPhone={tenant.phone}
         unitNumber={unit?.unit_number ?? null}
         buildingName={building?.name ?? null}
