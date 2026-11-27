@@ -165,7 +165,12 @@ export function CustomerDashboardShell({
         >
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100">
-            <Link href="/dashboard" onClick={closeMobileMenu}>
+            <Link
+              href="/dashboard"
+              onClick={closeMobileMenu}
+              aria-label="MitaSafi dashboard"
+              className="inline-flex items-center min-h-[44px]"
+            >
               <Logo variant="full" color="teal" size="sm" />
             </Link>
             <button
@@ -198,7 +203,7 @@ export function CustomerDashboardShell({
                   href={item.href}
                   onClick={closeMobileMenu}
                   className={cn(
-                    "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    "flex items-center justify-between px-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors",
                     isActive
                       ? "bg-brand-50 text-brand-700"
                       : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",

@@ -1,11 +1,11 @@
 /**
  * Listing Gallery Component
- * 
+ *
  * Responsive photo gallery with:
  * - Carousel on mobile (swipeable)
  * - Grid on desktop (click to lightbox)
  * - Fullscreen lightbox with category tabs
- * 
+ *
  * Theme: 70% Teal, 30% Orange
  */
 
@@ -13,10 +13,10 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  X, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  X,
   Expand,
   Camera,
   Home,
@@ -25,7 +25,7 @@ import {
   Bath,
   Building2,
   Dumbbell,
-  ImageIcon
+  ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ListingPhoto } from "@/lib/listings/types";
@@ -58,39 +58,54 @@ const CATEGORY_LABELS: Record<ListingPhoto["category"], string> = {
   extra: "Other",
 };
 
-export function ListingGallery({ photos, title, isVerified }: ListingGalleryProps) {
+export function ListingGallery({
+  photos,
+  title,
+  isVerified,
+}: ListingGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-  const [activeCategory, setActiveCategory] = useState<ListingPhoto["category"] | "all">("all");
+  const [activeCategory, setActiveCategory] = useState<
+    ListingPhoto["category"] | "all"
+  >("all");
 
   // Sort photos by sort_order
   const sortedPhotos = [...photos].sort((a, b) => a.sort_order - b.sort_order);
-  
+
   // Get unique categories for filter tabs
-  const categories = Array.from(new Set(sortedPhotos.map(p => p.category)));
-  
+  const categories = Array.from(new Set(sortedPhotos.map((p) => p.category)));
+
   // Filter photos by category
-  const filteredPhotos = activeCategory === "all" 
-    ? sortedPhotos 
-    : sortedPhotos.filter(p => p.category === activeCategory);
+  const filteredPhotos =
+    activeCategory === "all"
+      ? sortedPhotos
+      : sortedPhotos.filter((p) => p.category === activeCategory);
 
   // Navigation handlers
   const goToPrevious = useCallback(() => {
-    setCurrentIndex(prev => (prev === 0 ? sortedPhotos.length - 1 : prev - 1));
+    setCurrentIndex((prev) =>
+      prev === 0 ? sortedPhotos.length - 1 : prev - 1,
+    );
   }, [sortedPhotos.length]);
 
   const goToNext = useCallback(() => {
-    setCurrentIndex(prev => (prev === sortedPhotos.length - 1 ? 0 : prev + 1));
+    setCurrentIndex((prev) =>
+      prev === sortedPhotos.length - 1 ? 0 : prev + 1,
+    );
   }, [sortedPhotos.length]);
 
   // Lightbox navigation
   const lightboxPrev = useCallback(() => {
-    setLightboxIndex(prev => (prev === 0 ? filteredPhotos.length - 1 : prev - 1));
+    setLightboxIndex((prev) =>
+      prev === 0 ? filteredPhotos.length - 1 : prev - 1,
+    );
   }, [filteredPhotos.length]);
 
   const lightboxNext = useCallback(() => {
-    setLightboxIndex(prev => (prev === filteredPhotos.length - 1 ? 0 : prev + 1));
+    setLightboxIndex((prev) =>
+      prev === filteredPhotos.length - 1 ? 0 : prev + 1,
+    );
   }, [filteredPhotos.length]);
 
   // Keyboard navigation
@@ -142,7 +157,10 @@ export function ListingGallery({ photos, title, isVerified }: ListingGalleryProp
       <div className="md:hidden relative">
         <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100">
           <Image
-            src={sortedPhotos[currentIndex]?.url || "/images/placeholder-property.jpg"}
+            src={
+              sortedPhotos[currentIndex]?.url ||
+              "/images/placeholder-property.jpg"
+            }
             alt={`${title} - Photo ${currentIndex + 1}`}
             fill
             className="object-cover"
@@ -150,12 +168,16 @@ export function ListingGallery({ photos, title, isVerified }: ListingGalleryProp
             sizes="100vw"
             unoptimized
           />
-          
+
           {/* Verified badge */}
           {isVerified && (
             <div className="absolute top-3 left-3 bg-brand-600 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
               <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
               </svg>
               Verified
             </div>
@@ -164,14 +186,14 @@ export function ListingGallery({ photos, title, isVerified }: ListingGalleryProp
           {/* Navigation arrows */}
           <button
             onClick={goToPrevious}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white transition-colors"
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white transition-colors"
             aria-label="Previous photo"
           >
             <ChevronLeft className="w-5 h-5 text-gray-700" />
           </button>
           <button
             onClick={goToNext}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white transition-colors"
             aria-label="Next photo"
           >
             <ChevronRight className="w-5 h-5 text-gray-700" />
@@ -184,7 +206,7 @@ export function ListingGallery({ photos, title, isVerified }: ListingGalleryProp
             </span>
             <button
               onClick={() => openLightbox(currentIndex)}
-              className="bg-black/60 text-white p-2 rounded-full backdrop-blur-sm hover:bg-black/80 transition-colors"
+              className="bg-black/60 text-white min-w-[44px] min-h-[44px] grid place-items-center rounded-full backdrop-blur-sm hover:bg-black/80 transition-colors"
               aria-label="View all photos"
             >
               <Expand className="w-4 h-4" />
@@ -193,22 +215,35 @@ export function ListingGallery({ photos, title, isVerified }: ListingGalleryProp
         </div>
 
         {/* Dots indicator */}
-        <div className="flex justify-center gap-1.5 mt-3">
+        {/* The dot stays 8px; the button around it is 44px. These were
+            8px targets, which is the smallest thing on any page in the
+            product, on the control that moves the photos. Seven of them at
+            44px wide come to 308px, so they still fit a 320px screen with
+            no gap between the boxes. */}
+        <div className="flex justify-center mt-3">
           {sortedPhotos.slice(0, 7).map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentIndex(index)}
-              className={cn(
-                "w-2 h-2 rounded-full transition-all",
-                index === currentIndex 
-                  ? "bg-brand-600 w-4" 
-                  : "bg-gray-300 hover:bg-gray-400"
-              )}
+              className="min-w-[44px] min-h-[44px] grid place-items-center"
               aria-label={`Go to photo ${index + 1}`}
-            />
+              aria-current={index === currentIndex ? "true" : undefined}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "h-2 rounded-full transition-all",
+                  index === currentIndex
+                    ? "bg-brand-600 w-4"
+                    : "bg-gray-300 w-2",
+                )}
+              />
+            </button>
           ))}
           {sortedPhotos.length > 7 && (
-            <span className="text-xs text-gray-400 ml-1">+{sortedPhotos.length - 7}</span>
+            <span className="text-xs text-gray-400 ml-1">
+              +{sortedPhotos.length - 7}
+            </span>
           )}
         </div>
       </div>
@@ -232,8 +267,16 @@ export function ListingGallery({ photos, title, isVerified }: ListingGalleryProp
             />
             {isVerified && (
               <div className="absolute top-4 left-4 bg-brand-600 text-white px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 z-10">
-                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                <svg
+                  className="w-4 h-4"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 Verified
               </div>
@@ -257,7 +300,7 @@ export function ListingGallery({ photos, title, isVerified }: ListingGalleryProp
                 unoptimized
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-              
+
               {/* Show "+X more" on last visible image */}
               {index === 3 && sortedPhotos.length > 5 && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -270,16 +313,15 @@ export function ListingGallery({ photos, title, isVerified }: ListingGalleryProp
           ))}
 
           {/* Fill empty slots with placeholder if less than 5 photos */}
-          {sortedPhotos.length < 5 && 
+          {sortedPhotos.length < 5 &&
             Array.from({ length: 5 - sortedPhotos.length }).map((_, index) => (
-              <div 
-                key={`empty-${index}`} 
+              <div
+                key={`empty-${index}`}
                 className="bg-gray-100 flex items-center justify-center"
               >
                 <Camera className="w-8 h-8 text-gray-300" />
               </div>
-            ))
-          }
+            ))}
         </div>
 
         {/* View all photos button */}
@@ -309,21 +351,21 @@ export function ListingGallery({ photos, title, isVerified }: ListingGalleryProp
                   {lightboxIndex + 1} / {filteredPhotos.length}
                 </span>
               </div>
-              
+
               {/* Category tabs */}
               <div className="hidden md:flex items-center gap-1 bg-white/10 rounded-full p-1">
                 <button
                   onClick={() => setActiveCategory("all")}
                   className={cn(
                     "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
-                    activeCategory === "all" 
-                      ? "bg-brand-600 text-white" 
-                      : "text-white/70 hover:text-white hover:bg-white/10"
+                    activeCategory === "all"
+                      ? "bg-brand-600 text-white"
+                      : "text-white/70 hover:text-white hover:bg-white/10",
                   )}
                 >
                   All
                 </button>
-                {categories.map(cat => (
+                {categories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => {
@@ -332,9 +374,9 @@ export function ListingGallery({ photos, title, isVerified }: ListingGalleryProp
                     }}
                     className={cn(
                       "px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5",
-                      activeCategory === cat 
-                        ? "bg-brand-600 text-white" 
-                        : "text-white/70 hover:text-white hover:bg-white/10"
+                      activeCategory === cat
+                        ? "bg-brand-600 text-white"
+                        : "text-white/70 hover:text-white hover:bg-white/10",
                     )}
                   >
                     {CATEGORY_ICONS[cat]}
@@ -383,9 +425,9 @@ export function ListingGallery({ photos, title, isVerified }: ListingGalleryProp
                   onClick={() => setLightboxIndex(index)}
                   className={cn(
                     "relative w-16 h-12 flex-shrink-0 rounded-md overflow-hidden transition-all",
-                    index === lightboxIndex 
-                      ? "ring-2 ring-cta-500 ring-offset-2 ring-offset-black" 
-                      : "opacity-60 hover:opacity-100"
+                    index === lightboxIndex
+                      ? "ring-2 ring-cta-500 ring-offset-2 ring-offset-black"
+                      : "opacity-60 hover:opacity-100",
                   )}
                 >
                   <Image

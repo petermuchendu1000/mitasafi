@@ -1,6 +1,6 @@
 /**
  * Public Property Detail Page
- * 
+ *
  * Displays a single listing with full details for public viewing.
  * Includes property info, photos, amenities, location, and contact form.
  */
@@ -13,19 +13,17 @@ import Link from "next/link";
 import { Navbar, Footer } from "@/components/landing";
 import { Container, Badge } from "@/components/ui";
 import { getListingById } from "@/lib/listings/get-listing";
-import { 
-  Bed, 
-  Bath, 
-  Maximize2, 
-  MapPin, 
-  Calendar, 
-  Shield, 
-  Car, 
+import {
+  Bed,
+  Bath,
+  Maximize2,
+  MapPin,
+  Calendar,
+  Shield,
+  Car,
   DogIcon,
   Cigarette,
   ChevronLeft,
-  Share2,
-  Heart,
   Phone,
   MessageSquare,
   Check,
@@ -47,10 +45,12 @@ interface PageProps {
 
 export async function generateMetadata(
   { params }: PageProps,
-  parent: ResolvingMetadata
+  parent: ResolvingMetadata,
 ): Promise<Metadata> {
   const { id } = await params;
-  const { listing, error } = await getListingById(id, { incrementViews: false });
+  const { listing, error } = await getListingById(id, {
+    incrementViews: false,
+  });
 
   if (!listing) {
     return {
@@ -122,7 +122,13 @@ function formatSmokingPolicy(policy: string): string {
 // COMPONENTS
 // =============================================================================
 
-function PropertyGallery({ photos, title }: { photos: { url: string; category?: string }[]; title: string }) {
+function PropertyGallery({
+  photos,
+  title,
+}: {
+  photos: { url: string; category?: string }[];
+  title: string;
+}) {
   const mainPhoto = photos[0]?.url;
   const otherPhotos = photos.slice(1, 5);
 
@@ -145,7 +151,7 @@ function PropertyGallery({ photos, title }: { photos: { url: string; category?: 
           </div>
         )}
       </div>
-      
+
       {/* Secondary photos */}
       {otherPhotos.map((photo, index) => (
         <div key={index} className="relative">
@@ -158,16 +164,18 @@ function PropertyGallery({ photos, title }: { photos: { url: string; category?: 
           />
         </div>
       ))}
-      
+
       {/* Placeholder slots if less than 4 other photos */}
-      {Array.from({ length: Math.max(0, 4 - otherPhotos.length) }).map((_, i) => (
-        <div key={`placeholder-${i}`} className="relative bg-gray-100">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Building2 className="w-8 h-8 text-gray-300" />
+      {Array.from({ length: Math.max(0, 4 - otherPhotos.length) }).map(
+        (_, i) => (
+          <div key={`placeholder-${i}`} className="relative bg-gray-100">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Building2 className="w-8 h-8 text-gray-300" />
+            </div>
           </div>
-        </div>
-      ))}
-      
+        ),
+      )}
+
       {/* View all photos button */}
       {photos.length > 5 && (
         <button className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-lg shadow-md text-sm font-medium hover:bg-gray-50 transition-colors">
@@ -190,7 +198,9 @@ function ContactCard({ listing, landlord }: { listing: any; landlord?: any }) {
           <span className="text-gray-500">/month</span>
         </div>
         {listing.rent_negotiable && (
-          <span className="text-sm text-teal-600 font-medium">Price negotiable</span>
+          <span className="text-sm text-teal-600 font-medium">
+            Price negotiable
+          </span>
         )}
       </div>
 
@@ -199,8 +209,10 @@ function ContactCard({ listing, landlord }: { listing: any; landlord?: any }) {
         <div className="mb-4 p-3 bg-gray-50 rounded-lg">
           <div className="text-sm text-gray-600">Deposit Required</div>
           <div className="font-semibold">
-            {listing.deposit_months} month{listing.deposit_months > 1 ? "s" : ""} rent
-            {listing.deposit_amount && ` (${formatCurrency(listing.deposit_amount)})`}
+            {listing.deposit_months} month
+            {listing.deposit_months > 1 ? "s" : ""} rent
+            {listing.deposit_amount &&
+              ` (${formatCurrency(listing.deposit_amount)})`}
           </div>
         </div>
       )}
@@ -212,7 +224,10 @@ function ContactCard({ listing, landlord }: { listing: any; landlord?: any }) {
           {listing.available_now ? (
             <span className="text-teal-600 font-medium">Available Now</span>
           ) : listing.available_from ? (
-            <>Available from {new Date(listing.available_from).toLocaleDateString()}</>
+            <>
+              Available from{" "}
+              {new Date(listing.available_from).toLocaleDateString()}
+            </>
           ) : (
             "Contact for availability"
           )}
@@ -251,7 +266,9 @@ function ContactCard({ listing, landlord }: { listing: any; landlord?: any }) {
               )}
             </div>
             <div>
-              <div className="font-medium text-gray-900">{landlord.full_name || "Landlord"}</div>
+              <div className="font-medium text-gray-900">
+                {landlord.full_name || "Landlord"}
+              </div>
               {landlord.is_verified && (
                 <div className="flex items-center gap-1 text-sm text-teal-600">
                   <Shield className="w-3.5 h-3.5" />
@@ -288,20 +305,22 @@ export default async function PropertyDetailPage({ params }: PageProps) {
       <div className="bg-white border-b border-gray-200">
         <Container>
           <div className="py-4 flex items-center justify-between">
-            <Link 
+            <Link
               href="/properties"
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+              className="inline-flex items-center gap-2 min-h-[44px] text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
               Back to search
             </Link>
             <div className="flex items-center gap-3">
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <Share2 className="w-5 h-5 text-gray-600" />
-              </button>
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <Heart className="w-5 h-5 text-gray-600" />
-              </button>
+              {/* A share button and a heart button stood here. Neither had
+                  an onClick, a form or a handler of any kind: they were two
+                  unnamed 36px circles that did nothing when tapped, on the
+                  page a visitor lands on from a search result. The working
+                  versions of both live on the listing detail page at
+                  /listings/[slug]; these were never wired. Gone rather than
+                  wired, because saving and sharing from here is a feature,
+                  not a mobile fix. */}
             </div>
           </div>
         </Container>
@@ -319,18 +338,27 @@ export default async function PropertyDetailPage({ params }: PageProps) {
               {/* Title and badges */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="neutral">{formatPropertyType(listing.property_type)}</Badge>
+                  <Badge variant="neutral">
+                    {formatPropertyType(listing.property_type)}
+                  </Badge>
                   {listing.is_verified && (
-                    <Badge variant="success" className="flex items-center gap-1">
+                    <Badge
+                      variant="success"
+                      className="flex items-center gap-1"
+                    >
                       <Shield className="w-3.5 h-3.5" />
                       Verified
                     </Badge>
                   )}
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">{listing.title}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  {listing.title}
+                </h1>
                 <div className="flex items-center gap-2 text-gray-600">
                   <MapPin className="w-4 h-4" />
-                  <span>{listing.area}, {listing.city || "Nairobi"}</span>
+                  <span>
+                    {listing.area}, {listing.city || "Nairobi"}
+                  </span>
                 </div>
               </div>
 
@@ -349,27 +377,39 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                 {listing.size_sqft && (
                   <div className="flex items-center gap-2">
                     <Maximize2 className="w-5 h-5 text-gray-400" />
-                    <span className="font-medium">{listing.size_sqft.toLocaleString()}</span>
-                    <span className="text-gray-500">{listing.size_unit || "sqft"}</span>
+                    <span className="font-medium">
+                      {listing.size_sqft.toLocaleString()}
+                    </span>
+                    <span className="text-gray-500">
+                      {listing.size_unit || "sqft"}
+                    </span>
                   </div>
                 )}
               </div>
 
               {/* Description */}
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">About this property</h2>
-                <p className="text-gray-600 whitespace-pre-line">{listing.description}</p>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                  About this property
+                </h2>
+                <p className="text-gray-600 whitespace-pre-line">
+                  {listing.description}
+                </p>
               </div>
 
               {/* Amenities */}
               {listing.amenities && listing.amenities.length > 0 && (
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-3">Amenities</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                    Amenities
+                  </h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {listing.amenities.map((amenity: string) => (
                       <div key={amenity} className="flex items-center gap-2">
                         <Check className="w-4 h-4 text-teal-600" />
-                        <span className="text-gray-700 capitalize">{amenity.replace(/_/g, " ")}</span>
+                        <span className="text-gray-700 capitalize">
+                          {amenity.replace(/_/g, " ")}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -378,21 +418,28 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 
               {/* Policies */}
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">House Rules</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                  House Rules
+                </h2>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <DogIcon className="w-5 h-5 text-gray-400" />
-                    <span className="text-sm text-gray-700">{formatPetPolicy(listing.pet_policy)}</span>
+                    <span className="text-sm text-gray-700">
+                      {formatPetPolicy(listing.pet_policy)}
+                    </span>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <Cigarette className="w-5 h-5 text-gray-400" />
-                    <span className="text-sm text-gray-700">{formatSmokingPolicy(listing.smoking_policy)}</span>
+                    <span className="text-sm text-gray-700">
+                      {formatSmokingPolicy(listing.smoking_policy)}
+                    </span>
                   </div>
                   {listing.parking !== "none" && (
                     <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                       <Car className="w-5 h-5 text-gray-400" />
                       <span className="text-sm text-gray-700">
-                        {listing.parking_spaces} parking space{listing.parking_spaces > 1 ? "s" : ""}
+                        {listing.parking_spaces} parking space
+                        {listing.parking_spaces > 1 ? "s" : ""}
                       </span>
                     </div>
                   )}
@@ -401,38 +448,54 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 
               {/* Lease terms */}
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">Lease Terms</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                  Lease Terms
+                </h2>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-500 mb-1">Minimum Lease</div>
+                    <div className="text-sm text-gray-500 mb-1">
+                      Minimum Lease
+                    </div>
                     <div className="font-medium">
-                      {listing.min_lease_months} month{listing.min_lease_months > 1 ? "s" : ""}
+                      {listing.min_lease_months} month
+                      {listing.min_lease_months > 1 ? "s" : ""}
                     </div>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <div className="text-sm text-gray-500 mb-1">Lease Type</div>
-                    <div className="font-medium capitalize">{listing.lease_term}</div>
+                    <div className="font-medium capitalize">
+                      {listing.lease_term}
+                    </div>
                   </div>
                   {listing.service_charge && (
                     <div className="p-4 bg-gray-50 rounded-lg">
-                      <div className="text-sm text-gray-500 mb-1">Service Charge</div>
-                      <div className="font-medium">{formatCurrency(listing.service_charge)}/month</div>
-                    </div>
-                  )}
-                  {listing.rent_includes && listing.rent_includes.length > 0 && (
-                    <div className="p-4 bg-gray-50 rounded-lg">
-                      <div className="text-sm text-gray-500 mb-1">Rent Includes</div>
-                      <div className="font-medium capitalize">
-                        {listing.rent_includes.join(", ").replace(/_/g, " ")}
+                      <div className="text-sm text-gray-500 mb-1">
+                        Service Charge
+                      </div>
+                      <div className="font-medium">
+                        {formatCurrency(listing.service_charge)}/month
                       </div>
                     </div>
                   )}
+                  {listing.rent_includes &&
+                    listing.rent_includes.length > 0 && (
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        <div className="text-sm text-gray-500 mb-1">
+                          Rent Includes
+                        </div>
+                        <div className="font-medium capitalize">
+                          {listing.rent_includes.join(", ").replace(/_/g, " ")}
+                        </div>
+                      </div>
+                    )}
                 </div>
               </div>
 
               {/* Location */}
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">Location</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                  Location
+                </h2>
                 <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center">
                   <div className="text-center">
                     <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
@@ -440,7 +503,9 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                       {listing.area}, {listing.city || "Nairobi"}
                     </p>
                     {listing.landmarks && (
-                      <p className="text-sm text-gray-400 mt-1">Near: {listing.landmarks}</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Near: {listing.landmarks}
+                      </p>
                     )}
                   </div>
                 </div>

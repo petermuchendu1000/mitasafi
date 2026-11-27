@@ -19,7 +19,10 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getCustomerBookings, getCustomerBookingCounts } from "@/lib/services/bookings";
+import {
+  getCustomerBookings,
+  getCustomerBookingCounts,
+} from "@/lib/services/bookings";
 import { getUnreadCountsForBookings } from "@/lib/services/messages";
 import {
   getBookingStatusConfig,
@@ -107,9 +110,10 @@ export default async function CustomerBookingsPage({
           <div className="flex items-center h-14 gap-3">
             <Link
               href="/dashboard"
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+              aria-label="Back to dashboard"
+              className="flex items-center gap-1.5 min-h-[44px] text-sm text-gray-500 hover:text-gray-900 transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-4 h-4 shrink-0" />
               <span className="hidden sm:inline">Dashboard</span>
             </Link>
             <span className="text-gray-200">|</span>
@@ -119,10 +123,10 @@ export default async function CustomerBookingsPage({
             <div className="flex-1" />
             <Link
               href="/dashboard/bookings/messages"
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
-              title="Messages"
+              aria-label="Messages"
+              className="flex items-center gap-1.5 min-h-[44px] text-sm text-gray-500 hover:text-gray-900 transition-colors"
             >
-              <MessageSquare className="w-4 h-4" />
+              <MessageSquare className="w-4 h-4 shrink-0" />
               <span className="hidden sm:inline">Messages</span>
             </Link>
           </div>
@@ -133,7 +137,7 @@ export default async function CustomerBookingsPage({
               <Link
                 key={t.key}
                 href={`/dashboard/bookings?tab=${t.key}`}
-                className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`inline-flex items-center min-h-[44px] pb-3 text-sm font-medium border-b-2 transition-colors ${
                   tab === t.key
                     ? "border-teal-600 text-teal-700"
                     : "border-transparent text-gray-500 hover:text-gray-700"
@@ -173,7 +177,7 @@ export default async function CustomerBookingsPage({
             </p>
             <Link
               href="/services/browse"
-              className="inline-flex items-center gap-1 text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors"
+              className="inline-flex items-center gap-1 min-h-[44px] text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors"
             >
               Browse services
               <ChevronRight className="w-4 h-4" />
@@ -183,10 +187,11 @@ export default async function CustomerBookingsPage({
           <div className="space-y-3">
             {bookings.map((booking) => {
               const status = getBookingStatusConfig(
-                booking.status as BookingStatus
+                booking.status as BookingStatus,
               );
               const meta = booking.metadata as Record<string, unknown> | null;
-              const locationSummary = (meta?.location_summary as string) || null;
+              const locationSummary =
+                (meta?.location_summary as string) || null;
 
               return (
                 <Link
@@ -228,15 +233,14 @@ export default async function CustomerBookingsPage({
                         {booking.scheduled_start && (
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {new Date(booking.scheduled_start).toLocaleDateString(
-                              "en-KE",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }
-                            )}
+                            {new Date(
+                              booking.scheduled_start,
+                            ).toLocaleDateString("en-KE", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                           </span>
                         )}
                       </div>
@@ -257,7 +261,7 @@ export default async function CustomerBookingsPage({
             {pageNum > 1 && (
               <Link
                 href={`/dashboard/bookings?tab=${tab}&page=${pageNum - 1}`}
-                className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 min-h-[44px] text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Previous
               </Link>
@@ -268,7 +272,7 @@ export default async function CustomerBookingsPage({
             {pagination.hasMore && (
               <Link
                 href={`/dashboard/bookings?tab=${tab}&page=${pageNum + 1}`}
-                className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 min-h-[44px] text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Next
               </Link>

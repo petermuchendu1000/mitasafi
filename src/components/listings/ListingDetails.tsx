@@ -1,6 +1,6 @@
 /**
  * Listing Details Component
- * 
+ *
  * Displays property details including:
  * - Key specs (beds, baths, size, floor)
  * - Description
@@ -8,18 +8,18 @@
  * - Utilities & Infrastructure
  * - Security features
  * - House policies
- * 
+ *
  * Theme: 70% Teal, 30% Orange
  */
 
 "use client";
 
 import { useState } from "react";
-import { 
-  Bed, 
-  Bath, 
-  Square, 
-  Building2, 
+import {
+  Bed,
+  Bath,
+  Square,
+  Building2,
   Calendar,
   Sofa,
   Sparkles,
@@ -35,10 +35,14 @@ import {
   Clock,
   CreditCard,
   Home,
-  Layers
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Listing, SecurityFeatures, Utilities } from "@/lib/listings/types";
+import type {
+  Listing,
+  SecurityFeatures,
+  Utilities,
+} from "@/lib/listings/types";
 
 interface ListingDetailsProps {
   listing: Listing;
@@ -57,7 +61,10 @@ const PROPERTY_TYPE_LABELS: Record<Listing["property_type"], string> = {
 };
 
 // Condition labels
-const CONDITION_LABELS: Record<NonNullable<Listing["condition"]>, { label: string; color: string }> = {
+const CONDITION_LABELS: Record<
+  NonNullable<Listing["condition"]>,
+  { label: string; color: string }
+> = {
   excellent: { label: "Excellent", color: "text-success-600 bg-success-50" },
   good: { label: "Good", color: "text-brand-600 bg-brand-50" },
   fair: { label: "Fair", color: "text-warning-600 bg-warning-50" },
@@ -65,7 +72,10 @@ const CONDITION_LABELS: Record<NonNullable<Listing["condition"]>, { label: strin
 };
 
 // Furnishing labels
-const FURNISHING_LABELS: Record<Listing["furnishing"], { label: string; icon: typeof Sofa }> = {
+const FURNISHING_LABELS: Record<
+  Listing["furnishing"],
+  { label: string; icon: typeof Sofa }
+> = {
   unfurnished: { label: "Unfurnished", icon: Home },
   semi_furnished: { label: "Semi-Furnished", icon: Sofa },
   fully_furnished: { label: "Fully Furnished", icon: Sparkles },
@@ -121,7 +131,10 @@ const AMENITY_LABELS: Record<string, { label: string; category: string }> = {
 };
 
 // Security feature labels
-const SECURITY_GUARD_LABELS: Record<NonNullable<SecurityFeatures["guard"]>, string> = {
+const SECURITY_GUARD_LABELS: Record<
+  NonNullable<SecurityFeatures["guard"]>,
+  string
+> = {
   none: "No Security Guard",
   daytime: "Daytime Security",
   "24_hour": "24-Hour Security",
@@ -133,7 +146,10 @@ const CCTV_LABELS: Record<NonNullable<SecurityFeatures["cctv"]>, string> = {
   full: "Full CCTV Coverage",
 };
 
-const ACCESS_LABELS: Record<NonNullable<SecurityFeatures["access_control"]>, string> = {
+const ACCESS_LABELS: Record<
+  NonNullable<SecurityFeatures["access_control"]>,
+  string
+> = {
   none: "No Access Control",
   key_only: "Key Access",
   card: "Card Access",
@@ -147,21 +163,30 @@ const WATER_LABELS: Record<NonNullable<Utilities["water"]>, string> = {
   tank_backup: "Tank Backup",
 };
 
-const BACKUP_POWER_LABELS: Record<NonNullable<Utilities["backup_power"]>, string> = {
+const BACKUP_POWER_LABELS: Record<
+  NonNullable<Utilities["backup_power"]>,
+  string
+> = {
   none: "No Backup Power",
   common_areas: "Generator (Common Areas)",
   full: "Full Backup Power",
 };
 
 // Policy labels
-const PET_POLICY_LABELS: Record<Listing["pet_policy"], { label: string; color: string }> = {
+const PET_POLICY_LABELS: Record<
+  Listing["pet_policy"],
+  { label: string; color: string }
+> = {
   not_allowed: { label: "No Pets", color: "text-error-600" },
   small_only: { label: "Small Pets Only", color: "text-warning-600" },
   all_allowed: { label: "Pets Welcome", color: "text-success-600" },
   case_by_case: { label: "Ask Landlord", color: "text-brand-600" },
 };
 
-const SMOKING_POLICY_LABELS: Record<Listing["smoking_policy"], { label: string; color: string }> = {
+const SMOKING_POLICY_LABELS: Record<
+  Listing["smoking_policy"],
+  { label: string; color: string }
+> = {
   not_allowed: { label: "No Smoking", color: "text-error-600" },
   balcony_only: { label: "Balcony Only", color: "text-warning-600" },
   allowed: { label: "Smoking Allowed", color: "text-success-600" },
@@ -202,7 +227,9 @@ const ISP_LABELS: Record<string, string> = {
 
 export function ListingDetails({ listing, className }: ListingDetailsProps) {
   const [showFullDescription, setShowFullDescription] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["amenities"]));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set(["amenities"]),
+  );
 
   const toggleSection = (section: string) => {
     const newSet = new Set(expandedSections);
@@ -216,14 +243,17 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
 
   // Group amenities by category
   const amenitiesList = listing.amenities || [];
-  const groupedAmenities = amenitiesList.reduce((acc, amenity) => {
-    const config = AMENITY_LABELS[amenity];
-    if (config) {
-      if (!acc[config.category]) acc[config.category] = [];
-      acc[config.category].push({ id: amenity, label: config.label });
-    }
-    return acc;
-  }, {} as Record<string, { id: string; label: string }[]>);
+  const groupedAmenities = amenitiesList.reduce(
+    (acc, amenity) => {
+      const config = AMENITY_LABELS[amenity];
+      if (config) {
+        if (!acc[config.category]) acc[config.category] = [];
+        acc[config.category].push({ id: amenity, label: config.label });
+      }
+      return acc;
+    },
+    {} as Record<string, { id: string; label: string }[]>,
+  );
 
   const FurnishingIcon = FURNISHING_LABELS[listing.furnishing]?.icon || Sofa;
 
@@ -234,24 +264,34 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
         <div className="border border-gray-200 rounded-lg p-3 text-center">
           <Bed className="w-5 h-5 text-gray-400 mx-auto mb-1" />
           <p className="text-xl font-bold text-gray-900">{listing.bedrooms}</p>
-          <p className="text-xs text-gray-500">{listing.bedrooms === 1 ? "Bedroom" : "Bedrooms"}</p>
+          <p className="text-xs text-gray-500">
+            {listing.bedrooms === 1 ? "Bedroom" : "Bedrooms"}
+          </p>
         </div>
         <div className="border border-gray-200 rounded-lg p-3 text-center">
           <Bath className="w-5 h-5 text-gray-400 mx-auto mb-1" />
           <p className="text-xl font-bold text-gray-900">{listing.bathrooms}</p>
-          <p className="text-xs text-gray-500">{listing.bathrooms === 1 ? "Bathroom" : "Bathrooms"}</p>
+          <p className="text-xs text-gray-500">
+            {listing.bathrooms === 1 ? "Bathroom" : "Bathrooms"}
+          </p>
         </div>
         {listing.size_sqft && (
           <div className="border border-gray-200 rounded-lg p-3 text-center">
             <Square className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-            <p className="text-xl font-bold text-gray-900">{listing.size_sqft.toLocaleString()}</p>
-            <p className="text-xs text-gray-500">{listing.size_unit || "sqft"}</p>
+            <p className="text-xl font-bold text-gray-900">
+              {listing.size_sqft.toLocaleString()}
+            </p>
+            <p className="text-xs text-gray-500">
+              {listing.size_unit || "sqft"}
+            </p>
           </div>
         )}
         {listing.floor_level && (
           <div className="border border-gray-200 rounded-lg p-3 text-center">
             <Layers className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-            <p className="text-xl font-bold text-gray-900">{listing.floor_level}</p>
+            <p className="text-xl font-bold text-gray-900">
+              {listing.floor_level}
+            </p>
             <p className="text-xs text-gray-500">Floor</p>
           </div>
         )}
@@ -283,22 +323,32 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
 
       {/* Description */}
       <div>
-        <h3 className="text-base font-semibold text-gray-900 mb-2">About this property</h3>
-        <div className={cn(
-          "text-gray-600 text-sm leading-relaxed whitespace-pre-line",
-          !showFullDescription && listing.description.length > 400 && "line-clamp-4"
-        )}>
+        <h3 className="text-base font-semibold text-gray-900 mb-2">
+          About this property
+        </h3>
+        <div
+          className={cn(
+            "text-gray-600 text-sm leading-relaxed whitespace-pre-line",
+            !showFullDescription &&
+              listing.description.length > 400 &&
+              "line-clamp-4",
+          )}
+        >
           {listing.description}
         </div>
         {listing.description.length > 400 && (
           <button
             onClick={() => setShowFullDescription(!showFullDescription)}
-            className="text-brand-600 hover:text-brand-700 font-medium text-sm mt-2 flex items-center gap-1"
+            className="text-brand-600 hover:text-brand-700 font-medium text-sm mt-2 inline-flex items-center min-h-[44px] gap-1"
           >
             {showFullDescription ? (
-              <>Show less <ChevronUp className="w-4 h-4" /></>
+              <>
+                Show less <ChevronUp className="w-4 h-4" />
+              </>
             ) : (
-              <>Read more <ChevronDown className="w-4 h-4" /></>
+              <>
+                Read more <ChevronDown className="w-4 h-4" />
+              </>
             )}
           </button>
         )}
@@ -320,7 +370,7 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
                   {category.replace("_", " ")}
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {items.map(item => (
+                  {items.map((item) => (
                     <span
                       key={item.id}
                       className="inline-flex items-center text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full"
@@ -353,7 +403,9 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
             <div>
               <p className="font-medium text-gray-900">Water Supply</p>
               <p className="text-sm text-gray-600">
-                {listing.utilities.water ? WATER_LABELS[listing.utilities.water] : "Not specified"}
+                {listing.utilities.water
+                  ? WATER_LABELS[listing.utilities.water]
+                  : "Not specified"}
                 {listing.utilities.has_storage && " • Tank Storage"}
               </p>
             </div>
@@ -367,8 +419,8 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
             <div>
               <p className="font-medium text-gray-900">Backup Power</p>
               <p className="text-sm text-gray-600">
-                {listing.utilities.backup_power 
-                  ? BACKUP_POWER_LABELS[listing.utilities.backup_power] 
+                {listing.utilities.backup_power
+                  ? BACKUP_POWER_LABELS[listing.utilities.backup_power]
                   : "Not specified"}
               </p>
             </div>
@@ -382,12 +434,18 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
             <div>
               <p className="font-medium text-gray-900">Internet</p>
               <p className="text-sm text-gray-600">
-                {listing.utilities.internet_ready ? "Internet Ready" : "Not specified"}
-                {listing.utilities.isps && listing.utilities.isps.length > 0 && (
-                  <span className="block mt-0.5">
-                    Available: {listing.utilities.isps.map(isp => ISP_LABELS[isp] || isp).join(", ")}
-                  </span>
-                )}
+                {listing.utilities.internet_ready
+                  ? "Internet Ready"
+                  : "Not specified"}
+                {listing.utilities.isps &&
+                  listing.utilities.isps.length > 0 && (
+                    <span className="block mt-0.5">
+                      Available:{" "}
+                      {listing.utilities.isps
+                        .map((isp) => ISP_LABELS[isp] || isp)
+                        .join(", ")}
+                    </span>
+                  )}
               </p>
             </div>
           </div>
@@ -401,7 +459,8 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
               <p className="font-medium text-gray-900">Parking</p>
               <p className="text-sm text-gray-600">
                 {PARKING_LABELS[listing.parking]}
-                {listing.parking_spaces > 0 && ` • ${listing.parking_spaces} space${listing.parking_spaces > 1 ? "s" : ""}`}
+                {listing.parking_spaces > 0 &&
+                  ` • ${listing.parking_spaces} space${listing.parking_spaces > 1 ? "s" : ""}`}
               </p>
             </div>
           </div>
@@ -419,7 +478,7 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
           <div className="text-center p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-500 mb-1">Security Guard</p>
             <p className="font-medium text-gray-900">
-              {listing.security_features.guard 
+              {listing.security_features.guard
                 ? SECURITY_GUARD_LABELS[listing.security_features.guard]
                 : "Not specified"}
             </p>
@@ -427,7 +486,7 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
           <div className="text-center p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-500 mb-1">CCTV</p>
             <p className="font-medium text-gray-900">
-              {listing.security_features.cctv 
+              {listing.security_features.cctv
                 ? CCTV_LABELS[listing.security_features.cctv]
                 : "Not specified"}
             </p>
@@ -435,7 +494,7 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
           <div className="text-center p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-500 mb-1">Access Control</p>
             <p className="font-medium text-gray-900">
-              {listing.security_features.access_control 
+              {listing.security_features.access_control
                 ? ACCESS_LABELS[listing.security_features.access_control]
                 : "Not specified"}
             </p>
@@ -452,20 +511,40 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
       >
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-            <PawPrint className={cn("w-5 h-5", PET_POLICY_LABELS[listing.pet_policy].color)} />
+            <PawPrint
+              className={cn(
+                "w-5 h-5",
+                PET_POLICY_LABELS[listing.pet_policy].color,
+              )}
+            />
             <div>
               <p className="text-sm text-gray-500">Pets</p>
-              <p className={cn("font-medium", PET_POLICY_LABELS[listing.pet_policy].color)}>
+              <p
+                className={cn(
+                  "font-medium",
+                  PET_POLICY_LABELS[listing.pet_policy].color,
+                )}
+              >
                 {PET_POLICY_LABELS[listing.pet_policy].label}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-            <Cigarette className={cn("w-5 h-5", SMOKING_POLICY_LABELS[listing.smoking_policy].color)} />
+            <Cigarette
+              className={cn(
+                "w-5 h-5",
+                SMOKING_POLICY_LABELS[listing.smoking_policy].color,
+              )}
+            />
             <div>
               <p className="text-sm text-gray-500">Smoking</p>
-              <p className={cn("font-medium", SMOKING_POLICY_LABELS[listing.smoking_policy].color)}>
+              <p
+                className={cn(
+                  "font-medium",
+                  SMOKING_POLICY_LABELS[listing.smoking_policy].color,
+                )}
+              >
                 {SMOKING_POLICY_LABELS[listing.smoking_policy].label}
               </p>
             </div>
@@ -477,7 +556,8 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
               <p className="text-sm text-gray-500">Lease Term</p>
               <p className="font-medium text-gray-900">
                 {LEASE_TERM_LABELS[listing.lease_term]}
-                {listing.min_lease_months > 1 && ` (Min ${listing.min_lease_months} months)`}
+                {listing.min_lease_months > 1 &&
+                  ` (Min ${listing.min_lease_months} months)`}
               </p>
             </div>
           </div>
@@ -487,7 +567,9 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
             <div>
               <p className="text-sm text-gray-500">Payment Methods</p>
               <p className="font-medium text-gray-900">
-                {listing.payment_methods.map(m => PAYMENT_METHOD_LABELS[m] || m).join(", ") || "Not specified"}
+                {listing.payment_methods
+                  .map((m) => PAYMENT_METHOD_LABELS[m] || m)
+                  .join(", ") || "Not specified"}
               </p>
             </div>
           </div>
@@ -507,7 +589,14 @@ interface CollapsibleSectionProps {
   children: React.ReactNode;
 }
 
-function CollapsibleSection({ title, icon, isOpen, onToggle, count, children }: CollapsibleSectionProps) {
+function CollapsibleSection({
+  title,
+  icon,
+  isOpen,
+  onToggle,
+  count,
+  children,
+}: CollapsibleSectionProps) {
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
       <button

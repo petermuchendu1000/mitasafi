@@ -35,7 +35,9 @@ interface SavedProvidersListProps {
 // COMPONENT
 // =============================================================================
 
-export function SavedProvidersList({ providers: initial }: SavedProvidersListProps) {
+export function SavedProvidersList({
+  providers: initial,
+}: SavedProvidersListProps) {
   const router = useRouter();
   const { success: showSuccess, error: showError } = useToast();
   const [providers, setProviders] = useState(initial);
@@ -58,13 +60,16 @@ export function SavedProvidersList({ providers: initial }: SavedProvidersListPro
           setProviders(previous);
           showError("Remove failed", result.error || "Please try again");
         } else {
-          showSuccess("Removed", `${providerName} removed from your saved list`);
+          showSuccess(
+            "Removed",
+            `${providerName} removed from your saved list`,
+          );
           router.refresh();
         }
         setRemovingId(null);
       });
     },
-    [providers, router, showSuccess, showError]
+    [providers, router, showSuccess, showError],
   );
 
   // ── Empty State ─────────────────────────────────────────────────────────
@@ -79,12 +84,12 @@ export function SavedProvidersList({ providers: initial }: SavedProvidersListPro
           No saved providers yet
         </h2>
         <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
-          When you find providers you like, tap the heart icon to save them
-          here for quick access later.
+          When you find providers you like, tap the heart icon to save them here
+          for quick access later.
         </p>
         <Link
           href="/services/browse"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
+          className="inline-flex items-center gap-2 px-5 min-h-[44px] bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
         >
           <Search className="w-4 h-4" />
           Browse Services

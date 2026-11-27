@@ -204,7 +204,7 @@ export function CustomerSettingsClient({
             <button
               type="button"
               onClick={() => setShowDeleteModal(true)}
-              className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+              className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 min-h-[44px] text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
               Delete
@@ -284,7 +284,7 @@ export function CustomerSettingsClient({
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
                 placeholder="DELETE"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400"
+                className="w-full px-3 min-h-[44px] border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400"
                 autoComplete="off"
                 spellCheck={false}
               />
@@ -295,7 +295,7 @@ export function CustomerSettingsClient({
                 type="button"
                 onClick={closeDeleteModal}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 min-h-[44px] text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -303,7 +303,7 @@ export function CustomerSettingsClient({
                 type="button"
                 onClick={handleDeleteRequest}
                 disabled={confirmText !== "DELETE" || isDeleting}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 min-h-[44px] text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
                 Request Deletion
@@ -361,6 +361,10 @@ function NotificationToggle({
             {disabledReason}
           </span>
         )}
+        {/* The button is a 44px box; the pill inside it stays 24px tall.
+            Putting the height on the button itself would have turned the
+            switch into a lozenge, and leaving it at 24px left a thumb
+            target the size of a shirt button. */}
         <button
           id={toggleId}
           type="button"
@@ -370,19 +374,26 @@ function NotificationToggle({
           onClick={onToggle}
           disabled={disabled}
           className={`
-            relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-            focus:outline-none focus:ring-4 focus:ring-brand-100
-            ${checked ? "bg-brand-600" : "bg-gray-200"}
+            grid min-h-[44px] min-w-[44px] place-items-center rounded-lg
+            focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-100
             ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
           `}
         >
           <span
+            aria-hidden="true"
             className={`
-              inline-block h-5 w-5 rounded-full bg-white border border-gray-300
-              shadow-sm transition-transform
-              ${checked ? "translate-x-5" : "translate-x-0.5"}
+              relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+              ${checked ? "bg-brand-600" : "bg-gray-200"}
             `}
-          />
+          >
+            <span
+              className={`
+                inline-block h-5 w-5 rounded-full bg-white border border-gray-300
+                shadow-sm transition-transform
+                ${checked ? "translate-x-5" : "translate-x-0.5"}
+              `}
+            />
+          </span>
         </button>
       </div>
     </div>

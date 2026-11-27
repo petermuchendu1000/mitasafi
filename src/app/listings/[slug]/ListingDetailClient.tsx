@@ -237,7 +237,7 @@ export function ListingDetailClient({
               <div className="flex items-center gap-4">
                 <button
                   onClick={handleBack}
-                  className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="min-w-[44px] min-h-[44px] -ml-2 grid place-items-center hover:bg-gray-100 rounded-full transition-colors"
                   aria-label="Go back"
                 >
                   <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -245,7 +245,7 @@ export function ListingDetailClient({
                 <nav className="hidden sm:flex items-center gap-2 text-sm text-gray-500">
                   <button
                     onClick={() => router.replace("/properties")}
-                    className="hover:text-brand-600 transition-colors"
+                    className="inline-flex items-center min-h-[44px] hover:text-brand-600 transition-colors"
                   >
                     Listings
                   </button>
@@ -256,7 +256,7 @@ export function ListingDetailClient({
                         `/properties?area=${encodeURIComponent(listing.area)}`,
                       )
                     }
-                    className="hover:text-brand-600 transition-colors"
+                    className="inline-flex items-center min-h-[44px] hover:text-brand-600 transition-colors"
                   >
                     {listing.area}
                   </button>
@@ -270,7 +270,7 @@ export function ListingDetailClient({
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleShare}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="min-w-[44px] min-h-[44px] grid place-items-center hover:bg-gray-100 rounded-full transition-colors"
                   aria-label="Share"
                 >
                   <Share2 className="w-5 h-5 text-gray-600" />
@@ -278,7 +278,7 @@ export function ListingDetailClient({
                 <button
                   onClick={handleSave}
                   className={cn(
-                    "p-2 rounded-full transition-colors",
+                    "min-w-[44px] min-h-[44px] grid place-items-center rounded-full transition-colors",
                     isSaved
                       ? "bg-error-50 text-error-500"
                       : "hover:bg-gray-100 text-gray-600",
@@ -463,9 +463,13 @@ export function ListingDetailClient({
 
         {/* Mobile Sticky CTA */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 lg:hidden z-40">
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <p className="text-xl font-bold text-gray-900">
+          {/* This row came to 412px in a 360px viewport: a price, two
+              labelled buttons and two icons, none of which could shrink.
+              The price is allowed to truncate, the buttons lose half their
+              side padding below sm:, and the icons are hidden there. */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-lg sm:text-xl font-bold text-gray-900 truncate">
                 {new Intl.NumberFormat("en-KE", {
                   style: "currency",
                   currency: priceBreakdown.currency,
@@ -488,27 +492,27 @@ export function ListingDetailClient({
             {isUnavailable ? (
               <button
                 onClick={() => setUnavailableModalOpen(true)}
-                className="bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 px-6 rounded-xl flex items-center gap-2 transition-all shadow-md"
+                className="shrink-0 bg-gray-900 hover:bg-gray-800 text-white font-semibold min-h-[44px] px-4 sm:px-6 rounded-xl flex items-center gap-2 transition-all shadow-md"
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-5 h-5 hidden sm:block" />
                 Notify Me
               </button>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 {/* Contact asks a question; Apply makes an offer. They are
                     different acts, so they are different buttons. */}
                 <button
                   onClick={() => setInquiryOpenedByUser(true)}
-                  className="bg-white hover:bg-gray-50 text-gray-800 font-semibold py-3 px-6 rounded-xl flex items-center gap-2 transition-all border border-gray-300"
+                  className="bg-white hover:bg-gray-50 text-gray-800 font-semibold min-h-[44px] px-4 sm:px-6 rounded-xl flex items-center gap-2 transition-all border border-gray-300"
                 >
-                  <MessageCircle className="w-5 h-5" />
+                  <MessageCircle className="w-5 h-5 hidden sm:block" />
                   Contact
                 </button>
                 <button
                   onClick={() => setApplyOpen(true)}
-                  className="bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 text-white font-semibold py-3 px-6 rounded-xl flex items-center gap-2 transition-all shadow-md"
+                  className="bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 text-white font-semibold min-h-[44px] px-4 sm:px-6 rounded-xl flex items-center gap-2 transition-all shadow-md"
                 >
-                  <FileText className="w-5 h-5" />
+                  <FileText className="w-5 h-5 hidden sm:block" />
                   Apply
                 </button>
               </div>

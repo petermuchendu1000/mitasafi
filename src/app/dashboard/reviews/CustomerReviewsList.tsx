@@ -84,11 +84,12 @@ export function CustomerReviewsList({
           No reviews yet
         </h3>
         <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
-          After completing a booking, you can leave a review to help others find great service providers.
+          After completing a booking, you can leave a review to help others find
+          great service providers.
         </p>
         <Link
           href="/dashboard/bookings"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+          className="inline-flex items-center gap-2 px-4 min-h-[44px] bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
         >
           View My Bookings
         </Link>
@@ -108,8 +109,8 @@ export function CustomerReviewsList({
         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
           <p className="text-sm text-gray-500">
             Showing {(pagination.page - 1) * pagination.pageSize + 1}–
-            {Math.min(pagination.page * pagination.pageSize, pagination.total)} of{" "}
-            {pagination.total} review{pagination.total !== 1 ? "s" : ""}
+            {Math.min(pagination.page * pagination.pageSize, pagination.total)}{" "}
+            of {pagination.total} review{pagination.total !== 1 ? "s" : ""}
           </p>
           <div className="flex items-center gap-2">
             {pagination.page > 1 && (
@@ -184,7 +185,9 @@ function ReviewCard({ review }: { review: CustomerReviewItem }) {
         </div>
 
         <div className="flex-shrink-0 text-right">
-          <p className="text-xs text-gray-400">{formatDate(review.created_at)}</p>
+          <p className="text-xs text-gray-400">
+            {formatDate(review.created_at)}
+          </p>
           <Link
             href={`/dashboard/bookings/${review.booking_id}`}
             className="text-xs text-teal-600 hover:underline"
@@ -228,7 +231,8 @@ function ReviewCard({ review }: { review: CustomerReviewItem }) {
         <div className="flex items-center gap-1.5 mb-3">
           <ImageIcon className="h-3.5 w-3.5 text-gray-400" />
           <span className="text-xs text-gray-500">
-            {review.review_photos.length} photo{review.review_photos.length > 1 ? "s" : ""}
+            {review.review_photos.length} photo
+            {review.review_photos.length > 1 ? "s" : ""}
           </span>
         </div>
       )}

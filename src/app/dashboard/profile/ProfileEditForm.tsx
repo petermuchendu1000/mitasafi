@@ -26,10 +26,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useToast } from "@/components/ui";
-import {
-  updateCustomerProfile,
-  uploadCustomerAvatar,
-} from "./actions";
+import { updateCustomerProfile, uploadCustomerAvatar } from "./actions";
 
 // =============================================================================
 // TYPES
@@ -126,7 +123,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     },
-    [router, showSuccess, showError]
+    [router, showSuccess, showError],
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -162,9 +159,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                 />
               ) : (
                 <span className="text-brand-700 font-bold text-2xl">
-                  {(profile.full_name ?? profile.email)
-                    .charAt(0)
-                    .toUpperCase()}
+                  {(profile.full_name ?? profile.email).charAt(0).toUpperCase()}
                 </span>
               )}
             </div>
@@ -200,7 +195,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="mt-2 text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors disabled:opacity-50"
+              className="mt-2 inline-flex items-center min-h-[44px] text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors disabled:opacity-50"
             >
               {isUploading ? "Uploading..." : "Change photo"}
             </button>
@@ -226,7 +221,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Enter your full name"
             maxLength={100}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
+            className="w-full px-3 min-h-[44px] border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
           />
           {fullName.trim().length > 0 && fullName.trim().length < 2 && (
             <p className="text-xs text-red-500 mt-1">
@@ -249,7 +244,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
             type="email"
             value={profile.email}
             readOnly
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-500 bg-gray-50 cursor-not-allowed"
+            className="w-full px-3 min-h-[44px] border border-gray-200 rounded-lg text-sm text-gray-500 bg-gray-50 cursor-not-allowed"
           />
           <p className="text-xs text-gray-400 mt-1">
             Email cannot be changed. Contact support if needed.
@@ -271,7 +266,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+254712345678"
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
+            className="w-full px-3 min-h-[44px] border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
           />
           <p className="text-xs text-gray-400 mt-1">
             Kenyan format: +254 followed by 9 digits
@@ -293,7 +288,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
           type="button"
           onClick={handleSave}
           disabled={!hasChanges || isPending}
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 px-6 min-h-[44px] bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPending ? (
             <>

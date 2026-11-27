@@ -1,6 +1,6 @@
 /**
  * Notifications Page Client Component
- * 
+ *
  * Client-side interactivity for the notifications page.
  */
 
@@ -9,16 +9,16 @@
 import { useState } from "react";
 import { useNotifications, type Notification } from "@/hooks/useNotifications";
 import { formatDistanceToNow } from "date-fns";
-import { 
-  Bell, 
+import {
+  Bell,
   Calendar,
-  Check, 
+  Check,
   CheckCheck,
   CreditCard,
   DollarSign,
   FileText,
-  Trash2, 
-  MessageSquare, 
+  Trash2,
+  MessageSquare,
   Home,
   AlertCircle,
   Loader2,
@@ -139,57 +139,66 @@ function getNotificationLink(notification: Notification): string | null {
   }
 }
 
-export function NotificationsPageClient({ initialNotifications }: NotificationsPageClientProps) {
-  const { 
-    notifications: realtimeNotifications, 
-    unreadCount, 
-    isLoading, 
+export function NotificationsPageClient({
+  initialNotifications,
+}: NotificationsPageClientProps) {
+  const {
+    notifications: realtimeNotifications,
+    unreadCount,
+    isLoading,
     isConnected,
-    markAsRead, 
-    markAllAsRead, 
-    deleteNotification 
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
   } = useNotifications();
-  
+
   // Use realtime notifications if available, otherwise initial
-  const notifications = realtimeNotifications.length > 0 ? realtimeNotifications : initialNotifications;
-  
-  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
-  
+  const notifications =
+    realtimeNotifications.length > 0
+      ? realtimeNotifications
+      : initialNotifications;
+
+  const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
+
   // Filter notifications
-  const filteredNotifications = notifications.filter(n => {
-    if (filter === 'unread') return !n.read_at;
-    if (filter === 'read') return !!n.read_at;
+  const filteredNotifications = notifications.filter((n) => {
+    if (filter === "unread") return !n.read_at;
+    if (filter === "read") return !!n.read_at;
     return true;
   });
-  
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Notifications</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Notifications
+          </h1>
           <p className="text-sm text-gray-500 mt-1">
-            {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
+            {unreadCount > 0 ? `${unreadCount} unread` : "All caught up!"}
           </p>
         </div>
-        
+
         <div className="flex items-center gap-3">
           {/* Connection indicator */}
-          <span 
+          <span
             className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${
-              isConnected 
-                ? "bg-green-100 text-green-700" 
+              isConnected
+                ? "bg-green-100 text-green-700"
                 : "bg-yellow-100 text-yellow-700"
             }`}
           >
-            <span className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-yellow-500"}`} />
+            <span
+              className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-yellow-500"}`}
+            />
             {isConnected ? "Live" : "Connecting..."}
           </span>
-          
+
           {unreadCount > 0 && (
             <button
               onClick={() => markAllAsRead()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 min-h-[44px] text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
             >
               <CheckCheck className="h-4 w-4" />
               Mark all as read
@@ -197,14 +206,14 @@ export function NotificationsPageClient({ initialNotifications }: NotificationsP
           )}
         </div>
       </div>
-      
+
       {/* Filter tabs */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-6 w-fit">
-        {(['all', 'unread', 'read'] as const).map((f) => (
+        {(["all", "unread", "read"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            className={`px-4 min-h-[44px] text-sm font-medium rounded-md transition-colors ${
               filter === f
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-600 hover:text-gray-900"
@@ -214,7 +223,7 @@ export function NotificationsPageClient({ initialNotifications }: NotificationsP
           </button>
         ))}
       </div>
-      
+
       {/* Notifications list */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {isLoading && notifications.length === 0 ? (
@@ -225,12 +234,15 @@ export function NotificationsPageClient({ initialNotifications }: NotificationsP
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             <Bell className="h-12 w-12 text-gray-300 mb-3" />
             <p className="text-gray-500 font-medium">
-              {filter === 'unread' ? 'No unread notifications' : 
-               filter === 'read' ? 'No read notifications' : 
-               'No notifications yet'}
+              {filter === "unread"
+                ? "No unread notifications"
+                : filter === "read"
+                  ? "No read notifications"
+                  : "No notifications yet"}
             </p>
             <p className="text-gray-400 text-sm mt-1">
-              {filter === 'all' && "You'll see updates about bookings, messages, payments, and more here"}
+              {filter === "all" &&
+                "You'll see updates about bookings, messages, payments, and more here"}
             </p>
           </div>
         ) : (
@@ -238,7 +250,7 @@ export function NotificationsPageClient({ initialNotifications }: NotificationsP
             {filteredNotifications.map((notification) => {
               const link = getNotificationLink(notification);
               const isUnread = !notification.read_at;
-              
+
               const content = (
                 <div
                   className={`flex gap-4 px-6 py-4 hover:bg-gray-50 transition-colors ${
@@ -247,14 +259,18 @@ export function NotificationsPageClient({ initialNotifications }: NotificationsP
                 >
                   {/* Icon */}
                   <div className="flex-shrink-0 mt-0.5">
-                    <div className={`p-2 rounded-full ${isUnread ? "bg-white shadow-sm" : "bg-gray-100"}`}>
+                    <div
+                      className={`p-2 rounded-full ${isUnread ? "bg-white shadow-sm" : "bg-gray-100"}`}
+                    >
                       {getNotificationIcon(notification.type)}
                     </div>
                   </div>
-                  
+
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${isUnread ? "font-semibold text-gray-900" : "text-gray-700"}`}>
+                    <p
+                      className={`text-sm ${isUnread ? "font-semibold text-gray-900" : "text-gray-700"}`}
+                    >
                       {notification.title}
                     </p>
                     {notification.message && (
@@ -263,10 +279,12 @@ export function NotificationsPageClient({ initialNotifications }: NotificationsP
                       </p>
                     )}
                     <p className="text-xs text-gray-400 mt-2">
-                      {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(notification.created_at), {
+                        addSuffix: true,
+                      })}
                     </p>
                   </div>
-                  
+
                   {/* Actions */}
                   <div className="flex-shrink-0 flex items-start gap-2">
                     {isUnread && (
@@ -296,12 +314,12 @@ export function NotificationsPageClient({ initialNotifications }: NotificationsP
                   </div>
                 </div>
               );
-              
+
               return (
                 <li key={notification.id}>
                   {link ? (
-                    <Link 
-                      href={link} 
+                    <Link
+                      href={link}
                       onClick={() => {
                         if (isUnread) markAsRead(notification.id);
                       }}

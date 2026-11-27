@@ -107,7 +107,10 @@ export default async function SavedSearchesPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link href="/dashboard" className="flex items-center gap-2">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 min-h-[44px]"
+            >
               <span className="text-xl font-bold text-brand-600">MitaSafi</span>
             </Link>
 

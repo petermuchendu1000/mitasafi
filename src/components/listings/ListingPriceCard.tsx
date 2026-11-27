@@ -140,7 +140,7 @@ export function ListingPriceCard({
       <div className="p-5 bg-gray-50 border-b border-gray-100">
         <button
           onClick={() => setShowMoveInDetails(!showMoveInDetails)}
-          className="w-full flex items-center justify-between"
+          className="w-full flex items-center justify-between min-h-[44px]"
         >
           <div className="flex items-center gap-2">
             <span className="font-medium text-gray-700">Move-in cost</span>

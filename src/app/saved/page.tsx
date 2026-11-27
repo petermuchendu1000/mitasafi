@@ -470,7 +470,7 @@ function EmptyState() {
       </p>
       <Link
         href="/properties"
-        className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-lg transition-colors"
+        className="inline-flex items-center gap-2 px-5 min-h-[44px] bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-lg transition-colors"
       >
         <Search className="w-4 h-4" />
         Browse Properties
