@@ -46,6 +46,9 @@ const CODE = Object.fromEntries(
   ]),
 ) as Record<Name, string>;
 
+const galleryStyles = fs.readFileSync(path.join(process.cwd(), "src/components/listings/listing-gallery.module.css"), "utf8");
+const detailStyles = fs.readFileSync(path.join(process.cwd(), "src/app/listings/[slug]/listing-detail.module.css"), "utf8");
+
 /** Padding that cannot reach 44px. py-3 is 44 around text-sm, 48 around text-base. */
 const TOO_SHORT = /\bpy-(0|0\.5|1|1\.5|2|2\.5)\b/;
 
@@ -70,54 +73,29 @@ describe("tenant pages and the listing detail", () => {
   );
 
   describe("the photo carousel", () => {
-    it("gives each dot a 44px box while the dot stays 8px", () => {
-      // These were 8px targets: the smallest control in the product, on
-      // the thing that moves the photos. The button is the box and the
-      // dot is a span inside it.
-      expect(CODE.gallery).toMatch(
-        /className="min-w-\[44px\] min-h-\[44px\] grid place-items-center"/,
-      );
-      // The visual is still a dot, not a 44px blob.
-      expect(CODE.gallery).toMatch(/"h-2 rounded-full transition-all"/);
-      expect(CODE.gallery).not.toMatch(/"w-2 h-2 rounded-full transition-all"/);
+    it("gives the photo viewer thumbnails at least a 44px target", () => {
+      expect(galleryStyles).toMatch(/\.filmstrip button \{ min-height: 44px/);
+      expect(galleryStyles).toMatch(/\.filmstrip button \{[^}]*flex: 0 0 66px/);
     });
 
-    it("says which dot is the current one", () => {
-      expect(CODE.gallery).toMatch(/aria-current=/);
+    it("identifies the current thumbnail", () => {
+      expect(CODE.gallery).toMatch(/aria-current=\{viewerIndex === index/);
     });
 
     it("sizes BOTH arrows and the expand control", () => {
-      // Counted, not merely found. The first version asserted the class
-      // existed somewhere in the file, and a mutant that shrank only the
-      // left arrow passed because the right one still carried it.
-      expect(CODE.gallery.match(/w-11 h-11 bg-white\/90/g)).toHaveLength(2);
-      expect(CODE.gallery).not.toMatch(/w-10 h-10 bg-white\/90/);
-      expect(CODE.gallery).toMatch(
-        /min-w-\[44px\] min-h-\[44px\] grid place-items-center rounded-full backdrop-blur-sm/,
-      );
+      expect(CODE.gallery.match(/className=\{styles\.photoControl\}/g)).toHaveLength(2);
+      expect(CODE.gallery).toContain("className={styles.viewPhotos}");
+      expect(galleryStyles).toMatch(/\.photoControl, \.viewPhotos,[^{]*\{ min-height: 44px/);
+      expect(galleryStyles).toMatch(/\.photoControl, \.viewerControl \{[^}]*min-width: 44px/);
     });
   });
 
   describe("the listing's sticky bottom bar", () => {
     it("lets the price shrink and the buttons stay put", () => {
-      // The row came to 412px in a 360px viewport: a price, two labelled
-      // buttons and two icons, none of which could shrink.
-      const bar = CODE.listingDetail.slice(
-        CODE.listingDetail.indexOf("fixed bottom-0"),
-      );
-      expect(bar).toMatch(/flex-1 min-w-0/);
-      expect(bar).toMatch(
-        /text-lg sm:text-xl font-bold text-gray-900 truncate/,
-      );
-
-      // Counted, not merely found. Three buttons live in this bar, and a
-      // mutant that put px-6 back on one of them passed an existence
-      // check because the other two still carried px-4 sm:px-6.
-      expect(bar.match(/px-4 sm:px-6/g)).toHaveLength(3);
-      expect(bar).not.toMatch(/py-3 px-6/);
-
-      // The icons are what pushed it over; all three hide on a phone.
-      expect(bar.match(/w-5 h-5 hidden sm:block/g)).toHaveLength(3);
+      expect(CODE.listingDetail).toContain("className={styles.mobileBar}");
+      expect(detailStyles).toMatch(/\.mobilePrice \{[^}]*flex: 1;[^}]*min-width: 0/);
+      expect(detailStyles).toMatch(/\.mobilePrice strong \{[^}]*overflow-wrap: anywhere/);
+      expect(detailStyles).toMatch(/\.mobileBar button \{[^}]*flex: none;[^}]*min-height: 44px/);
     });
   });
 
