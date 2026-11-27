@@ -59,6 +59,7 @@
 }
 .mobileMenu a { display: flex; align-items: center; min-height: 45px; padding: 7px 10px; font-weight: 560; }
 .mobileMenu a:hover { color: var(--green); text-decoration: underline; text-underline-offset: 4px; }
+.nav a[aria-current="page"] { color: var(--forest); text-decoration: underline; text-underline-offset: 6px; }
 .mobileMenu > div { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
 .mobileMenu > div a:last-child { color: #fff; background: var(--forest); border-radius: 7px; }
 

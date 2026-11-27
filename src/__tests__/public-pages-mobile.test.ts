@@ -160,10 +160,6 @@ describe("public pages, mobile", () => {
       ],
       ["footer", "inline-flex items-center gap-2 min-h-[44px] text-gray-400"],
       [
-        "searchFilters",
-        "flex-shrink-0 px-3 min-h-[44px] rounded-full text-sm font-medium transition-all",
-      ],
-      [
         "listingCard",
         "min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full",
       ],
@@ -176,6 +172,14 @@ describe("public pages, mobile", () => {
 
     it.each(SIZED)("%s keeps %s", (name, snippet) => {
       expect(CODE[name]).toContain(snippet);
+    });
+
+    it("keeps the rental filter toolbar and dialog controls touch-sized", () => {
+      const styles = fs.readFileSync(path.join(process.cwd(), "src/app/properties/rentals.module.css"), "utf8");
+      expect(styles).toMatch(/\.filterButton\s*\{[^}]*min-height:\s*48px/);
+      expect(styles).toMatch(/\.select > select\s*\{[^}]*min-height:\s*46px/);
+      expect(styles).toMatch(/\.dialogClose,[^{]*\{[^}]*min-height:\s*44px/);
+      expect(styles).toMatch(/\.dialogClose\s*\{[^}]*min-width:\s*44px/);
     });
   });
 

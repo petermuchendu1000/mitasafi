@@ -48,7 +48,6 @@ import {
   STATUS_BADGE_CONFIG,
   formatCurrency,
   getRelativeTime,
-  generateListingSlug,
 } from "./listing-types";
 
 // =============================================================================
@@ -327,7 +326,7 @@ export function ListingCard({
   const CardContent = (
     <>
       {/* Image - Clean, minimal overlays */}
-      <div className="relative aspect-[16/10] bg-gray-100 rounded-t-lg overflow-hidden">
+      <div data-part="photo" className="relative aspect-[16/10] bg-gray-100 rounded-t-lg overflow-hidden">
         {coverImage && !imageError ? (
           <Image
             src={coverImage}
@@ -360,28 +359,12 @@ export function ListingCard({
             </span>
           </div>
         )}
-
-        {/* Save Button - Top Right (public only) */}
-        {variant === "public" && (
-          <button
-            onClick={handleSave}
-            className={cn(
-              "absolute top-2 right-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all z-10",
-              isSaved
-                ? "bg-orange-500 text-white shadow-md"
-                : "bg-white/90 text-gray-500 hover:bg-white hover:text-orange-500 shadow-sm",
-            )}
-            aria-label={isSaved ? "Remove from saved" : "Save property"}
-          >
-            <Heart className={cn("w-4 h-4", isSaved && "fill-current")} />
-          </button>
-        )}
       </div>
 
       {/* Content - Organized hierarchy */}
-      <div className="p-4 overflow-hidden">
+      <div data-part="content" className="p-4 overflow-hidden">
         {/* Row 1: Price + Status/Verified */}
-        <div className="flex items-center justify-between mb-2">
+        <div data-part="amount" className="flex items-center justify-between mb-2">
           <span
             className={cn(
               "text-lg font-bold",
@@ -436,7 +419,7 @@ export function ListingCard({
         </h3>
 
         {/* Row 3: Location */}
-        <p className="text-xs text-gray-500 flex items-center gap-1 mb-2">
+        <p data-part="location" className="text-xs text-gray-500 flex items-center gap-1 mb-2">
           <MapPin className="w-3 h-3 flex-shrink-0" />
           <span className="truncate">
             {listing.area}
@@ -445,7 +428,7 @@ export function ListingCard({
         </p>
 
         {/* Row 4: Type + Metrics */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 mb-2">
+        <div data-part="details" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 mb-2">
           <span className="font-medium flex-shrink-0">{propertyTypeLabel}</span>
           <span className="text-gray-300">•</span>
           <div className="flex-1 min-w-0">
@@ -454,7 +437,7 @@ export function ListingCard({
         </div>
 
         {/* Row 5: Stats + Time */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+        <div data-part="activity" className="flex items-center justify-between pt-2 border-t border-gray-100">
           <div className="flex items-center gap-3 text-xs text-gray-400">
             {(variant === "landlord" || listing.views_count > 0) && (
               <span className="flex items-center gap-1">
@@ -469,9 +452,11 @@ export function ListingCard({
               </span>
             )}
           </div>
-          <span className="text-xs text-gray-400" suppressHydrationWarning>
-            {getRelativeTime(listing.published_at || listing.created_at)}
-          </span>
+          {(listing.published_at || listing.created_at) && (
+            <span className="text-xs text-gray-400" suppressHydrationWarning>
+              {getRelativeTime(listing.published_at || listing.created_at)}
+            </span>
+          )}
         </div>
       </div>
     </>
@@ -492,6 +477,23 @@ export function ListingCard({
       <Link href={linkHref} target={linkTarget} className="block">
         {CardContent}
       </Link>
+      {variant === "public" && (
+        <button
+          type="button"
+          data-part="save"
+          onClick={handleSave}
+          className={cn(
+            "absolute top-2 right-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all z-10",
+            isSaved
+              ? "bg-orange-500 text-white shadow-md"
+              : "bg-white/90 text-gray-500 hover:bg-white hover:text-orange-500 shadow-sm",
+          )}
+          aria-pressed={isSaved}
+          aria-label={isSaved ? "Remove from saved" : "Save property"}
+        >
+          <Heart className={cn("w-4 h-4", isSaved && "fill-current")} />
+        </button>
+      )}
     </div>
   );
 }
