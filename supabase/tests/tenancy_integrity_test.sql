@@ -25,6 +25,7 @@ DECLARE
   v_b2 uuid := gen_random_uuid();
   v_u1 uuid := gen_random_uuid();
   v_u2 uuid := gen_random_uuid();
+  v_u3 uuid := gen_random_uuid();
   v_res jsonb;
   v_n   int;
   v_txt text;
@@ -193,6 +194,54 @@ BEGIN
     pass:=pass+1; rep:=rep||'PASS T9  invoker-rights and callable by authenticated'||E'\n';
   ELSE
     fail:=fail+1; rep:=rep||'FAIL T9  create_tenancy is a definer, or is not callable'||E'\n';
+  END IF;
+
+  -- ===== T10: it works for a REAL authenticated client ====================
+  -- Every assertion above sets request.jwt.claim.sub so auth.uid() resolves,
+  -- but none of them changes the current ROLE, so they all run with postgres
+  -- privileges. auth.uid() and the current role are different things, and a
+  -- suite that sets only the first cannot see a privilege failure at all.
+  --
+  -- That blind spot nearly shipped a broken production. 20260364000000 revokes
+  -- table-level SELECT on tenants and grants 20 of 23 columns back by name;
+  -- create_tenancy is invoker-rights by design (T9), and its tenant insert
+  -- ended in RETURNING *, which needs SELECT on every column returned. As
+  -- postgres that is invisible. As authenticated it is
+  --     ERROR: permission denied for table tenants
+  -- and no landlord can add a tenant. 20260365000000 returns the id instead.
+  INSERT INTO public.units (id, landlord_id, building_id, unit_number, unit_type, monthly_rent)
+  VALUES (v_u3, v_l1, v_b1, 'C300', 'studio', 40000);
+
+  PERFORM set_config('request.jwt.claim.sub', v_l1::text, true);
+  ok := false;
+  v_txt := NULL;
+  BEGIN
+    EXECUTE 'SET LOCAL ROLE authenticated';
+    v_res := public.create_tenancy(v_u3,
+      '{"full_name":"Role Probe","phone":"+254700000005"}'::jsonb,
+      jsonb_build_object('start_date','2026-04-01','monthly_rent',40000,'status','active'));
+    ok := (v_res ? 'tenant_id') AND (v_res ? 'lease_id');
+  EXCEPTION WHEN OTHERS THEN ok := false; v_txt := SQLERRM;
+  END;
+  EXECUTE 'RESET ROLE';
+
+  IF ok THEN
+    pass:=pass+1; rep:=rep||'PASS T10 create_tenancy works as the real authenticated role'||E'\n';
+  ELSE
+    fail:=fail+1; rep:=rep||'FAIL T10 create_tenancy fails for a real client: '||coalesce(v_txt,'no result')||E'\n';
+  END IF;
+
+  -- ===== T11: and the shape that caused it cannot come back ===============
+  -- Structural, so it fails even on a database where Part B is not applied and
+  -- T10 would therefore pass by luck.
+  IF EXISTS (
+       SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname='public' AND p.proname='create_tenancy'
+         AND pg_get_functiondef(p.oid) LIKE '%INSERT INTO public.tenants%RETURNING id%'
+     ) THEN
+    pass:=pass+1; rep:=rep||'PASS T11 the tenants insert returns id, not *'||E'\n';
+  ELSE
+    fail:=fail+1; rep:=rep||'FAIL T11 the tenants insert uses RETURNING *, which Part B forbids'||E'\n';
   END IF;
 
   RAISE EXCEPTION E'TENANCY_RESULT pass=% fail=%\n%', pass, fail, rep;
