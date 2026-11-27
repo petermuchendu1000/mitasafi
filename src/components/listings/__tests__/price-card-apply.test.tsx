@@ -14,7 +14,7 @@
 
 import { render, screen } from "@testing-library/react";
 import { ListingPriceCard } from "../ListingPriceCard";
-import type { PriceBreakdown } from "@/lib/listings/types";
+import { calculatePriceBreakdown, type PriceBreakdown } from "@/lib/listings/types";
 
 // The real PriceBreakdown, uncast. The first version of this fixture invented
 // a shape and hid the mismatch behind `as unknown as`, which turned a type
@@ -52,4 +52,14 @@ it("offers Apply in the price card, which both columns render", () => {
 it("offers no Apply button when the listing cannot take one", () => {
   render(<ListingPriceCard {...base} />);
   expect(screen.queryByRole("button", { name: "Apply" })).toBeNull();
+});
+
+it("uses the listed zero deposit in the move-in total", () => {
+  const breakdown = calculatePriceBreakdown({
+    rent_amount: 45000, service_charge: 2000, deposit_amount: 0, deposit_months: 0,
+    currency: "KES", rent_includes: null, rent_negotiable: false,
+  });
+
+  expect(breakdown.depositAmount).toBe(0);
+  expect(breakdown.moveInCost).toBe(47000);
 });

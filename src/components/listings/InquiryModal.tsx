@@ -16,6 +16,7 @@
 import {
   useState,
   useEffect,
+  useId,
   useRef,
   type Dispatch,
   type SetStateAction,
@@ -36,6 +37,7 @@ import { cn } from "@/lib/utils";
 
 interface InquiryModalProps {
   isOpen: boolean;
+  preferViewing?: boolean;
   onClose: () => void;
   listingId: string;
   listingTitle: string;
@@ -144,6 +146,7 @@ export function InquiryModal(props: InquiryModalProps) {
 
 function InquiryModalContent({
   onClose,
+  preferViewing = false,
   listingId,
   listingTitle,
   landlordId,
@@ -163,6 +166,8 @@ function InquiryModalContent({
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [requestViewing, setRequestViewing] = useState(() => preferViewing || formData.requestViewing);
+  const titleId = useId();
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const messageRef = useRef<HTMLTextAreaElement>(null);
@@ -233,11 +238,11 @@ function InquiryModalContent({
         phone: formattedPhone,
         // Message
         message: formData.message.trim(),
-        request_viewing: formData.requestViewing,
-        preferred_viewing_time: formData.requestViewing
+        request_viewing: requestViewing,
+        preferred_viewing_time: requestViewing
           ? formData.preferredTime
           : null,
-        preferred_viewing_day: formData.requestViewing
+        preferred_viewing_day: requestViewing
           ? formData.preferredDay
           : null,
         // User ID if logged in
@@ -275,30 +280,32 @@ function InquiryModalContent({
       />
 
       {/* Modal */}
-      <div className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden shadow-xl animate-fade-in-up">
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId}
+        className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90dvh] overflow-hidden animate-fade-in-up"
+        onKeyDown={(event) => { if (event.key === "Escape") onClose(); }}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center">
-              <MessageCircle className="w-5 h-5 text-brand-600" />
-            </div>
+            <MessageCircle className="w-5 h-5 text-brand-700 shrink-0" aria-hidden="true" />
             <div>
-              <h2 className="font-semibold text-gray-900">Contact Landlord</h2>
+              <h2 id={titleId} className="font-semibold text-gray-900">Contact landlord</h2>
               <p className="text-sm text-gray-500 truncate max-w-[200px]">
                 {listingTitle}
               </p>
             </div>
           </div>
           <button
+            type="button"
+            aria-label="Close contact form"
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+            className="min-w-11 min-h-11 rounded-lg hover:bg-gray-100 grid place-items-center transition-colors"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div className="p-4 overflow-y-auto overscroll-contain max-h-[calc(90dvh-78px)]">
           {isSuccess ? (
             /* Success State */
             <div className="text-center py-8">
@@ -492,13 +499,12 @@ function InquiryModalContent({
                 <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
                   <input
                     type="checkbox"
-                    checked={formData.requestViewing}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        requestViewing: e.target.checked,
-                      }))
-                    }
+                    checked={requestViewing}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setRequestViewing(checked);
+                      setFormData((prev) => ({ ...prev, requestViewing: checked }));
+                    }}
                     className="mt-0.5 w-5 h-5 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
                   />
                   <div>
@@ -513,13 +519,14 @@ function InquiryModalContent({
                 </label>
 
                 {/* Viewing Preferences */}
-                {formData.requestViewing && (
+                {requestViewing && (
                   <div className="pl-8 grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <label htmlFor={`${titleId}-viewing-time`} className="block text-xs font-medium text-gray-500 mb-1">
                         Preferred Time
                       </label>
                       <select
+                        id={`${titleId}-viewing-time`}
                         value={formData.preferredTime}
                         onChange={(e) =>
                           setFormData((prev) => ({
@@ -535,10 +542,11 @@ function InquiryModalContent({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <label htmlFor={`${titleId}-viewing-day`} className="block text-xs font-medium text-gray-500 mb-1">
                         Preferred Day
                       </label>
                       <select
+                        id={`${titleId}-viewing-day`}
                         value={formData.preferredDay}
                         onChange={(e) =>
                           setFormData((prev) => ({
@@ -569,7 +577,7 @@ function InquiryModalContent({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 disabled:from-gray-300 disabled:to-gray-400 text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2 transition-all"
+                className="w-full bg-[#103f34] hover:bg-[#15604e] disabled:opacity-60 text-white font-semibold min-h-11 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
               >
                 {isSubmitting ? (
                   <>

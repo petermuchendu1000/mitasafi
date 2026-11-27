@@ -29,9 +29,9 @@ jest.mock("next/navigation", () => ({
 }));
 
 jest.mock("@/components/landing", () => ({
-  Navbar: () => null,
   Footer: () => null,
 }));
+jest.mock("@/components/landing/HomeNavbar", () => ({ HomeNavbar: () => null }));
 // InquiryModal is imported from the BARREL, not from its own module, so stubbing
 // "@/components/listings/InquiryModal" has no effect on this component. Mocking the
 // wrong one of those is why an earlier run of this file failed with "Element type is
@@ -118,7 +118,7 @@ const PRICE_BREAKDOWN = {
  */
 function renderPage(isAuthenticated: boolean) {
   const commits: string[] = [];
-  const view = render(
+  const tree = () => (
     <Profiler
       id="ldc"
       onRender={() => {
@@ -131,9 +131,10 @@ function renderPage(isAuthenticated: boolean) {
         similarListings={[]}
         isAuthenticated={isAuthenticated}
       />
-    </Profiler>,
+    </Profiler>
   );
-  return { view, commits };
+  const view = render(tree());
+  return { view, commits, rerender: () => view.rerender(tree()) };
 }
 
 beforeEach(() => {
@@ -172,6 +173,15 @@ describe("cleaning ?openInquiry out of the address bar", () => {
     renderPage(true);
 
     expect(window.location.search).toBe("");
+  });
+
+  it("keeps the first inquiry open when the router observes the cleaned URL", () => {
+    searchParams.value = new URLSearchParams("openInquiry=true");
+    const { view, rerender } = renderPage(true);
+
+    searchParams.value = new URLSearchParams();
+    rerender();
+    expect(view.getByTestId("inquiry-modal")).toBeInTheDocument();
   });
 
   it("leaves the URL alone when the flag is not there", () => {

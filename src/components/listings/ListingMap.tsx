@@ -241,10 +241,9 @@ export function ListingMap({
     <div className={cn("space-y-3", className)}>
       {/* Map Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-gray-400" />
+        <h2 className="text-base font-semibold text-gray-900">
           Location
-        </h3>
+        </h2>
         {hideExactAddress && (
           <span className="text-xs text-gray-400 flex items-center gap-1">
             <EyeOff className="w-3 h-3" />
@@ -255,7 +254,7 @@ export function ListingMap({
 
       {/* Location Details */}
       <div className="text-sm text-gray-600">
-        {buildingName && (
+        {!hideExactAddress && buildingName && (
           <span className="font-medium text-gray-900">{buildingName} • </span>
         )}
         {!hideExactAddress && address && <span>{address}, </span>}
@@ -296,7 +295,7 @@ export function ListingMap({
               href={getDirectionsUrl(latitude, longitude, buildingName || area)}
               target="_blank"
               rel="noopener noreferrer"
-              className="absolute bottom-2 left-2 bg-white shadow-sm rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition-colors border border-gray-200"
+            className="absolute bottom-2 left-2 bg-white shadow-sm rounded-md min-h-11 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition-colors border border-gray-200"
             >
               <Navigation className="w-3.5 h-3.5" />
               Directions
@@ -305,12 +304,7 @@ export function ListingMap({
           )}
         </div>
       ) : (
-        <div className="h-48 lg:h-56 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-200">
-          <div className="text-center text-gray-400">
-            <MapPin className="w-6 h-6 mx-auto mb-1" />
-            <p className="text-xs">Map not available</p>
-          </div>
-        </div>
+        <div data-part="map-fallback"><MapPin size={18} aria-hidden="true" /><p>Map not available</p></div>
       )}
 
       {/* Nearby Landmarks */}
