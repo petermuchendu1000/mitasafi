@@ -76,15 +76,27 @@ export default async function TenantDetailPage({
   } = await supabase.auth.getUser();
   const landlordId = user?.id ?? "";
 
-  const { data: tenant, error } = await supabase
-    .from("tenants")
-    // prettier-ignore
-    .select(
-      "id, full_name, phone, phone_secondary, email, id_type, id_number, occupation, employer, employer_phone, verification_level, verified_at, status, blacklist_reason, emergency_contact, default_occupants, notes, created_at",
-    )
-    .eq("id", id)
-    .eq("created_by", landlordId)
-    .maybeSingle();
+  // notes and blacklist_reason are NOT selected here. After 20260363000000 no
+  // client role holds SELECT on them, because the same policy that lets a
+  // tenant read their own row would otherwise hand them their landlord's
+  // private assessment: RLS restricts rows, never columns. They come from
+  // tenant_private_notes, a view scoped to the landlord who wrote them.
+  const [{ data: tenant, error }, { data: privateNotes }] = await Promise.all([
+    supabase
+      .from("tenants")
+      // prettier-ignore
+      .select(
+        "id, full_name, phone, phone_secondary, email, id_type, id_number, occupation, employer, employer_phone, verification_level, verified_at, status, emergency_contact, default_occupants, created_at",
+      )
+      .eq("id", id)
+      .eq("created_by", landlordId)
+      .maybeSingle(),
+    supabase
+      .from("tenant_private_notes")
+      .select("notes, blacklist_reason")
+      .eq("tenant_id", id)
+      .maybeSingle(),
+  ]);
 
   if (error) {
     console.error("[TenantDetail] query failed:", error.message);
@@ -256,14 +268,14 @@ export default async function TenantDetailPage({
       verificationLevel: tenant.verification_level,
       verifiedAt: tenant.verified_at,
       status: tenant.status ?? "active",
-      blacklistReason: tenant.blacklist_reason,
+      blacklistReason: privateNotes?.blacklist_reason ?? null,
       emergency,
       occupants: {
         adults: typeof occupants.adults === "number" ? occupants.adults : null,
         children:
           typeof occupants.children === "number" ? occupants.children : null,
       },
-      notes: tenant.notes,
+      notes: privateNotes?.notes ?? null,
       createdAt: tenant.created_at,
     },
     leases: leases.map((l) => {

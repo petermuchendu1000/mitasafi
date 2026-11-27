@@ -57,39 +57,21 @@
 --   alternative design, moving the private columns to a side table, has the
 --   opposite default: a new column lands where the tenant can read it.
 
--- ── 1. no client role reads the private columns ─────────────────────────────
-
-REVOKE SELECT ON public.tenants FROM authenticated;
-REVOKE SELECT ON public.tenants FROM anon;
-
--- Granted back by name. notes, blacklist_reason and metadata are absent on
--- purpose and are the whole point of this file.
-GRANT SELECT (
-  id,
-  user_id,
-  created_by,
-  full_name,
-  phone,
-  phone_secondary,
-  email,
-  id_type,
-  id_number,
-  id_document_url,
-  occupation,
-  employer,
-  employer_phone,
-  verification_level,
-  verified_at,
-  emergency_contact,
-  default_occupants,
-  status,
-  created_at,
-  updated_at
-) ON public.tenants TO authenticated;
-
--- anon is granted nothing. It held table SELECT before this migration and was
--- stopped only by the absence of a policy. Privileges are the stronger of the
--- two and cost nothing here.
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PART A of two: THE VIEWS ONLY. Additive and non-breaking.
+--
+-- Split from the revoke deliberately. The deployed application is release v14,
+-- which still selects notes and blacklist_reason from public.tenants. Revoking
+-- those columns before that code is replaced would break the landlord's tenant
+-- page on the live site. Creating the views breaks nothing: no privilege
+-- changes, no policy changes, nothing existing is touched.
+--
+-- The revoke is 20260364000000_tenant_private_columns.sql and must not be
+-- applied until the code that reads tenant_private_notes is deployed.
+-- Until then the leak stays open, which is tolerable only because
+-- tenants.user_id is NULL for every tenant, so no tenant can reach the table
+-- at all. The day that changes, Part B is required.
+-- ─────────────────────────────────────────────────────────────────────────────
 
 -- ── 2. the landlord still reads the notes they wrote ────────────────────────
 --
