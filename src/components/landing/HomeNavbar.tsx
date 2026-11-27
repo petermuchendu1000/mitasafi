@@ -32,9 +32,10 @@ function SavedLink() {
   );
 }
 
-export function HomeNavbar({ activePage }: { activePage?: "rentals" } = {}) {
+export function HomeNavbar({ activePage }: { activePage?: "rentals" | "services" } = {}) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
+  const activeHref = activePage === "rentals" ? "/properties" : activePage === "services" ? "/services" : undefined;
 
   useEffect(() => {
     if (!open) return;
@@ -57,7 +58,7 @@ export function HomeNavbar({ activePage }: { activePage?: "rentals" } = {}) {
           </Link>
           <div className={styles.desktopNav}>
             {navLinks.map(({ label, href }) => (
-              <Link key={href} href={href} aria-current={activePage === "rentals" && href === "/properties" ? "page" : undefined}>
+              <Link key={href} href={href} aria-current={href === activeHref ? "page" : undefined}>
                 {label}
               </Link>
             ))}
@@ -81,7 +82,7 @@ export function HomeNavbar({ activePage }: { activePage?: "rentals" } = {}) {
           </div>
           <div className={styles.mobileMenu} hidden={!open} id="mitasafi-home-menu">
             {navLinks.map(({ label, href }) => (
-              <Link key={href} href={href} aria-current={activePage === "rentals" && href === "/properties" ? "page" : undefined}
+              <Link key={href} href={href} aria-current={href === activeHref ? "page" : undefined}
                 onClick={() => setOpen(false)}>
                 {label}
               </Link>

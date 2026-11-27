@@ -14,12 +14,12 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, useId, memo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAnalytics } from "@/lib/analytics/use-analytics";
-import { SERVICE_CATEGORIES, type ServiceCategory } from "@/lib/constants";
+import { SERVICE_CATEGORIES } from "@/lib/constants";
 import { createArrayStore } from "@/lib/browser-storage/local-store";
 import { useLocalStore } from "@/lib/browser-storage/useLocalStore";
 
@@ -38,7 +38,7 @@ interface SearchSuggestion {
 
 interface ServiceSearchAutocompleteProps {
   className?: string;
-  variant?: "hero" | "navbar" | "filter";
+  variant?: "hero" | "navbar" | "filter" | "browse";
   placeholder?: string;
   autoFocus?: boolean;
   onSearch?: (query: string) => void;
@@ -53,9 +53,7 @@ interface ServiceSearchAutocompleteProps {
  * store has to outlive a render. Creating it inside the component would resubscribe on
  * every commit.
  *
- * Two of these boxes are rendered at once on /services/browse (the hero and the filter
- * bar). They now share one store, so clearing recent searches in one updates the other
- * immediately; before, each held its own copy taken at mount.
+ * Any mounted search boxes share this store, so edits in one are reflected in the others.
  */
 const recentServiceSearchesStore = createArrayStore<string>(
   "mitasafi_recent_service_searches",
@@ -240,6 +238,7 @@ export function ServiceSearchAutocomplete({
 }: ServiceSearchAutocompleteProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const suggestionsId = useId();
   const { track, logSearch } = useAnalytics();
 
   // State
@@ -401,7 +400,7 @@ export function ServiceSearchAutocomplete({
   const executeSearch = useCallback(
     (searchQuery: string, categoryId?: string) => {
       const trimmed = searchQuery.trim();
-      if (!trimmed && !categoryId) return;
+      if (!trimmed && !categoryId && !(variant === "browse" && searchParams.get("q"))) return;
 
       // Save to recent searches. The store write notifies, so the second line that
       // used to re-read storage into state is gone.
@@ -420,12 +419,20 @@ export function ServiceSearchAutocomplete({
       }
 
       // Build search URL
-      const params = new URLSearchParams();
+      const params = new URLSearchParams(variant === "browse" ? searchParams.toString() : "");
+      params.delete("page");
       if (trimmed) params.set("q", trimmed);
-      if (categoryId) params.set("category", categoryId);
+      else params.delete("q");
+      if (categoryId) {
+        if (params.get("category") !== categoryId) {
+          params.delete("subcategory");
+          params.delete("services");
+        }
+        params.set("category", categoryId);
+      }
 
       // Navigate
-      router.push(`/services/browse?${params.toString()}`);
+      router.push(params.size ? `/services/browse?${params}` : "/services/browse");
 
       // Callback
       onSearch?.(trimmed);
@@ -434,7 +441,7 @@ export function ServiceSearchAutocomplete({
       setIsOpen(false);
       setActiveIndex(-1);
     },
-    [router, onSearch, logSearch, track, suggestions.length],
+    [router, onSearch, logSearch, track, suggestions.length, searchParams, variant],
   );
 
   // Handle form submit
@@ -572,19 +579,27 @@ export function ServiceSearchAutocomplete({
       button: "hidden",
       dropdown: "mt-1 rounded-lg shadow-lg",
     },
+    browse: {
+      container: "w-full",
+      input: "pl-10 pr-[7.3rem] min-h-14 text-base rounded-[10px]",
+      button: "min-h-11 px-3 rounded-lg",
+      dropdown: "mt-2 rounded-[10px]",
+    },
   };
 
   const styles = variantStyles[variant];
+  const showSubmit = variant === "hero" || variant === "browse";
 
   return (
     <div
       ref={containerRef}
       className={cn("relative", styles.container, className)}
     >
-      <form onSubmit={handleSubmit} role="search">
+      <form onSubmit={handleSubmit} role="search" aria-label={variant === "browse" ? "Search home services" : undefined}>
         <div className="relative">
           {/* Search Icon */}
           <Search
+            aria-hidden="true"
             className={cn(
               "absolute top-1/2 -translate-y-1/2 text-gray-400",
               variant === "hero" ? "left-5 w-5 h-5" : "left-3 w-4 h-4",
@@ -594,7 +609,7 @@ export function ServiceSearchAutocomplete({
           {/* Input */}
           <input
             ref={inputRef}
-            type="text"
+            type={variant === "browse" ? "search" : "text"}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -615,8 +630,8 @@ export function ServiceSearchAutocomplete({
               styles.input,
             )}
             aria-label="Search services"
-            aria-expanded={showDropdown ? true : false}
-            aria-haspopup="listbox"
+            aria-controls={showDropdown ? suggestionsId : undefined}
+            enterKeyHint="search"
             autoComplete="off"
           />
 
@@ -631,7 +646,7 @@ export function ServiceSearchAutocomplete({
               }}
               className={cn(
                 "absolute top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors",
-                variant === "hero" ? "right-28" : "right-3",
+                variant === "browse" ? "right-[4.9rem] min-h-11 min-w-11 grid place-items-center" : variant === "hero" ? "right-28" : "right-3",
               )}
               aria-label="Clear search"
             >
@@ -640,7 +655,7 @@ export function ServiceSearchAutocomplete({
           )}
 
           {/* Loading Indicator */}
-          {isLoading && query && (
+          {isLoading && query && variant !== "browse" && (
             <Loader2
               className={cn(
                 "absolute top-1/2 -translate-y-1/2 w-4 h-4 text-brand-500 animate-spin",
@@ -650,12 +665,13 @@ export function ServiceSearchAutocomplete({
           )}
 
           {/* Search Button (hero variant only) */}
-          {variant === "hero" && (
+          {showSubmit && (
             <button
               type="submit"
               className={cn(
                 "absolute right-2 top-1/2 -translate-y-1/2",
-                "bg-brand-700 hover:bg-brand-800 text-white font-medium transition-colors shadow-md",
+                variant === "browse" ? "bg-[#103f34] hover:bg-[#15604e] text-white font-semibold text-sm transition-colors"
+                  : "bg-brand-700 hover:bg-brand-800 text-white font-medium transition-colors shadow-md",
                 styles.button,
               )}
             >
@@ -668,11 +684,14 @@ export function ServiceSearchAutocomplete({
       {/* Dropdown */}
       {showDropdown && (
         <div
+          id={suggestionsId}
+          data-part="suggestions"
           className={cn(
             "absolute left-0 right-0 bg-white border border-gray-200 overflow-hidden z-50",
             styles.dropdown,
           )}
-          role="listbox"
+          role="group"
+          aria-label="Search suggestions"
         >
           {/* Suggestions (when typing) */}
           {showSuggestions && (
@@ -739,7 +758,7 @@ export function ServiceSearchAutocomplete({
               {POPULAR_SEARCHES.map((suggestion, index) => (
                 <SuggestionItem
                   key={suggestion.id}
-                  suggestion={suggestion}
+                  suggestion={variant === "browse" ? { ...suggestion, subtext: undefined } : suggestion}
                   isActive={activeIndex === recentSearches.length + index}
                   onClick={() => handleSuggestionClick(suggestion)}
                 />

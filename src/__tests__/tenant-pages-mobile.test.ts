@@ -69,17 +69,9 @@ describe("tenant pages and the listing detail", () => {
     },
   );
 
-  // THE GALLERY AND THE PRICE CARD MOVED TO CSS MODULES.
+  // The gallery, price card and mobile action bar use CSS modules.
   //
-  // The redesign rebuilt both on stylesheets, so the Tailwind class strings
-  // the two blocks below used to read no longer exist, and three assertions
-  // went red. The PROPERTY each one protected is still true: every control
-  // is 44px and the price still shrinks rather than widening its row. So the
-  // assertions follow the markup into the stylesheet instead of being
-  // deleted, which would have been the easy way to a green run.
-  //
-  // The dots are genuinely gone, replaced by a counter and two arrows, so
-  // the dot assertions are replaced rather than ported.
+  // Follow the styles that size the controls and prevent long prices from overflowing.
   const CSS = {
     gallery: fs.readFileSync(
       path.join(
@@ -93,6 +85,10 @@ describe("tenant pages and the listing detail", () => {
         process.cwd(),
         "src/components/listings/listing-price.module.css",
       ),
+      "utf8",
+    ),
+    detail: fs.readFileSync(
+      path.join(process.cwd(), "src/app/listings/[slug]/listing-detail.module.css"),
       "utf8",
     ),
   };
@@ -129,11 +125,16 @@ describe("tenant pages and the listing detail", () => {
     });
 
     it("says which photo is the current one", () => {
-      expect(CODE.gallery).toMatch(/aria-current=/);
+      expect(CODE.gallery).toMatch(/aria-current=\{viewerIndex === index/);
+    });
+
+    it("sizes both arrows and the button that opens the viewer", () => {
+      expect(CODE.gallery.match(/className=\{styles\.photoControl\}/g)).toHaveLength(2);
+      expect(CODE.gallery).toContain("className={styles.viewPhotos}");
     });
   });
 
-  describe("the price card that replaced the sticky bottom bar", () => {
+  describe("the price card", () => {
     it("gives every action a 44px box", () => {
       expect(minBox(CSS.price, ".actions button").h).toBe(44);
     });
@@ -144,12 +145,14 @@ describe("tenant pages and the listing detail", () => {
       expect(CSS.price).toMatch(/\.card\s*\{[^}]*min-width:\s*0/);
       expect(CSS.price).toMatch(/\.amount\s*\{[^}]*overflow-wrap:\s*anywhere/);
     });
+  });
 
-    it("confirms the sticky bar is gone rather than merely renamed", () => {
-      // Without this the two assertions above could sit next to a bar that
-      // came back and is checked by nobody.
-      expect(CODE.listingDetail).not.toMatch(/fixed bottom-0/);
-      expect(CSS.price).not.toMatch(/position:\s*fixed/);
+  describe("the mobile action bar", () => {
+    it("lets the price shrink and keeps the actions touch-sized", () => {
+      expect(CODE.listingDetail).toContain("className={styles.mobileBar}");
+      expect(CSS.detail).toMatch(/\.mobilePrice \{[^}]*flex: 1;[^}]*min-width: 0/);
+      expect(CSS.detail).toMatch(/\.mobilePrice strong \{[^}]*overflow-wrap: anywhere/);
+      expect(CSS.detail).toMatch(/\.mobileBar button \{[^}]*flex: none;[^}]*min-height: 44px/);
     });
   });
 
