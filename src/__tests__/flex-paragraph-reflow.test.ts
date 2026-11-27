@@ -133,34 +133,65 @@ describe("no paragraph splits a sentence across flex items", () => {
   });
 });
 
-describe("the tenant page header gives the name the whole width", () => {
-  const SRC = fs.readFileSync(
-    "src/app/dashboard/landlord/tenants/[id]/TenantProfile.tsx",
-    "utf8",
+/**
+ * All three detail headers put an identity beside a row of actions. On a
+ * phone the actions win and the identity gets whatever is left: about 76px on
+ * the tenant page, about 165px on the unit page. Fixing the paragraphs was
+ * not enough on its own, which the screenshot showed after the first deploy:
+ * the unit page still read "Riverside / Court · / Kilimani", breaking at
+ * spaces as intended but in a column far too narrow. The actions take their
+ * own row below sm, and the row is unchanged from sm up.
+ */
+describe("the detail headers give the identity the whole width", () => {
+  const HEADERS = [
+    ["tenant", "src/app/dashboard/landlord/tenants/[id]/TenantProfile.tsx"],
+    [
+      "unit",
+      "src/app/dashboard/landlord/buildings/[id]/units/[unitId]/UnitDetail.tsx",
+    ],
+    [
+      "building",
+      "src/app/dashboard/landlord/buildings/[id]/BuildingDetail.tsx",
+    ],
+  ] as const;
+
+  it.each(HEADERS)(
+    "%s wraps the actions onto their own row below sm",
+    (_n, f) => {
+      const src = fs.readFileSync(f, "utf8");
+      expect(src).toContain(
+        "flex flex-wrap items-start justify-between gap-x-4 gap-y-3",
+      );
+      expect(src).toContain(
+        "flex items-start gap-3 min-w-0 basis-full sm:basis-auto",
+      );
+    },
   );
 
-  it("wraps the actions onto their own row below sm", () => {
-    // Three icon-only actions are about 136px together, which left the
-    // identity column roughly 76px and broke the name across two lines.
-    expect(SRC).toContain(
-      "flex flex-wrap items-start justify-between gap-x-4 gap-y-3",
-    );
-    expect(SRC).toContain(
-      "flex items-start gap-3 min-w-0 basis-full sm:basis-auto",
-    );
-  });
+  it.each(HEADERS)(
+    "%s keeps the desktop row, so this is mobile-only",
+    (_n, f) => {
+      const src = fs.readFileSync(f, "utf8");
+      expect(src).toContain("sm:basis-auto");
+      expect(src).not.toContain("basis-full sm:basis-full");
+    },
+  );
 
-  it("keeps the desktop row, so this is mobile-only", () => {
-    expect(SRC).toContain("sm:basis-auto");
-    expect(SRC).not.toContain("basis-full sm:basis-full");
-  });
-
-  it("uses inline icons on the two identity lines", () => {
-    expect(SRC).toContain(
+  it("the tenant identity lines use inline icons", () => {
+    const src = fs.readFileSync(HEADERS[0][1], "utf8");
+    expect(src).toContain(
       'ShieldCheck className="w-3.5 h-3.5 mr-1.5 inline-block align-[-2px]"',
     );
-    expect(SRC).toContain(
+    expect(src).toContain(
       'Briefcase className="w-3 h-3 mr-1.5 inline-block align-[-1px]"',
     );
+  });
+
+  it("the unit page building line uses an inline icon and no truncate", () => {
+    const src = fs.readFileSync(HEADERS[1][1], "utf8");
+    expect(src).toContain(
+      'Building2 className="w-3.5 h-3.5 mr-1.5 inline-block align-[-2px]"',
+    );
+    expect(src).not.toContain('className="hover:text-teal-600 truncate"');
   });
 });

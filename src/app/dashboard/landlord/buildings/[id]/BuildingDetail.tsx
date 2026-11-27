@@ -262,8 +262,11 @@ export function BuildingDetail({ data }: { data: BuildingDetailData }) {
       */}
       <header className="bg-white border border-gray-200 rounded-xl">
         <div className="px-4 sm:px-5">
-          <div className="py-4 flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3 min-w-0">
+          {/* Same wrap as the tenant and unit headers: the actions beside the
+              identity left it a narrow column, which truncated the building
+              name and its address on a phone. */}
+          <div className="py-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+            <div className="flex items-start gap-3 min-w-0 basis-full sm:basis-auto">
               <Link
                 href="/dashboard/landlord/buildings"
                 aria-label="Back to buildings"

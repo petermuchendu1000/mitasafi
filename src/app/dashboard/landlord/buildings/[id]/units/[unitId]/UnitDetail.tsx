@@ -149,8 +149,12 @@ export function UnitDetail({ data }: { data: UnitDetailData }) {
   return (
     <div>
       <div className="bg-white border border-gray-200 rounded-xl">
-        <div className="px-4 sm:px-5 py-4 flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3 min-w-0">
+        {/* Same wrap as the tenant page header, and found the same way: the
+            inline-icon fix made the building line break at spaces, but the
+            column was still about 165px because the actions sat beside it, so
+            "Riverside Court · Kilimani" came out over three lines. */}
+        <div className="px-4 sm:px-5 py-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div className="flex items-start gap-3 min-w-0 basis-full sm:basis-auto">
             <Link
               href={`/dashboard/landlord/buildings/${data.buildingId}`}
               aria-label="Back to building"
