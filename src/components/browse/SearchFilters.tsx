@@ -1,40 +1,12 @@
-/**
- * Search Filters Component
- *
- * Filter controls for the browse listings page.
- * Responsive: horizontal bar on desktop, drawer on mobile.
- *
- * Design: 70% teal, 30% orange accents
- */
-
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import {
-  Search,
-  SlidersHorizontal,
-  X,
-  ChevronDown,
-  Home,
-  MapPin,
-  DollarSign,
-  Bed,
-  CheckCircle,
-  Filter,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { places } from "@/lib/site/places";
+import { useRef, useTransition, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { findPlace, places } from "@/lib/site/places";
+import styles from "@/app/properties/rentals.module.css";
 
-interface SearchFiltersProps {
-  areas?: string[];
-  propertyTypes?: string[];
-  className?: string;
-  hideSearch?: boolean;
-}
-
-// Property type options
-const PROPERTY_TYPE_OPTIONS = [
+const propertyTypes = [
   { value: "apartment", label: "Apartment" },
   { value: "bedsitter", label: "Bedsitter" },
   { value: "studio", label: "Studio" },
@@ -44,568 +16,223 @@ const PROPERTY_TYPE_OPTIONS = [
   { value: "maisonette", label: "Maisonette" },
 ];
 
-// Bedroom options
-const BEDROOM_OPTIONS = [
-  { value: "0", label: "Studio/Bedsitter" },
-  { value: "1", label: "1 Bedroom" },
-  { value: "2", label: "2 Bedrooms" },
-  { value: "3", label: "3 Bedrooms" },
-  { value: "4", label: "4+ Bedrooms" },
+const bedroomOptions = [
+  { value: "0", label: "Studio or bedsitter" },
+  { value: "1", label: "1+ bedroom" },
+  { value: "2", label: "2+ bedrooms" },
+  { value: "3", label: "3+ bedrooms" },
+  { value: "4", label: "4+ bedrooms" },
 ];
 
-// Price range options (in KES)
-const PRICE_RANGES = [
+const priceOptions = [
   { value: "0-5000", label: "Up to KES 5,000" },
-  { value: "0-20000", label: "Under 20K" },
-  { value: "20000-40000", label: "20K - 40K" },
-  { value: "40000-70000", label: "40K - 70K" },
-  { value: "70000-100000", label: "70K - 100K" },
-  { value: "100000-150000", label: "100K - 150K" },
-  { value: "150000+", label: "150K+" },
+  { value: "0-20000", label: "Up to KES 20,000" },
+  { value: "20000-40000", label: "KES 20,000–40,000" },
+  { value: "40000-70000", label: "KES 40,000–70,000" },
+  { value: "70000-100000", label: "KES 70,000–100,000" },
+  { value: "100000-150000", label: "KES 100,000–150,000" },
+  { value: "150000+", label: "KES 150,000+" },
 ];
 
-// Sort options
-const SORT_OPTIONS = [
-  { value: "newest", label: "Newest First" },
-  { value: "price_low", label: "Price: Low to High" },
-  { value: "price_high", label: "Price: High to Low" },
-  { value: "popular", label: "Most Popular" },
+const sortOptions = [
+  { value: "newest", label: "Newest first" },
+  { value: "price_low", label: "Lowest rent" },
+  { value: "price_high", label: "Highest rent" },
+  { value: "popular", label: "Most viewed" },
 ];
 
-// Popular Nairobi areas
-const POPULAR_AREAS = [
-  "Westlands",
-  "Kilimani",
-  "Lavington",
-  "Kileleshwa",
-  "South B",
-  "South C",
-  "Langata",
-  "Karen",
-  "Ruaka",
-  "Ruiru",
-  "Parklands",
-  "Upper Hill",
-];
+const locations = places
+  .map(({ name, slug }) => ({ label: name, value: slug }))
+  .sort((a, b) => a.label.localeCompare(b.label, "en-KE"));
 
-export function SearchFilters({
-  areas = POPULAR_AREAS,
-  propertyTypes,
-  className,
-  hideSearch = false,
-}: SearchFiltersProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+interface FieldOption { value: string; label: string }
 
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
-
-  // Get current filter values from URL
-  const currentLocation = searchParams.get("location");
-  const requestedArea = searchParams.get("area");
-  const legacyPlace = requestedArea && places.find(({ areas }) => areas[0] === requestedArea);
-  const selectedPlace = currentLocation || (legacyPlace ? legacyPlace.slug : null);
-  const currentArea = selectedPlace ? `location:${selectedPlace}` : (requestedArea || "");
-  const currentType = searchParams.get("type") || "";
-  const currentBedrooms = searchParams.get("bedrooms") || searchParams.get("beds") || "";
-  const priceCap = searchParams.get("maxPrice");
-  const currentPrice = searchParams.get("price") || (priceCap === "5000" ? "0-5000" : "");
-  const currentSort = searchParams.get("sort") || "newest";
-  const currentVerified = searchParams.get("verified") === "true";
-  const currentAvailable = searchParams.get("available") === "true";
-  const locationOptions = [
-    ...places.map(({ name, slug }) => ({ label: name, value: `location:${slug}` })),
-    ...areas.filter((area) => !places.some(({ areas }) => areas[0] === area)).map((area) => ({ value: area, label: area })),
-  ].sort((a, b) => a.label.localeCompare(b.label, "en-KE"));
-
-  // Update URL params
-  const updateFilters = useCallback(
-    (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === null || value === "") {
-          params.delete(key);
-        } else {
-          params.set(key, value);
-        }
-      });
-
-      // Reset to page 1 when filters change
-      params.delete("page");
-      if (Object.hasOwn(updates, "beds")) params.delete("bedrooms");
-
-      router.push(`${pathname}?${params.toString()}`);
-    },
-    [router, pathname, searchParams],
-  );
-
-  const changeLocation = (value: string | null) => {
-    if (value?.startsWith("location:")) {
-      updateFilters({ location: value.slice("location:".length), area: null });
-      return;
-    }
-    updateFilters({ location: null, area: value });
-  };
-  const changePrice = (value: string | null) => {
-    updateFilters({ price: value, minPrice: null, maxPrice: null, currency: value === "0-5000" ? "KES" : null });
-  };
-
-  // Handle search submit
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateFilters({ q: searchQuery || null });
-  };
-
-  // Clear all filters
-  const clearFilters = () => {
-    setSearchQuery("");
-    router.push(pathname);
-  };
-
-  // Count active filters
-  const activeFilterCount = [
-    currentArea,
-    currentType,
-    currentBedrooms,
-    currentPrice,
-    currentVerified,
-    currentAvailable,
-    searchParams.get("q"),
-  ].filter(Boolean).length;
-
-  return (
-    <div className={cn("bg-white border-b border-gray-200", className)}>
-      {/* Desktop Filters */}
-      <div className="hidden lg:block">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          {/* Search Bar - only show if not hidden */}
-          {!hideSearch && (
-            <form onSubmit={handleSearch} className="mb-4">
-              <div className="relative max-w-2xl mx-auto">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by area, neighborhood, or keyword..."
-                  className="w-full pl-12 pr-24 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
-                />
-                <button
-                  type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors"
-                >
-                  Search
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Filter Bar */}
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Area Filter */}
-            <FilterDropdown
-              label="Area"
-              icon={<MapPin className="w-4 h-4" />}
-              value={currentArea}
-              options={locationOptions}
-              onChange={changeLocation}
-              placeholder="All Areas"
-            />
-
-            {/* Property Type */}
-            <FilterDropdown
-              label="Type"
-              icon={<Home className="w-4 h-4" />}
-              value={currentType}
-              options={PROPERTY_TYPE_OPTIONS}
-              onChange={(value) => updateFilters({ type: value })}
-              placeholder="All Types"
-            />
-
-            {/* Bedrooms */}
-            <FilterDropdown
-              label="Beds"
-              icon={<Bed className="w-4 h-4" />}
-              value={currentBedrooms}
-              options={BEDROOM_OPTIONS}
-              onChange={(value) => updateFilters({ beds: value })}
-              placeholder="Any"
-            />
-
-            {/* Price Range */}
-            <FilterDropdown
-              label="Price"
-              icon={<DollarSign className="w-4 h-4" />}
-              value={currentPrice}
-              options={PRICE_RANGES}
-              onChange={changePrice}
-              placeholder="Any Price"
-            />
-
-            {/* Verified Only Toggle */}
-            <button
-              onClick={() =>
-                updateFilters({ verified: currentVerified ? null : "true" })
-              }
-              className={cn(
-                "inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all",
-                currentVerified
-                  ? "bg-brand-50 border-brand-300 text-brand-700"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600",
-              )}
-            >
-              <CheckCircle
-                className={cn("w-4 h-4", currentVerified && "text-brand-600")}
-              />
-              Verified Only
-            </button>
-
-            {/* Divider */}
-            <div className="h-8 w-px bg-gray-200 mx-2" />
-
-            {/* Sort */}
-            <FilterDropdown
-              label="Sort"
-              value={currentSort}
-              options={SORT_OPTIONS}
-              onChange={(value) => updateFilters({ sort: value })}
-              showClear={false}
-              isSort={true}
-            />
-
-            {/* Clear All */}
-            {activeFilterCount > 0 && (
-              <button
-                onClick={clearFilters}
-                className="inline-flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                <X className="w-4 h-4" />
-                Clear ({activeFilterCount})
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Filters */}
-      <div className="lg:hidden">
-        <div className="px-4 py-3">
-          {/* Search + Filter Toggle */}
-          <div className="flex gap-2">
-            <form onSubmit={handleSearch} className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search listings..."
-                  className="w-full pl-10 pr-4 min-h-[44px] bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-            </form>
-
-            <button
-              onClick={() => setShowMobileFilters(true)}
-              className={cn(
-                "inline-flex items-center gap-2 px-4 min-h-[44px] rounded-lg border text-sm font-medium transition-colors",
-                activeFilterCount > 0
-                  ? "bg-brand-50 border-brand-300 text-brand-700"
-                  : "bg-white border-gray-200 text-gray-700",
-              )}
-            >
-              <Filter className="w-4 h-4" />
-              {activeFilterCount > 0 && (
-                <span className="w-5 h-5 flex items-center justify-center bg-brand-600 text-white text-xs rounded-full">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Quick Filters */}
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
-            <button
-              onClick={() =>
-                updateFilters({ verified: currentVerified ? null : "true" })
-              }
-              className={cn(
-                "flex-shrink-0 inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-full text-sm font-medium transition-all",
-                currentVerified
-                  ? "bg-brand-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200",
-              )}
-            >
-              <CheckCircle className="w-3.5 h-3.5" />
-              Verified
-            </button>
-            {[["Kiambu County", "kiambu-county"], ["Machakos County", "machakos-county"], ["Narok", "narok"]].map(([area, slug]) => (
-              <button
-                key={area}
-                onClick={() => changeLocation(currentLocation === slug ? null : `location:${slug}`)}
-                className={cn(
-                  "flex-shrink-0 px-3 min-h-[44px] rounded-full text-sm font-medium transition-all",
-                  currentLocation === slug
-                    ? "bg-brand-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200",
-                )}
-              >
-                {area}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Mobile Filter Drawer */}
-        {showMobileFilters && (
-          <div className="fixed inset-0 z-50">
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-black/50"
-              onClick={() => setShowMobileFilters(false)}
-            />
-
-            {/* Drawer */}
-            <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[85vh] overflow-auto">
-              {/* Header */}
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-                <button
-                  onClick={() => setShowMobileFilters(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
-              </div>
-
-              {/* Filter Content */}
-              <div className="p-4 space-y-6">
-                {/* Area */}
-                <MobileFilterSection title="Area">
-                  <select aria-label="City, town or county" value={currentArea} onChange={(event) => changeLocation(event.target.value || null)} className="min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3">
-                    <option value="">Anywhere in Kenya</option>
-                    {locationOptions.map(({ label, value }) => <option value={value} key={value}>{label}</option>)}
-                  </select>
-                </MobileFilterSection>
-
-                {/* Property Type */}
-                <MobileFilterSection title="Property Type">
-                  <div className="flex flex-wrap gap-2">
-                    {PROPERTY_TYPE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() =>
-                          updateFilters({
-                            type: currentType === opt.value ? null : opt.value,
-                          })
-                        }
-                        className={cn(
-                          "px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                          currentType === opt.value
-                            ? "bg-brand-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200",
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </MobileFilterSection>
-
-                {/* Bedrooms */}
-                <MobileFilterSection title="Bedrooms">
-                  <div className="flex flex-wrap gap-2">
-                    {BEDROOM_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() =>
-                          updateFilters({
-                            beds:
-                              currentBedrooms === opt.value ? null : opt.value,
-                          })
-                        }
-                        className={cn(
-                          "px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                          currentBedrooms === opt.value
-                            ? "bg-brand-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200",
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </MobileFilterSection>
-
-                {/* Price */}
-                <MobileFilterSection title="Price Range">
-                  <div className="flex flex-wrap gap-2">
-                    {PRICE_RANGES.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => changePrice(currentPrice === opt.value ? null : opt.value)}
-                        className={cn(
-                          "px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                          currentPrice === opt.value
-                            ? "bg-brand-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200",
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </MobileFilterSection>
-
-                {/* Sort */}
-                <MobileFilterSection title="Sort By">
-                  <div className="space-y-2">
-                    {SORT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => updateFilters({ sort: opt.value })}
-                        className={cn(
-                          "w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
-                          currentSort === opt.value
-                            ? "bg-brand-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200",
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </MobileFilterSection>
-              </div>
-
-              {/* Footer */}
-              <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex gap-3">
-                <button
-                  onClick={clearFilters}
-                  className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Clear All
-                </button>
-                <button
-                  onClick={() => setShowMobileFilters(false)}
-                  className="flex-1 py-3 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors"
-                >
-                  Show Results
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Desktop Filter Dropdown Component
-interface FilterDropdownProps {
-  label: string;
-  icon?: React.ReactNode;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
-  placeholder?: string;
-  showClear?: boolean;
-  isSort?: boolean;
-}
-
-function FilterDropdown({
+function FilterSelect({
   label,
-  icon,
   value,
+  name,
   options,
   onChange,
-  placeholder = "Any",
-  showClear = true,
-  isSort = false,
-}: FilterDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const selectedOption = options.find((opt) => opt.value === value);
-  const displayValue = selectedOption?.label || placeholder;
-
-  // Sort dropdown never highlights as "active filter"
-  const hasActiveSelection = value && !isSort;
-
+}: {
+  label: string;
+  value: string;
+  name: string;
+  options: FieldOption[];
+  onChange?: (value: string) => void;
+}) {
   return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all",
-          hasActiveSelection
-            ? "bg-brand-50 border-brand-300 text-brand-700"
-            : "bg-white border-gray-200 text-gray-700 hover:border-gray-300",
-        )}
+    <label className={styles.select}>
+      <span>{label}</span>
+      <select
+        name={name}
+        {...(onChange
+          ? { value, onChange: (event) => onChange(event.target.value) }
+          : { defaultValue: value })}
       >
-        {icon}
-        <span className="hidden sm:inline">{label}:</span>
-        <span className={cn(!value && "text-gray-500")}>{displayValue}</span>
-        <ChevronDown
-          className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")}
-        />
-      </button>
-
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-20 max-h-64 overflow-auto">
-            {showClear && value && (
-              <button
-                onClick={() => {
-                  onChange("");
-                  setIsOpen(false);
-                }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-              >
-                Clear selection
-              </button>
-            )}
-            {options.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={cn(
-                  "w-full text-left px-4 py-2 text-sm transition-colors",
-                  value === option.value
-                    ? "bg-brand-50 text-brand-700 font-medium"
-                    : "text-gray-700 hover:bg-gray-50",
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+      <ChevronDown size={16} aria-hidden="true" />
+    </label>
   );
 }
 
-// Mobile Filter Section Component
-function MobileFilterSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+export function SearchFilters() {
+  const router = useRouter();
+  const search = useSearchParams();
+  const [pending, startTransition] = useTransition();
+  const dialog = useRef<HTMLDialogElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+
+  const area = search.get("area");
+  const location = findPlace(search.get("location") ?? undefined);
+  const locationLabel = location?.name ?? area;
+  const locationValue = location?.slug ?? (area ? "legacy" : "");
+  const type = search.get("type") ?? "";
+  const exactBeds = search.get("bedrooms");
+  const beds = exactBeds ? "exact" : search.get("beds") ?? "";
+  const minPrice = search.get("minPrice");
+  const maxPrice = search.get("maxPrice");
+  const price = search.get("price") ?? (maxPrice === "5000" && !minPrice ? "0-5000" : (minPrice || maxPrice) ? "custom" : "");
+  const sort = sortOptions.find((option) => option.value === search.get("sort"))?.value ?? "newest";
+  const verified = search.get("verified") === "true";
+  const available = search.get("available") === "true";
+  const keyword = search.get("q");
+  const locationOptions = [
+    { value: "", label: "Anywhere in Kenya" },
+    ...(area && !location ? [{ value: "legacy", label: area }] : []),
+    ...locations,
+  ];
+  const typeOptions = [
+    { value: "", label: "Any home type" },
+    ...propertyTypes,
+    ...(type && !propertyTypes.some((item) => item.value === type)
+      ? [{ value: type, label: type.replace(/_/g, " ") }] : []),
+  ];
+  const budgetOptions = [
+    { value: "", label: "Any rent" },
+    ...priceOptions,
+    ...(price && !priceOptions.some((option) => option.value === price)
+      ? [{ value: price, label: "Custom rent range" }] : []),
+  ];
+  const bedsOptions = [
+    { value: "", label: "Any bedrooms" },
+    ...(exactBeds ? [{ value: "exact", label: `Exactly ${exactBeds}` }] : []),
+    ...bedroomOptions,
+    ...(beds && beds !== "exact" && !bedroomOptions.some((item) => item.value === beds)
+      ? [{ value: beds, label: `${beds}+ bedrooms` }] : []),
+  ];
+
+  function navigate(next: URLSearchParams) {
+    next.delete("page");
+    const query = next.toString();
+    startTransition(() => router.push(query ? `/properties?${query}` : "/properties", { scroll: false }));
+  }
+
+  function update(values: Record<string, string | null>) {
+    const next = new URLSearchParams(search.toString());
+    for (const [key, value] of Object.entries(values)) {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    }
+    navigate(next);
+  }
+
+  function priceUpdate(value: string) {
+    return { price: value, minPrice: null, maxPrice: null, currency: value === "0-5000" ? "KES" : null };
+  }
+
+  function clear() {
+    const next = new URLSearchParams();
+    if (search.get("residential") === "1") next.set("residential", "1");
+    dialog.current?.close();
+    navigate(next);
+  }
+
+  function apply(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const nextLocation = String(data.get("location"));
+    const nextPrice = String(data.get("price"));
+    const nextBeds = String(data.get("beds"));
+    update({
+      ...(nextLocation !== locationValue && { location: nextLocation, area: null }),
+      type: String(data.get("type")),
+      ...(nextPrice !== price && priceUpdate(nextPrice)),
+      ...(nextBeds !== beds && { beds: nextBeds, bedrooms: null }),
+      verified: data.has("verified") ? "true" : null,
+      available: data.has("available") ? "true" : null,
+    });
+    dialog.current?.close();
+  }
+
+  const active: { label: string; reset: Record<string, string | null> }[] = [
+    ...(locationLabel ? [{ label: locationLabel, reset: { location: null, area: null } }] : []),
+    ...(type ? [{ label: typeOptions.find((item) => item.value === type)?.label ?? type, reset: { type: null } }] : []),
+    ...(price ? [{ label: budgetOptions.find((item) => item.value === price)?.label ?? "Rent range", reset: priceUpdate("") }] : []),
+    ...(beds ? [{ label: bedsOptions.find((item) => item.value === beds)?.label ?? "Bedrooms", reset: { beds: null, bedrooms: null } }] : []),
+    ...(verified ? [{ label: "Verified", reset: { verified: null } }] : []),
+    ...(available ? [{ label: "Available now", reset: { available: null } }] : []),
+    ...(keyword ? [{ label: keyword, reset: { q: null } }] : []),
+  ];
+
   return (
-    <div>
-      <h4 className="text-sm font-semibold text-gray-900 mb-3">{title}</h4>
-      {children}
+    <div className={styles.filters} aria-busy={pending}>
+      <div className={styles.filterRow}>
+        <div className={styles.quickFilters}>
+          <FilterSelect name="location" label="Location" value={locationValue} options={locationOptions}
+            onChange={(value) => update({ location: value, area: null })} />
+          <FilterSelect name="type" label="Home type" value={type} options={typeOptions}
+            onChange={(value) => update({ type: value })} />
+          <FilterSelect name="price" label="Monthly rent" value={price} options={budgetOptions}
+            onChange={(value) => update(priceUpdate(value))} />
+        </div>
+        <button ref={trigger} type="button" className={styles.filterButton} aria-haspopup="dialog"
+          onClick={() => {
+            dialog.current?.querySelector("form")?.reset();
+            dialog.current?.showModal();
+          }}>
+          <SlidersHorizontal size={17} aria-hidden="true" /> <span>Filters{active.length > 0 ? ` (${active.length})` : ""}</span>
+        </button>
+        <FilterSelect name="sort" label="Sort by" value={sort} options={sortOptions}
+          onChange={(value) => update({ sort: value === "newest" ? null : value })} />
+      </div>
+      {active.length > 0 && (
+        <ul className={styles.chips} aria-label="Active filters">
+          {active.map(({ label, reset }, index) => (
+            <li key={`${label}-${index}`}>
+              <button type="button" onClick={() => update(reset)} aria-label={`Remove filter ${label}`}>
+                <span>{label}</span><X size={14} aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+          <li><button type="button" className={styles.clear} onClick={clear}>Clear all</button></li>
+        </ul>
+      )}
+
+      <dialog ref={dialog} className={styles.filterDialog} aria-labelledby="rental-filter-title"
+        onClose={() => trigger.current?.focus()}>
+        <form key={search.toString()} onSubmit={apply}>
+          <div className={styles.dialogHeader}>
+            <h2 id="rental-filter-title">Filter rentals</h2>
+            <button type="button" className={styles.dialogClose} aria-label="Close filters" onClick={() => dialog.current?.close()}>
+              <X size={21} aria-hidden="true" />
+            </button>
+          </div>
+          <div className={styles.dialogBody}>
+            <FilterSelect name="location" label="Location" value={locationValue} options={locationOptions} />
+            <FilterSelect name="type" label="Home type" value={type} options={typeOptions} />
+            <FilterSelect name="price" label="Monthly rent" value={price} options={budgetOptions} />
+            <FilterSelect name="beds" label="Bedrooms" value={beds} options={bedsOptions} />
+            <label className={styles.checkbox}><input type="checkbox" name="verified" defaultChecked={verified} /> Verified listings only</label>
+            <label className={styles.checkbox}><input type="checkbox" name="available" defaultChecked={available} /> Available now</label>
+          </div>
+          <div className={styles.dialogFooter}>
+            <button type="button" className={styles.textButton} onClick={clear}>Clear all</button>
+            <button type="submit" className={styles.primary}>Apply filters</button>
+          </div>
+        </form>
+      </dialog>
+      {pending && <span className={styles.srOnly} role="status">Updating rental results</span>}
     </div>
   );
 }

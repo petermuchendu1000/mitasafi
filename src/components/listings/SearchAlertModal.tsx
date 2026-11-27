@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import { X, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -121,6 +121,7 @@ function SearchAlertModalContent({
   userEmail,
   userPhone,
 }: SearchAlertModalProps) {
+  const titleId = useId();
   const [email, setEmail] = useState(userEmail || "");
   const [phone, setPhone] = useState(
     userPhone ? formatPhone(userPhone.replace("+254", "")) : "",
@@ -248,15 +249,18 @@ function SearchAlertModalContent({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative bg-white w-full max-w-sm rounded-lg shadow-lg overflow-hidden">
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId}
+        className="relative bg-white w-full max-w-sm rounded-lg shadow-lg overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Get notified</h2>
+          <h2 id={titleId} className="text-lg font-semibold text-gray-900">Get notified</h2>
           <button
+            type="button"
+            aria-label="Close alerts"
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600 transition-colors rounded"
+            className="inline-grid min-h-11 min-w-11 place-items-center text-gray-600 hover:text-gray-900 transition-colors rounded"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 

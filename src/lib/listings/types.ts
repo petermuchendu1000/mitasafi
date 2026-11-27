@@ -284,8 +284,8 @@ export function calculatePriceBreakdown(listing: {
   const rent = listing.rent_amount;
   const serviceCharge = listing.service_charge;
   const totalMonthly = rent + (serviceCharge || 0);
-  const depositMonths = listing.deposit_months || 1;
-  const depositAmount = listing.deposit_amount || (rent * depositMonths);
+  const depositMonths = listing.deposit_months ?? 1;
+  const depositAmount = listing.deposit_amount ?? rent * depositMonths;
   const moveInCost = totalMonthly + depositAmount;
 
   return {

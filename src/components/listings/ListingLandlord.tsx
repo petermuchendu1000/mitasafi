@@ -13,13 +13,7 @@
 "use client";
 
 import Image from "next/image";
-import { 
-  CheckCircle, 
-  User,
-  Shield,
-  Clock,
-  Building2
-} from "lucide-react";
+import { User, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LandlordInfo } from "@/lib/listings/types";
 
@@ -36,10 +30,10 @@ export function ListingLandlord({ landlord, className }: ListingLandlordProps) {
 
   return (
     <div className={cn(
-      "bg-white rounded-lg border border-gray-200 p-4",
+      "bg-white rounded-[10px] border border-gray-200 p-4",
       className
     )}>
-      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">Listed by</p>
+      <p className="text-sm font-medium text-gray-600 mb-3">Listed by</p>
       
       <div className="flex items-center gap-3">
         {/* Avatar */}
@@ -47,7 +41,7 @@ export function ListingLandlord({ landlord, className }: ListingLandlordProps) {
           {landlord?.avatar_url ? (
             <Image
               src={landlord.avatar_url}
-              alt={displayName}
+              alt=""
               fill
               className="object-cover"
               sizes="40px"
@@ -58,39 +52,20 @@ export function ListingLandlord({ landlord, className }: ListingLandlordProps) {
             </div>
           )}
           
-          {/* Verified badge on avatar */}
-          {landlord?.is_verified && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-white">
-              <CheckCircle className="w-2.5 h-2.5 text-white" />
-            </div>
-          )}
         </div>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
           <p className="font-medium text-gray-900 text-sm truncate">{displayName}</p>
-          {landlord?.is_verified ? (
-            <p className="text-xs text-green-600 flex items-center gap-1">
-              <Shield className="w-3 h-3" />
-              Verified
+          {landlord?.is_verified && (
+            <p className="text-xs text-brand-700 flex items-center gap-1">
+              <Shield className="w-3 h-3" aria-hidden="true" />
+              Verified landlord
             </p>
-          ) : (
-            <p className="text-xs text-gray-500">Property Owner</p>
           )}
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-        <span className="flex items-center gap-1">
-          <Clock className="w-3.5 h-3.5" />
-          ~4h response
-        </span>
-        <span className="flex items-center gap-1">
-          <Building2 className="w-3.5 h-3.5" />
-          1 listing
-        </span>
-      </div>
     </div>
   );
 }

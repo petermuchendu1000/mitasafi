@@ -32,7 +32,7 @@ function SavedLink() {
   );
 }
 
-export function HomeNavbar() {
+export function HomeNavbar({ activePage }: { activePage?: "rentals" } = {}) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
 
@@ -56,7 +56,11 @@ export function HomeNavbar() {
             <Logo variant="full" color="teal" size="sm" />
           </Link>
           <div className={styles.desktopNav}>
-            {navLinks.map(({ label, href }) => <Link key={href} href={href}>{label}</Link>)}
+            {navLinks.map(({ label, href }) => (
+              <Link key={href} href={href} aria-current={activePage === "rentals" && href === "/properties" ? "page" : undefined}>
+                {label}
+              </Link>
+            ))}
           </div>
           <div className={styles.navActions}>
             <div className={styles.notifications}><NotificationCenter triggerIcon={<HomeIcon name="bell" size={22} />} /></div>
@@ -76,7 +80,12 @@ export function HomeNavbar() {
             </button>
           </div>
           <div className={styles.mobileMenu} hidden={!open} id="mitasafi-home-menu">
-            {navLinks.map(({ label, href }) => <Link key={href} href={href} onClick={() => setOpen(false)}>{label}</Link>)}
+            {navLinks.map(({ label, href }) => (
+              <Link key={href} href={href} aria-current={activePage === "rentals" && href === "/properties" ? "page" : undefined}
+                onClick={() => setOpen(false)}>
+                {label}
+              </Link>
+            ))}
             <div><Link href="/login" onClick={() => setOpen(false)}>Log in</Link><Link href="/signup" onClick={() => setOpen(false)}>Sign up</Link></div>
           </div>
         </nav>

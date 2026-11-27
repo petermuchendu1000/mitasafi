@@ -1,62 +1,25 @@
-/**
- * Listing Price Card Component
- *
- * Sticky sidebar with:
- * - Price breakdown (rent, service charge, total)
- * - Move-in cost calculation
- * - Included amenities
- * - CTA buttons (Contact, Schedule)
- *
- * Theme: 70% Teal, 30% Orange (CTA buttons in orange)
- */
-
 "use client";
 
-import { useState } from "react";
-import {
-  MessageCircle,
-  Calendar,
-  Phone,
-  CheckCircle,
-  Info,
-  ArrowRight,
-  FileText,
-} from "lucide-react";
+import { Bell, CalendarDays, ChevronDown } from "lucide-react";
+import { formatCurrency } from "@/components/shared/listing-types";
 import { cn } from "@/lib/utils";
 import type { PriceBreakdown } from "@/lib/listings/types";
+import styles from "./listing-price.module.css";
 
 interface ListingPriceCardProps {
   price: PriceBreakdown;
   availableNow: boolean;
   availableFrom: string | null;
   onContact: () => void;
-  /** Omitted when the listing cannot take applications. */
   onApply?: () => void;
   onScheduleViewing: () => void;
-  isAuthenticated: boolean;
   isUnavailable?: boolean;
   className?: string;
 }
 
-// Format currency (KES)
-function formatPrice(amount: number, currency: string = "KES"): string {
-  return new Intl.NumberFormat("en-KE", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-// Format included items nicely
-const RENT_INCLUDES_LABELS: Record<string, string> = {
-  water: "Water",
-  garbage: "Garbage Collection",
-  security: "Security",
-  wifi: "WiFi",
-  parking: "Parking",
-  electricity: "Electricity",
-  gas: "Gas",
+const includedItems: Record<string, string> = {
+  water: "Water", garbage: "Garbage collection", security: "Security",
+  wifi: "Wi-Fi", parking: "Parking", electricity: "Electricity", gas: "Gas",
 };
 
 export function ListingPriceCard({
@@ -66,210 +29,63 @@ export function ListingPriceCard({
   onContact,
   onApply,
   onScheduleViewing,
-  isAuthenticated,
   isUnavailable = false,
   className,
 }: ListingPriceCardProps) {
-  const [showMoveInDetails, setShowMoveInDetails] = useState(false);
+  const amount = (value: number) => formatCurrency(value, price.currency);
+  const date = availableFrom ? new Date(availableFrom) : null;
+  const availableDate = date && !Number.isNaN(date.getTime())
+    ? date.toLocaleDateString("en-KE", { month: "short", day: "numeric", year: "numeric", timeZone: "Africa/Nairobi" })
+    : null;
 
   return (
-    <div
-      className={cn(
-        "bg-white rounded-xl border border-gray-200 overflow-hidden",
-        className,
-      )}
-    >
-      {/* Price Header */}
-      <div className="p-5 border-b border-gray-100">
-        <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-gray-900">
-            {formatPrice(price.rent, price.currency)}
-          </span>
-          <span className="text-gray-500 text-lg">/month</span>
-        </div>
-
-        {/* Monthly breakdown */}
-        {price.serviceCharge && price.serviceCharge > 0 && (
-          <div className="mt-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Rent</span>
-              <span className="text-gray-700">
-                {formatPrice(price.rent, price.currency)}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Service charge</span>
-              <span className="text-gray-700">
-                {formatPrice(price.serviceCharge, price.currency)}
-              </span>
-            </div>
-            <div className="border-t border-dashed border-gray-200 pt-2 flex justify-between font-medium">
-              <span className="text-gray-700">Total monthly</span>
-              <span className="text-brand-600">
-                {formatPrice(price.totalMonthly, price.currency)}
-              </span>
-            </div>
-          </div>
+    <section className={cn(styles.card, className)} aria-label="Rent and move-in costs">
+      <div className={styles.head}>
+        <p className={styles.label}>{price.serviceCharge ? "Total monthly cost" : "Monthly rent"}</p>
+        <p className={styles.amount}>{amount(price.totalMonthly)} <span>/ month</span></p>
+        {!!price.serviceCharge && (
+          <dl className={styles.costs}>
+            <div><dt>Rent</dt><dd>{amount(price.rent)}</dd></div>
+            <div><dt>Service charge</dt><dd>{amount(price.serviceCharge)}</dd></div>
+          </dl>
         )}
-
-        {/* Rent includes */}
         {price.rentIncludes.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {price.rentIncludes.map((item) => (
-              <span
-                key={item}
-                className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded"
-              >
-                <CheckCircle className="w-3 h-3 text-gray-400" />
-                {RENT_INCLUDES_LABELS[item] || item}
-              </span>
-            ))}
-          </div>
+          <p className={styles.note}>Includes {price.rentIncludes.map((item) => includedItems[item] || item).join(", ")}</p>
         )}
-
-        {/* Negotiable badge */}
-        {price.isNegotiable && (
-          <div className="mt-3 flex items-center gap-1.5 text-sm text-cta-600">
-            <Info className="w-4 h-4" />
-            <span>Price is negotiable</span>
-          </div>
-        )}
+        {price.isNegotiable && <p className={styles.note}>Rent is negotiable</p>}
       </div>
 
-      {/* Move-in Cost */}
-      <div className="p-5 bg-gray-50 border-b border-gray-100">
-        <button
-          onClick={() => setShowMoveInDetails(!showMoveInDetails)}
-          className="w-full flex items-center justify-between min-h-[44px]"
-        >
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-700">Move-in cost</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-gray-900">
-              {formatPrice(price.moveInCost, price.currency)}
-            </span>
-            <ArrowRight
-              className={cn(
-                "w-4 h-4 text-gray-400 transition-transform",
-                showMoveInDetails && "rotate-90",
-              )}
-            />
-          </div>
-        </button>
+      <details className={styles.moveIn}>
+        <summary>
+          <span>Estimated move-in cost</span>
+          <span>{amount(price.moveInCost)} <ChevronDown size={16} aria-hidden="true" /></span>
+        </summary>
+        <dl className={styles.costs}>
+          <div><dt>First month</dt><dd>{amount(price.totalMonthly)}</dd></div>
+          <div><dt>Deposit</dt><dd>{amount(price.depositAmount)}</dd></div>
+        </dl>
+      </details>
 
-        {/* Expanded details */}
-        {showMoveInDetails && (
-          <div className="mt-3 space-y-2 pt-3 border-t border-gray-200">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">First month</span>
-              <span className="text-gray-700">
-                {formatPrice(price.totalMonthly, price.currency)}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">
-                Deposit ({price.depositMonths}{" "}
-                {price.depositMonths === 1 ? "month" : "months"})
-              </span>
-              <span className="text-gray-700">
-                {formatPrice(price.depositAmount, price.currency)}
-              </span>
-            </div>
-            <div className="border-t border-dashed border-gray-200 pt-2 flex justify-between font-medium">
-              <span className="text-gray-700">Total</span>
-              <span className="text-gray-900">
-                {formatPrice(price.moveInCost, price.currency)}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
+      <p className={styles.availability}>
+        <CalendarDays size={16} aria-hidden="true" />
+        {isUnavailable ? "Currently unavailable" : availableNow ? "Available now"
+          : availableDate ? `Available from ${availableDate}` : "Confirm availability with the landlord"}
+      </p>
 
-      {/* Availability */}
-      <div className="px-5 py-3 border-b border-gray-100">
-        <div className="flex items-center gap-2 text-sm">
-          <Calendar className="w-4 h-4 text-gray-400" />
-          {availableNow ? (
-            <span className="text-green-600 font-medium">Available now</span>
-          ) : availableFrom ? (
-            <span className="text-gray-600">
-              Available from{" "}
-              <span className="font-medium text-gray-900">
-                {new Date(availableFrom).toLocaleDateString("en-KE", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </span>
-            </span>
-          ) : (
-            <span className="text-sm text-gray-500">Check availability</span>
-          )}
-        </div>
-      </div>
-
-      {/* CTA Buttons */}
-      <div className="p-5 space-y-2">
+      <div className={styles.actions}>
         {isUnavailable ? (
-          /* Unavailable - Notify Me CTA */
-          <>
-            <button
-              onClick={onContact}
-              className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
-            >
-              <MessageCircle className="w-5 h-5" />
-              Get Notified
-            </button>
-            <p className="text-xs text-center text-gray-500 mt-1">
-              We&apos;ll notify you when similar properties become available
-            </p>
-          </>
+          <button type="button" className={styles.primary} onClick={onContact}><Bell size={17} aria-hidden="true" /> Notify me</button>
         ) : (
-          /* Available - Contact CTAs */
           <>
-            {/* Applying is the stronger act, so it leads. It is rendered here
-                and not only in the mobile sticky bar — the first version of
-                this put Apply inside a `lg:hidden` container, where no desktop
-                visitor could ever reach it. */}
-            {onApply && (
-              <button
-                onClick={onApply}
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
-              >
-                <FileText className="w-5 h-5" />
-                Apply
-              </button>
-            )}
-
-            {/* Primary CTA - Orange */}
-            <button
-              onClick={onContact}
-              className="w-full bg-cta-500 hover:bg-cta-600 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
-            >
-              <MessageCircle className="w-5 h-5" />
-              Contact Landlord
-            </button>
-
-            {/* Secondary CTA - subtle */}
-            <button
-              onClick={onScheduleViewing}
-              className="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
-            >
-              <Phone className="w-5 h-5" />
-              Schedule Viewing
-            </button>
-
-            {/* Auth hint */}
-            {!isAuthenticated && (
-              <p className="text-xs text-center text-gray-400 mt-1">
-                Sign in to contact the landlord
-              </p>
-            )}
+            <div className={styles.desktopActions}>
+              {onApply && <button type="button" className={styles.primary} onClick={onApply}>Apply</button>}
+              <button type="button" className={styles.secondary} onClick={onContact}>Contact landlord</button>
+            </div>
+            <button type="button" className={styles.viewing} onClick={onScheduleViewing}>Request a viewing</button>
           </>
         )}
       </div>
-    </div>
+    </section>
   );
 }
 
