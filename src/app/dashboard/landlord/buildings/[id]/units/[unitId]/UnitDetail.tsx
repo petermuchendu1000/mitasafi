@@ -186,16 +186,18 @@ export function UnitDetail({ data }: { data: UnitDetailData }) {
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
-                <Building2 className="w-3.5 h-3.5 shrink-0" />
+              {/* truncate is dropped with the flex: on one line it clipped a
+                  long building name to an ellipsis, and in ordinary flow the
+                  name simply wraps, which shows more rather than less. */}
+              <p className="text-sm text-gray-500 mt-0.5">
+                <Building2 className="w-3.5 h-3.5 mr-1.5 inline-block align-[-2px]" />
                 <Link
                   href={`/dashboard/landlord/buildings/${data.buildingId}`}
-                  className="hover:text-teal-600 truncate"
+                  className="hover:text-teal-600"
                 >
                   {data.buildingName}
-                </Link>
-                <span className="text-gray-300">·</span>
-                {data.buildingArea}
+                </Link>{" "}
+                <span className="text-gray-300">·</span> {data.buildingArea}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {labelFor(unitTypeLabels, unit.unit_type)}
@@ -372,15 +374,20 @@ export function UnitDetail({ data }: { data: UnitDetailData }) {
                             <ChevronRight className="w-4 h-4 text-gray-300" />
                           </Link>
                         </h3>
-                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                          <ShieldCheck className="w-3 h-3" />
+                        {/* Ordinary text flow, not a flex row, for the same
+                            reason as the tenant page header: as flex items each
+                            text run wraps inside itself and the line comes out
+                            stacked into narrow columns. */}
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          <ShieldCheck className="w-3 h-3 mr-1 inline-block align-[-1px]" />
                           {labelFor(
                             verificationLevelLabels,
                             tenant.verification_level,
                           )}
                           {tenant.id_number && (
                             <>
-                              <span className="text-gray-300">·</span>
+                              {" "}
+                              <span className="text-gray-300">·</span>{" "}
                               {labelFor(ID_TYPE_LABELS, tenant.id_type)}{" "}
                               {tenant.id_number}
                             </>
