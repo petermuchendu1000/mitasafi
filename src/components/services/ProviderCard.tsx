@@ -21,6 +21,10 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { HomeIcon } from "@/components/landing/HomeIcons";
+import { CompareButton } from "./CompareProviders";
+import marketStyles from "./marketplace-card.module.css";
 import { cn } from "@/lib/utils";
 import { formatServicePrice, getCategoryById } from "@/lib/constants";
 import { useAnalytics } from "@/lib/analytics/use-analytics";
@@ -34,8 +38,9 @@ import type { ServiceProviderCardData } from "@/types/service-providers";
 interface ProviderCardProps {
   provider: ServiceProviderCardData;
   className?: string;
-  variant?: "default" | "featured" | "compact";
+  variant?: "default" | "featured" | "compact" | "marketplace";
   priority?: boolean;
+  eagerImage?: boolean;
   showCompare?: boolean;
   onSaveToggle?: (providerId: string) => void;
   isSaved?: boolean;
@@ -102,6 +107,7 @@ export function ProviderCard({
   className,
   variant = "default",
   priority = false,
+  eagerImage = false,
   onSaveToggle,
   isSaved = false,
 }: ProviderCardProps) {
@@ -288,6 +294,73 @@ export function ProviderCard({
   const categoryLabel = primaryCategory
     ? (getCategoryById(primaryCategory)?.shortName ?? null)
     : null;
+
+  if (variant === "marketplace") {
+    const cover = imageErrorIndexes.includes(-1) ? null : provider.cover_photo_url;
+    const logo = imageErrorIndexes.includes(-2) ? null : provider.logo_url;
+    const media = activeCarouselImage?.url || cover || logo;
+    const CategoryIcon = primaryCategory ? getCategoryById(primaryCategory)?.icon : undefined;
+    const description = provider.tagline?.trim() || categoryLabel;
+    const hasRating = provider.rating_average != null && provider.rating_average > 0;
+    const hasPrice = priceDisplay !== "Get Quote";
+
+    return (
+      <article className={cn(marketStyles.card, className)}>
+        <div className={marketStyles.media}>
+          {media ? (
+            <Image src={media} alt="" fill sizes="(max-width: 619px) 100vw, (max-width: 1039px) 50vw, 400px"
+              className={media === logo && !activeCarouselImage && !cover ? marketStyles.logo : undefined}
+              unoptimized={media.startsWith("/images/services-landing/optimized/")}
+              priority={priority} loading={!priority && eagerImage ? "eager" : undefined}
+              onError={activeCarouselImage ? handleImageError : () => setImageErrorIndexes((indexes) => [...indexes, cover ? -1 : -2])} />
+          ) : (
+            <div className={marketStyles.placeholder} aria-hidden="true">
+              {CategoryIcon ? <CategoryIcon size={32} strokeWidth={1.5} /> : <HomeIcon name="tools" size={32} />}
+            </div>
+          )}
+          {hasMultipleImages && (
+            <div className={marketStyles.photoButtons} role="group" aria-label={`${provider.business_name} photos`}>
+              <button type="button" onClick={goToPreviousImage} aria-label="Previous service image"><ChevronLeft size={19} aria-hidden="true" /></button>
+              <span role="status">{safeImageIndex + 1}/{visibleCarouselImages.length}</span>
+              <button type="button" onClick={goToNextImage} aria-label="Next service image"><ChevronRight size={19} aria-hidden="true" /></button>
+            </div>
+          )}
+        </div>
+
+        <div className={marketStyles.body}>
+          <div className={marketStyles.identity}>
+            <h3><Link href={`/services/provider/${provider.id}`} prefetch={false} onClick={handleCardClick}>{provider.business_name}</Link></h3>
+            {description && <p className={marketStyles.description}>{description}</p>}
+          </div>
+
+          {(areaDisplay || hasRating || provider.is_verified || !isAvailable) && (
+            <div className={marketStyles.details}>
+              {areaDisplay && <p className={marketStyles.coverage}><HomeIcon name="pin" size={17} /> <span>{areaDisplay}</span></p>}
+              <div className={marketStyles.meta}>
+                {hasRating && (
+                  <span className={marketStyles.rating}>
+                    <Star size={15} aria-hidden="true" />
+                    <strong>{provider.rating_average?.toFixed(1)}<span className="sr-only"> out of 5 stars</span></strong>
+                    {provider.rating_count ? <span>({provider.rating_count}<span className="sr-only"> reviews</span>)</span> : null}
+                  </span>
+                )}
+                {provider.is_verified && <span><HomeIcon name="shield" size={17} /> ID verified</span>}
+                {!isAvailable && <span>Currently unavailable</span>}
+              </div>
+            </div>
+          )}
+
+          <div className={marketStyles.footer}>
+            <p className={marketStyles.price}>
+              {hasPrice && <span>From </span>}
+              <strong>{hasPrice ? priceDisplay : "Quote on request"}</strong>
+            </p>
+            <CompareButton provider={provider} variant="full" className={marketStyles.compare} />
+          </div>
+        </div>
+      </article>
+    );
+  }
 
   // =============================================
   // COMPACT VARIANT — Horizontal card for lists
