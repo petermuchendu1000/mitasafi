@@ -862,11 +862,18 @@ export function BuildingDetail({ data }: { data: BuildingDetailData }) {
                           ? null
                           : Math.round((m.collected / m.expected) * 100);
                       return (
-                        <div key={m.label} className="flex items-center gap-3">
+                        // Wraps rather than overflows, as on the tenant page. Here
+                        // the amount column was w-60, so with the w-20 month and
+                        // two gaps it was 344px of unshrinkable width and ran
+                        // further over a 360px viewport than the tenant page did.
+                        <div
+                          key={m.label}
+                          className="flex flex-wrap items-center gap-x-3 gap-y-2"
+                        >
                           <span className="w-20 shrink-0 text-xs text-gray-500">
                             {m.label}
                           </span>
-                          <div className="flex-1 h-6 bg-gray-100 rounded-md overflow-hidden relative">
+                          <div className="order-last h-6 w-full bg-gray-100 rounded-md overflow-hidden relative sm:order-none sm:w-auto sm:flex-1">
                             <div
                               className="h-full bg-gray-200"
                               style={{
@@ -885,7 +892,7 @@ export function BuildingDetail({ data }: { data: BuildingDetailData }) {
                               }}
                             />
                           </div>
-                          <span className="w-60 shrink-0 text-xs text-gray-600 text-right tabular-nums">
+                          <span className="ml-auto text-xs text-gray-600 tabular-nums sm:ml-0 sm:w-60 sm:shrink-0 sm:text-right">
                             {formatKes(m.collected)} of {formatKes(m.expected)}
                             {rate !== null && (
                               <span
