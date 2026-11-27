@@ -10,21 +10,28 @@ is shippable and leaves the product no worse.
 
 ---
 
-## Increment 0: unblock the unknowns
+## Increment 0: unblock the unknowns. DONE
 
-**Tier T1** (production reads only). **No authorization needed.**
+**Tier T1.** Production reads only. No authorization needed. **Ledger:** `TENANT-INC0-001`,
+EV-001..EV-009. **No production mutation performed.**
 
-Four facts gate the whole plan and none is established (`TENANT_02 §3.2`):
+| #   | Question                                       | Answer                                                                                                                                                        | EV             |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| 1   | Is every `profiles.phone` OTP-verified?        | **No. None is.** 5 of 5 accounts have `phone_confirmed_at` NULL. Phone auth is disabled (`external_phone_enabled: False`) and every SMS credential is `None`. | EV-002, EV-004 |
+| 2   | Can a phone be changed, and is it re-verified? | **Yes, freely. Never re-verified.** Format check only.                                                                                                        | EV-006         |
+| 3   | Uniqueness on `tenants`?                       | Neither `phone` nor `user_id` is unique; both indexed. No constraint needs to change.                                                                         | EV-007         |
+| 4   | Phone formats on live rows?                    | All canonical `+254XXXXXXXXX`, by construction. Normalisation is a non-issue.                                                                                 | EV-008, EV-009 |
 
-1. Is every `profiles.phone` OTP-verified, or can an email+password path write one unverified?
-2. Can a user change their phone, and is the new one re-verified?
-3. Is `tenants.phone` unique, and must `tenants.user_id` be non-unique? (a person may rent two homes)
-4. How are phone numbers actually stored on live rows: `+254…`, `0…`, `254…`?
+**Consequence: the approved linking rule changed.** Phone matching is rejected; claim code
+is the whole mechanism. See `TENANT_02` section 3.1 and 4.
 
-**Done when:** each has a `[VERIFIED]` answer with an EV-id.
-**Why first:** (4) alone can make the whole linking design match nobody while appearing to work.
+**Three findings worth carrying forward:**
 
----
+- SMS is not funded. Any design that needs it is blocked on money, not code.
+- `profiles.phone` is user-settable with no verification. That is a standing hazard for any
+  future feature that treats it as an identifier.
+- The `profiles` phone validator rejects `0712345678` while the tenant form converts it, so
+  a user typing their number the normal Kenyan way gets an error. Small, real, unfixed.
 
 ## Increment 1: the tenant may read their own row, and only their own columns
 
@@ -171,7 +178,7 @@ Stated so it can be checked rather than discovered late:
 
 ## Not checked
 
-- Whether SMS to Kenyan numbers is funded in production.
+- ~~Whether SMS to Kenyan numbers is funded in production.~~ **Answered: no** (INC0 EV-004).
 - Whether the lease-documents storage bucket grants tenants read.
 - Whether any human behind the three live tenant rows holds a MitaSafi account.
 - `RentClient.tsx` in full.
