@@ -130,7 +130,7 @@ export function ServicesWhyMitaSafi() {
       <Container size="default">
         <SectionHeader
           eyebrow="The MitaSafi Difference"
-          title="Why Nairobi Trusts MitaSafi"
+          title="How to choose a provider on MitaSafi"
         />
 
         {/* Pillar Grid */}

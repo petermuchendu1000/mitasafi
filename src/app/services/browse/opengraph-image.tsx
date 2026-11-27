@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "MitaSafi — Find Trusted Service Providers in Nairobi";
+export const alt = "MitaSafi — Find Home Service Providers in Kenya";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -106,7 +106,7 @@ export default async function Image() {
             }}
           >
             Moving • Cleaning • Repairs • Interior • Security & more — verified
-            pros in Nairobi
+            pros across Kenya
           </p>
 
           {/* Stats bar */}

@@ -8,6 +8,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { Navbar, Footer } from "@/components/landing";
 import { Container } from "@/components/ui";
@@ -16,19 +17,24 @@ import { searchListings, type SearchParams } from "@/lib/listings/search";
 import { createClient } from "@/lib/supabase/server";
 import { Search, Shield, MapPin, Bell } from "lucide-react";
 import { siteUrl } from "@/lib/site/urls";
+import { areaLabel, findMarketplaceArea } from "@/lib/site/marketplace";
+import { findPlace } from "@/lib/site/places";
 
 // Disable caching - always fetch fresh listing data
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const title = "Apartments, Bedsitters & Houses for Rent in Kenya | MitaSafi";
+const description = "Browse rental homes across Kenya by town, neighbourhood, rent and bedroom count. Save listings and contact landlords about availability and viewings.";
+
 export const metadata: Metadata = {
-  title: "Browse Verified Homes | MitaSafi",
-  description:
-    "Find your perfect rental home in Nairobi. All listings are verified, no broker fees, and secure payments.",
+  title,
+  description,
+  keywords: null,
+  alternates: { canonical: siteUrl("/properties") },
   openGraph: {
-    title: "Browse Verified Homes | MitaSafi",
-    description:
-      "Find your perfect rental home in Nairobi. All listings are verified, no broker fees, and secure payments.",
+    title,
+    description,
     type: "website",
     url: siteUrl("/properties"),
   },
@@ -43,23 +49,32 @@ export default async function BrowsePropertiesPage({
 }: PageProps) {
   // Await searchParams (Next.js 15+)
   const params = await searchParams;
+  const location = findPlace(typeof params.location === "string" ? params.location : undefined);
+  const exactBedrooms = typeof params.bedrooms === "string" && /^[1-9]$/.test(params.bedrooms)
+    ? Number(params.bedrooms)
+    : undefined;
+  const priceRange = typeof params.price === "string" ? /^(\d+)(?:-(\d+)|\+)$/.exec(params.price) : null;
 
   // Parse search params first (no async needed)
   const parsedParams: SearchParams = {
     area: typeof params.area === "string" ? params.area : undefined,
+    locationAreas: location?.areas,
+    currency: params.currency === "KES" ? "KES" : undefined,
+    residentialOnly: params.residential === "1",
     propertyType: typeof params.type === "string" ? params.type : undefined,
     minBedrooms:
-      typeof params.beds === "string"
+      exactBedrooms ?? (typeof params.beds === "string"
         ? parseInt(params.beds) || undefined
-        : undefined,
+        : undefined),
+    maxBedrooms: exactBedrooms,
     minPrice:
       typeof params.minPrice === "string"
         ? parseInt(params.minPrice) || undefined
-        : undefined,
+        : priceRange ? Number(priceRange[1]) : undefined,
     maxPrice:
       typeof params.maxPrice === "string"
         ? parseInt(params.maxPrice) || undefined
-        : undefined,
+        : priceRange?.[2] ? Number(priceRange[2]) : undefined,
     verified: params.verified === "true",
     availableNow: params.available === "true",
     query: typeof params.q === "string" ? params.q : undefined,
@@ -101,6 +116,8 @@ export default async function BrowsePropertiesPage({
     userEmail: user?.email,
     userPhone,
   };
+  const serviceArea = findMarketplaceArea(parsedParams.area);
+  const locationName = location?.name ?? (serviceArea ? areaLabel(serviceArea) : undefined);
 
   return (
     <>
@@ -111,11 +128,10 @@ export default async function BrowsePropertiesPage({
           <Container>
             <div className="text-center max-w-3xl mx-auto">
               <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                Find Your Perfect Home
+                {location ? `Rentals in ${location.name}` : "Find your next home in Kenya"}
               </h1>
               <p className="text-sm text-brand-100 mb-4">
-                Verified rentals across Nairobi. No fake listings. No broker
-                fees.
+                Search by location, budget and home type. Contact landlords about availability and viewings.
               </p>
 
               {/* Search Bar */}
@@ -124,6 +140,14 @@ export default async function BrowsePropertiesPage({
                 method="GET"
                 className="max-w-2xl mx-auto"
               >
+                {location && <input type="hidden" name="location" value={location.slug} />}
+                {parsedParams.minPrice !== undefined && <input type="hidden" name="minPrice" value={parsedParams.minPrice} />}
+                {parsedParams.maxPrice !== undefined && <input type="hidden" name="maxPrice" value={parsedParams.maxPrice} />}
+                {typeof params.price === "string" && priceRange && <input type="hidden" name="price" value={params.price} />}
+                {parsedParams.currency && <input type="hidden" name="currency" value={parsedParams.currency} />}
+                {parsedParams.propertyType && <input type="hidden" name="type" value={parsedParams.propertyType} />}
+                {parsedParams.residentialOnly && <input type="hidden" name="residential" value="1" />}
+                {parsedParams.sortBy !== "newest" && <input type="hidden" name="sort" value={parsedParams.sortBy} />}
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -157,6 +181,13 @@ export default async function BrowsePropertiesPage({
         {/* Listings Grid */}
         <section className="py-6 lg:py-8">
           <Container>
+            <Link
+              href={{ pathname: "/services/browse", query: location ? { location: location.slug } : serviceArea ? { area: serviceArea } : {} }}
+              className="mb-4 inline-flex min-h-11 items-center font-medium text-brand-700 underline underline-offset-4"
+            >
+              {locationName ? `Find home services in ${locationName}` : "Find home services in Kenya"}
+            </Link>
+            {location && <Link className="mb-4 ml-4 inline-flex min-h-11 items-center text-sm underline underline-offset-4" href="/properties">Clear location</Link>}
             <Suspense fallback={<GridSkeleton />}>
               <ListingsGrid
                 listings={listings}

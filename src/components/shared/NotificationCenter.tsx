@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Bell, Check, Trash2, X } from "lucide-react";
 import Link from "next/link";
 
-export function NotificationCenter() {
+export function NotificationCenter({ triggerIcon }: { triggerIcon?: React.ReactNode }) {
   const {
     notifications,
     unreadCount,
@@ -69,7 +69,7 @@ export function NotificationCenter() {
         className="relative grid min-h-11 min-w-11 place-items-center text-gray-500 hover:text-gray-700"
         aria-label="Notifications"
       >
-        <Bell className="h-5 w-5" />
+        {triggerIcon ?? <Bell className="h-5 w-5" />}
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 text-[10px] font-medium text-white bg-orange-500 rounded-full flex items-center justify-center px-1">
             {unreadCount > 9 ? "9+" : unreadCount}

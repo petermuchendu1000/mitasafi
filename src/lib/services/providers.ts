@@ -254,8 +254,9 @@ function mapProviderRow(provider: any): ServiceProviderCardData {
 
 export async function getProviders(
   options: GetProvidersOptions = {},
+  client?: Awaited<ReturnType<typeof createClient>>,
 ): Promise<GetProvidersResult> {
-  const supabase = await createClient();
+  const supabase = client ?? await createClient();
 
   const { filters = {}, page = 1, pageSize = PROVIDERS_PER_PAGE } = options;
 

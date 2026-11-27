@@ -1,128 +1,45 @@
-/**
- * ServicesAreaCoverage — Nairobi Neighborhood Coverage Grid
- *
- * Displays the service areas MitaSafi covers, grouped by region.
- * Each area is a clickable chip-link that navigates to the marketplace
- * filtered by that area.
- *
- * Server component — pure static rendering with no client JS.
- *
- * Data source: `AREA_GROUPS` from `@/lib/constants` — canonical area groupings.
- *
- * Design:
- * - Gray background (bg-gray-50)
- * - Area chips: rounded-full pills with subtle border, brand hover accent
- * - Grouped under region headers (uppercase, tracking-wider)
- * - "Search Your Area" CTA scrolls back to hero search (#services-hero-heading)
- * - Teal brand accents on hover states and CTA
- *
- * @see SERVICES_LANDING_PAGE_SPECIFICATION.md §3 Section 7, SLP-8
- */
-
 import Link from "next/link";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { Container } from "@/components/ui/Container";
-import { buttonVariants } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
-import { AREA_GROUPS } from "@/lib/constants";
+import { counties, places } from "@/lib/site/places";
 
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
-/**
- * Region group display order.
- * Keys match AREA_GROUPS from constants — iterated in visual order.
- */
-const REGION_ORDER = ["Central & West", "South", "North & East"] as const;
-
-// =============================================================================
-// AREA CHIP
-// =============================================================================
-
-function AreaChip({ area }: { area: string }) {
-  return (
-    <Link
-      href={`/services/browse?area=${encodeURIComponent(area)}`}
-      className="inline-flex items-center border border-gray-200 bg-white hover:border-brand-300 hover:bg-brand-50 text-gray-700 hover:text-brand-700 px-4 min-h-[44px] rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
-    >
-      {area}
-    </Link>
-  );
-}
-
-// =============================================================================
-// REGION GROUP
-// =============================================================================
-
-function RegionGroup({
-  regionName,
-  areas,
-}: {
-  regionName: string;
-  areas: readonly string[];
-}) {
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-        {regionName}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {areas.map((area) => (
-          <AreaChip key={area} area={area} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// MAIN COMPONENT
-// =============================================================================
+const featuredTowns = new Set(["juja", "ruiru", "thika", "athi-river", "narok", "nakuru", "mombasa", "kisumu", "eldoret", "kitengela"]);
+const groups = [
+  { name: "Counties", locations: counties },
+  { name: "Cities and towns", locations: places.filter(({ slug }) => featuredTowns.has(slug)) },
+];
 
 export function ServicesAreaCoverage() {
   return (
     <Section background="gray" padding="md" id="service-areas">
       <Container size="default">
         <SectionHeader
-          eyebrow="Coverage"
-          title="We Cover All of Nairobi"
-          description="Find service providers in your neighborhood"
+          title="Find home services by location"
+          description="Choose a town or county to see providers who list it as a service area."
         />
-
-        {/* Region Groups */}
-        <nav aria-label="Service areas" className="mt-12 lg:mt-16 space-y-8">
-          {REGION_ORDER.map((region) => {
-            const areas = AREA_GROUPS[region];
-            return (
-              <RegionGroup key={region} regionName={region} areas={areas} />
-            );
-          })}
+        <nav aria-label="Service areas" className="mt-8 grid gap-8 sm:grid-cols-2">
+          {groups.map(({ name, locations }) => (
+            <div key={name} className="border-t border-gray-200 pt-4">
+              <h3 className="text-base font-semibold text-gray-900">{name}</h3>
+              <ul className="grid grid-cols-2 gap-x-4">
+                {locations.map(({ name, slug }) => (
+                  <li key={slug}>
+                    <Link
+                      href={{ pathname: "/services/browse", query: { location: slug } }}
+                      prefetch={false}
+                      className="inline-flex items-center px-4 min-h-[44px] rounded-full text-sm font-medium text-brand-700 hover:underline"
+                    >
+                      {name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </nav>
-
-        {/* Additional coverage note */}
-        <p className="mt-8 text-sm text-gray-500 text-center">
-          + 30 more neighborhoods across Greater Nairobi
-        </p>
-
-        {/* CTA — scrolls back to hero search */}
-        <div className="mt-8 text-center">
-          <Link
-            href="#services-hero-heading"
-            className={cn(
-              buttonVariants({ variant: "secondary", size: "md" }),
-              "group",
-            )}
-          >
-            Search Your Area
-            <span
-              className="inline-block transition-transform group-hover:translate-x-1"
-              aria-hidden="true"
-            >
-              &rarr;
-            </span>
-          </Link>
-        </div>
+        <Link href="/find" className="mt-4 inline-flex min-h-11 items-center text-brand-700 underline underline-offset-4">
+          See all location searches
+        </Link>
       </Container>
     </Section>
   );

@@ -24,6 +24,7 @@ export const authRoutes = ['/login', '/signup'] as const;
 export const publicRoutes = [
   '/',
   '/properties',
+  '/find',
   '/listings',
   '/services',
   '/service-providers',

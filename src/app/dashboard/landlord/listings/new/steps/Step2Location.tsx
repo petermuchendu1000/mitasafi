@@ -23,6 +23,7 @@ import {
 import { useWizard } from "../context";
 import { NAIROBI_AREAS } from "../types";
 import { useStep2Content } from "../useWizardContent";
+import { towns } from "@/lib/site/places";
 
 // Define the area type for type safety
 type AreaItem = { id: string; name: string; category: string };
@@ -53,6 +54,7 @@ export function Step2Location() {
 
   const [isAreaDropdownOpen, setIsAreaDropdownOpen] = useState(false);
   const [areaSearch, setAreaSearch] = useState("");
+  const isNairobi = city.trim().toLowerCase() === "nairobi";
 
   // Google Places state
   const [addressSearch, setAddressSearch] = useState(streetAddress);
@@ -96,13 +98,16 @@ export function Step2Location() {
     if (!area.trim()) {
       errors.area = `${content.area.label} is required`;
     }
+    if (!city.trim()) {
+      errors.city = `${content.city.label} is required`;
+    }
 
     setValidation(2, {
       isValid: Object.keys(errors).length === 0,
       errors,
       touched: {},
     });
-  }, [buildingName, streetAddress, area, setValidation, content]);
+  }, [buildingName, streetAddress, area, city, setValidation, content]);
 
   const handleFieldChange = (field: string, value: string | boolean) => {
     updateFormData({ [field]: value });
@@ -171,7 +176,7 @@ export function Step2Location() {
 
     // Try to auto-detect area from the address
     const addressLower = prediction.description.toLowerCase();
-    for (const areaItem of allAreas) {
+    for (const areaItem of isNairobi ? allAreas : []) {
       if (addressLower.includes(areaItem.name.toLowerCase())) {
         handleFieldChange("area", areaItem.id);
         break;
@@ -335,6 +340,31 @@ export function Step2Location() {
 
         {/* Area & City Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="city" className="mb-1.5 block text-sm font-medium text-gray-700">
+              {content.city.label} <span className="text-orange-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="city"
+              aria-invalid={touched.city && errors.city ? true : undefined}
+              aria-describedby={touched.city && errors.city ? "city-error" : undefined}
+              list="property-cities"
+              value={city}
+              onChange={(event) => {
+                const nextCity = event.target.value;
+                updateFormData({ city: nextCity, ...(isNairobi && nextCity.trim().toLowerCase() !== "nairobi" && { area: "" }) });
+                setFieldTouched(2, "city");
+              }}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+            <datalist id="property-cities">
+              {towns.map((town) => <option key={town.slug} value={town.name} />)}
+            </datalist>
+            <p className="mt-1.5 text-xs text-gray-500">{content.city.helper}</p>
+            {touched.city && errors.city && <p id="city-error" className="mt-1.5 text-xs text-red-600">{errors.city}</p>}
+          </div>
+
           {/* Area/Neighborhood */}
           <div>
             <label
@@ -343,7 +373,7 @@ export function Step2Location() {
             >
               {content.area.label} <span className="text-orange-500">*</span>
             </label>
-            <div className="relative">
+            {isNairobi ? <div className="relative">
               <button
                 id="area"
                 aria-invalid={touched.area && errors.area ? true : undefined}
@@ -445,7 +475,17 @@ export function Step2Location() {
                   </div>
                 </div>
               )}
-            </div>
+            </div> : (
+              <input
+                id="area"
+                aria-invalid={touched.area && errors.area ? true : undefined}
+                aria-describedby={touched.area && errors.area ? "area-error" : undefined}
+                value={area}
+                onChange={(event) => handleFieldChange("area", event.target.value)}
+                placeholder="Estate or neighbourhood"
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            )}
             {touched.area && errors.area && (
               <p id="area-error" className="text-xs text-red-600 mt-1.5">
                 {errors.area}
@@ -453,30 +493,6 @@ export function Step2Location() {
             )}
           </div>
 
-          {/* City */}
-          <div>
-            <label
-              htmlFor="city"
-              className="block text-sm font-medium text-gray-700 mb-1.5"
-            >
-              {content.city.label} <span className="text-orange-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="city"
-              value={city}
-              onChange={(e) => handleFieldChange("city", e.target.value)}
-              className={cn(
-                "w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50",
-                "text-gray-900",
-                "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
-              )}
-              readOnly
-            />
-            <p className="text-xs text-gray-500 mt-1.5">
-              {content.city.helper}
-            </p>
-          </div>
         </div>
 
         {/* Unit Number */}

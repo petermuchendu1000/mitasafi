@@ -44,32 +44,27 @@ import { PROVIDERS_PER_PAGE, SERVICE_CATEGORIES } from "@/lib/constants";
 import { ServicesMobileFilterButton } from "./mobile-filter-button";
 import { QuickFilterToggle } from "./quick-filter-toggle";
 import Link from "next/link";
+import { areaLabel, findMarketplaceArea } from "@/lib/site/marketplace";
+import { findPlace } from "@/lib/site/places";
+import { siteUrl } from "@/lib/site/urls";
 
 // =============================================================================
 // METADATA
 // =============================================================================
 
+const title = "Compare Home Service Providers in Kenya | MitaSafi";
+const description = "Browse movers, cleaners, plumbers and electricians in Kenya by town or neighbourhood. Compare profiles, services and reviews before requesting a job.";
+
 export const metadata: Metadata = {
-  title: "Services | Find Trusted Service Providers | MitaSafi",
-  description:
-    "Browse 700+ verified service providers in Nairobi. Moving, cleaning, repairs, interior works, security, and more. Compare quotes, read reviews, and book instantly.",
-  keywords: [
-    "service providers Nairobi",
-    "home services Kenya",
-    "moving services",
-    "cleaning services",
-    "repair services",
-    "interior design Kenya",
-    "verified contractors",
-    "plumber Nairobi",
-    "electrician Kenya",
-    "house cleaning service",
-  ],
+  title,
+  description,
+  keywords: null,
+  alternates: { canonical: siteUrl("/services/browse") },
   openGraph: {
-    title: "Services | Find Trusted Service Providers | MitaSafi",
-    description:
-      "Browse verified service providers in Nairobi. Moving, cleaning, repairs, and more.",
+    title,
+    description,
     type: "website",
+    url: siteUrl("/services/browse"),
   },
 };
 
@@ -82,6 +77,7 @@ interface SearchParams {
   subcategory?: string;
   services?: string;
   area?: string;
+  location?: string;
   price?: string;
   priceMin?: string;
   priceMax?: string;
@@ -139,12 +135,13 @@ function parseFilters(params: SearchParams) {
   }
 
   // Parse areas (multi-select) — pass full array for server-side filtering
+  const location = findPlace(params.location);
   const areas = params.area?.split(",").filter(Boolean) || [];
 
   return {
     category: params.category || null,
     subcategory: params.subcategory?.split(",")[0] || null, // API takes single subcategory for now
-    area: areas.length > 0 ? areas : null,
+    area: areas.length > 0 ? areas : location ? [...location.areas] : null,
     priceMin,
     priceMax,
     ratingMin: params.rating ? parseFloat(params.rating) : null,
@@ -162,6 +159,7 @@ function hasActiveFilters(params: SearchParams): boolean {
     params.subcategory ||
     params.services ||
     params.area ||
+    findPlace(params.location) ||
     params.price ||
     params.priceMin ||
     params.priceMax ||
@@ -180,6 +178,9 @@ function hasActiveFilters(params: SearchParams): boolean {
 export default async function ServicesPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const filters = parseFilters(params);
+  const rentalArea = findMarketplaceArea(params.area);
+  const location = params.area ? undefined : findPlace(params.location);
+  const locationName = location?.name ?? (rentalArea ? areaLabel(rentalArea) : undefined);
   const page = Math.max(1, parseInt(params.page || "1", 10));
   const hasFilters = hasActiveFilters(params);
 
@@ -220,7 +221,7 @@ export default async function ServicesPage({ searchParams }: PageProps) {
             <div className="text-center">
               {/* Headline — bolder, specific, action-oriented */}
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-3 text-balance animate-fade-in-up animate-fill-both animate-delay-100">
-                Home services you can trust
+                {location ? `Home services in ${location.name}` : "Find home services in Kenya"}
               </h1>
               <p className="text-lg lg:text-xl text-white/70 max-w-2xl mx-auto mb-6 animate-fade-in-up animate-fill-both animate-delay-200">
                 From cleaning to movers, repairs to security — compare prices,
@@ -259,6 +260,13 @@ export default async function ServicesPage({ searchParams }: PageProps) {
         {/* MAIN CONTENT */}
         {/* ================================================================= */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Link
+            href={{ pathname: "/properties", query: location ? { location: location.slug, residential: "1" } : rentalArea ? { area: rentalArea } : {} }}
+            className="mb-4 inline-flex min-h-11 items-center font-medium text-brand-700 underline underline-offset-4"
+          >
+            {locationName ? `Browse rentals in ${locationName}` : "Browse rentals in Kenya"}
+          </Link>
+          {location && <Link className="mb-4 ml-4 inline-flex min-h-11 items-center text-sm underline underline-offset-4" href="/services/browse">Clear location</Link>}
           {/* Featured Providers — min 3 to avoid empty-carousel look */}
           {!hasFilters && page === 1 && featuredProviders.length >= 3 && (
             <section className="mb-12">
@@ -268,7 +276,7 @@ export default async function ServicesPage({ searchParams }: PageProps) {
                     Trending pros this week
                   </h2>
                   <p className="text-gray-600 mt-1">
-                    Top-rated professionals in Nairobi
+                    Top-rated professionals to explore
                   </p>
                 </div>
                 <Link

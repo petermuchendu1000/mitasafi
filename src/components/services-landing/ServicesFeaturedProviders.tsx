@@ -287,7 +287,7 @@ export async function ServicesFeaturedProviders() {
         <SectionHeader
           eyebrow="Trusted Professionals"
           title="Top-Rated Providers"
-          description="Trusted by thousands of Nairobi homeowners"
+          description="Explore profiles and compare the services they offer"
           eyebrowColor="cta"
         />
 

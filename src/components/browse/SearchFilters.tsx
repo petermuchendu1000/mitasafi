@@ -24,6 +24,7 @@ import {
   Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { places } from "@/lib/site/places";
 
 interface SearchFiltersProps {
   areas?: string[];
@@ -54,6 +55,7 @@ const BEDROOM_OPTIONS = [
 
 // Price range options (in KES)
 const PRICE_RANGES = [
+  { value: "0-5000", label: "Up to KES 5,000" },
   { value: "0-20000", label: "Under 20K" },
   { value: "20000-40000", label: "20K - 40K" },
   { value: "40000-70000", label: "40K - 70K" },
@@ -100,13 +102,22 @@ export function SearchFilters({
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
 
   // Get current filter values from URL
-  const currentArea = searchParams.get("area") || "";
+  const currentLocation = searchParams.get("location");
+  const requestedArea = searchParams.get("area");
+  const legacyPlace = requestedArea && places.find(({ areas }) => areas[0] === requestedArea);
+  const selectedPlace = currentLocation || (legacyPlace ? legacyPlace.slug : null);
+  const currentArea = selectedPlace ? `location:${selectedPlace}` : (requestedArea || "");
   const currentType = searchParams.get("type") || "";
-  const currentBedrooms = searchParams.get("beds") || "";
-  const currentPrice = searchParams.get("price") || "";
+  const currentBedrooms = searchParams.get("bedrooms") || searchParams.get("beds") || "";
+  const priceCap = searchParams.get("maxPrice");
+  const currentPrice = searchParams.get("price") || (priceCap === "5000" ? "0-5000" : "");
   const currentSort = searchParams.get("sort") || "newest";
   const currentVerified = searchParams.get("verified") === "true";
   const currentAvailable = searchParams.get("available") === "true";
+  const locationOptions = [
+    ...places.map(({ name, slug }) => ({ label: name, value: `location:${slug}` })),
+    ...areas.filter((area) => !places.some(({ areas }) => areas[0] === area)).map((area) => ({ value: area, label: area })),
+  ].sort((a, b) => a.label.localeCompare(b.label, "en-KE"));
 
   // Update URL params
   const updateFilters = useCallback(
@@ -123,11 +134,23 @@ export function SearchFilters({
 
       // Reset to page 1 when filters change
       params.delete("page");
+      if (Object.hasOwn(updates, "beds")) params.delete("bedrooms");
 
       router.push(`${pathname}?${params.toString()}`);
     },
     [router, pathname, searchParams],
   );
+
+  const changeLocation = (value: string | null) => {
+    if (value?.startsWith("location:")) {
+      updateFilters({ location: value.slice("location:".length), area: null });
+      return;
+    }
+    updateFilters({ location: null, area: value });
+  };
+  const changePrice = (value: string | null) => {
+    updateFilters({ price: value, minPrice: null, maxPrice: null, currency: value === "0-5000" ? "KES" : null });
+  };
 
   // Handle search submit
   const handleSearch = (e: React.FormEvent) => {
@@ -186,8 +209,8 @@ export function SearchFilters({
               label="Area"
               icon={<MapPin className="w-4 h-4" />}
               value={currentArea}
-              options={areas.map((area) => ({ value: area, label: area }))}
-              onChange={(value) => updateFilters({ area: value })}
+              options={locationOptions}
+              onChange={changeLocation}
               placeholder="All Areas"
             />
 
@@ -217,7 +240,7 @@ export function SearchFilters({
               icon={<DollarSign className="w-4 h-4" />}
               value={currentPrice}
               options={PRICE_RANGES}
-              onChange={(value) => updateFilters({ price: value })}
+              onChange={changePrice}
               placeholder="Any Price"
             />
 
@@ -318,16 +341,13 @@ export function SearchFilters({
               <CheckCircle className="w-3.5 h-3.5" />
               Verified
             </button>
-
-            {["Westlands", "Kilimani", "Lavington"].map((area) => (
+            {[["Kiambu County", "kiambu-county"], ["Machakos County", "machakos-county"], ["Narok", "narok"]].map(([area, slug]) => (
               <button
                 key={area}
-                onClick={() =>
-                  updateFilters({ area: currentArea === area ? null : area })
-                }
+                onClick={() => changeLocation(currentLocation === slug ? null : `location:${slug}`)}
                 className={cn(
                   "flex-shrink-0 px-3 min-h-[44px] rounded-full text-sm font-medium transition-all",
-                  currentArea === area
+                  currentLocation === slug
                     ? "bg-brand-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200",
                 )}
@@ -364,26 +384,10 @@ export function SearchFilters({
               <div className="p-4 space-y-6">
                 {/* Area */}
                 <MobileFilterSection title="Area">
-                  <div className="flex flex-wrap gap-2">
-                    {areas.slice(0, 12).map((area) => (
-                      <button
-                        key={area}
-                        onClick={() =>
-                          updateFilters({
-                            area: currentArea === area ? null : area,
-                          })
-                        }
-                        className={cn(
-                          "px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                          currentArea === area
-                            ? "bg-brand-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200",
-                        )}
-                      >
-                        {area}
-                      </button>
-                    ))}
-                  </div>
+                  <select aria-label="City, town or county" value={currentArea} onChange={(event) => changeLocation(event.target.value || null)} className="min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3">
+                    <option value="">Anywhere in Kenya</option>
+                    {locationOptions.map(({ label, value }) => <option value={value} key={value}>{label}</option>)}
+                  </select>
                 </MobileFilterSection>
 
                 {/* Property Type */}
@@ -441,12 +445,7 @@ export function SearchFilters({
                     {PRICE_RANGES.map((opt) => (
                       <button
                         key={opt.value}
-                        onClick={() =>
-                          updateFilters({
-                            price:
-                              currentPrice === opt.value ? null : opt.value,
-                          })
-                        }
+                        onClick={() => changePrice(currentPrice === opt.value ? null : opt.value)}
                         className={cn(
                           "px-3 py-2 rounded-lg text-sm font-medium transition-all",
                           currentPrice === opt.value

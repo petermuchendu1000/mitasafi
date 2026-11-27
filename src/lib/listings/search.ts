@@ -14,15 +14,18 @@ export interface SearchParams {
   // Location
   area?: string;
   city?: string;
+  locationAreas?: readonly string[];
   
   // Property
   propertyType?: string;
+  residentialOnly?: boolean;
   minBedrooms?: number;
   maxBedrooms?: number;
   
   // Price
   minPrice?: number;
   maxPrice?: number;
+  currency?: "KES";
   
   // Features
   verified?: boolean;
@@ -87,17 +90,23 @@ interface RawSearchListing {
 /**
  * Search listings with filters and pagination
  */
-export async function searchListings(params: SearchParams): Promise<SearchResult> {
-  const supabase = await createClient();
+export async function searchListings(
+  params: SearchParams,
+  client?: Awaited<ReturnType<typeof createClient>>,
+): Promise<SearchResult> {
+  const supabase = client ?? await createClient();
   
   const {
     area,
     city,
+    locationAreas,
     propertyType,
+    residentialOnly,
     minBedrooms,
     maxBedrooms,
     minPrice,
     maxPrice,
+    currency,
     verified,
     availableNow,
     page = 1,
@@ -156,6 +165,18 @@ export async function searchListings(params: SearchParams): Promise<SearchResult
       queryBuilder = queryBuilder.eq("city", city);
     }
 
+    if (locationAreas?.length) {
+      // Location aliases come from the marketplace directory. Older listings
+      // can have the town in area, while newer ones store it in city.
+      const values = new Set(locationAreas.flatMap((name) => [name, name.toLowerCase().replace(/ /g, "-")]));
+      const terms = Array.from(values, (name) => `city.ilike.${name},area.ilike.${name}`);
+      queryBuilder = queryBuilder.or(terms.join(","));
+    }
+
+    if (residentialOnly) {
+      queryBuilder = queryBuilder.or("listing_category.eq.residential,listing_category.is.null");
+    }
+
     if (propertyType) {
       queryBuilder = queryBuilder.eq("property_type", propertyType);
     }
@@ -174,6 +195,10 @@ export async function searchListings(params: SearchParams): Promise<SearchResult
 
     if (maxPrice !== undefined) {
       queryBuilder = queryBuilder.lte("rent_amount", maxPrice);
+    }
+
+    if (currency) {
+      queryBuilder = queryBuilder.or("currency.eq.KES,currency.is.null");
     }
 
     if (verified === true) {

@@ -5,21 +5,13 @@ import "./globals.css";
 import { landingImage } from "@/lib/storage/landing-images";
 import { SITE_URL } from "@/lib/site/urls";
 
+const title = "MitaSafi | Rentals and Home Services in Kenya";
+const description = "Find houses, apartments and bedsitters for rent across Kenya. Compare local movers, cleaners, plumbers and other home services by location.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title:
-    "MitaSafi — Find Verified Rental Homes in Nairobi | Houses & Apartments for Rent",
-  description:
-    "Discover verified rental homes in Nairobi. Browse apartments, bedsitters, and houses with real photos, honest prices, and direct landlord contact. No brokers. No hidden fees. Find your home today.",
-  keywords: [
-    "houses for rent Nairobi",
-    "apartments for rent Nairobi",
-    "rental homes Kenya",
-    "verified rentals",
-    "Nairobi apartments",
-    "bedsitter Nairobi",
-    "1 bedroom Nairobi",
-  ],
+  title,
+  description,
   authors: [{ name: "MitaSafi" }],
   creator: "MitaSafi",
   publisher: "MitaSafi",
@@ -32,23 +24,21 @@ export const metadata: Metadata = {
     locale: "en_KE",
     url: SITE_URL,
     siteName: "MitaSafi",
-    title: "MitaSafi — Find Verified Rental Homes in Nairobi",
-    description:
-      "Renting shouldn't feel like gambling. Find verified homes with honest prices and direct landlord contact.",
+    title,
+    description,
     images: [
       {
         url: landingImage("logo/og-image.png"),
         width: 1200,
         height: 630,
-        alt: "MitaSafi - Modern Rental Management for Nairobi",
+        alt: "MitaSafi",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MitaSafi — Find Verified Rental Homes in Nairobi",
-    description:
-      "Renting shouldn't feel like gambling. Find verified homes with honest prices and direct landlord contact.",
+    title,
+    description,
     images: [landingImage("logo/og-image.png")],
   },
   icons: {

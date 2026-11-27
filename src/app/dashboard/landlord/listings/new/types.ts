@@ -520,7 +520,7 @@ export const DEFAULT_FORM_DATA: PropertyFormData = {
   latitude: null,
   longitude: null,
   area: "",
-  city: "Nairobi",
+  city: "",
   unitNumber: "",
   hideExactAddress: false,
   landmarks: "",

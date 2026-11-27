@@ -42,7 +42,7 @@ export function ServicesHero() {
       {/* ── Background Image ──────────────────────────────────────── */}
       <Image
         src={SERVICES_IMAGES.servicesHeroBg}
-        alt="Professional plumber working under a modern kitchen sink in Nairobi"
+        alt="Professional plumber working under a kitchen sink"
         fill
         priority
         quality={75}
@@ -69,7 +69,7 @@ export function ServicesHero() {
           >
             Trusted Home Services
             <br />
-            Across Nairobi
+            Across Kenya
           </h1>
           <p className="mt-4 sm:mt-6 text-xl sm:text-2xl text-white/80 leading-relaxed">
             Verified professionals. Transparent pricing.

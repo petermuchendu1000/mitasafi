@@ -45,10 +45,10 @@ import {
 import { cn } from "@/lib/utils";
 import {
   SERVICE_CATEGORIES,
-  NAIROBI_AREAS,
   PROVIDER_SORT_OPTIONS,
 } from "@/lib/constants";
 import type { ServiceCategoryWithSubs } from "@/types/service-providers";
+import { marketplaceAreaNames } from "@/lib/site/marketplace";
 
 // =============================================================================
 // TYPES
@@ -399,7 +399,7 @@ export function ServiceFilterSidebar({
   const availableSubcategories = selectedCategory?.subcategories || [];
 
   // Area filter options
-  const areaOptions = NAIROBI_AREAS.map((area) => ({
+  const areaOptions = marketplaceAreaNames.map((area) => ({
     id: area,
     label: area,
   }));

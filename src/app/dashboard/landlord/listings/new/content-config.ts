@@ -125,8 +125,8 @@ const DEFAULT_CONTENT: WizardContent = {
       label: "Area/Neighborhood",
     },
     city: {
-      label: "City",
-      helper: "Currently available in Nairobi",
+      label: "City or town",
+      helper: "Choose a suggested town or type the name.",
     },
     unitNumber: {
       label: "Unit/Apartment Number",

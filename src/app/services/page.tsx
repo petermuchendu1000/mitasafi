@@ -37,30 +37,15 @@ import { SITE_URL, siteUrl } from "@/lib/site/urls";
 // SEO METADATA (§5 of SERVICES_LANDING_PAGE_SPECIFICATION)
 // =============================================================================
 
+const title = "Home Services in Kenya | Movers, Cleaners & Fundis | MitaSafi";
+const description = "Search for movers, cleaners, plumbers and electricians by town or county in Kenya. Compare profiles and request a quote or booking where available.";
+
 export const metadata: Metadata = {
-  title: "Home Services in Nairobi | Plumbers, Electricians & More | MitaSafi",
-  description:
-    "Find verified plumbers, electricians, cleaners, movers, and 700+ service providers in Nairobi. Compare quotes, read reviews, book instantly. Trusted by thousands.",
-  keywords: [
-    "home services Nairobi",
-    "plumber Nairobi",
-    "electrician Nairobi",
-    "house cleaning Nairobi",
-    "moving services Kenya",
-    "fundi services",
-    "verified contractors Kenya",
-    "emergency plumber Nairobi",
-    "home maintenance Nairobi",
-    "service providers Kenya",
-    "MitaSafi services",
-    "affordable plumber Kenya",
-    "cleaning service Westlands",
-    "electrician Kilimani",
-  ],
+  title,
+  description,
   openGraph: {
-    title: "Home Services in Nairobi | MitaSafi",
-    description:
-      "Find verified plumbers, electricians, cleaners, and 700+ service providers in Nairobi. Compare quotes, read reviews, book instantly.",
+    title,
+    description,
     type: "website",
     locale: "en_KE",
     url: siteUrl("/services"),
@@ -69,9 +54,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Home Services in Nairobi | MitaSafi",
-    description:
-      "Verified plumbers, electricians, cleaners & more. Book instantly.",
+    title,
+    description,
     // Twitter image auto-resolved from opengraph-image.tsx
     site: "@mitasafi",
   },
@@ -91,41 +75,20 @@ export const metadata: Metadata = {
 const webPageJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebPage",
-  name: "Home Services in Nairobi | MitaSafi",
+  name: title,
   url: siteUrl("/services"),
-  description:
-    "Find verified plumbers, electricians, cleaners, movers, and 700+ service providers in Nairobi. Compare quotes, read reviews, book instantly. Trusted by thousands.",
-  potentialAction: {
-    "@type": "SearchAction",
-    target: siteUrl("/services/browse?q={search_term}"),
-    "query-input": "required name=search_term",
-  },
+  description,
 };
 
 const professionalServiceJsonLd = {
   "@context": "https://schema.org",
-  "@type": "ProfessionalService",
+  "@type": "Organization",
+  "@id": siteUrl("/#organization"),
   name: "MitaSafi",
   url: SITE_URL,
   description:
-    "Kenya's trusted marketplace for verified home service providers.",
-  areaServed: {
-    "@type": "City",
-    name: "Nairobi",
-    containedInPlace: {
-      "@type": "Country",
-      name: "Kenya",
-    },
-  },
-  serviceType: [
-    "Plumbing",
-    "Electrical",
-    "Cleaning",
-    "Moving",
-    "Painting",
-    "Carpentry",
-    "Pest Control",
-  ],
+    "Kenyan marketplace for rentals and home service providers.",
+  areaServed: { "@type": "Country", name: "Kenya" },
 };
 
 // =============================================================================
@@ -195,7 +158,7 @@ export default function ServicesLandingPage() {
         {/* SLP-8: Why MitaSafi — 6-pillar value proposition */}
         <ServicesWhyMitaSafi />
 
-        {/* SLP-8: Area Coverage — Nairobi neighborhood chips */}
+        {/* Search by location */}
         <ServicesAreaCoverage />
 
         {/* SLP-9: Pricing Preview — transparent pricing table */}

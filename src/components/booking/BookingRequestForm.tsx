@@ -106,7 +106,7 @@ export function BookingRequestForm({
     addressLine1: "",
     addressLine2: "",
     area: "",
-    city: "Nairobi",
+    city: "",
     accessNotes: "",
     locationType: "",
     saveLocation: false,
@@ -129,7 +129,7 @@ export function BookingRequestForm({
       case 1:
         return true; // Service is pre-selected
       case 2:
-        return !!(location.locationId || location.addressLine1.trim());
+        return !!(location.locationId || (location.addressLine1.trim() && location.city.trim()));
       case 3:
         return isFlexible || isEmergency || !!scheduledDate;
       case 4:
@@ -181,7 +181,7 @@ export function BookingRequestForm({
         addressLine1: location.addressLine1 || undefined,
         addressLine2: location.addressLine2 || undefined,
         area: location.area || undefined,
-        city: location.city || undefined,
+        city: location.city.trim() || undefined,
         accessNotes: location.accessNotes || undefined,
         locationType: (location.locationType as LocationType) || undefined,
         saveLocation: location.saveLocation,
