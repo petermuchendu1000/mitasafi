@@ -95,8 +95,12 @@ export function TenantProfile({ data }: { data: TenantProfileData }) {
   return (
     <div>
       <div className="bg-white border border-gray-200 rounded-xl">
-        <div className="px-4 sm:px-5 py-4 flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3 min-w-0">
+        {/* Wraps below sm so the name gets the whole width. The three actions
+            are icon-only on a phone but still about 136px together, which left
+            the identity column roughly 76px and broke "Brian Kamau" across two
+            lines. They take their own row instead. */}
+        <div className="px-4 sm:px-5 py-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div className="flex items-start gap-3 min-w-0 basis-full sm:basis-auto">
             <Link
               href="/dashboard/landlord/tenants"
               aria-label="Back to tenants"
@@ -137,19 +141,25 @@ export function TenantProfile({ data }: { data: TenantProfileData }) {
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
-                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+              {/* Not a flex row. `flex` made every text run its own flex item,
+                  so in a narrow column each one wrapped inside itself and the
+                  line came out as "ID / verified" beside "National / ID /
+                  24110001" rather than one sentence. An inline icon lets the
+                  whole line reflow as ordinary text, breaking at spaces. */}
+              <p className="text-sm text-gray-500 mt-0.5">
+                <ShieldCheck className="w-3.5 h-3.5 mr-1.5 inline-block align-[-2px]" />
                 {labelFor(verificationLevelLabels, tenant.verificationLevel)}
                 {tenant.idNumber && (
                   <>
-                    <span className="text-gray-300">·</span>
+                    {" "}
+                    <span className="text-gray-300">·</span>{" "}
                     {labelFor(ID_TYPE_LABELS, tenant.idType)} {tenant.idNumber}
                   </>
                 )}
               </p>
               {(tenant.occupation || tenant.employer) && (
-                <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5">
-                  <Briefcase className="w-3 h-3 shrink-0" />
+                <p className="text-xs text-gray-400 mt-0.5">
+                  <Briefcase className="w-3 h-3 mr-1.5 inline-block align-[-1px]" />
                   {[tenant.occupation, tenant.employer]
                     .filter(Boolean)
                     .join(" · ")}
@@ -399,13 +409,13 @@ export function TenantProfile({ data }: { data: TenantProfileData }) {
                               Unit {l.unitNumber}
                             </span>
                           )}
-                          <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
-                            <Building2 className="w-3.5 h-3.5" />
+                          <p className="text-sm text-gray-500 mt-0.5">
+                            <Building2 className="w-3.5 h-3.5 mr-1.5 inline-block align-[-2px]" />
                             {l.buildingName ?? "—"}
                             {l.buildingArea ? ` · ${l.buildingArea}` : ""}
                           </p>
-                          <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
-                            <Calendar className="w-3 h-3" />
+                          <p className="text-xs text-gray-400 mt-1">
+                            <Calendar className="w-3 h-3 mr-1.5 inline-block align-[-1px]" />
                             {formatShortDate(l.startDate)} →{" "}
                             {l.endDate
                               ? formatShortDate(l.endDate)
