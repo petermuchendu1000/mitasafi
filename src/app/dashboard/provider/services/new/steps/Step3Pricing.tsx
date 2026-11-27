@@ -1,6 +1,6 @@
 /**
  * Step 3: Pricing & Review
- * 
+ *
  * Provider sets custom pricing for each selected service.
  * Final review before submission.
  */
@@ -15,7 +15,9 @@ import { PRICE_TYPES, type PriceType } from "../types";
 export function Step3Pricing() {
   const { state, updateService } = useWizard();
   const { formData, errors } = state;
-  const [showBulkOption, setShowBulkOption] = useState(formData.selectedServices.length > 3);
+  const [showBulkOption, setShowBulkOption] = useState(
+    formData.selectedServices.length > 3,
+  );
   const [bulkPriceType, setBulkPriceType] = useState<PriceType | null>(null);
   const [bulkPrice, setBulkPrice] = useState<string>("");
 
@@ -25,30 +27,41 @@ export function Step3Pricing() {
   };
 
   const handlePriceTypeChange = (serviceId: string, priceType: PriceType) => {
-    updateService(serviceId, { 
+    updateService(serviceId, {
       priceType,
       // Clear price if switching to quote
-      customPrice: priceType === "quote" ? null : formData.selectedServices.find(s => s.serviceId === serviceId)?.customPrice || null,
+      customPrice:
+        priceType === "quote"
+          ? null
+          : formData.selectedServices.find((s) => s.serviceId === serviceId)
+              ?.customPrice || null,
     });
   };
 
   const applyBulkPricing = () => {
     if (!bulkPriceType) return;
-    
-    formData.selectedServices.forEach(service => {
+
+    formData.selectedServices.forEach((service) => {
       updateService(service.serviceId, {
         priceType: bulkPriceType,
-        customPrice: bulkPriceType === "quote" ? null : (bulkPrice ? parseFloat(bulkPrice) : null),
+        customPrice:
+          bulkPriceType === "quote"
+            ? null
+            : bulkPrice
+              ? parseFloat(bulkPrice)
+              : null,
       });
     });
-    
+
     setShowBulkOption(false);
   };
 
   if (formData.selectedServices.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">No services selected. Please go back and select services.</p>
+        <p className="text-gray-500">
+          No services selected. Please go back and select services.
+        </p>
       </div>
     );
   }
@@ -77,10 +90,10 @@ export function Step3Pricing() {
                 key={type.id}
                 onClick={() => setBulkPriceType(type.id)}
                 className={cn(
-                  "px-3 py-1.5 text-sm rounded-md border transition-colors",
+                  "px-3 min-h-[44px] text-sm rounded-md border transition-colors",
                   bulkPriceType === type.id
                     ? "border-teal-600 bg-teal-100 text-teal-700"
-                    : "border-gray-300 bg-white text-gray-600 hover:border-gray-400"
+                    : "border-gray-300 bg-white text-gray-600 hover:border-gray-400",
                 )}
               >
                 {type.label}
@@ -95,7 +108,7 @@ export function Step3Pricing() {
               placeholder="e.g. 3,000"
               value={bulkPrice}
               onChange={(e) => setBulkPrice(e.target.value)}
-              className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-teal-500 min-h-[44px]"
             />
           )}
           <div className="flex gap-2">
@@ -103,17 +116,17 @@ export function Step3Pricing() {
               onClick={applyBulkPricing}
               disabled={!bulkPriceType}
               className={cn(
-                "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                "px-4 min-h-[44px] text-sm font-medium rounded-lg transition-colors",
                 bulkPriceType
                   ? "bg-teal-600 text-white hover:bg-teal-700"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed",
               )}
             >
               Apply to all
             </button>
             <button
               onClick={() => setShowBulkOption(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors min-h-[44px]"
             >
               No, set one by one
             </button>
@@ -132,7 +145,9 @@ export function Step3Pricing() {
             >
               {/* Service Header */}
               <div className="mb-4">
-                <h3 className="font-medium text-gray-900">{service.serviceName}</h3>
+                <h3 className="font-medium text-gray-900">
+                  {service.serviceName}
+                </h3>
                 <p className="text-xs text-gray-500">
                   {service.categoryName} → {service.subcategoryName}
                 </p>
@@ -154,21 +169,25 @@ export function Step3Pricing() {
                           "hover:border-gray-300",
                           isSelected
                             ? "border-teal-600 bg-teal-50"
-                            : "border-gray-200 bg-white"
+                            : "border-gray-200 bg-white",
                         )}
                       >
                         <input
                           type="radio"
                           name={`pricing-${service.serviceId}`}
                           checked={isSelected}
-                          onChange={() => handlePriceTypeChange(service.serviceId, type.id)}
+                          onChange={() =>
+                            handlePriceTypeChange(service.serviceId, type.id)
+                          }
                           className="mt-0.5 w-4 h-4 text-teal-600 border-gray-300 focus:ring-teal-500"
                         />
                         <div className="ml-3 flex-1">
-                          <p className={cn(
-                            "font-medium text-sm",
-                            isSelected ? "text-teal-900" : "text-gray-900"
-                          )}>
+                          <p
+                            className={cn(
+                              "font-medium text-sm",
+                              isSelected ? "text-teal-900" : "text-gray-900",
+                            )}
+                          >
                             {type.label}
                           </p>
                           <p className="text-xs text-gray-500 mt-0.5">
@@ -193,11 +212,13 @@ export function Step3Pricing() {
                     step="100"
                     placeholder="e.g. 3,000"
                     value={service.customPrice ?? ""}
-                    onChange={(e) => handlePriceChange(service.serviceId, e.target.value)}
+                    onChange={(e) =>
+                      handlePriceChange(service.serviceId, e.target.value)
+                    }
                     className={cn(
-                      "w-full max-w-xs px-3 py-2 border rounded-lg text-sm",
+                      "w-full max-w-xs px-3 min-h-[44px] border rounded-lg text-sm",
                       "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent",
-                      priceError ? "border-red-300" : "border-gray-300"
+                      priceError ? "border-red-300" : "border-gray-300",
                     )}
                   />
                   {priceError && (
@@ -215,13 +236,23 @@ export function Step3Pricing() {
         <h4 className="font-medium text-gray-900 mb-2">Summary</h4>
         <ul className="text-sm text-gray-600 space-y-1">
           <li>
-            <span className="font-medium">{formData.selectedServices.length}</span> service{formData.selectedServices.length !== 1 ? "s" : ""} will be added to your profile
+            <span className="font-medium">
+              {formData.selectedServices.length}
+            </span>{" "}
+            service{formData.selectedServices.length !== 1 ? "s" : ""} will be
+            added to your profile
           </li>
           <li>
-            Category: <span className="font-medium">{formData.selectedServices[0]?.categoryName}</span>
+            Category:{" "}
+            <span className="font-medium">
+              {formData.selectedServices[0]?.categoryName}
+            </span>
           </li>
           <li>
-            Subcategory: <span className="font-medium">{formData.selectedServices[0]?.subcategoryName}</span>
+            Subcategory:{" "}
+            <span className="font-medium">
+              {formData.selectedServices[0]?.subcategoryName}
+            </span>
           </li>
         </ul>
       </div>

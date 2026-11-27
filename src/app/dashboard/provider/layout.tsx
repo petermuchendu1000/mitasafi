@@ -1,11 +1,11 @@
 /**
  * Service Provider Dashboard Layout
- * 
+ *
  * PERFORMANCE OPTIMIZED:
  * - Single database query (was 4 separate queries)
  * - React cache() prevents duplicate queries across pages
  * - 290ms → 60ms layout overhead (4.8x faster)
- * 
+ *
  * Server component that wraps all provider dashboard pages.
  * Handles:
  * - Authentication check
@@ -15,7 +15,12 @@
  */
 
 import { redirect } from "next/navigation";
-import { getProviderWithProfile, getCachedUser, getCachedUnreadNotifications, getCachedUnreadMessageCount } from "@/lib/cache/queries";
+import {
+  getProviderWithProfile,
+  getCachedUser,
+  getCachedUnreadNotifications,
+  getCachedUnreadMessageCount,
+} from "@/lib/cache/queries";
 import { ProviderDashboardShell } from "./ProviderDashboardShell";
 
 interface ProviderLayoutProps {
@@ -35,16 +40,19 @@ export interface ProviderSidebarProfile {
   isAccountActive: boolean;
 }
 
-export default async function ProviderDashboardLayout({ children }: ProviderLayoutProps) {
+export default async function ProviderDashboardLayout({
+  children,
+}: ProviderLayoutProps) {
   // Check authentication (cached — shared with page.tsx)
   const { user, error: authError } = await getCachedUser();
-  
+
   if (authError || !user) {
     redirect("/login?redirectTo=/dashboard/provider");
   }
 
   // Get provider with complete profile (cached — shared with page.tsx)
-  const { data: providerData, error: providerError } = await getProviderWithProfile(user.id);
+  const { data: providerData, error: providerError } =
+    await getProviderWithProfile(user.id);
 
   // If no provider profile exists, they need to complete onboarding
   if (providerError || !providerData) {
@@ -65,16 +73,17 @@ export default async function ProviderDashboardLayout({ children }: ProviderLayo
 
   // Get verification status
   const verificationLevel = userProfile.verification_level || "none";
-  
+
   // Check if Supabase already verified their phone (phone signup)
   const supabasePhoneVerified = user.phone && user.phone_confirmed_at;
-  const effectiveVerificationLevel = supabasePhoneVerified && verificationLevel === "none" 
-    ? "phone" 
-    : verificationLevel;
+  const effectiveVerificationLevel =
+    supabasePhoneVerified && verificationLevel === "none"
+      ? "phone"
+      : verificationLevel;
 
   // Provider is fully verified if EITHER the profile says so OR the provider record is verified
-  const isVerified = effectiveVerificationLevel === "full" 
-    || !!provider.is_verified;
+  const isVerified =
+    effectiveVerificationLevel === "full" || !!provider.is_verified;
 
   // Check for unread notifications (cached per request)
   const hasUnreadNotifications = await getCachedUnreadNotifications(user.id);

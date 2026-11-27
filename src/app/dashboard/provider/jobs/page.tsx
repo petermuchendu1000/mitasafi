@@ -81,7 +81,7 @@ function formatRelativeTime(iso: string): string {
 }
 
 function formatPrice(price: number | null): string {
-  if (price == null) return "—";
+  if (price == null) return "No price";
   return `KES ${price.toLocaleString()}`;
 }
 
@@ -154,7 +154,7 @@ export default async function ProviderJobsPage({ searchParams }: PageProps) {
                 key={t.key}
                 href={`/dashboard/provider/jobs?tab=${t.key}`}
                 className={`
-                  flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium
+                  flex items-center gap-1.5 px-3 min-h-[44px] text-sm font-medium
                   border-b-2 transition-colors whitespace-nowrap
                   ${
                     tab === t.key
@@ -208,7 +208,7 @@ export default async function ProviderJobsPage({ searchParams }: PageProps) {
           <div className="space-y-3">
             {bookings.map((booking) => {
               const statusConfig = getBookingStatusConfig(
-                booking.status as BookingStatus
+                booking.status as BookingStatus,
               );
               const meta = booking.metadata as Record<string, unknown> | null;
               const locationSummary =
@@ -266,14 +266,14 @@ export default async function ProviderJobsPage({ searchParams }: PageProps) {
                           <Calendar className="w-3 h-3" />
                           {new Date(booking.scheduled_start).toLocaleDateString(
                             "en-KE",
-                            { month: "short", day: "numeric" }
+                            { month: "short", day: "numeric" },
                           )}
                         </span>
                       )}
                       {(booking.quoted_price || booking.agreed_price) && (
                         <span className="font-medium text-gray-700">
                           {formatPrice(
-                            booking.agreed_price ?? booking.quoted_price
+                            booking.agreed_price ?? booking.quoted_price,
                           )}
                         </span>
                       )}
@@ -293,8 +293,8 @@ export default async function ProviderJobsPage({ searchParams }: PageProps) {
                             : booking.status === "quote_sent"
                               ? "Awaiting customer response"
                               : booking.status === "quote_accepted"
-                                ? "Quote accepted — confirm booking"
-                                : "Quote rejected — revise or cancel"}
+                                ? "Quote accepted. Confirm the booking."
+                                : "Quote rejected. Revise it or cancel."}
                         </span>
                         <ChevronRight className="w-3 h-3 text-indigo-400 ml-auto" />
                       </div>
@@ -317,7 +317,7 @@ export default async function ProviderJobsPage({ searchParams }: PageProps) {
               {pagination.page > 1 && (
                 <Link
                   href={`/dashboard/provider/jobs?tab=${tab}&page=${pagination.page - 1}`}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors inline-flex items-center min-h-[44px]"
                 >
                   Previous
                 </Link>
@@ -325,7 +325,7 @@ export default async function ProviderJobsPage({ searchParams }: PageProps) {
               {pagination.hasMore && (
                 <Link
                   href={`/dashboard/provider/jobs?tab=${tab}&page=${pagination.page + 1}`}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors inline-flex items-center min-h-[44px]"
                 >
                   Next
                 </Link>

@@ -35,7 +35,9 @@ interface SocialTrafficCardProps {
   providerId: string;
 }
 
-export async function SocialTrafficCard({ providerId }: SocialTrafficCardProps) {
+export async function SocialTrafficCard({
+  providerId,
+}: SocialTrafficCardProps) {
   const stats = await getSocialClickStats(providerId, 30);
 
   // Don't render if there's no click data at all
@@ -62,7 +64,7 @@ export async function SocialTrafficCard({ providerId }: SocialTrafficCardProps) 
           <span
             className={cn(
               "flex items-center text-xs font-medium ml-auto",
-              stats.changePercent >= 0 ? "text-emerald-600" : "text-red-500"
+              stats.changePercent >= 0 ? "text-emerald-600" : "text-red-500",
             )}
           >
             {stats.changePercent >= 0 && <ArrowUpRight className="w-3 h-3" />}
@@ -82,9 +84,11 @@ export async function SocialTrafficCard({ providerId }: SocialTrafficCardProps) 
                 key={d.date}
                 className={cn(
                   "flex-1 rounded-sm min-w-[2px]",
-                  d.clicks > 0 ? "bg-teal-400" : "bg-gray-100"
+                  d.clicks > 0 ? "bg-teal-400" : "bg-gray-100",
                 )}
-                style={{ height: `${Math.max((d.clicks / maxClicks) * 100, 4)}%` }}
+                style={{
+                  height: `${Math.max((d.clicks / maxClicks) * 100, 4)}%`,
+                }}
                 title={`${d.date}: ${d.clicks} click${d.clicks !== 1 ? "s" : ""}`}
               />
             ));
@@ -100,7 +104,7 @@ export async function SocialTrafficCard({ providerId }: SocialTrafficCardProps) 
               <span
                 className={cn(
                   "px-2 py-0.5 rounded text-xs font-medium",
-                  PLATFORM_COLORS[platform] || "bg-gray-100 text-gray-700"
+                  PLATFORM_COLORS[platform] || "bg-gray-100 text-gray-700",
                 )}
               >
                 {PLATFORM_LABELS[platform] || platform}

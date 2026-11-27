@@ -81,9 +81,7 @@ function StatCard({
   return (
     <div
       className={`rounded-xl border px-4 py-3 ${
-        accent
-          ? "bg-teal-50 border-teal-200"
-          : "bg-white border-gray-200"
+        accent ? "bg-teal-50 border-teal-200" : "bg-white border-gray-200"
       }`}
     >
       <div className="flex items-center gap-2 mb-2">
@@ -178,7 +176,8 @@ function TransactionStatusBadge({ status }: { status: string }) {
     case "processing":
       return (
         <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
-          <Clock className="w-3 h-3" /> {status === "processing" ? "Processing" : "Pending"}
+          <Clock className="w-3 h-3" />{" "}
+          {status === "processing" ? "Processing" : "Pending"}
         </span>
       );
     case "failed":
@@ -202,7 +201,8 @@ function TransactionStatusBadge({ status }: { status: string }) {
 
 export default async function ProviderEarningsPage() {
   const { user, error: authError } = await getCachedUser();
-  if (authError || !user) redirect("/login?redirectTo=/dashboard/provider/earnings");
+  if (authError || !user)
+    redirect("/login?redirectTo=/dashboard/provider/earnings");
 
   const { providerId, error: providerError } = await getCachedProviderId();
   if (providerError || !providerId) redirect("/dashboard/provider");
@@ -214,7 +214,7 @@ export default async function ProviderEarningsPage() {
 
   const earningsGrowth = calcGrowthPercent(
     summary.thisMonthEarnings,
-    summary.lastMonthEarnings
+    summary.lastMonthEarnings,
   );
 
   const hasTransactions = transactions.length > 0;
@@ -238,7 +238,7 @@ export default async function ProviderEarningsPage() {
         {summary.walletBalance >= 100 && (
           <Link
             href="/dashboard/provider/earnings/payout"
-            className="inline-flex items-center gap-1.5 bg-teal-600 text-white text-sm font-semibold rounded-xl px-4 py-2.5 hover:bg-teal-700 transition-colors"
+            className="inline-flex items-center gap-1.5 bg-teal-600 text-white text-sm font-semibold rounded-xl px-4 py-2.5 hover:bg-teal-700 transition-colors min-h-[44px]"
           >
             <Banknote className="w-4 h-4" />
             Request Payout
@@ -294,9 +294,7 @@ export default async function ProviderEarningsPage() {
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-medium text-gray-900">Recent Transactions</h2>
           {total > 20 && (
-            <span className="text-xs text-gray-400">
-              Showing 20 of {total}
-            </span>
+            <span className="text-xs text-gray-400">Showing 20 of {total}</span>
           )}
         </div>
 
@@ -323,8 +321,8 @@ export default async function ProviderEarningsPage() {
       {summary.walletBalance > 0 && summary.walletBalance < 100 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <p className="text-xs text-amber-700">
-            <span className="font-medium">Almost there!</span> You need at
-            least KES 100 to request a payout. Current balance:{" "}
+            <span className="font-medium">Almost there!</span> You need at least
+            KES 100 to request a payout. Current balance:{" "}
             {formatKES(summary.walletBalance)}.
           </p>
         </div>

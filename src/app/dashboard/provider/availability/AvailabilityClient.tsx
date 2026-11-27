@@ -39,20 +39,98 @@ interface DaySchedule {
 }
 
 const TIME_OPTIONS = [
-  "06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30",
-  "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
-  "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
-  "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"
+  "06:00",
+  "06:30",
+  "07:00",
+  "07:30",
+  "08:00",
+  "08:30",
+  "09:00",
+  "09:30",
+  "10:00",
+  "10:30",
+  "11:00",
+  "11:30",
+  "12:00",
+  "12:30",
+  "13:00",
+  "13:30",
+  "14:00",
+  "14:30",
+  "15:00",
+  "15:30",
+  "16:00",
+  "16:30",
+  "17:00",
+  "17:30",
+  "18:00",
+  "18:30",
+  "19:00",
+  "19:30",
+  "20:00",
+  "20:30",
+  "21:00",
+  "21:30",
+  "22:00",
 ];
 
 const DEFAULT_SCHEDULE: DaySchedule[] = [
-  { day_of_week: 0, is_available: false, start_time: "08:00", end_time: "18:00", break_start: "", break_end: "" },
-  { day_of_week: 1, is_available: true, start_time: "08:00", end_time: "18:00", break_start: "", break_end: "" },
-  { day_of_week: 2, is_available: true, start_time: "08:00", end_time: "18:00", break_start: "", break_end: "" },
-  { day_of_week: 3, is_available: true, start_time: "08:00", end_time: "18:00", break_start: "", break_end: "" },
-  { day_of_week: 4, is_available: true, start_time: "08:00", end_time: "18:00", break_start: "", break_end: "" },
-  { day_of_week: 5, is_available: true, start_time: "08:00", end_time: "18:00", break_start: "", break_end: "" },
-  { day_of_week: 6, is_available: true, start_time: "09:00", end_time: "14:00", break_start: "", break_end: "" },
+  {
+    day_of_week: 0,
+    is_available: false,
+    start_time: "08:00",
+    end_time: "18:00",
+    break_start: "",
+    break_end: "",
+  },
+  {
+    day_of_week: 1,
+    is_available: true,
+    start_time: "08:00",
+    end_time: "18:00",
+    break_start: "",
+    break_end: "",
+  },
+  {
+    day_of_week: 2,
+    is_available: true,
+    start_time: "08:00",
+    end_time: "18:00",
+    break_start: "",
+    break_end: "",
+  },
+  {
+    day_of_week: 3,
+    is_available: true,
+    start_time: "08:00",
+    end_time: "18:00",
+    break_start: "",
+    break_end: "",
+  },
+  {
+    day_of_week: 4,
+    is_available: true,
+    start_time: "08:00",
+    end_time: "18:00",
+    break_start: "",
+    break_end: "",
+  },
+  {
+    day_of_week: 5,
+    is_available: true,
+    start_time: "08:00",
+    end_time: "18:00",
+    break_start: "",
+    break_end: "",
+  },
+  {
+    day_of_week: 6,
+    is_available: true,
+    start_time: "09:00",
+    end_time: "14:00",
+    break_start: "",
+    break_end: "",
+  },
 ];
 
 export function AvailabilityClient({
@@ -70,7 +148,7 @@ export function AvailabilityClient({
 
     return DEFAULT_SCHEDULE.map((defaultDay) => {
       const existing = initialHours.find(
-        (h) => h.day_of_week === defaultDay.day_of_week
+        (h) => h.day_of_week === defaultDay.day_of_week,
       );
       if (existing) {
         return {
@@ -88,35 +166,33 @@ export function AvailabilityClient({
 
   const [schedule, setSchedule] = useState<DaySchedule[]>(getInitialSchedule());
   const [emergencyAvailable, setEmergencyAvailable] = useState(
-    initialEmergency.available
+    initialEmergency.available,
   );
   const [surchargeType, setSurchargeType] = useState<"fixed" | "percent">(
-    (initialEmergency.surchargeType as "fixed" | "percent") || "percent"
+    (initialEmergency.surchargeType as "fixed" | "percent") || "percent",
   );
   const [surchargeAmount, setSurchargeAmount] = useState<number>(
-    initialEmergency.surchargeAmount || 50
+    initialEmergency.surchargeAmount || 50,
   );
   const [responseTime, setResponseTime] = useState(
-    initialResponseTime || "within_few_hours"
+    initialResponseTime || "within_few_hours",
   );
 
   const handleDayToggle = (dayIndex: number) => {
     setSchedule((prev) =>
       prev.map((day, i) =>
-        i === dayIndex ? { ...day, is_available: !day.is_available } : day
-      )
+        i === dayIndex ? { ...day, is_available: !day.is_available } : day,
+      ),
     );
   };
 
   const handleTimeChange = (
     dayIndex: number,
     field: "start_time" | "end_time",
-    value: string
+    value: string,
   ) => {
     setSchedule((prev) =>
-      prev.map((day, i) =>
-        i === dayIndex ? { ...day, [field]: value } : day
-      )
+      prev.map((day, i) => (i === dayIndex ? { ...day, [field]: value } : day)),
     );
   };
 
@@ -129,7 +205,7 @@ export function AvailabilityClient({
             is_available: day.day_of_week >= 1 && day.day_of_week <= 5,
             start_time: "08:00",
             end_time: "18:00",
-          }))
+          })),
         );
         break;
       case "extended":
@@ -139,7 +215,7 @@ export function AvailabilityClient({
             is_available: day.day_of_week >= 1 && day.day_of_week <= 6,
             start_time: "07:00",
             end_time: "19:00",
-          }))
+          })),
         );
         break;
       case "weekends":
@@ -147,9 +223,15 @@ export function AvailabilityClient({
           DEFAULT_SCHEDULE.map((day) => ({
             ...day,
             is_available: true,
-            start_time: day.day_of_week === 0 || day.day_of_week === 6 ? "09:00" : "08:00",
-            end_time: day.day_of_week === 0 || day.day_of_week === 6 ? "15:00" : "18:00",
-          }))
+            start_time:
+              day.day_of_week === 0 || day.day_of_week === 6
+                ? "09:00"
+                : "08:00",
+            end_time:
+              day.day_of_week === 0 || day.day_of_week === 6
+                ? "15:00"
+                : "18:00",
+          })),
         );
         break;
     }
@@ -169,7 +251,9 @@ export function AvailabilityClient({
     // Validate times
     for (const day of schedule) {
       if (day.is_available && day.start_time >= day.end_time) {
-        setError(`End time must be after start time for ${DAY_NAMES[day.day_of_week]}`);
+        setError(
+          `End time must be after start time for ${DAY_NAMES[day.day_of_week]}`,
+        );
         return;
       }
     }
@@ -182,8 +266,12 @@ export function AvailabilityClient({
           break_end: s.break_end || undefined,
         })),
         emergency_available: emergencyAvailable,
-        emergency_surcharge_type: emergencyAvailable ? surchargeType : undefined,
-        emergency_surcharge_amount: emergencyAvailable ? surchargeAmount : undefined,
+        emergency_surcharge_type: emergencyAvailable
+          ? surchargeType
+          : undefined,
+        emergency_surcharge_amount: emergencyAvailable
+          ? surchargeAmount
+          : undefined,
         response_time: responseTime,
       });
 
@@ -211,27 +299,29 @@ export function AvailabilityClient({
         <section>
           <div className="flex items-center gap-2 mb-3">
             <Clock className="w-5 h-5 text-teal-600" />
-            <h2 className="text-sm font-semibold text-gray-900">Quick Templates</h2>
+            <h2 className="text-sm font-semibold text-gray-900">
+              Quick Templates
+            </h2>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => applyTemplate("standard")}
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors min-h-[44px]"
             >
               Mon-Fri (8am-6pm)
             </button>
             <button
               type="button"
               onClick={() => applyTemplate("extended")}
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors min-h-[44px]"
             >
               Mon-Sat (7am-7pm)
             </button>
             <button
               type="button"
               onClick={() => applyTemplate("weekends")}
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors min-h-[44px]"
             >
               All Week
             </button>
@@ -254,7 +344,7 @@ export function AvailabilityClient({
                 key={day.day_of_week}
                 className={cn(
                   "flex items-center gap-4 px-4 py-3 transition-colors",
-                  !day.is_available && "bg-gray-50/50"
+                  !day.is_available && "bg-gray-50/50",
                 )}
               >
                 {/* Toggle */}
@@ -272,7 +362,7 @@ export function AvailabilityClient({
                 <span
                   className={cn(
                     "w-12 text-sm font-medium",
-                    day.is_available ? "text-gray-900" : "text-gray-400"
+                    day.is_available ? "text-gray-900" : "text-gray-400",
                   )}
                 >
                   {DAY_NAMES[day.day_of_week].slice(0, 3)}
@@ -283,26 +373,36 @@ export function AvailabilityClient({
                   <div className="flex items-center gap-2 flex-1">
                     <select
                       value={day.start_time}
-                      onChange={(e) => handleTimeChange(index, "start_time", e.target.value)}
-                      className="px-2 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-teal-100 focus:border-teal-400"
+                      onChange={(e) =>
+                        handleTimeChange(index, "start_time", e.target.value)
+                      }
+                      className="px-2 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-teal-100 focus:border-teal-400 min-h-[44px]"
                     >
                       {TIME_OPTIONS.map((t) => (
-                        <option key={t} value={t}>{t}</option>
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
                       ))}
                     </select>
                     <span className="text-gray-400 text-sm">to</span>
                     <select
                       value={day.end_time}
-                      onChange={(e) => handleTimeChange(index, "end_time", e.target.value)}
-                      className="px-2 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-teal-100 focus:border-teal-400"
+                      onChange={(e) =>
+                        handleTimeChange(index, "end_time", e.target.value)
+                      }
+                      className="px-2 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-teal-100 focus:border-teal-400 min-h-[44px]"
                     >
                       {TIME_OPTIONS.map((t) => (
-                        <option key={t} value={t}>{t}</option>
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
                       ))}
                     </select>
                   </div>
                 ) : (
-                  <span className="text-sm text-gray-400 italic">Not available</span>
+                  <span className="text-sm text-gray-400 italic">
+                    Not available
+                  </span>
                 )}
               </div>
             ))}
@@ -313,7 +413,9 @@ export function AvailabilityClient({
         <section className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-2 mb-3">
             <CheckCircle className="w-5 h-5 text-teal-600" />
-            <h3 className="text-sm font-semibold text-gray-900">Response Time</h3>
+            <h3 className="text-sm font-semibold text-gray-900">
+              Response Time
+            </h3>
           </div>
           <p className="text-sm text-gray-500 mb-3">
             How quickly do you typically respond to new inquiries?
@@ -321,7 +423,7 @@ export function AvailabilityClient({
           <select
             value={responseTime}
             onChange={(e) => setResponseTime(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-teal-100 focus:border-teal-400"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-teal-100 focus:border-teal-400 min-h-[44px]"
           >
             {RESPONSE_TIME_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -336,7 +438,9 @@ export function AvailabilityClient({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-amber-500" />
-              <h3 className="text-sm font-semibold text-gray-900">Emergency Availability</h3>
+              <h3 className="text-sm font-semibold text-gray-900">
+                Emergency Availability
+              </h3>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -363,10 +467,10 @@ export function AvailabilityClient({
                     type="button"
                     onClick={() => setSurchargeType("percent")}
                     className={cn(
-                      "px-3 py-1.5 text-sm rounded-lg border transition-colors",
+                      "px-3 min-h-[44px] text-sm rounded-lg border transition-colors",
                       surchargeType === "percent"
                         ? "bg-amber-50 border-amber-300 text-amber-700"
-                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                        : "border-gray-200 text-gray-600 hover:bg-gray-50",
                     )}
                   >
                     Percentage
@@ -375,10 +479,10 @@ export function AvailabilityClient({
                     type="button"
                     onClick={() => setSurchargeType("fixed")}
                     className={cn(
-                      "px-3 py-1.5 text-sm rounded-lg border transition-colors",
+                      "px-3 min-h-[44px] text-sm rounded-lg border transition-colors",
                       surchargeType === "fixed"
                         ? "bg-amber-50 border-amber-300 text-amber-700"
-                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                        : "border-gray-200 text-gray-600 hover:bg-gray-50",
                     )}
                   >
                     Fixed Amount
@@ -387,7 +491,9 @@ export function AvailabilityClient({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {surchargeType === "percent" ? "Surcharge %" : "Surcharge Amount (KES)"}
+                  {surchargeType === "percent"
+                    ? "Surcharge %"
+                    : "Surcharge Amount (KES)"}
                 </label>
                 <input
                   type="number"
@@ -395,7 +501,7 @@ export function AvailabilityClient({
                   onChange={(e) => setSurchargeAmount(Number(e.target.value))}
                   min={0}
                   max={surchargeType === "percent" ? 100 : 50000}
-                  className="w-32 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-100 focus:border-teal-400"
+                  className="w-32 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-100 focus:border-teal-400 min-h-[44px]"
                 />
               </div>
             </div>
@@ -415,7 +521,7 @@ export function AvailabilityClient({
           <button
             type="submit"
             disabled={isPending}
-            className="px-6 py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px]"
           >
             {isPending ? "Saving..." : "Save Availability"}
           </button>

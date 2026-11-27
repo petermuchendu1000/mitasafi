@@ -205,7 +205,10 @@ export function JobActionButtons({
     }
     setError(null);
     startTransition(async () => {
-      const result = await cancelBookingAsProvider(bookingId, cancelReason.trim());
+      const result = await cancelBookingAsProvider(
+        bookingId,
+        cancelReason.trim(),
+      );
       if (result.success) {
         showSuccess("Job Cancelled");
         setShowCancelDialog(false);
@@ -286,7 +289,7 @@ export function JobActionButtons({
         <div className="rounded-xl bg-amber-50 border border-amber-200 px-5 py-4 text-center">
           <CheckCircle2 className="w-5 h-5 text-amber-500 mx-auto mb-2" />
           <p className="text-sm font-medium text-amber-700">
-            Job completed — awaiting customer confirmation
+            Job completed. Waiting for the customer to confirm.
           </p>
         </div>
       );
@@ -315,7 +318,7 @@ export function JobActionButtons({
             {isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              LIFECYCLE_ICONS[t.toStatus] ?? <Check className="w-4 h-4" />
+              (LIFECYCLE_ICONS[t.toStatus] ?? <Check className="w-4 h-4" />)
             )}
             {t.label}
           </button>
@@ -336,13 +339,13 @@ export function JobActionButtons({
             onChange={(e) => setCancelReason(e.target.value)}
             placeholder="e.g., Equipment unavailable, scheduling conflict, etc."
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none min-h-[44px]"
           />
           <div className="flex gap-3">
             <button
               onClick={handleCancelAsProvider}
               disabled={isPending}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
             >
               {isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -357,7 +360,7 @@ export function JobActionButtons({
                 setError(null);
               }}
               disabled={isPending}
-              className="px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[44px]"
             >
               Back
             </button>
@@ -405,7 +408,9 @@ function NegotiationActions({
   setRejectReason,
   setError,
 }: NegotiationActionsProps) {
-  const canAcceptDirectly = ["submitted", "provider_viewed"].includes(bookingStatus);
+  const canAcceptDirectly = ["submitted", "provider_viewed"].includes(
+    bookingStatus,
+  );
   const canSendQuote = [
     "submitted",
     "provider_viewed",
@@ -435,7 +440,7 @@ function NegotiationActions({
         <div className="rounded-xl bg-purple-50 border border-purple-200 px-5 py-4 text-center">
           <FileText className="w-5 h-5 text-purple-500 mx-auto mb-2" />
           <p className="text-sm font-medium text-purple-700">
-            Quote sent — awaiting customer response
+            Quote sent. Waiting for the customer to reply.
           </p>
           {quotedPrice && (
             <p className="text-xs text-purple-500 mt-1">
@@ -524,13 +529,13 @@ function NegotiationActions({
             onChange={(e) => setRejectReason(e.target.value)}
             placeholder="e.g., Fully booked this week, out of service area, etc."
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none min-h-[44px]"
           />
           <div className="flex gap-3">
             <button
               onClick={onReject}
               disabled={isPending}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
             >
               {isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -545,7 +550,7 @@ function NegotiationActions({
                 setError(null);
               }}
               disabled={isPending}
-              className="px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[44px]"
             >
               Cancel
             </button>

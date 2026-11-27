@@ -8,7 +8,13 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Phone, Wallet, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  Loader2,
+  Phone,
+  Wallet,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 import { requestPayout } from "@/lib/services/payments";
 
 interface PayoutFormProps {
@@ -43,7 +49,7 @@ export function PayoutForm({ walletBalance, defaultPhone }: PayoutFormProps) {
       setError(
         parsedAmount < 100
           ? "Minimum payout is KES 100."
-          : `Maximum available is KES ${walletBalance.toLocaleString()}.`
+          : `Maximum available is KES ${walletBalance.toLocaleString()}.`,
       );
       return;
     }
@@ -123,7 +129,7 @@ export function PayoutForm({ walletBalance, defaultPhone }: PayoutFormProps) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               disabled={isPending}
-              className={`block w-full pl-10 pr-4 py-2.5 border rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
+              className={`block w-full pl-10 pr-4 min-h-[44px] border rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
                 amount && !isValidAmount ? "border-red-300" : "border-gray-300"
               }`}
             />
@@ -158,7 +164,7 @@ export function PayoutForm({ walletBalance, defaultPhone }: PayoutFormProps) {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               disabled={isPending}
-              className={`block w-full pl-10 pr-4 py-2.5 border rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
+              className={`block w-full pl-10 pr-4 min-h-[44px] border rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
                 phone && !isValidPhone ? "border-red-300" : "border-gray-300"
               }`}
             />

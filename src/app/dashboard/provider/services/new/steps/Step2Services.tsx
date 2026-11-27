@@ -1,10 +1,10 @@
 /**
  * Step 2: Services Selection
- * 
+ *
  * Shows services per category in sequence.
  * For each selected category, user picks specific services they offer.
  * Matches Kenyan mental model: "I'm a plumber, I do leaks and toilets"
- * 
+ *
  * Server-side filtered: only fetches services for selected categories.
  */
 
@@ -39,7 +39,9 @@ export function Step2Services() {
 
       setIsLoading(true);
 
-      const { data, error } = await getServicesByCategoryIds(formData.categoryIds);
+      const { data, error } = await getServicesByCategoryIds(
+        formData.categoryIds,
+      );
 
       if (!error && data) {
         setServices(data);
@@ -53,31 +55,36 @@ export function Step2Services() {
 
   // Get current category being shown
   const currentCategoryId = formData.categoryIds?.[currentCategoryIndex];
-  
+
   // Filter services for current category + search
   const currentCategoryServices = useMemo(() => {
-    const categoryServices = services.filter(s => s.category_id === currentCategoryId);
-    
+    const categoryServices = services.filter(
+      (s) => s.category_id === currentCategoryId,
+    );
+
     if (!searchQuery.trim()) return categoryServices;
-    
+
     const query = searchQuery.toLowerCase();
     return categoryServices.filter(
       (service) =>
         service.name.toLowerCase().includes(query) ||
-        service.description?.toLowerCase().includes(query)
+        service.description?.toLowerCase().includes(query),
     );
   }, [services, currentCategoryId, searchQuery]);
 
   const currentCategoryName = currentCategoryServices[0]?.category_name || "";
   const totalCategories = formData.categoryIds?.length || 0;
-  const selectedServicesCount = currentCategoryServices.filter(s => isServiceSelected(s.id)).length;
+  const selectedServicesCount = currentCategoryServices.filter((s) =>
+    isServiceSelected(s.id),
+  ).length;
 
   const handleToggleService = (service: ServiceWithCategory) => {
     if (isServiceSelected(service.id)) {
       removeService(service.id);
     } else {
-      const defaultPriceType = CATEGORY_PRICE_DEFAULTS[service.category_name] || "starting_from";
-      
+      const defaultPriceType =
+        CATEGORY_PRICE_DEFAULTS[service.category_name] || "starting_from";
+
       const selectedService: SelectedService = {
         serviceId: service.id,
         serviceName: service.name,
@@ -96,14 +103,14 @@ export function Step2Services() {
 
   const handleNext = () => {
     if (currentCategoryIndex < totalCategories - 1) {
-      setCurrentCategoryIndex(prev => prev + 1);
+      setCurrentCategoryIndex((prev) => prev + 1);
       setSearchQuery("");
     }
   };
 
   const handlePrevious = () => {
     if (currentCategoryIndex > 0) {
-      setCurrentCategoryIndex(prev => prev - 1);
+      setCurrentCategoryIndex((prev) => prev - 1);
       setSearchQuery("");
     }
   };
@@ -119,7 +126,9 @@ export function Step2Services() {
   if (!formData.categoryIds || formData.categoryIds.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Please select at least one category first.</p>
+        <p className="text-gray-500">
+          Please select at least one category first.
+        </p>
       </div>
     );
   }
@@ -138,7 +147,7 @@ export function Step2Services() {
                 key={idx}
                 className={cn(
                   "w-2 h-2 rounded-full",
-                  idx === currentCategoryIndex ? "bg-teal-600" : "bg-gray-300"
+                  idx === currentCategoryIndex ? "bg-teal-600" : "bg-gray-300",
                 )}
               />
             ))}
@@ -188,7 +197,9 @@ export function Step2Services() {
       <div className="mb-8">
         {currentCategoryServices.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">No services found. Try a different search term.</p>
+            <p className="text-gray-500">
+              No services found. Try a different search term.
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -202,7 +213,7 @@ export function Step2Services() {
                     "hover:shadow-sm",
                     isSelected
                       ? "border-teal-600 bg-teal-50"
-                      : "border-gray-200 hover:border-gray-300 bg-white"
+                      : "border-gray-200 hover:border-gray-300 bg-white",
                   )}
                 >
                   <input
@@ -212,10 +223,12 @@ export function Step2Services() {
                     className="mt-0.5 w-5 h-5 text-teal-600 border-gray-300 rounded focus:ring-teal-500 focus:ring-2"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className={cn(
-                      "font-medium text-sm",
-                      isSelected ? "text-teal-900" : "text-gray-900"
-                    )}>
+                    <p
+                      className={cn(
+                        "font-medium text-sm",
+                        isSelected ? "text-teal-900" : "text-gray-900",
+                      )}
+                    >
                       {service.name}
                     </p>
                   </div>
@@ -235,7 +248,7 @@ export function Step2Services() {
           {currentCategoryIndex > 0 && (
             <button
               onClick={handlePrevious}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 min-h-[44px]"
             >
               ← Previous category
             </button>
@@ -243,9 +256,15 @@ export function Step2Services() {
           {currentCategoryIndex < totalCategories - 1 && (
             <button
               onClick={handleNext}
-              className="ml-auto px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700"
+              className="ml-auto px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 min-h-[44px]"
             >
-              Next: {services.find(s => s.category_id === formData.categoryIds?.[currentCategoryIndex + 1])?.category_name || 'Next category'} services →
+              Next:{" "}
+              {services.find(
+                (s) =>
+                  s.category_id ===
+                  formData.categoryIds?.[currentCategoryIndex + 1],
+              )?.category_name || "Next category"}{" "}
+              services →
             </button>
           )}
         </div>

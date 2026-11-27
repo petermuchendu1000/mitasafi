@@ -1,6 +1,6 @@
 /**
  * Service Areas Form
- * 
+ *
  * Multi-select for neighborhoods with radius slider.
  */
 
@@ -10,7 +10,10 @@ import { useState, useTransition } from "react";
 import { ChevronLeft, MapPin, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { updateServiceAreas } from "./actions";
-import type { NeighborhoodCluster, Neighborhood } from "@/types/provider-profile";
+import type {
+  NeighborhoodCluster,
+  Neighborhood,
+} from "@/types/provider-profile";
 
 interface ServiceAreasFormProps {
   clusters: NeighborhoodCluster[];
@@ -33,14 +36,14 @@ export function ServiceAreasForm({
   const [error, setError] = useState<string | null>(null);
 
   const [baseNeighborhoodId, setBaseNeighborhoodId] = useState<string | null>(
-    initialBaseNeighborhoodId
+    initialBaseNeighborhoodId,
   );
   const [selectedAreas, setSelectedAreas] = useState<Set<string>>(
-    new Set(initialServiceAreaIds)
+    new Set(initialServiceAreaIds),
   );
   const [radius, setRadius] = useState(initialRadius);
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   // Flatten neighborhoods for base selection dropdown
@@ -160,12 +163,13 @@ export function ServiceAreasForm({
           Your Base Location <span className="text-red-500">*</span>
         </label>
         <p className="text-xs text-gray-500 mb-2">
-          Where are you primarily based? This helps us show you to nearby clients.
+          Where are you primarily based? This helps us show you to nearby
+          clients.
         </p>
         <select
           value={baseNeighborhoodId || ""}
           onChange={(e) => handleBaseChange(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent min-h-[44px]"
         >
           <option value="">Select your area</option>
           {clusters.map((cluster) => (
@@ -222,7 +226,7 @@ export function ServiceAreasForm({
           {clusters.map((cluster) => {
             const isExpanded = expandedClusters.has(cluster.cluster);
             const selectedInCluster = cluster.neighborhoods.filter((n) =>
-              selectedAreas.has(n.id)
+              selectedAreas.has(n.id),
             ).length;
             const allSelected =
               selectedInCluster === cluster.neighborhoods.length;
@@ -230,16 +234,14 @@ export function ServiceAreasForm({
             return (
               <div key={cluster.cluster} className="border-b last:border-b-0">
                 {/* Cluster Header */}
-                <div
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
-                >
-                  <div 
+                <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+                  <div
                     className="flex items-center gap-3 flex-1 cursor-pointer"
                     onClick={() => handleClusterToggle(cluster.cluster)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
+                      if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         handleClusterToggle(cluster.cluster);
                       }
@@ -257,7 +259,7 @@ export function ServiceAreasForm({
                     <svg
                       className={cn(
                         "w-4 h-4 text-gray-400 transition-transform ml-auto",
-                        isExpanded && "rotate-180"
+                        isExpanded && "rotate-180",
                       )}
                       fill="none"
                       viewBox="0 0 24 24"
@@ -294,11 +296,11 @@ export function ServiceAreasForm({
                           onClick={() => handleAreaToggle(n.id)}
                           disabled={isBase}
                           className={cn(
-                            "flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors text-left",
+                            "flex items-center gap-2 px-3 min-h-[44px] text-sm rounded-lg border transition-colors text-left",
                             isSelected
                               ? "bg-teal-50 border-teal-300 text-teal-700"
                               : "bg-white border-gray-200 text-gray-600 hover:border-gray-300",
-                            isBase && "opacity-75 cursor-not-allowed"
+                            isBase && "opacity-75 cursor-not-allowed",
                           )}
                         >
                           <div
@@ -306,7 +308,7 @@ export function ServiceAreasForm({
                               "w-4 h-4 rounded border flex items-center justify-center flex-shrink-0",
                               isSelected
                                 ? "bg-teal-600 border-teal-600"
-                                : "border-gray-300"
+                                : "border-gray-300",
                             )}
                           >
                             {isSelected && (
@@ -342,7 +344,7 @@ export function ServiceAreasForm({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors min-h-[44px]"
         >
           <ChevronLeft className="w-4 h-4" />
           Back
@@ -350,7 +352,7 @@ export function ServiceAreasForm({
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
         >
           {isPending ? "Saving..." : "Continue"}
         </button>

@@ -49,7 +49,10 @@ function generateTimeSlots(): { value: string; label: string }[] {
 const TIME_SLOTS = generateTimeSlots();
 
 /** Parse an ISO date string into { date, time } strings for form inputs */
-function parseDateTime(iso: string | null | undefined): { date: string; time: string } {
+function parseDateTime(iso: string | null | undefined): {
+  date: string;
+  time: string;
+} {
   if (!iso) return { date: "", time: "" };
   try {
     const d = new Date(iso);
@@ -68,13 +71,20 @@ function parseDateTime(iso: string | null | undefined): { date: string; time: st
 // COMPONENT
 // =============================================================================
 
-export function ScheduleJobForm({ bookingId, existingStart, existingEnd }: ScheduleJobFormProps) {
+export function ScheduleJobForm({
+  bookingId,
+  existingStart,
+  existingEnd,
+}: ScheduleJobFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { success: showSuccess, error: showError } = useToast();
 
   // Parse existing values for pre-fill
-  const parsedStart = useMemo(() => parseDateTime(existingStart), [existingStart]);
+  const parsedStart = useMemo(
+    () => parseDateTime(existingStart),
+    [existingStart],
+  );
   const parsedEnd = useMemo(() => parseDateTime(existingEnd), [existingEnd]);
 
   const [date, setDate] = useState(parsedStart.date);
@@ -109,14 +119,19 @@ export function ScheduleJobForm({ bookingId, existingStart, existingEnd }: Sched
 
     // Validate not in the past
     if (new Date(scheduledStart) < new Date()) {
-      setError("Cannot schedule in the past. Please select a future date and time.");
+      setError(
+        "Cannot schedule in the past. Please select a future date and time.",
+      );
       return;
     }
 
     startTransition(async () => {
       const result = await scheduleJob(bookingId, scheduledStart, scheduledEnd);
       if (result.success) {
-        showSuccess("Job Scheduled", "The customer will be notified of the schedule.");
+        showSuccess(
+          "Job Scheduled",
+          "The customer will be notified of the schedule.",
+        );
         router.push(`/dashboard/provider/jobs/${bookingId}`);
         router.refresh();
       } else {
@@ -191,7 +206,8 @@ export function ScheduleJobForm({ bookingId, existingStart, existingEnd }: Sched
         <label htmlFor="schedule-end-time" className={labelClass}>
           <span className="flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-gray-400" />
-            End Time <span className="text-gray-400 font-normal">(optional)</span>
+            End Time{" "}
+            <span className="text-gray-400 font-normal">(optional)</span>
           </span>
         </label>
         <select
@@ -202,7 +218,9 @@ export function ScheduleJobForm({ bookingId, existingStart, existingEnd }: Sched
           className={inputClass}
         >
           <option value="">No end time</option>
-          {TIME_SLOTS.filter((slot) => !startTime || slot.value > startTime).map((slot) => (
+          {TIME_SLOTS.filter(
+            (slot) => !startTime || slot.value > startTime,
+          ).map((slot) => (
             <option key={slot.value} value={slot.value}>
               {slot.label}
             </option>

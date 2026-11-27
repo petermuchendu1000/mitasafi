@@ -16,7 +16,11 @@ import Link from "next/link";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { getCachedProviderId, getCachedUser } from "@/lib/cache/queries";
 import { getBookingWithQuotes } from "@/lib/services/bookings";
-import type { BookingQuote, BookingStatus, QuoteBreakdownItem } from "@/types/bookings";
+import type {
+  BookingQuote,
+  BookingStatus,
+  QuoteBreakdownItem,
+} from "@/types/bookings";
 import { QuoteForm } from "./QuoteForm";
 
 // =============================================================================
@@ -31,7 +35,9 @@ interface PageProps {
 // METADATA
 // =============================================================================
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { id } = await params;
   return {
     title: `Send Quote · Job ${id.slice(0, 8)} | MitaSafi`,
@@ -62,8 +68,8 @@ export default async function ProviderQuotePage({ params }: PageProps) {
   if (authError || !user) {
     redirect(
       `/login?redirectTo=${encodeURIComponent(
-        `/dashboard/provider/jobs/${bookingId}/quote`
-      )}`
+        `/dashboard/provider/jobs/${bookingId}/quote`,
+      )}`,
     );
   }
 
@@ -99,7 +105,7 @@ export default async function ProviderQuotePage({ params }: PageProps) {
 
   // Pre-populate form data from existing quote (revision case)
   const initialBreakdown: QuoteBreakdownItem[] = isRevision
-    ? (activeQuote.breakdown as QuoteBreakdownItem[]) ?? []
+    ? ((activeQuote.breakdown as QuoteBreakdownItem[]) ?? [])
     : [];
 
   const initialData = isRevision

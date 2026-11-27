@@ -121,7 +121,10 @@ function BarChart({
               <span className="text-[10px] text-gray-400 tabular-nums">
                 {d.value > 0 ? formatValue(d.value) : ""}
               </span>
-              <div className="w-full flex items-end" style={{ height: "100px" }}>
+              <div
+                className="w-full flex items-end"
+                style={{ height: "100px" }}
+              >
                 <div
                   className={`w-full rounded-t ${accentColor} transition-all duration-300`}
                   style={{
@@ -351,7 +354,7 @@ function RatingBreakdownCard({ breakdown }: { breakdown: RatingBreakdown }) {
                 />
               </div>
               <span className="text-xs text-gray-900 font-medium tabular-nums w-6 text-right">
-                {val > 0 ? val.toFixed(1) : "—"}
+                {val > 0 ? val.toFixed(1) : "None yet"}
               </span>
             </div>
           );
@@ -393,9 +396,7 @@ function ResponseTimeCard({ stats }: { stats: ResponseTimeStats }) {
       <div className="border-t border-gray-100 pt-3">
         <p className="text-xs text-gray-500 text-center">
           Based on{" "}
-          <span className="font-medium text-gray-700">
-            {stats.sampleSize}
-          </span>{" "}
+          <span className="font-medium text-gray-700">{stats.sampleSize}</span>{" "}
           bookings in the last 6 months
         </p>
       </div>

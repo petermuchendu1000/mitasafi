@@ -1,6 +1,6 @@
 /**
  * Step 6: Review & Publish
- * 
+ *
  * Pure review screen — shows summary of all selections.
  * Includes image thumbnails to confirm uploads.
  * Submission is handled exclusively by ServiceWizardContent's footer button.
@@ -21,10 +21,10 @@ export function Step6Review() {
   // Get area names from IDs (simplified - in production would fetch from DB)
   const getAreaNames = () => {
     if (!serviceAreas) return "Not set";
-    
+
     const areaIds = serviceAreas.bulk || [];
     if (areaIds.length === 0) return "Not set";
-    
+
     return `${areaIds.length} ${areaIds.length === 1 ? "area" : "areas"} selected`;
   };
 
@@ -101,12 +101,16 @@ export function Step6Review() {
                   <div className="flex items-start gap-2.5">
                     <DollarSign className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Pricing</p>
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                        Pricing
+                      </p>
                       <p className="text-sm font-semibold text-gray-900 mt-0.5">
                         {formatPrice(service.customPrice, service.priceType)}
                       </p>
                       {service.priceType === "starting_from" && (
-                        <p className="text-[10px] text-gray-500">Starting from</p>
+                        <p className="text-[10px] text-gray-500">
+                          Starting from
+                        </p>
                       )}
                     </div>
                   </div>
@@ -114,12 +118,24 @@ export function Step6Review() {
                   {/* Description */}
                   <div className="flex items-start gap-2.5">
                     <div className="w-4 h-4 flex items-center justify-center text-gray-400 mt-0.5 flex-shrink-0">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 6h16M4 12h16M4 18h7"
+                        />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Description</p>
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                        Description
+                      </p>
                       <p className="text-sm text-gray-900 mt-0.5">
                         {description ? (
                           <span className="line-clamp-2">{description}</span>
@@ -134,9 +150,12 @@ export function Step6Review() {
                   <div className="flex items-start gap-2.5">
                     <ImageIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Photos</p>
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                        Photos
+                      </p>
                       <p className="text-sm font-medium text-gray-900 mt-0.5">
-                        {imageUrls.length} photo{imageUrls.length !== 1 ? "s" : ""}
+                        {imageUrls.length} photo
+                        {imageUrls.length !== 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>
@@ -153,9 +172,7 @@ export function Step6Review() {
           <MapPin className="w-5 h-5 text-teal-600 mt-0.5" />
           <div className="flex-1">
             <h4 className="font-semibold text-gray-900">Service Areas</h4>
-            <p className="text-sm text-gray-700 mt-1">
-              {getAreaNames()}
-            </p>
+            <p className="text-sm text-gray-700 mt-1">{getAreaNames()}</p>
             {serviceAreas?.canTravelOutside && (
               <p className="text-sm text-gray-600 mt-2">
                 ✓ Can travel outside selected areas (extra charge)
@@ -175,7 +192,9 @@ export function Step6Review() {
             <p className="font-medium mb-1">Before you publish:</p>
             <ul className="space-y-1 text-gray-600">
               <li>• Your services will be visible to customers immediately</li>
-              <li>• You can edit or pause services anytime from your dashboard</li>
+              <li>
+                • You can edit or pause services anytime from your dashboard
+              </li>
               <li>• Customers can request quotes or contact you directly</li>
             </ul>
           </div>

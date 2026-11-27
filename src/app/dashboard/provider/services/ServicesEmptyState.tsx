@@ -1,6 +1,6 @@
 /**
  * Services Empty State
- * 
+ *
  * Displayed when provider has no services yet.
  * Clear CTA to add first services.
  */
@@ -25,13 +25,14 @@ export function ServicesEmptyState() {
 
       {/* Description */}
       <p className="text-gray-500 text-center max-w-sm mb-8">
-        Add what you do (plumbing, cleaning, moving, etc.) so people can request your service.
+        Add what you do (plumbing, cleaning, moving, etc.) so people can request
+        your service.
       </p>
 
       {/* CTA Button */}
       <Link
         href="/dashboard/provider/services/new"
-        className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors"
+        className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors min-h-[44px]"
       >
         <Plus className="w-4 h-4" />
         Add a Service

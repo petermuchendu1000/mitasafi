@@ -1,6 +1,6 @@
 /**
  * Profile Photo Upload Component
- * 
+ *
  * Handles profile photo upload with preview and compression.
  */
 
@@ -64,7 +64,7 @@ export function ProfilePhotoUpload({
       formData.append("file", compressedFile);
 
       const result = await uploadProfilePhoto(formData);
-      
+
       if (!result.success) {
         setError(result.error || "Failed to upload photo");
         setPreviewUrl(null);
@@ -161,9 +161,7 @@ export function ProfilePhotoUpload({
         />
 
         {/* Error Message */}
-        {error && (
-          <p className="text-red-500 text-sm mb-4">{error}</p>
-        )}
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
         {/* Tips */}
         <div className="text-sm text-gray-500 space-y-1 mb-6">
@@ -177,7 +175,7 @@ export function ProfilePhotoUpload({
           {!photoUrl && (
             <button
               onClick={onSkip}
-              className="px-6 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+              className="px-6 py-2 text-gray-600 hover:text-gray-900 transition-colors min-h-[44px]"
             >
               Skip for now
             </button>
@@ -185,7 +183,7 @@ export function ProfilePhotoUpload({
           <button
             onClick={handleContinue}
             disabled={isUploading}
-            className="px-6 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
+            className="px-6 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 min-h-[44px]"
           >
             {photoUrl ? "Continue" : "Upload Photo"}
           </button>
@@ -202,7 +200,7 @@ async function compressImage(
   file: File,
   maxWidth: number,
   maxHeight: number,
-  quality: number
+  quality: number,
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
@@ -240,7 +238,7 @@ async function compressImage(
           }
         },
         "image/jpeg",
-        quality
+        quality,
       );
     };
 

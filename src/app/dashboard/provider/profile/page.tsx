@@ -1,9 +1,9 @@
 /**
  * Provider Profile Setup Page
- * 
+ *
  * Multi-step wizard for completing provider profile.
  * Steps: Basics → Service Areas → Working Hours → Done
- * 
+ *
  * PERFORMANCE: Uses getCachedUser() which is deduplicated with layout.tsx
  * Layout already calls this, so React cache() ensures 0ms overhead here.
  */
@@ -40,7 +40,7 @@ export default async function ProfileSetupPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-3xl mx-auto px-4">
-        <ProfileSetupWizard 
+        <ProfileSetupWizard
           initialProfile={profile}
           neighborhoodClusters={clusters}
         />

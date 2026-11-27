@@ -51,7 +51,9 @@ interface PageProps {
 // METADATA
 // =============================================================================
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { id } = await params;
   return {
     title: `Job ${id.slice(0, 8)} | Provider Dashboard | MitaSafi`,
@@ -64,7 +66,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 // =============================================================================
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "Not set";
   return new Date(iso).toLocaleDateString("en-KE", {
     weekday: "short",
     month: "short",
@@ -76,7 +78,7 @@ function formatDateTime(iso: string | null): string {
 }
 
 function formatPrice(price: number | null | undefined): string {
-  if (price == null) return "—";
+  if (price == null) return "No price";
   return `KES ${price.toLocaleString()}`;
 }
 
@@ -91,7 +93,7 @@ export default async function ProviderJobDetailPage({ params }: PageProps) {
   const { user, error: authError } = await getCachedUser();
   if (authError || !user) {
     redirect(
-      `/login?redirectTo=${encodeURIComponent(`/dashboard/provider/jobs/${bookingId}`)}`
+      `/login?redirectTo=${encodeURIComponent(`/dashboard/provider/jobs/${bookingId}`)}`,
     );
   }
 
@@ -120,8 +122,14 @@ export default async function ProviderJobDetailPage({ params }: PageProps) {
     const admin: any = createAdminClient();
     // Set audit context for auto-log trigger
     Promise.all([
-      admin.rpc("set_config", { setting: "app.current_user_id", value: user.id }),
-      admin.rpc("set_config", { setting: "app.current_user_role", value: "provider" }),
+      admin.rpc("set_config", {
+        setting: "app.current_user_id",
+        value: user.id,
+      }),
+      admin.rpc("set_config", {
+        setting: "app.current_user_role",
+        value: "provider",
+      }),
     ])
       .then(() =>
         admin
@@ -130,15 +138,21 @@ export default async function ProviderJobDetailPage({ params }: PageProps) {
             status: "provider_viewed",
             provider_viewed_at: new Date().toISOString(),
           })
-          .eq("id", bookingId)
+          .eq("id", bookingId),
       )
       .then(({ error }: { error: unknown }) => {
         if (error) {
-          console.error("[ProviderJobDetail] provider_viewed tracking failed:", error);
+          console.error(
+            "[ProviderJobDetail] provider_viewed tracking failed:",
+            error,
+          );
         }
       })
       .catch((err: unknown) => {
-        console.error("[ProviderJobDetail] provider_viewed tracking error:", err);
+        console.error(
+          "[ProviderJobDetail] provider_viewed tracking error:",
+          err,
+        );
       });
   }
 
@@ -231,7 +245,8 @@ export default async function ProviderJobDetailPage({ params }: PageProps) {
                   {customer?.full_name ?? "Customer"}
                 </p>
                 <p className="text-xs text-gray-500">
-                  Requested {formatDateTime(booking.requested_at ?? booking.created_at)}
+                  Requested{" "}
+                  {formatDateTime(booking.requested_at ?? booking.created_at)}
                 </p>
               </div>
             </div>
@@ -264,7 +279,7 @@ export default async function ProviderJobDetailPage({ params }: PageProps) {
                 <p className="text-sm text-gray-900">
                   {formatDateTime(booking.scheduled_start)}
                   {booking.scheduled_end &&
-                    ` — ${formatDateTime(booking.scheduled_end)}`}
+                    ` to ${formatDateTime(booking.scheduled_end)}`}
                 </p>
               </div>
             </div>
@@ -308,9 +323,7 @@ export default async function ProviderJobDetailPage({ params }: PageProps) {
         </div>
 
         {/* ── Current Quote ── */}
-        {activeQuote && (
-          <QuoteCard quote={activeQuote} />
-        )}
+        {activeQuote && <QuoteCard quote={activeQuote} />}
 
         {/* ── Messages ── */}
         <BookingChat
@@ -387,7 +400,9 @@ function QuoteCard({ quote }: { quote: BookingQuote }) {
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-indigo-500" />
           <h3 className="text-sm font-semibold text-gray-900">
-            {isRevision ? `Revised Quote (v${quote.revision_count + 1})` : "Your Quote"}
+            {isRevision
+              ? `Revised Quote (v${quote.revision_count + 1})`
+              : "Your Quote"}
           </h3>
         </div>
         <span

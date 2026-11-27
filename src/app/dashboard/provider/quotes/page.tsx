@@ -1,7 +1,7 @@
 /**
  * Provider Quotes List Page
  *
- * Lists all quotes sent by the provider, showing status, booking info, 
+ * Lists all quotes sent by the provider, showing status, booking info,
  * and amounts. Links to the relevant job detail page.
  *
  * URL: /dashboard/provider/quotes
@@ -10,12 +10,12 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import {
-  ChevronRight,
-  FileText,
-} from "lucide-react";
+import { ChevronRight, FileText } from "lucide-react";
 import { getCachedProviderId, getCachedUser } from "@/lib/cache/queries";
-import { getProviderQuotes, getProviderQuoteCounts } from "@/lib/services/quotes";
+import {
+  getProviderQuotes,
+  getProviderQuoteCounts,
+} from "@/lib/services/quotes";
 import type { QuoteWithDetails } from "@/types/bookings";
 
 // =============================================================================
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 // =============================================================================
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "Not set";
   return new Date(iso).toLocaleDateString("en-KE", {
     month: "short",
     day: "numeric",
@@ -40,14 +40,15 @@ function formatDate(iso: string | null): string {
   });
 }
 
-const quoteStatusStyles: Record<string, { label: string; className: string }> = {
-  sent: { label: "Sent", className: "bg-purple-100 text-purple-700" },
-  viewed: { label: "Viewed", className: "bg-blue-100 text-blue-700" },
-  accepted: { label: "Accepted", className: "bg-green-100 text-green-700" },
-  rejected: { label: "Declined", className: "bg-orange-100 text-orange-700" },
-  expired: { label: "Expired", className: "bg-gray-100 text-gray-600" },
-  superseded: { label: "Superseded", className: "bg-gray-100 text-gray-500" },
-};
+const quoteStatusStyles: Record<string, { label: string; className: string }> =
+  {
+    sent: { label: "Sent", className: "bg-purple-100 text-purple-700" },
+    viewed: { label: "Viewed", className: "bg-blue-100 text-blue-700" },
+    accepted: { label: "Accepted", className: "bg-green-100 text-green-700" },
+    rejected: { label: "Declined", className: "bg-orange-100 text-orange-700" },
+    expired: { label: "Expired", className: "bg-gray-100 text-gray-600" },
+    superseded: { label: "Superseded", className: "bg-gray-100 text-gray-500" },
+  };
 
 // =============================================================================
 // PAGE
@@ -115,7 +116,8 @@ export default async function ProviderQuotesPage() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
           {quotes.map((quote: QuoteWithDetails) => {
-            const style = quoteStatusStyles[quote.status] ?? quoteStatusStyles.sent;
+            const style =
+              quoteStatusStyles[quote.status] ?? quoteStatusStyles.sent;
             const bookingId = quote.booking_id;
 
             return (
@@ -140,8 +142,10 @@ export default async function ProviderQuotesPage() {
                     Sent {formatDate(quote.sent_at)}
                     {quote.booking?.customer_notes && (
                       <span>
-                        {" "}· &ldquo;{quote.booking.customer_notes.slice(0, 40)}
-                        {quote.booking.customer_notes.length > 40 ? "…" : ""}&rdquo;
+                        {" "}
+                        · &ldquo;{quote.booking.customer_notes.slice(0, 40)}
+                        {quote.booking.customer_notes.length > 40 ? "…" : ""}
+                        &rdquo;
                       </span>
                     )}
                   </p>

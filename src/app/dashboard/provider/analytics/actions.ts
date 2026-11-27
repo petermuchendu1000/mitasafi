@@ -95,7 +95,12 @@ function getMonthBoundaries(count: number): Array<{
   label: string;
 }> {
   const now = new Date();
-  const months: Array<{ start: string; end: string; month: string; label: string }> = [];
+  const months: Array<{
+    start: string;
+    end: string;
+    month: string;
+    label: string;
+  }> = [];
 
   for (let i = count - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -182,7 +187,11 @@ export async function getProviderAnalytics(): Promise<AnalyticsResult> {
   const { providerId, error: authError } = await getCachedProviderId();
 
   if (authError || !providerId) {
-    return { success: false, data: null, error: authError || "Provider not found" };
+    return {
+      success: false,
+      data: null,
+      error: authError || "Provider not found",
+    };
   }
 
   const months = getMonthBoundaries(6);
@@ -243,7 +252,10 @@ export async function getProviderAnalytics(): Promise<AnalyticsResult> {
 
     const monthlyJobs: MonthlyDataPoint[] = months.map((m) => {
       const count = completedBookings.filter(
-        (b) => b.completed_at != null && b.completed_at >= m.start && b.completed_at < m.end,
+        (b) =>
+          b.completed_at != null &&
+          b.completed_at >= m.start &&
+          b.completed_at < m.end,
       ).length;
       return { month: m.month, label: m.label, value: count };
     });
@@ -251,7 +263,12 @@ export async function getProviderAnalytics(): Promise<AnalyticsResult> {
     // ── Monthly Revenue ───────────────────────────────────────────────────
     const monthlyRevenue: MonthlyDataPoint[] = months.map((m) => {
       const total = completedBookings
-        .filter((b) => b.completed_at != null && b.completed_at >= m.start && b.completed_at < m.end)
+        .filter(
+          (b) =>
+            b.completed_at != null &&
+            b.completed_at >= m.start &&
+            b.completed_at < m.end,
+        )
         .reduce((sum, b) => sum + (b.agreed_price || 0), 0);
       return { month: m.month, label: m.label, value: Math.round(total) };
     });
@@ -264,7 +281,11 @@ export async function getProviderAnalytics(): Promise<AnalyticsResult> {
 
     for (const b of completedBookings) {
       const sid = b.service_id;
-      const existing = serviceMap.get(sid) || { serviceId: sid, revenue: 0, count: 0 };
+      const existing = serviceMap.get(sid) || {
+        serviceId: sid,
+        revenue: 0,
+        count: 0,
+      };
       existing.revenue += b.agreed_price || 0;
       existing.count += 1;
       serviceMap.set(sid, existing);
@@ -303,14 +324,20 @@ export async function getProviderAnalytics(): Promise<AnalyticsResult> {
 
     const funnel: ConversionFunnel = {
       totalRequests: allBookings.length,
-      quoted: allBookings.filter((b) =>
-        b.status != null && (QUOTED_STATUSES as readonly string[]).includes(b.status),
+      quoted: allBookings.filter(
+        (b) =>
+          b.status != null &&
+          (QUOTED_STATUSES as readonly string[]).includes(b.status),
       ).length,
-      accepted: allBookings.filter((b) =>
-        b.status != null && (ACCEPTED_STATUSES as readonly string[]).includes(b.status),
+      accepted: allBookings.filter(
+        (b) =>
+          b.status != null &&
+          (ACCEPTED_STATUSES as readonly string[]).includes(b.status),
       ).length,
-      completed: allBookings.filter((b) =>
-        b.status != null && (COMPLETED_STATUSES as readonly string[]).includes(b.status),
+      completed: allBookings.filter(
+        (b) =>
+          b.status != null &&
+          (COMPLETED_STATUSES as readonly string[]).includes(b.status),
       ).length,
     };
 
@@ -362,7 +389,9 @@ export async function getProviderAnalytics(): Promise<AnalyticsResult> {
       if (v > 0) dimArrays.value.push(v);
     }
 
-    const ratings = reviews.map((r) => parseRating(r.rating)).filter((n) => n > 0);
+    const ratings = reviews
+      .map((r) => parseRating(r.rating))
+      .filter((n) => n > 0);
 
     const ratingBreakdown: RatingBreakdown = {
       overall: ratings.length > 0 ? Math.round(avg(ratings) * 10) / 10 : 0,
@@ -414,7 +443,8 @@ export async function getProviderAnalytics(): Promise<AnalyticsResult> {
     return {
       success: false,
       data: null,
-      error: error instanceof Error ? error.message : "Failed to load analytics",
+      error:
+        error instanceof Error ? error.message : "Failed to load analytics",
     };
   }
 }

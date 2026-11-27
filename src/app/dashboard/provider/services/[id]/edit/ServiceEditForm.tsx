@@ -14,21 +14,23 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Upload,
-  X,
-  Loader2,
-  Check,
-} from "lucide-react";
+import { ArrowLeft, Upload, X, Loader2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { updateProviderService, uploadServiceImage, deleteServiceImage } from "../../actions";
+import {
+  updateProviderService,
+  uploadServiceImage,
+  deleteServiceImage,
+} from "../../actions";
 
 type PriceType = "fixed" | "starting_from" | "quote";
 
 const PRICE_TYPES: { id: PriceType; label: string; hint: string }[] = [
   { id: "fixed", label: "Fixed price", hint: "Same price for every job" },
-  { id: "starting_from", label: "Starting from", hint: "Price may vary with scope" },
+  {
+    id: "starting_from",
+    label: "Starting from",
+    hint: "Price may vary with scope",
+  },
   { id: "quote", label: "Request a quote", hint: "Customer asks, you decide" },
 ];
 
@@ -166,7 +168,7 @@ export function ServiceEditForm({
                 "p-3 rounded-lg border-2 text-left transition-colors",
                 priceType === pt.id
                   ? "border-teal-600 bg-teal-50"
-                  : "border-gray-200 hover:border-gray-300"
+                  : "border-gray-200 hover:border-gray-300",
               )}
             >
               <p className="text-sm font-medium text-gray-900">{pt.label}</p>
@@ -191,7 +193,7 @@ export function ServiceEditForm({
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0"
-                className="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
+                className="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm min-h-[44px]"
               />
             </div>
           </div>
@@ -208,10 +210,12 @@ export function ServiceEditForm({
           onChange={(e) => setDescription(e.target.value)}
           maxLength={200}
           rows={3}
-          placeholder="Briefly describe what's included (e.g. &quot;Assembly of wardrobes and cupboards. Price depends on size.&quot;)"
+          placeholder='Briefly describe what&apos;s included (e.g. "Assembly of wardrobes and cupboards. Price depends on size.")'
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none text-sm"
         />
-        <p className="text-xs text-gray-400 text-right">{description.length}/200</p>
+        <p className="text-xs text-gray-400 text-right">
+          {description.length}/200
+        </p>
       </section>
 
       {/* Photos */}
@@ -220,7 +224,8 @@ export function ServiceEditForm({
           Photos <span className="text-red-500">*</span>
         </h2>
         <p className="text-xs text-gray-500">
-          At least 1 photo required. Max 3 per service. Show completed work, not stock photos.
+          At least 1 photo required. Max 3 per service. Show completed work, not
+          stock photos.
         </p>
 
         <div className="grid grid-cols-3 gap-3">
@@ -238,7 +243,7 @@ export function ServiceEditForm({
               />
               <button
                 onClick={() => handleImageRemove(i)}
-                className="absolute top-1.5 right-1.5 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-sm"
+                className="absolute top-1.5 right-1.5 min-w-[44px] min-h-[44px] grid place-items-center bg-red-500 text-white rounded-full hover:bg-red-600 shadow-sm"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -251,7 +256,7 @@ export function ServiceEditForm({
                 "aspect-square rounded-lg border-2 border-dashed cursor-pointer flex flex-col items-center justify-center transition-colors",
                 uploading
                   ? "border-teal-400 bg-teal-50 cursor-wait"
-                  : "border-gray-300 hover:border-teal-500 bg-gray-50 hover:bg-teal-50"
+                  : "border-gray-300 hover:border-teal-500 bg-gray-50 hover:bg-teal-50",
               )}
             >
               {uploading ? (
@@ -294,11 +299,11 @@ export function ServiceEditForm({
           onClick={handleSave}
           disabled={isPending || !hasChanges}
           className={cn(
-            "inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg transition-colors",
+            "inline-flex items-center gap-2 px-5 min-h-[44px] text-sm font-semibold rounded-lg transition-colors",
             saved
               ? "bg-emerald-600 text-white"
               : "bg-teal-600 text-white hover:bg-teal-700",
-            (isPending || !hasChanges) && "opacity-50 cursor-not-allowed"
+            (isPending || !hasChanges) && "opacity-50 cursor-not-allowed",
           )}
         >
           {isPending ? (
@@ -317,7 +322,7 @@ export function ServiceEditForm({
         </button>
         <Link
           href="/dashboard/provider/services"
-          className="px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-800"
+          className="px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-800 inline-flex items-center min-h-[44px]"
         >
           Cancel
         </Link>

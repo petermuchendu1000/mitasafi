@@ -11,7 +11,11 @@
 import { useState, useTransition } from "react";
 import { ChevronLeft } from "lucide-react";
 import { updateSocialLinks } from "./actions";
-import { SOCIAL_PLATFORMS, type SocialLinks, type SocialPlatformKey } from "@/types/provider-profile";
+import {
+  SOCIAL_PLATFORMS,
+  type SocialLinks,
+  type SocialPlatformKey,
+} from "@/types/provider-profile";
 import { SOCIAL_ICON_MAP, SOCIAL_COLOR_MAP } from "@/components/ui/SocialIcons";
 
 interface SocialLinksFormProps {
@@ -24,7 +28,11 @@ interface SocialLinksFormProps {
  * Extract just the handle/username from a full URL for a given platform.
  * e.g. "https://instagram.com/myhandle" → "myhandle"
  */
-function extractHandle(fullUrl: string | undefined, prefix: string, isWebsite: boolean): string {
+function extractHandle(
+  fullUrl: string | undefined,
+  prefix: string,
+  isWebsite: boolean,
+): string {
   if (!fullUrl) return "";
   const trimmed = fullUrl.trim();
   if (!trimmed) return "";
@@ -66,7 +74,7 @@ export function SocialLinksForm({
       result[platform.key] = extractHandle(
         initialData[platform.key as keyof SocialLinks],
         platform.prefix,
-        platform.fullUrl
+        platform.fullUrl,
       );
     }
     return result;
@@ -91,13 +99,15 @@ export function SocialLinksForm({
 
       if (platform.fullUrl) {
         // Website: prepend https:// if missing
-        const url = handle.startsWith("http://") || handle.startsWith("https://")
-          ? handle
-          : `https://${handle}`;
+        const url =
+          handle.startsWith("http://") || handle.startsWith("https://")
+            ? handle
+            : `https://${handle}`;
         fullLinks[platform.key as keyof SocialLinks] = url;
       } else {
         // Social platforms: build full URL from prefix + handle
-        fullLinks[platform.key as keyof SocialLinks] = `https://${platform.prefix}${handle}`;
+        fullLinks[platform.key as keyof SocialLinks] =
+          `https://${platform.prefix}${handle}`;
       }
     }
 
@@ -128,7 +138,8 @@ export function SocialLinksForm({
       <div className="space-y-4">
         {SOCIAL_PLATFORMS.map((platform) => {
           const Icon = SOCIAL_ICON_MAP[platform.key as SocialPlatformKey];
-          const colorClass = SOCIAL_COLOR_MAP[platform.key as SocialPlatformKey];
+          const colorClass =
+            SOCIAL_COLOR_MAP[platform.key as SocialPlatformKey];
           return (
             <div key={platform.key}>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
@@ -144,7 +155,7 @@ export function SocialLinksForm({
                   value={handles[platform.key] || ""}
                   onChange={(e) => handleChange(platform.key, e.target.value)}
                   placeholder={platform.placeholder}
-                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm min-h-[44px]"
                 />
               </div>
             </div>
@@ -170,7 +181,7 @@ export function SocialLinksForm({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors min-h-[44px]"
         >
           <ChevronLeft className="w-4 h-4" />
           Back
@@ -178,7 +189,7 @@ export function SocialLinksForm({
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
         >
           {isPending ? "Saving..." : filledCount > 0 ? "Continue" : "Skip"}
         </button>

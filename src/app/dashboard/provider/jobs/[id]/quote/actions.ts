@@ -45,7 +45,7 @@ async function setAuditContext(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
   userId: string,
-  role: "provider" | "customer" | "admin"
+  role: "provider" | "customer" | "admin",
 ): Promise<void> {
   await admin
     .rpc("set_config", { setting: "app.current_user_id", value: userId })
@@ -59,7 +59,9 @@ async function setAuditContext(
  * Build the pricing_snapshot JSONB for the bookings table.
  * This is the immutable legal evidence of what was quoted.
  */
-function buildPricingSnapshot(formData: QuoteFormData): Record<string, unknown> {
+function buildPricingSnapshot(
+  formData: QuoteFormData,
+): Record<string, unknown> {
   return {
     // `total` is the field migration 20260109120007 declares to be "the legally
     // authoritative price after customer_confirmed", and which
@@ -108,7 +110,7 @@ const QUOTABLE_STATUSES = [
  */
 export async function submitQuote(
   bookingId: string,
-  formData: QuoteFormData
+  formData: QuoteFormData,
 ): Promise<QuoteActionResult> {
   try {
     // ── Auth ──
@@ -127,7 +129,9 @@ export async function submitQuote(
     // ── Fetch booking ──
     const { data: booking, error: bookingError } = await admin
       .from("bookings")
-      .select("id, customer_id, provider_id, status, service_id, pricing_snapshot, quoted_price")
+      .select(
+        "id, customer_id, provider_id, status, service_id, pricing_snapshot, quoted_price",
+      )
       .eq("id", bookingId)
       .single();
 
@@ -139,7 +143,12 @@ export async function submitQuote(
       return { success: false, error: "This booking is not assigned to you." };
     }
 
-    if (!booking.status || !QUOTABLE_STATUSES.includes(booking.status as typeof QUOTABLE_STATUSES[number])) {
+    if (
+      !booking.status ||
+      !QUOTABLE_STATUSES.includes(
+        booking.status as (typeof QUOTABLE_STATUSES)[number],
+      )
+    ) {
       return {
         success: false,
         error: `Cannot send a quote when booking is "${booking.status}".`,
@@ -148,7 +157,10 @@ export async function submitQuote(
 
     // ── Validate form data ──
     if (formData.quotedPrice <= 0) {
-      return { success: false, error: "Quoted price must be greater than zero." };
+      return {
+        success: false,
+        error: "Quoted price must be greater than zero.",
+      };
     }
     // Minimum job value, read from the commission config rather than hardcoded.
     // The database enforces this too (00_enforce_minimum_job_value); this check
@@ -163,7 +175,10 @@ export async function submitQuote(
       };
     }
     if (formData.validityDays < 1 || formData.validityDays > 90) {
-      return { success: false, error: "Validity must be between 1 and 90 days." };
+      return {
+        success: false,
+        error: "Validity must be between 1 and 90 days.",
+      };
     }
 
     // ── Determine if this is a revision ──
@@ -253,7 +268,9 @@ export async function submitQuote(
           .from("booking_quotes")
           .update({
             quoted_price: formData.quotedPrice,
-            breakdown: (formData.breakdown.length > 0 ? formData.breakdown : null) as unknown as Json,
+            breakdown: (formData.breakdown.length > 0
+              ? formData.breakdown
+              : null) as unknown as Json,
             description: formData.description || null,
             validity_days: formData.validityDays,
             valid_until: validUntilIso,
@@ -269,7 +286,10 @@ export async function submitQuote(
 
         if (updateError) {
           console.error("[Quote] Revision UPDATE error:", updateError);
-          return { success: false, error: "Failed to update quote. Please try again." };
+          return {
+            success: false,
+            error: "Failed to update quote. Please try again.",
+          };
         }
 
         quoteId = existingQuote.id;
@@ -288,7 +308,9 @@ export async function submitQuote(
           provider_id: providerId,
           quoted_price: formData.quotedPrice,
           currency: "KES",
-          breakdown: (formData.breakdown.length > 0 ? formData.breakdown : null) as unknown as Json,
+          breakdown: (formData.breakdown.length > 0
+            ? formData.breakdown
+            : null) as unknown as Json,
           description: formData.description || null,
           validity_days: formData.validityDays,
           valid_until: validUntilIso,
@@ -302,14 +324,21 @@ export async function submitQuote(
         console.error("[Quote] INSERT error:", insertError);
 
         // Handle duplicate key (UNIQUE constraint violation)
-        if (insertError.message.includes("duplicate key") || insertError.code === "23505") {
+        if (
+          insertError.message.includes("duplicate key") ||
+          insertError.code === "23505"
+        ) {
           return {
             success: false,
-            error: "A quote already exists for this booking. Try revising instead.",
+            error:
+              "A quote already exists for this booking. Try revising instead.",
           };
         }
 
-        return { success: false, error: "Failed to create quote. Please try again." };
+        return {
+          success: false,
+          error: "Failed to create quote. Please try again.",
+        };
       }
 
       quoteId = newQuote?.id;
@@ -341,8 +370,16 @@ export async function submitQuote(
 
     // Get service + provider name for notification
     const [serviceResult, providerResult] = await Promise.all([
-      admin.from("services").select("name").eq("id", booking.service_id).single(),
-      admin.from("service_providers").select("business_name").eq("id", providerId).single(),
+      admin
+        .from("services")
+        .select("name")
+        .eq("id", booking.service_id)
+        .single(),
+      admin
+        .from("service_providers")
+        .select("business_name")
+        .eq("id", providerId)
+        .single(),
     ]);
 
     const serviceName = serviceResult.data?.name ?? "your service";

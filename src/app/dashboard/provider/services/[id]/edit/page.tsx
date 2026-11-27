@@ -34,10 +34,15 @@ export default async function EditServicePage({ params }: PageProps) {
         serviceName={service.service.name}
         subcategoryName={service.service.subcategory_name}
         categoryName={service.service.category_name}
-        initialPrice={((cp?.amount as number) || null)}
-        initialPriceType={((cp?.type as string) || "fixed") as "fixed" | "starting_from" | "quote"}
-        initialDescription={((cp?.description as string) || "")}
-        initialImageUrls={((cp?.image_urls as string[]) || [])}
+        initialPrice={(cp?.amount as number) || null}
+        initialPriceType={
+          ((cp?.type as string) || "fixed") as
+            | "fixed"
+            | "starting_from"
+            | "quote"
+        }
+        initialDescription={(cp?.description as string) || ""}
+        initialImageUrls={(cp?.image_urls as string[]) || []}
       />
     </div>
   );

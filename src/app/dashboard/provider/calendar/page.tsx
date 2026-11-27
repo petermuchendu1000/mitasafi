@@ -82,7 +82,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
   const { bookings } = await getProviderScheduledBookings(
     providerId,
     rangeStart,
-    rangeEnd
+    rangeEnd,
   );
 
   return (
@@ -94,10 +94,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <CalendarView
-        bookings={bookings}
-        weekStartISO={toISODate(weekStart)}
-      />
+      <CalendarView bookings={bookings} weekStartISO={toISODate(weekStart)} />
     </div>
   );
 }

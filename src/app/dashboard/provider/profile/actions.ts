@@ -1,9 +1,9 @@
 /**
  * Provider Profile Server Actions
- * 
+ *
  * Server actions for managing provider profiles, service areas,
  * working hours, and profile photos.
- * 
+ *
  * PERFORMANCE OPTIMIZED:
  * - Uses getCachedUser() for auth deduplication
  * - Uses getCachedProviderId() for lightweight provider lookups
@@ -61,7 +61,7 @@ export async function getNeighborhoodsByCluster(): Promise<{
 
     // Group by cluster
     const clusterMap = new Map<string, Neighborhood[]>();
-    
+
     for (const n of neighborhoods || []) {
       const neighborhood = n as Neighborhood;
       const cluster = neighborhood.cluster || "Other";
@@ -71,9 +71,9 @@ export async function getNeighborhoodsByCluster(): Promise<{
       clusterMap.get(cluster)!.push(neighborhood);
     }
 
-    const clusters: NeighborhoodCluster[] = Array.from(clusterMap.entries()).map(
-      ([cluster, neighborhoods]) => ({ cluster, neighborhoods })
-    );
+    const clusters: NeighborhoodCluster[] = Array.from(
+      clusterMap.entries(),
+    ).map(([cluster, neighborhoods]) => ({ cluster, neighborhoods }));
 
     return { clusters, error: null };
   } catch (error) {
@@ -144,73 +144,83 @@ export async function getProviderProfile(): Promise<{
 
     // Step 2: PARALLEL - Run all remaining queries simultaneously
     // These queries are independent (only depend on provider.id)
-    const [serviceAreasResult, workingHoursResult, neighborhoodResult] = await Promise.all([
-      // Service areas with nested neighborhood data
-      supabase
-        .from("provider_service_areas")
-        .select(`*, neighborhood:neighborhoods(*)`)
-        .eq("provider_id", provider.id),
-      
-      // Working hours - check both tables (legacy and new)
-      supabase
-        .from("provider_availability_intervals")
-        .select("*")
-        .eq("provider_id", provider.id)
-        .eq("is_exception", false)
-        .eq("is_active", true),
-      
-      // Base neighborhood — look up from provider_service_areas (primary area)
-      // since base_neighborhood_id was removed from service_providers
-      (async () => {
-        const { data: primaryArea } = await supabase
+    const [serviceAreasResult, workingHoursResult, neighborhoodResult] =
+      await Promise.all([
+        // Service areas with nested neighborhood data
+        supabase
           .from("provider_service_areas")
-          .select("neighborhood:neighborhoods(*)")
+          .select(`*, neighborhood:neighborhoods(*)`)
+          .eq("provider_id", provider.id),
+
+        // Working hours - check both tables (legacy and new)
+        supabase
+          .from("provider_availability_intervals")
+          .select("*")
           .eq("provider_id", provider.id)
-          .eq("is_primary", true)
-          .limit(1)
-          .maybeSingle();
-        const neighborhood = primaryArea
-          ? (primaryArea as Record<string, unknown>).neighborhood
-          : null;
-        return { data: neighborhood };
-      })(),
-    ]);
+          .eq("is_exception", false)
+          .eq("is_active", true),
+
+        // Base neighborhood — look up from provider_service_areas (primary area)
+        // since base_neighborhood_id was removed from service_providers
+        (async () => {
+          const { data: primaryArea } = await supabase
+            .from("provider_service_areas")
+            .select("neighborhood:neighborhoods(*)")
+            .eq("provider_id", provider.id)
+            .eq("is_primary", true)
+            .limit(1)
+            .maybeSingle();
+          const neighborhood = primaryArea
+            ? (primaryArea as Record<string, unknown>).neighborhood
+            : null;
+          return { data: neighborhood };
+        })(),
+      ]);
 
     // Convert availability intervals to working hours format
     const dayRuleMap: Record<string, number> = {
-      "SU": 0, "MO": 1, "TU": 2, "WE": 3, "TH": 4, "FR": 5, "SA": 6
+      SU: 0,
+      MO: 1,
+      TU: 2,
+      WE: 3,
+      TH: 4,
+      FR: 5,
+      SA: 6,
     };
-    
-    const workingHours = (workingHoursResult.data || []).map((interval: {
-      id: string;
-      provider_id: string;
-      available_from: string;
-      available_to: string;
-      recurrence_rule: string | null;
-    }) => {
-      let dayOfWeek = 0;
-      if (interval.recurrence_rule) {
-        const match = interval.recurrence_rule.match(/BYDAY=(\w{2})/);
-        if (match) dayOfWeek = dayRuleMap[match[1]] ?? 0;
-      }
-      const fromDate = new Date(interval.available_from);
-      const toDate = new Date(interval.available_to);
-      return {
-        id: interval.id,
-        provider_id: interval.provider_id,
-        day_of_week: dayOfWeek,
-        is_available: true,
-        start_time: fromDate.toTimeString().slice(0, 5),
-        end_time: toDate.toTimeString().slice(0, 5),
-        break_start: null,
-        break_end: null,
-      };
-    });
+
+    const workingHours = (workingHoursResult.data || []).map(
+      (interval: {
+        id: string;
+        provider_id: string;
+        available_from: string;
+        available_to: string;
+        recurrence_rule: string | null;
+      }) => {
+        let dayOfWeek = 0;
+        if (interval.recurrence_rule) {
+          const match = interval.recurrence_rule.match(/BYDAY=(\w{2})/);
+          if (match) dayOfWeek = dayRuleMap[match[1]] ?? 0;
+        }
+        const fromDate = new Date(interval.available_from);
+        const toDate = new Date(interval.available_to);
+        return {
+          id: interval.id,
+          provider_id: interval.provider_id,
+          day_of_week: dayOfWeek,
+          is_available: true,
+          start_time: fromDate.toTimeString().slice(0, 5),
+          end_time: toDate.toTimeString().slice(0, 5),
+          break_start: null,
+          break_end: null,
+        };
+      },
+    );
 
     const profile = {
       ...provider,
       base_neighborhood: neighborhoodResult.data as Neighborhood | null,
-      service_areas: (serviceAreasResult.data || []) as unknown as ProviderServiceArea[],
+      service_areas: (serviceAreasResult.data ||
+        []) as unknown as ProviderServiceArea[],
       working_hours: workingHours,
     } as unknown as ProviderProfileWithRelations;
 
@@ -226,7 +236,9 @@ export async function getProviderProfile(): Promise<{
  * Update profile basics (headline, bio, experience, languages)
  * PERFORMANCE: Uses cached auth
  */
-export async function updateProfileBasics(data: ProfileBasicsFormData): Promise<{
+export async function updateProfileBasics(
+  data: ProfileBasicsFormData,
+): Promise<{
   success: boolean;
   error: string | null;
 }> {
@@ -240,13 +252,19 @@ export async function updateProfileBasics(data: ProfileBasicsFormData): Promise<
 
     // Validate
     if (!data.headline || data.headline.length < 10) {
-      return { success: false, error: "Headline must be at least 10 characters" };
+      return {
+        success: false,
+        error: "Headline must be at least 10 characters",
+      };
     }
     if (!data.bio || data.bio.length < 100) {
       return { success: false, error: "Bio must be at least 100 characters" };
     }
     if (data.headline.length > 80) {
-      return { success: false, error: "Headline must be 80 characters or less" };
+      return {
+        success: false,
+        error: "Headline must be 80 characters or less",
+      };
     }
     if (data.bio.length > 500) {
       return { success: false, error: "Bio must be 500 characters or less" };
@@ -262,7 +280,10 @@ export async function updateProfileBasics(data: ProfileBasicsFormData): Promise<
 
     if (fetchError || !provider) {
       console.error("Provider not found for user:", user.id, fetchError);
-      return { success: false, error: "Provider profile not found. Please complete signup first." };
+      return {
+        success: false,
+        error: "Provider profile not found. Please complete signup first.",
+      };
     }
 
     // Update using user-scoped client — RLS ensures only own row is writable
@@ -270,7 +291,7 @@ export async function updateProfileBasics(data: ProfileBasicsFormData): Promise<
       .from("service_providers")
       .update({
         headline: data.headline.trim(),
-        tagline: data.headline.trim(),   // Sync: tagline mirrors headline for backward-compat (search, cards, FeaturedByPrice)
+        tagline: data.headline.trim(), // Sync: tagline mirrors headline for backward-compat (search, cards, FeaturedByPrice)
         bio: data.bio.trim(),
         years_experience: data.years_experience || null,
         languages: data.languages || [],
@@ -280,15 +301,22 @@ export async function updateProfileBasics(data: ProfileBasicsFormData): Promise<
 
     if (error) {
       console.error("Profile basics update error:", JSON.stringify(error));
-      return { success: false, error: error.message || error.code || "Database update failed" };
+      return {
+        success: false,
+        error: error.message || error.code || "Database update failed",
+      };
     }
 
     revalidatePath("/dashboard/provider");
     return { success: true, error: null };
   } catch (error) {
     // Handle different error types properly
-    console.error("Error updating profile basics:", JSON.stringify(error), error);
-    
+    console.error(
+      "Error updating profile basics:",
+      JSON.stringify(error),
+      error,
+    );
+
     let errorMessage = "Failed to update profile";
     if (error instanceof Error) {
       errorMessage = error.message;
@@ -348,13 +376,17 @@ export async function updateSocialLinks(data: Record<string, string>): Promise<{
       .eq("id", provider.id);
 
     if (error) {
-      return { success: false, error: error.message || "Database update failed" };
+      return {
+        success: false,
+        error: error.message || "Database update failed",
+      };
     }
 
     revalidatePath("/dashboard/provider");
     return { success: true, error: null };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to update social links";
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to update social links";
     return { success: false, error: errorMessage };
   }
 }
@@ -383,7 +415,10 @@ export async function uploadProfilePhoto(formData: FormData): Promise<{
 
     // Validate file type
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      return { success: false, error: "Please upload a JPG, PNG, or WebP image" };
+      return {
+        success: false,
+        error: "Please upload a JPG, PNG, or WebP image",
+      };
     }
 
     // Validate file size (5MB max)
@@ -403,7 +438,12 @@ export async function uploadProfilePhoto(formData: FormData): Promise<{
     }
 
     const admin = createAdminClient();
-    const fileExt = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const fileExt =
+      file.type === "image/png"
+        ? "png"
+        : file.type === "image/webp"
+          ? "webp"
+          : "jpg";
     const fileName = `profile-photos/${provider.id}/${Date.now()}.${fileExt}`;
 
     const { data, error: uploadError } = await admin.storage
@@ -418,9 +458,9 @@ export async function uploadProfilePhoto(formData: FormData): Promise<{
       return { success: false, error: "Failed to upload image" };
     }
 
-    const { data: { publicUrl } } = admin.storage
-      .from("provider-public")
-      .getPublicUrl(data.path);
+    const {
+      data: { publicUrl },
+    } = admin.storage.from("provider-public").getPublicUrl(data.path);
 
     // Update the profile_photo_url in the database
     const { error: updateError } = await supabase
@@ -502,7 +542,10 @@ export async function updateServiceAreas(data: ServiceAreasFormData): Promise<{
     }
 
     console.log("[updateServiceAreas] User:", user.id);
-    console.log("[updateServiceAreas] Input data:", JSON.stringify(data, null, 2));
+    console.log(
+      "[updateServiceAreas] Input data:",
+      JSON.stringify(data, null, 2),
+    );
 
     // Use admin client for database operations (bypasses RLS)
     const adminClient = createAdminClient();
@@ -515,8 +558,14 @@ export async function updateServiceAreas(data: ServiceAreasFormData): Promise<{
       .single();
 
     if (providerError) {
-      console.error("[updateServiceAreas] Provider lookup error:", providerError);
-      return { success: false, error: `Provider lookup failed: ${providerError.message}` };
+      console.error(
+        "[updateServiceAreas] Provider lookup error:",
+        providerError,
+      );
+      return {
+        success: false,
+        error: `Provider lookup failed: ${providerError.message}`,
+      };
     }
 
     if (!provider) {
@@ -530,22 +579,32 @@ export async function updateServiceAreas(data: ServiceAreasFormData): Promise<{
       return { success: false, error: "Please select your base location" };
     }
     if (data.service_area_ids.length === 0) {
-      return { success: false, error: "Please select at least one service area" };
+      return {
+        success: false,
+        error: "Please select at least one service area",
+      };
     }
     if (data.service_area_ids.length > 10) {
       return { success: false, error: "Maximum 10 service areas allowed" };
     }
 
     // Get base neighborhood name
-    const { data: baseNeighborhood, error: baseNeighborhoodError } = await adminClient
-      .from("neighborhoods")
-      .select("id, name")
-      .eq("id", data.base_neighborhood_id)
-      .single();
+    const { data: baseNeighborhood, error: baseNeighborhoodError } =
+      await adminClient
+        .from("neighborhoods")
+        .select("id, name")
+        .eq("id", data.base_neighborhood_id)
+        .single();
 
     if (baseNeighborhoodError) {
-      console.error("[updateServiceAreas] Base neighborhood error:", baseNeighborhoodError);
-      return { success: false, error: `Base neighborhood lookup failed: ${baseNeighborhoodError.message}` };
+      console.error(
+        "[updateServiceAreas] Base neighborhood error:",
+        baseNeighborhoodError,
+      );
+      return {
+        success: false,
+        error: `Base neighborhood lookup failed: ${baseNeighborhoodError.message}`,
+      };
     }
 
     console.log("[updateServiceAreas] Base neighborhood:", baseNeighborhood);
@@ -562,7 +621,10 @@ export async function updateServiceAreas(data: ServiceAreasFormData): Promise<{
 
     if (updateError) {
       console.error("[updateServiceAreas] Provider update error:", updateError);
-      return { success: false, error: `Provider update failed: ${updateError.message}` };
+      return {
+        success: false,
+        error: `Provider update failed: ${updateError.message}`,
+      };
     }
 
     console.log("[updateServiceAreas] Provider location updated");
@@ -574,8 +636,14 @@ export async function updateServiceAreas(data: ServiceAreasFormData): Promise<{
       .eq("provider_id", provider.id);
 
     if (deleteError) {
-      console.error("[updateServiceAreas] Delete service areas error:", deleteError);
-      return { success: false, error: `Delete service areas failed: ${deleteError.message}` };
+      console.error(
+        "[updateServiceAreas] Delete service areas error:",
+        deleteError,
+      );
+      return {
+        success: false,
+        error: `Delete service areas failed: ${deleteError.message}`,
+      };
     }
 
     console.log("[updateServiceAreas] Existing service areas deleted");
@@ -587,34 +655,57 @@ export async function updateServiceAreas(data: ServiceAreasFormData): Promise<{
       .in("id", data.service_area_ids);
 
     if (neighborhoodsError) {
-      console.error("[updateServiceAreas] Neighborhoods lookup error:", neighborhoodsError);
-      return { success: false, error: `Neighborhoods lookup failed: ${neighborhoodsError.message}` };
+      console.error(
+        "[updateServiceAreas] Neighborhoods lookup error:",
+        neighborhoodsError,
+      );
+      return {
+        success: false,
+        error: `Neighborhoods lookup failed: ${neighborhoodsError.message}`,
+      };
     }
 
     if (!neighborhoods || neighborhoods.length === 0) {
-      console.error("[updateServiceAreas] No neighborhoods found for IDs:", data.service_area_ids);
+      console.error(
+        "[updateServiceAreas] No neighborhoods found for IDs:",
+        data.service_area_ids,
+      );
       return { success: false, error: "Could not find selected neighborhoods" };
     }
 
-    console.log("[updateServiceAreas] Found neighborhoods:", neighborhoods.length);
+    console.log(
+      "[updateServiceAreas] Found neighborhoods:",
+      neighborhoods.length,
+    );
 
     // Insert new service areas with correct schema columns
-    const serviceAreas = neighborhoods.map((neighborhood: { id: string; name: string }) => ({
-      provider_id: provider.id,
-      area_name: neighborhood.name,
-      area_type: "neighborhood",
-      is_primary_area: neighborhood.id === data.base_neighborhood_id,
-    }));
+    const serviceAreas = neighborhoods.map(
+      (neighborhood: { id: string; name: string }) => ({
+        provider_id: provider.id,
+        area_name: neighborhood.name,
+        area_type: "neighborhood",
+        is_primary_area: neighborhood.id === data.base_neighborhood_id,
+      }),
+    );
 
-    console.log("[updateServiceAreas] Inserting service areas:", JSON.stringify(serviceAreas, null, 2));
+    console.log(
+      "[updateServiceAreas] Inserting service areas:",
+      JSON.stringify(serviceAreas, null, 2),
+    );
 
     const { error: insertError } = await adminClient
       .from("provider_service_areas")
       .insert(serviceAreas);
 
     if (insertError) {
-      console.error("[updateServiceAreas] Insert service areas error:", insertError);
-      return { success: false, error: `Insert service areas failed: ${insertError.message}` };
+      console.error(
+        "[updateServiceAreas] Insert service areas error:",
+        insertError,
+      );
+      return {
+        success: false,
+        error: `Insert service areas failed: ${insertError.message}`,
+      };
     }
 
     console.log("[updateServiceAreas] Service areas inserted successfully");
@@ -643,7 +734,12 @@ export async function getProviderServiceAreas(): Promise<{
     const { user, error: authError } = await getCachedUser();
 
     if (authError || !user) {
-      return { areas: [], baseNeighborhoodId: null, serviceRadiusKm: 10, error: authError || "Not authenticated" };
+      return {
+        areas: [],
+        baseNeighborhoodId: null,
+        serviceRadiusKm: 10,
+        error: authError || "Not authenticated",
+      };
     }
 
     const supabase = await createClient();
@@ -655,20 +751,27 @@ export async function getProviderServiceAreas(): Promise<{
       .single();
 
     if (!provider) {
-      return { areas: [], baseNeighborhoodId: null, serviceRadiusKm: 10, error: null };
+      return {
+        areas: [],
+        baseNeighborhoodId: null,
+        serviceRadiusKm: 10,
+        error: null,
+      };
     }
 
     const { data: areas } = await supabase
       .from("provider_service_areas")
-      .select(`
+      .select(
+        `
         *,
         neighborhood:neighborhoods(*)
-      `)
+      `,
+      )
       .eq("provider_id", provider.id);
 
     // Derive base neighborhood from primary service area
     const primaryArea = (areas || []).find(
-      (a: Record<string, unknown>) => a.is_primary === true
+      (a: Record<string, unknown>) => a.is_primary === true,
     ) as Record<string, unknown> | undefined;
     const baseNeighborhoodId = primaryArea
       ? (primaryArea.neighborhood_id as string | null)
@@ -682,7 +785,12 @@ export async function getProviderServiceAreas(): Promise<{
     };
   } catch (error) {
     console.error("Error fetching service areas:", error);
-    return { areas: [], baseNeighborhoodId: null, serviceRadiusKm: 10, error: "Failed to load areas" };
+    return {
+      areas: [],
+      baseNeighborhoodId: null,
+      serviceRadiusKm: 10,
+      error: "Failed to load areas",
+    };
   }
 }
 
@@ -692,7 +800,7 @@ export async function getProviderServiceAreas(): Promise<{
 
 /**
  * Update provider's working hours
- * 
+ *
  * PERFORMANCE: Uses cached auth
  * Uses provider_availability_intervals table (canonical) with recurrence rules.
  * Day-of-week schedules are converted to weekly recurring intervals.
@@ -726,8 +834,14 @@ export async function updateWorkingHours(data: WorkingHoursFormData): Promise<{
       .single();
 
     if (providerError) {
-      console.error("[updateWorkingHours] Provider lookup error:", providerError);
-      return { success: false, error: `Provider lookup failed: ${providerError.message}` };
+      console.error(
+        "[updateWorkingHours] Provider lookup error:",
+        providerError,
+      );
+      return {
+        success: false,
+        error: `Provider lookup failed: ${providerError.message}`,
+      };
     }
 
     if (!provider) {
@@ -747,19 +861,31 @@ export async function updateWorkingHours(data: WorkingHoursFormData): Promise<{
       .from("service_providers")
       .update({
         emergency_available: data.emergency_available,
-        emergency_surcharge_type: data.emergency_available ? (data.emergency_surcharge_type || null) : null,
-        emergency_surcharge_amount: data.emergency_available ? (data.emergency_surcharge_amount || null) : null,
+        emergency_surcharge_type: data.emergency_available
+          ? data.emergency_surcharge_type || null
+          : null,
+        emergency_surcharge_amount: data.emergency_available
+          ? data.emergency_surcharge_amount || null
+          : null,
         response_time: data.response_time || null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", provider.id);
 
     if (updateProviderError) {
-      console.error("[updateWorkingHours] Provider update error:", updateProviderError);
-      return { success: false, error: `Provider settings update failed: ${updateProviderError.message}` };
+      console.error(
+        "[updateWorkingHours] Provider update error:",
+        updateProviderError,
+      );
+      return {
+        success: false,
+        error: `Provider settings update failed: ${updateProviderError.message}`,
+      };
     }
 
-    console.log("[updateWorkingHours] Updated provider emergency/response settings");
+    console.log(
+      "[updateWorkingHours] Updated provider emergency/response settings",
+    );
 
     // Delete existing availability intervals for this provider
     const { error: deleteError } = await adminClient
@@ -770,7 +896,10 @@ export async function updateWorkingHours(data: WorkingHoursFormData): Promise<{
 
     if (deleteError) {
       console.error("[updateWorkingHours] Delete error:", deleteError);
-      return { success: false, error: `Delete existing hours failed: ${deleteError.message}` };
+      return {
+        success: false,
+        error: `Delete existing hours failed: ${deleteError.message}`,
+      };
     }
 
     console.log("[updateWorkingHours] Deleted existing intervals");
@@ -811,7 +940,10 @@ export async function updateWorkingHours(data: WorkingHoursFormData): Promise<{
         };
       });
 
-    console.log("[updateWorkingHours] Inserting intervals:", availabilityIntervals.length);
+    console.log(
+      "[updateWorkingHours] Inserting intervals:",
+      availabilityIntervals.length,
+    );
 
     if (availabilityIntervals.length > 0) {
       const { error: insertError } = await adminClient
@@ -820,7 +952,10 @@ export async function updateWorkingHours(data: WorkingHoursFormData): Promise<{
 
       if (insertError) {
         console.error("[updateWorkingHours] Insert error:", insertError);
-        return { success: false, error: `Insert working hours failed: ${insertError.message}` };
+        return {
+          success: false,
+          error: `Insert working hours failed: ${insertError.message}`,
+        };
       }
     }
 
@@ -837,7 +972,7 @@ export async function updateWorkingHours(data: WorkingHoursFormData): Promise<{
 
 /**
  * Get provider's current working hours
- * 
+ *
  * PERFORMANCE OPTIMIZED:
  * - Uses getCachedUser() for auth deduplication
  * - Parallel queries for provider + intervals
@@ -873,7 +1008,9 @@ export async function getProviderWorkingHours(): Promise<{
     // First get provider ID (need it for intervals query)
     const { data: provider } = await adminClient
       .from("service_providers")
-      .select("id, emergency_available, emergency_surcharge_type, emergency_surcharge_amount, response_time")
+      .select(
+        "id, emergency_available, emergency_surcharge_type, emergency_surcharge_amount, response_time",
+      )
       .eq("user_id", user.id)
       .single();
 
@@ -892,43 +1029,51 @@ export async function getProviderWorkingHours(): Promise<{
     // Convert intervals with recurrence rules to day-of-week format
     // BYDAY mapping: SU=0, MO=1, TU=2, WE=3, TH=4, FR=5, SA=6
     const dayRuleMap: Record<string, number> = {
-      "SU": 0, "MO": 1, "TU": 2, "WE": 3, "TH": 4, "FR": 5, "SA": 6
+      SU: 0,
+      MO: 1,
+      TU: 2,
+      WE: 3,
+      TH: 4,
+      FR: 5,
+      SA: 6,
     };
 
-    const hours: ProviderWorkingHours[] = (intervals || []).map((interval: {
-      id: string;
-      provider_id: string;
-      available_from: string;
-      available_to: string;
-      recurrence_rule: string | null;
-    }) => {
-      // Extract day from recurrence rule (FREQ=WEEKLY;BYDAY=MO)
-      let dayOfWeek = 0;
-      if (interval.recurrence_rule) {
-        const match = interval.recurrence_rule.match(/BYDAY=(\w{2})/);
-        if (match) {
-          dayOfWeek = dayRuleMap[match[1]] ?? 0;
+    const hours: ProviderWorkingHours[] = (intervals || []).map(
+      (interval: {
+        id: string;
+        provider_id: string;
+        available_from: string;
+        available_to: string;
+        recurrence_rule: string | null;
+      }) => {
+        // Extract day from recurrence rule (FREQ=WEEKLY;BYDAY=MO)
+        let dayOfWeek = 0;
+        if (interval.recurrence_rule) {
+          const match = interval.recurrence_rule.match(/BYDAY=(\w{2})/);
+          if (match) {
+            dayOfWeek = dayRuleMap[match[1]] ?? 0;
+          }
         }
-      }
 
-      // Extract times from timestamps
-      const fromDate = new Date(interval.available_from);
-      const toDate = new Date(interval.available_to);
+        // Extract times from timestamps
+        const fromDate = new Date(interval.available_from);
+        const toDate = new Date(interval.available_to);
 
-      const startTime = fromDate.toTimeString().slice(0, 5);
-      const endTime = toDate.toTimeString().slice(0, 5);
+        const startTime = fromDate.toTimeString().slice(0, 5);
+        const endTime = toDate.toTimeString().slice(0, 5);
 
-      return {
-        id: interval.id,
-        provider_id: interval.provider_id,
-        day_of_week: dayOfWeek,
-        is_available: true,
-        start_time: startTime,
-        end_time: endTime,
-        break_start: null,
-        break_end: null,
-      };
-    });
+        return {
+          id: interval.id,
+          provider_id: interval.provider_id,
+          day_of_week: dayOfWeek,
+          is_available: true,
+          start_time: startTime,
+          end_time: endTime,
+          break_start: null,
+          break_end: null,
+        };
+      },
+    );
 
     return {
       hours,
@@ -974,10 +1119,12 @@ export async function recalculateProfileCompletion(): Promise<{
     }
 
     // Call the database function (not in generated types but exists in DB)
-    const { data, error } = await supabase
-      .rpc("calculate_provider_profile_completion" as never, {
+    const { data, error } = await supabase.rpc(
+      "calculate_provider_profile_completion" as never,
+      {
         p_provider_id: provider.id,
-      } as never);
+      } as never,
+    );
 
     if (error) throw error;
 

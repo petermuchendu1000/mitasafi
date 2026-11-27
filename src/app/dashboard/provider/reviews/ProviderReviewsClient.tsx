@@ -67,7 +67,11 @@ export function ProviderReviewsClient({
   // ── Fetch reviews with filters ──
 
   const fetchReviews = useCallback(
-    (newPage: number, newRatingFilter: number | null, newSortBy: SortOption) => {
+    (
+      newPage: number,
+      newRatingFilter: number | null,
+      newSortBy: SortOption,
+    ) => {
       startTransition(async () => {
         const result = await getProviderReviewsWithVotes({
           providerId,
@@ -82,7 +86,7 @@ export function ProviderReviewsClient({
         setSortBy(newSortBy);
       });
     },
-    [providerId, startTransition]
+    [providerId, startTransition],
   );
 
   const handleRatingFilter = (rating: number | null) => {
@@ -107,7 +111,10 @@ export function ProviderReviewsClient({
     setIsSubmittingResponse(false);
 
     if (result.success) {
-      showSuccess("Response posted", "Your response is now visible to customers.");
+      showSuccess(
+        "Response posted",
+        "Your response is now visible to customers.",
+      );
       setRespondingTo(null);
       setResponseText("");
       router.refresh();
@@ -128,15 +135,13 @@ export function ProviderReviewsClient({
         <h1 className="text-xl font-bold text-gray-900">Reviews</h1>
         <p className="text-sm text-gray-500 mt-1">
           {summary.totalReviews === 0
-            ? "No reviews yet — they'll appear here after customers rate your work."
+            ? "No reviews yet. They appear here once customers rate your work."
             : `${summary.totalReviews} review${summary.totalReviews !== 1 ? "s" : ""} from your customers`}
         </p>
       </div>
 
       {/* Rating Summary Card */}
-      {summary.totalReviews > 0 && (
-        <RatingSummaryCard summary={summary} />
-      )}
+      {summary.totalReviews > 0 && <RatingSummaryCard summary={summary} />}
 
       {/* Filters bar */}
       {summary.totalReviews > 0 && (
@@ -155,7 +160,9 @@ export function ProviderReviewsClient({
               <FilterPill
                 key={r}
                 active={ratingFilter === r}
-                onClick={() => handleRatingFilter(ratingFilter === r ? null : r)}
+                onClick={() =>
+                  handleRatingFilter(ratingFilter === r ? null : r)
+                }
                 disabled={isPending}
               >
                 {r} <Star className="w-3 h-3 fill-current" />
@@ -169,7 +176,7 @@ export function ProviderReviewsClient({
               value={sortBy}
               onChange={(e) => handleSortChange(e.target.value as SortOption)}
               disabled={isPending}
-              className="appearance-none bg-white border border-gray-200 rounded-lg px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+              className="appearance-none bg-white border border-gray-200 rounded-lg px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 min-h-[44px]"
             >
               <option value="newest">Newest first</option>
               <option value="oldest">Oldest first</option>
@@ -237,7 +244,7 @@ export function ProviderReviewsClient({
           <button
             onClick={() => handlePageChange(page - 1)}
             disabled={page <= 1 || isPending}
-            className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px]"
           >
             <ChevronLeft className="w-4 h-4" />
             Previous
@@ -248,7 +255,7 @@ export function ProviderReviewsClient({
           <button
             onClick={() => handlePageChange(page + 1)}
             disabled={!pagination.hasMore || isPending}
-            className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px]"
           >
             Next
             <ChevronRight className="w-4 h-4" />
@@ -280,7 +287,7 @@ function RatingSummaryCard({ summary }: { summary: ReviewSummary }) {
                   "w-4 h-4",
                   i < Math.round(summary.averageRating)
                     ? "text-amber-400 fill-amber-400"
-                    : "text-gray-200"
+                    : "text-gray-200",
                 )}
               />
             ))}
@@ -326,15 +333,24 @@ function RatingSummaryCard({ summary }: { summary: ReviewSummary }) {
           </p>
           {[
             { label: "Quality", value: summary.averageDimensions.quality },
-            { label: "Communication", value: summary.averageDimensions.communication },
-            { label: "Timeliness", value: summary.averageDimensions.timeliness },
-            { label: "Professionalism", value: summary.averageDimensions.professionalism },
+            {
+              label: "Communication",
+              value: summary.averageDimensions.communication,
+            },
+            {
+              label: "Timeliness",
+              value: summary.averageDimensions.timeliness,
+            },
+            {
+              label: "Professionalism",
+              value: summary.averageDimensions.professionalism,
+            },
             { label: "Value", value: summary.averageDimensions.value },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center justify-between">
               <span className="text-xs text-gray-600">{label}</span>
               <span className="text-xs font-medium text-gray-900">
-                {value != null ? value.toFixed(1) : "—"}
+                {value != null ? value.toFixed(1) : "None yet"}
               </span>
             </div>
           ))}
@@ -364,11 +380,11 @@ function FilterPill({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors",
+        "inline-flex items-center gap-1 px-3 min-h-[44px] text-xs font-medium rounded-full border transition-colors",
         active
           ? "bg-gray-900 text-white border-gray-900"
           : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50",
-        disabled && "opacity-50 cursor-not-allowed"
+        disabled && "opacity-50 cursor-not-allowed",
       )}
     >
       {children}
@@ -447,7 +463,7 @@ function ReviewCard({
                 "w-4 h-4",
                 i < ratingNum
                   ? "text-amber-400 fill-amber-400"
-                  : "text-gray-200"
+                  : "text-gray-200",
               )}
             />
           ))}
@@ -509,11 +525,14 @@ function ReviewCard({
           <p className="text-sm text-gray-600">{review.provider_response}</p>
           {review.provider_responded_at && (
             <p className="text-xs text-gray-400 mt-1">
-              {new Date(review.provider_responded_at).toLocaleDateString("en-KE", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
+              {new Date(review.provider_responded_at).toLocaleDateString(
+                "en-KE",
+                {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                },
+              )}
             </p>
           )}
         </div>
@@ -528,24 +547,22 @@ function ReviewCard({
             placeholder="Write a professional response to this review..."
             rows={3}
             maxLength={1000}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none min-h-[44px]"
           />
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-400">
-              {responseText.length}/1,000
-            </p>
+            <p className="text-xs text-gray-400">{responseText.length}/1,000</p>
             <div className="flex gap-2">
               <button
                 onClick={onCancelResponse}
                 disabled={isSubmittingResponse}
-                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[44px]"
               >
                 Cancel
               </button>
               <button
                 onClick={onSubmitResponse}
                 disabled={isSubmittingResponse || !responseText.trim()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
               >
                 {isSubmittingResponse ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -580,9 +597,15 @@ function ReviewCard({
 function DimensionRatings({ review }: { review: ReviewWithReviewer }) {
   const dims = [
     { label: "Quality", value: fromRatingEnum(review.quality_rating) },
-    { label: "Communication", value: fromRatingEnum(review.communication_rating) },
+    {
+      label: "Communication",
+      value: fromRatingEnum(review.communication_rating),
+    },
     { label: "Timeliness", value: fromRatingEnum(review.timeliness_rating) },
-    { label: "Professionalism", value: fromRatingEnum(review.professionalism_rating) },
+    {
+      label: "Professionalism",
+      value: fromRatingEnum(review.professionalism_rating),
+    },
     { label: "Value", value: fromRatingEnum(review.value_rating) },
   ].filter((d) => d.value != null);
 

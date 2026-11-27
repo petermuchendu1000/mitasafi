@@ -1,6 +1,6 @@
 /**
  * Add Services Wizard Page
- * 
+ *
  * 3-step wizard for providers to add services to their profile.
  * Steps: Category → Services → Pricing
  */

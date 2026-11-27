@@ -1,6 +1,6 @@
 /**
  * Profile Setup Wizard
- * 
+ *
  * Multi-step wizard component for provider profile completion.
  * Tracks progress and saves data at each step.
  */
@@ -52,13 +52,14 @@ export function ProfileSetupWizard({
 }: ProfileSetupWizardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  
+
   // Determine starting step based on profile completion
   const getInitialStep = (): Step => {
     if (!initialProfile?.profile_photo_url) return "photo";
     if (!initialProfile?.headline || !initialProfile?.bio) return "basics";
     if (!initialProfile?.service_areas?.length) return "areas";
-    if (!initialProfile?.working_hours?.some(h => h.is_available)) return "hours";
+    if (!initialProfile?.working_hours?.some((h) => h.is_available))
+      return "hours";
     // Social links step is always considered "done" (optional)
     return "complete";
   };
@@ -67,10 +68,12 @@ export function ProfileSetupWizard({
   const [completedSteps, setCompletedSteps] = useState<Set<Step>>(() => {
     const completed = new Set<Step>();
     if (initialProfile?.profile_photo_url) completed.add("photo");
-    if (initialProfile?.headline && initialProfile?.bio) completed.add("basics");
+    if (initialProfile?.headline && initialProfile?.bio)
+      completed.add("basics");
     completed.add("socials"); // Always mark optional step as visitable
     if (initialProfile?.service_areas?.length) completed.add("areas");
-    if (initialProfile?.working_hours?.some(h => h.is_available)) completed.add("hours");
+    if (initialProfile?.working_hours?.some((h) => h.is_available))
+      completed.add("hours");
     return completed;
   });
 
@@ -80,7 +83,7 @@ export function ProfileSetupWizard({
 
   const handleStepComplete = (step: Step) => {
     setCompletedSteps((prev) => new Set([...prev, step]));
-    
+
     // Move to next step
     const nextIndex = currentStepIndex + 1;
     if (nextIndex < STEPS.length) {
@@ -120,7 +123,8 @@ export function ProfileSetupWizard({
           Profile Setup Complete
         </h2>
         <p className="text-gray-500 mb-6 max-w-md mx-auto">
-          Your profile is now set up. Add your services to start receiving job requests from clients.
+          Your profile is now set up. Add your services to start receiving job
+          requests from clients.
         </p>
         <div className="flex gap-3 justify-center">
           <button
@@ -163,7 +167,7 @@ export function ProfileSetupWizard({
                   disabled={!canClick}
                   className={cn(
                     "flex flex-col items-center gap-2 group",
-                    canClick ? "cursor-pointer" : "cursor-not-allowed"
+                    canClick ? "cursor-pointer" : "cursor-not-allowed",
                   )}
                 >
                   <div
@@ -172,8 +176,8 @@ export function ProfileSetupWizard({
                       isActive
                         ? "bg-teal-600 text-white"
                         : isCompleted
-                        ? "bg-teal-100 text-teal-600"
-                        : "bg-gray-100 text-gray-400"
+                          ? "bg-teal-100 text-teal-600"
+                          : "bg-gray-100 text-gray-400",
                     )}
                   >
                     {isCompleted && !isActive ? (
@@ -188,8 +192,8 @@ export function ProfileSetupWizard({
                       isActive
                         ? "text-teal-600"
                         : isCompleted
-                        ? "text-gray-700"
-                        : "text-gray-400"
+                          ? "text-gray-700"
+                          : "text-gray-400",
                     )}
                   >
                     {step.label}
@@ -202,7 +206,7 @@ export function ProfileSetupWizard({
                       "w-12 sm:w-20 h-0.5 mx-2",
                       completedSteps.has(step.id)
                         ? "bg-teal-300"
-                        : "bg-gray-200"
+                        : "bg-gray-200",
                     )}
                   />
                 )}
@@ -237,7 +241,10 @@ export function ProfileSetupWizard({
 
         {currentStep === "socials" && (
           <SocialLinksForm
-            initialData={(initialProfile as unknown as Record<string, unknown>)?.social_links as SocialLinks || {}}
+            initialData={
+              ((initialProfile as unknown as Record<string, unknown>)
+                ?.social_links as SocialLinks) || {}
+            }
             onComplete={() => handleStepComplete("socials")}
             onBack={handleBack}
           />
@@ -246,7 +253,9 @@ export function ProfileSetupWizard({
         {currentStep === "areas" && (
           <ServiceAreasForm
             clusters={neighborhoodClusters}
-            initialBaseNeighborhoodId={initialProfile?.base_neighborhood_id || null}
+            initialBaseNeighborhoodId={
+              initialProfile?.base_neighborhood_id || null
+            }
             initialServiceAreaIds={
               initialProfile?.service_areas?.map((a) => a.neighborhood_id) || []
             }
@@ -262,7 +271,8 @@ export function ProfileSetupWizard({
             initialEmergency={{
               available: initialProfile?.emergency_available || false,
               surchargeType: initialProfile?.emergency_surcharge_type || null,
-              surchargeAmount: initialProfile?.emergency_surcharge_amount || null,
+              surchargeAmount:
+                initialProfile?.emergency_surcharge_amount || null,
             }}
             initialResponseTime={initialProfile?.response_time || null}
             onComplete={() => handleStepComplete("hours")}

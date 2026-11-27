@@ -46,47 +46,52 @@ async function setAuditContext(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
   userId: string,
-  role: "provider" | "customer" | "admin"
+  role: "provider" | "customer" | "admin",
 ): Promise<void> {
-  await admin.rpc("set_config", {
-    setting: "app.current_user_id",
-    value: userId,
-  }).catch(() => {
-    // Fallback: try raw SQL if rpc doesn't exist
-    // The trigger will use defaults if this fails
-  });
-  await admin.rpc("set_config", {
-    setting: "app.current_user_role",
-    value: role,
-  }).catch(() => {
-    // Same fallback
-  });
+  await admin
+    .rpc("set_config", {
+      setting: "app.current_user_id",
+      value: userId,
+    })
+    .catch(() => {
+      // Fallback: try raw SQL if rpc doesn't exist
+      // The trigger will use defaults if this fails
+    });
+  await admin
+    .rpc("set_config", {
+      setting: "app.current_user_role",
+      value: role,
+    })
+    .catch(() => {
+      // Same fallback
+    });
 }
 
 /**
  * Verify the caller is the provider assigned to this booking.
  * Returns provider user_id, business_name, and the booking data.
  */
-async function verifyProviderOwnership(
-  bookingId: string
-): Promise<{
-  valid: true;
-  userId: string;
-  providerId: string;
-  booking: {
-    id: string;
-    customer_id: string;
-    provider_id: string | null;
-    status: string | null;
-    quoted_price: number | null;
-    agreed_price: number | null;
-    service_id: string;
-  };
-  providerName: string;
-} | {
-  valid: false;
-  error: string;
-}> {
+async function verifyProviderOwnership(bookingId: string): Promise<
+  | {
+      valid: true;
+      userId: string;
+      providerId: string;
+      booking: {
+        id: string;
+        customer_id: string;
+        provider_id: string | null;
+        status: string | null;
+        quoted_price: number | null;
+        agreed_price: number | null;
+        service_id: string;
+      };
+      providerName: string;
+    }
+  | {
+      valid: false;
+      error: string;
+    }
+> {
   const { user, error: authError } = await getCachedUser();
   if (authError || !user) {
     return { valid: false, error: "Please sign in." };
@@ -102,7 +107,9 @@ async function verifyProviderOwnership(
   // Fetch booking
   const { data: booking, error: bookingError } = await admin
     .from("bookings")
-    .select("id, customer_id, provider_id, status, quoted_price, agreed_price, service_id")
+    .select(
+      "id, customer_id, provider_id, status, quoted_price, agreed_price, service_id",
+    )
     .eq("id", bookingId)
     .single();
 
@@ -136,7 +143,7 @@ async function verifyProviderOwnership(
 async function getServiceName(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
-  serviceId: string
+  serviceId: string,
 ): Promise<string> {
   const { data } = await admin
     .from("services")
@@ -226,11 +233,14 @@ export async function acceptBooking(bookingId: string): Promise<ActionResult> {
       ) {
         agreedPrice = candidate;
       } else {
-        console.error("[Jobs] Unusable custom_pricing.amount, cannot price this job:", {
-          bookingId,
-          providerId,
-          typeofAmount: typeof raw,
-        });
+        console.error(
+          "[Jobs] Unusable custom_pricing.amount, cannot price this job:",
+          {
+            bookingId,
+            providerId,
+            typeofAmount: typeof raw,
+          },
+        );
       }
     }
 
@@ -247,7 +257,8 @@ export async function acceptBooking(bookingId: string): Promise<ActionResult> {
     // Minimum job value, read from the commission config rather than hardcoded.
     // Also enforced in the database by 00_enforce_minimum_job_value; this check
     // turns that into an actionable message and names the alternative.
-    const { config: acceptCommissionConfig } = await loadCommissionConfig(admin);
+    const { config: acceptCommissionConfig } =
+      await loadCommissionConfig(admin);
     if (!isJobValueAllowed(agreedPrice, acceptCommissionConfig)) {
       const minimum = minimumJobAmount(acceptCommissionConfig);
       return {
@@ -329,7 +340,7 @@ export async function acceptBooking(bookingId: string): Promise<ActionResult> {
  */
 export async function rejectBooking(
   bookingId: string,
-  reason: string
+  reason: string,
 ): Promise<ActionResult> {
   try {
     if (!reason?.trim()) {
@@ -417,7 +428,7 @@ export async function rejectBooking(
  * Sets agreed_price from the accepted quote.
  */
 export async function confirmBookingAfterQuote(
-  bookingId: string
+  bookingId: string,
 ): Promise<ActionResult> {
   try {
     const verification = await verifyProviderOwnership(bookingId);

@@ -37,7 +37,7 @@ interface ConversationSummary {
 
 async function getProviderConversations(
   providerId: string,
-  userId: string
+  userId: string,
 ): Promise<ConversationSummary[]> {
   const admin = createAdminClient();
 
@@ -52,7 +52,7 @@ async function getProviderConversations(
       service:services!service_id (
         name
       )
-    `
+    `,
     )
     .eq("provider_id", providerId)
     .order("updated_at", { ascending: false })
@@ -103,20 +103,20 @@ async function getProviderConversations(
     if (!msg.is_read && msg.sender_id !== userId) {
       unreadByBooking.set(
         msg.booking_id,
-        (unreadByBooking.get(msg.booking_id) ?? 0) + 1
+        (unreadByBooking.get(msg.booking_id) ?? 0) + 1,
       );
     }
   }
 
   // Only include bookings that have messages
-  const bookingsWithMessages = bookings.filter(
-    (b: { id: string }) => latestByBooking.has(b.id)
+  const bookingsWithMessages = bookings.filter((b: { id: string }) =>
+    latestByBooking.has(b.id),
   );
 
   // 3. Fetch customer names for display
   const customerIds = [
     ...new Set(
-      bookingsWithMessages.map((b: { customer_id: string }) => b.customer_id)
+      bookingsWithMessages.map((b: { customer_id: string }) => b.customer_id),
     ),
   ];
   const { data: profiles } = await admin
@@ -131,22 +131,30 @@ async function getProviderConversations(
 
   // 4. Build conversation summaries, sorted by latest message time
   const conversations: ConversationSummary[] = bookingsWithMessages
-    .map((b: { id: string; status: string | null; customer_id: string; service?: { name: string } }) => {
-      const latest = latestByBooking.get(b.id)!;
-      return {
-        bookingId: b.id,
-        otherPartyName: nameMap.get(b.customer_id) ?? "Customer",
-        serviceName: b.service?.name ?? "Service",
-        lastMessage: latest.message,
-        lastMessageAt: latest.created_at,
-        lastMessageSenderRole: latest.sender_role,
-        unreadCount: unreadByBooking.get(b.id) ?? 0,
-        bookingStatus: b.status,
-      };
-    })
+    .map(
+      (b: {
+        id: string;
+        status: string | null;
+        customer_id: string;
+        service?: { name: string };
+      }) => {
+        const latest = latestByBooking.get(b.id)!;
+        return {
+          bookingId: b.id,
+          otherPartyName: nameMap.get(b.customer_id) ?? "Customer",
+          serviceName: b.service?.name ?? "Service",
+          lastMessage: latest.message,
+          lastMessageAt: latest.created_at,
+          lastMessageSenderRole: latest.sender_role,
+          unreadCount: unreadByBooking.get(b.id) ?? 0,
+          bookingStatus: b.status,
+        };
+      },
+    )
     .sort(
       (a: ConversationSummary, b: ConversationSummary) =>
-        new Date(b.lastMessageAt ?? 0).getTime() - new Date(a.lastMessageAt ?? 0).getTime()
+        new Date(b.lastMessageAt ?? 0).getTime() -
+        new Date(a.lastMessageAt ?? 0).getTime(),
     );
 
   return conversations;

@@ -13,7 +13,10 @@ export default function EditServiceLoading() {
         <div className="h-4 w-16 bg-gray-200 rounded" />
         <div className="grid grid-cols-3 gap-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-gray-100 rounded-lg border-2 border-gray-200" />
+            <div
+              key={i}
+              className="h-16 bg-gray-100 rounded-lg border-2 border-gray-200"
+            />
           ))}
         </div>
         <div className="h-10 w-48 bg-gray-100 rounded-lg" />
@@ -30,7 +33,10 @@ export default function EditServiceLoading() {
         <div className="h-4 w-16 bg-gray-200 rounded" />
         <div className="grid grid-cols-3 gap-3">
           {[1, 2].map((i) => (
-            <div key={i} className="aspect-square bg-gray-100 rounded-lg border-2 border-gray-200" />
+            <div
+              key={i}
+              className="aspect-square bg-gray-100 rounded-lg border-2 border-gray-200"
+            />
           ))}
         </div>
       </div>

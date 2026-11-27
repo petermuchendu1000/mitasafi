@@ -207,7 +207,7 @@ export function SettingsClient({
               <button
                 type="button"
                 onClick={() => setShowDeactivateModal(true)}
-                className="flex-shrink-0 px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                className="flex-shrink-0 px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors min-h-[44px]"
               >
                 Deactivate
               </button>
@@ -286,7 +286,7 @@ export function SettingsClient({
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
                 placeholder="DEACTIVATE"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 min-h-[44px]"
                 autoComplete="off"
                 spellCheck={false}
               />
@@ -297,7 +297,7 @@ export function SettingsClient({
                 type="button"
                 onClick={closeDeactivateModal}
                 disabled={isDeactivating}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[44px]"
               >
                 Cancel
               </button>
@@ -305,7 +305,7 @@ export function SettingsClient({
                 type="button"
                 onClick={handleDeactivate}
                 disabled={confirmText !== "DEACTIVATE" || isDeactivating}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px]"
               >
                 {isDeactivating && <Loader2 className="w-4 h-4 animate-spin" />}
                 Deactivate

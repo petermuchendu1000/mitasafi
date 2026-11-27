@@ -96,7 +96,7 @@ function lastActiveLabel(dateStr: string | null): string | null {
 function formatWhatsAppUrl(whatsapp: string, serviceName: string): string {
   const cleaned = whatsapp.replace(/[^+\d]/g, "");
   const msg = encodeURIComponent(
-    `Hi, I'm interested in your "${serviceName}" service on MitaSafi.`
+    `Hi, I'm interested in your "${serviceName}" service on MitaSafi.`,
   );
   return `https://wa.me/${cleaned}?text=${msg}`;
 }
@@ -128,11 +128,11 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
   }, []);
 
   const lightboxPrev = useCallback(() => {
-    setLightboxIndex(prev => (prev === 0 ? imageUrls.length - 1 : prev - 1));
+    setLightboxIndex((prev) => (prev === 0 ? imageUrls.length - 1 : prev - 1));
   }, [imageUrls.length]);
 
   const lightboxNext = useCallback(() => {
-    setLightboxIndex(prev => (prev === imageUrls.length - 1 ? 0 : prev + 1));
+    setLightboxIndex((prev) => (prev === imageUrls.length - 1 ? 0 : prev + 1));
   }, [imageUrls.length]);
 
   // Keyboard navigation for lightbox
@@ -155,7 +155,9 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
     } else {
       document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [lightboxOpen]);
 
   const formatPrice = () => {
@@ -184,7 +186,7 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
     } else {
       window.open(
         `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`,
-        "_blank"
+        "_blank",
       );
     }
   };
@@ -202,7 +204,7 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
               sizeClass,
               i <= Math.round(r)
                 ? "text-amber-400 fill-amber-400"
-                : "text-gray-200"
+                : "text-gray-200",
             )}
           />
         ))}
@@ -212,24 +214,55 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* ── Preview banner ──
+          The docblock at the top of this file has always said there is a
+          "sticky dark preview banner" here. There was not. Without it a
+          provider sees Book Now, WhatsApp and Call rendered exactly as a
+          customer sees them, taps one, and nothing happens: this page is
+          a mock of the customer view and those three controls are mock
+          controls. They stay inert, because a provider booking their own
+          service would be nonsense, but the page now says what it is. */}
+      <div
+        role="status"
+        className="bg-slate-900 text-white text-sm font-medium px-6 py-3 text-center"
+      >
+        Preview. This is how customers see this service.
+      </div>
+
       {/* ── Header ── */}
       <header className="border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link href="/dashboard/provider/services" className="text-slate-400 hover:text-slate-900 transition-colors">
+            <Link
+              href="/dashboard/provider/services"
+              className="text-slate-400 hover:text-slate-900 transition-colors"
+            >
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <nav className="flex items-center gap-2 text-sm font-medium text-slate-400">
-              <Link href="/dashboard/provider/services" className="hover:text-slate-600">Services</Link>
+              <Link
+                href="/dashboard/provider/services"
+                className="hover:text-slate-600"
+              >
+                Services
+              </Link>
               <ChevronRight className="w-3.5 h-3.5" />
-              <span className="text-slate-600">{data.service.category_name}</span>
+              <span className="text-slate-600">
+                {data.service.category_name}
+              </span>
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={handleShare} className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-3 py-1.5 flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-3 py-1.5 flex items-center gap-2 min-h-[44px]"
+            >
               <Share2 className="w-4 h-4" /> Share
             </button>
-            <Link href={`/dashboard/provider/services/${data.id}/edit`} className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-3 py-1.5 flex items-center gap-2">
+            <Link
+              href={`/dashboard/provider/services/${data.id}/edit`}
+              className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-3 py-1.5 flex items-center gap-2 min-h-[44px]"
+            >
               <Pencil className="w-4 h-4" /> Edit
             </Link>
           </div>
@@ -241,7 +274,9 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
         <div className="bg-amber-50 border-b border-amber-200">
           <div className="max-w-6xl mx-auto px-6 py-2 flex items-center gap-2">
             <EyeOff className="w-4 h-4 text-amber-600" />
-            <span className="text-sm text-amber-800 font-medium">This service is paused and not visible to clients.</span>
+            <span className="text-sm text-amber-800 font-medium">
+              This service is paused and not visible to clients.
+            </span>
           </div>
         </div>
       )}
@@ -249,10 +284,8 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
       {/* ── Main Content ── */}
       <main className="max-w-6xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-10">
-          
           {/* ══════════ LEFT COLUMN ══════════ */}
           <div className="space-y-8">
-            
             {/* Title Section */}
             <section className="space-y-3">
               {/* Title */}
@@ -262,15 +295,22 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
 
               {/* Rating + Location + Emergency */}
               <div className="flex items-center gap-4 text-sm">
-                {data.provider.rating_average && data.provider.rating_average > 0 && (
-                  <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-teal-600 fill-teal-600" />
-                    <span className="font-bold text-slate-900">{formatRating(data.provider.rating_average)}</span>
-                    <span className="text-slate-500">({data.provider.rating_count || 0} reviews)</span>
-                  </div>
-                )}
+                {data.provider.rating_average &&
+                  data.provider.rating_average > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Star className="w-4 h-4 text-teal-600 fill-teal-600" />
+                      <span className="font-bold text-slate-900">
+                        {formatRating(data.provider.rating_average)}
+                      </span>
+                      <span className="text-slate-500">
+                        ({data.provider.rating_count || 0} reviews)
+                      </span>
+                    </div>
+                  )}
                 {data.provider.verification_badge && (
-                  <span className="text-sm text-slate-500 capitalize">{data.provider.verification_badge} seller</span>
+                  <span className="text-sm text-slate-500 capitalize">
+                    {data.provider.verification_badge} seller
+                  </span>
                 )}
                 {data.provider.primary_location && (
                   <div className="flex items-center gap-1 text-sm text-slate-500">
@@ -279,7 +319,9 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
                   </div>
                 )}
                 {data.provider.emergency_available && (
-                  <span className="text-sm text-slate-500">Emergency available</span>
+                  <span className="text-sm text-slate-500">
+                    Emergency available
+                  </span>
                 )}
               </div>
             </section>
@@ -288,29 +330,62 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
             <section className="grid grid-cols-12 gap-3 h-[380px]">
               {imageUrls.length > 0 ? (
                 <>
-                  <button onClick={() => openLightbox(0)} className="col-span-8 rounded-xl overflow-hidden bg-slate-100 relative cursor-zoom-in">
-                    <Image src={imageUrls[0]} alt={data.service.name} fill className="object-cover hover:scale-105 transition-transform duration-500" priority />
+                  <button
+                    onClick={() => openLightbox(0)}
+                    className="col-span-8 rounded-xl overflow-hidden bg-slate-100 relative cursor-zoom-in"
+                  >
+                    <Image
+                      src={imageUrls[0]}
+                      alt={data.service.name}
+                      fill
+                      className="object-cover hover:scale-105 transition-transform duration-500"
+                      priority
+                    />
                   </button>
                   <div className="col-span-4 grid grid-rows-2 gap-3">
-                    <button onClick={() => imageUrls[1] && openLightbox(1)} className="rounded-xl overflow-hidden bg-slate-100 relative cursor-zoom-in">
+                    <button
+                      onClick={() => imageUrls[1] && openLightbox(1)}
+                      className="rounded-xl overflow-hidden bg-slate-100 relative cursor-zoom-in"
+                    >
                       {imageUrls[1] ? (
-                        <Image src={imageUrls[1]} alt="" fill className="object-cover hover:scale-105 transition-transform duration-500" />
+                        <Image
+                          src={imageUrls[1]}
+                          alt=""
+                          fill
+                          className="object-cover hover:scale-105 transition-transform duration-500"
+                        />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-8 h-8 text-slate-300" /></div>
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="w-8 h-8 text-slate-300" />
+                        </div>
                       )}
                     </button>
-                    <button onClick={() => imageUrls[2] ? openLightbox(2) : undefined} className="rounded-xl overflow-hidden bg-slate-100 relative group cursor-pointer">
+                    <button
+                      onClick={() =>
+                        imageUrls[2] ? openLightbox(2) : undefined
+                      }
+                      className="rounded-xl overflow-hidden bg-slate-100 relative group cursor-pointer"
+                    >
                       {imageUrls[2] ? (
                         <>
-                          <Image src={imageUrls[2]} alt="" fill className="object-cover" />
+                          <Image
+                            src={imageUrls[2]}
+                            alt=""
+                            fill
+                            className="object-cover"
+                          />
                           {imageUrls.length > 3 && (
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <span className="text-white font-bold text-sm">+{imageUrls.length - 3} more</span>
+                              <span className="text-white font-bold text-sm">
+                                +{imageUrls.length - 3} more
+                              </span>
                             </div>
                           )}
                         </>
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-8 h-8 text-slate-300" /></div>
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="w-8 h-8 text-slate-300" />
+                        </div>
                       )}
                     </button>
                   </div>
@@ -319,16 +394,33 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
                 <div className="col-span-12 rounded-xl bg-slate-50 flex flex-col items-center justify-center">
                   <ImageIcon className="w-12 h-12 text-slate-300 mb-2" />
                   <p className="text-sm text-slate-400">No photos yet</p>
-                  <Link href={`/dashboard/provider/services/${data.id}/edit`} className="text-sm text-teal-600 font-medium mt-1">Add photos →</Link>
+                  <Link
+                    href={`/dashboard/provider/services/${data.id}/edit`}
+                    className="text-sm text-teal-600 font-medium mt-1"
+                  >
+                    Add photos →
+                  </Link>
                 </div>
               )}
             </section>
 
             {/* About */}
             <section className="space-y-4">
-              <h2 className="text-xl font-bold text-slate-900">About this service</h2>
+              <h2 className="text-xl font-bold text-slate-900">
+                About this service
+              </h2>
               <div className="text-slate-600 leading-relaxed">
-                {description || <span className="text-slate-400 italic">No description provided. <Link href={`/dashboard/provider/services/${data.id}/edit`} className="text-teal-600 not-italic font-medium">Add one →</Link></span>}
+                {description || (
+                  <span className="text-slate-400 italic">
+                    No description provided.{" "}
+                    <Link
+                      href={`/dashboard/provider/services/${data.id}/edit`}
+                      className="text-teal-600 not-italic font-medium"
+                    >
+                      Add one →
+                    </Link>
+                  </span>
+                )}
               </div>
               {data.service.description && (
                 <div className="pt-6 border-t border-slate-100">
@@ -336,29 +428,48 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
                     <ShieldCheck className="w-5 h-5 text-teal-600" />
                     What&apos;s Included
                   </h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{data.service.description}</p>
+                  <p className="text-slate-500 text-sm leading-relaxed">
+                    {data.service.description}
+                  </p>
                 </div>
               )}
             </section>
 
             {/* Service Areas */}
-            {(data.provider.service_areas.length > 0 || data.provider.primary_location) && (
+            {(data.provider.service_areas.length > 0 ||
+              data.provider.primary_location) && (
               <section className="space-y-3">
-                <h2 className="text-xl font-bold text-slate-900">Service Areas</h2>
+                <h2 className="text-xl font-bold text-slate-900">
+                  Service Areas
+                </h2>
                 <div className="flex flex-wrap gap-2">
                   {data.provider.primary_location && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 text-teal-700 text-xs font-medium rounded-lg">
-                      <MapPin className="w-3.5 h-3.5" /> Based in {data.provider.primary_location}
+                      <MapPin className="w-3.5 h-3.5" /> Based in{" "}
+                      {data.provider.primary_location}
                     </span>
                   )}
-                  {data.provider.service_areas.slice(0, showAllAreas ? undefined : MAX_VISIBLE_AREAS).map((area) => (
-                    <span key={area} className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg">{area}</span>
-                  ))}
-                  {!showAllAreas && data.provider.service_areas.length > MAX_VISIBLE_AREAS && (
-                    <button onClick={() => setShowAllAreas(true)} className="px-3 py-1.5 bg-slate-100 text-teal-600 text-xs font-semibold rounded-lg hover:bg-slate-200">
-                      +{data.provider.service_areas.length - MAX_VISIBLE_AREAS} more
-                    </button>
-                  )}
+                  {data.provider.service_areas
+                    .slice(0, showAllAreas ? undefined : MAX_VISIBLE_AREAS)
+                    .map((area) => (
+                      <span
+                        key={area}
+                        className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg"
+                      >
+                        {area}
+                      </span>
+                    ))}
+                  {!showAllAreas &&
+                    data.provider.service_areas.length > MAX_VISIBLE_AREAS && (
+                      <button
+                        onClick={() => setShowAllAreas(true)}
+                        className="px-3 py-1.5 bg-slate-100 text-teal-600 text-xs font-semibold rounded-lg hover:bg-slate-200 min-h-[44px]"
+                      >
+                        +
+                        {data.provider.service_areas.length - MAX_VISIBLE_AREAS}{" "}
+                        more
+                      </button>
+                    )}
                 </div>
               </section>
             )}
@@ -367,14 +478,33 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
             <section className="pt-6 border-t border-slate-100 space-y-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 mb-1">Customer Reviews</h2>
+                  <h2 className="text-xl font-bold text-slate-900 mb-1">
+                    Customer Reviews
+                  </h2>
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl font-black text-slate-900">{data.provider.rating_average ? formatRating(data.provider.rating_average) : "—"}</span>
+                    <span className="text-3xl font-black text-slate-900">
+                      {data.provider.rating_average
+                        ? formatRating(data.provider.rating_average)
+                        : "None yet"}
+                    </span>
                     <div>
                       <div className="flex text-orange-400">
-                        {[1,2,3,4,5].map(i => <Star key={i} className={cn("w-4 h-4", data.provider.rating_average && i <= Math.round(data.provider.rating_average) ? "fill-current" : "text-slate-200")} />)}
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <Star
+                            key={i}
+                            className={cn(
+                              "w-4 h-4",
+                              data.provider.rating_average &&
+                                i <= Math.round(data.provider.rating_average)
+                                ? "fill-current"
+                                : "text-slate-200",
+                            )}
+                          />
+                        ))}
                       </div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{data.provider.rating_count || 0} reviews</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        {data.provider.rating_count || 0} reviews
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -385,20 +515,34 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
                 <p className="text-sm text-slate-500">
                   {(data.provider.rating_count ?? 0) === 0
                     ? "No reviews yet"
-                    : `${data.provider.rating_count} review${data.provider.rating_count === 1 ? "" : "s"} — full reviews coming soon`}
+                    : `${data.provider.rating_count} review${data.provider.rating_count === 1 ? "" : "s"}. Full reviews coming soon.`}
                 </p>
               </div>
             </section>
 
             {/* Mobile sidebar */}
             <section className="lg:hidden">
-              <ProviderSidebar data={data} priceDisplay={priceDisplay} memberSince={memberSince} memberSinceCompact={memberSinceCompact} activeLabel={activeLabel} ratingStars={ratingStars} />
+              <ProviderSidebar
+                data={data}
+                priceDisplay={priceDisplay}
+                memberSince={memberSince}
+                memberSinceCompact={memberSinceCompact}
+                activeLabel={activeLabel}
+                ratingStars={ratingStars}
+              />
             </section>
           </div>
 
           {/* ══════════ RIGHT SIDEBAR ══════════ */}
           <aside className="hidden lg:block">
-            <ProviderSidebar data={data} priceDisplay={priceDisplay} memberSince={memberSince} memberSinceCompact={memberSinceCompact} activeLabel={activeLabel} ratingStars={ratingStars} />
+            <ProviderSidebar
+              data={data}
+              priceDisplay={priceDisplay}
+              memberSince={memberSince}
+              memberSinceCompact={memberSinceCompact}
+              activeLabel={activeLabel}
+              ratingStars={ratingStars}
+            />
           </aside>
         </div>
       </main>
@@ -407,14 +551,30 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 z-20">
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <p className="text-lg font-bold text-slate-900">{priceDisplay.main}</p>
+            <p className="text-lg font-bold text-slate-900">
+              {priceDisplay.main}
+            </p>
           </div>
           {data.provider.whatsapp && (
-            <a href={formatWhatsAppUrl(data.provider.whatsapp, data.service.name)} target="_blank" rel="noopener noreferrer" className="px-4 py-2.5 bg-[#25D366] text-white font-bold rounded-lg text-sm flex items-center gap-1.5">
+            <a
+              href={formatWhatsAppUrl(
+                data.provider.whatsapp,
+                data.service.name,
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2.5 bg-[#25D366] text-white font-bold rounded-lg text-sm flex items-center gap-1.5 min-h-[44px]"
+            >
               <MessageCircle className="w-4 h-4" /> WhatsApp
             </a>
           )}
-          <button className="px-4 py-2.5 bg-orange-500 text-white font-bold rounded-lg text-sm hover:bg-orange-600 transition-colors">Request</button>
+          <button
+            className="px-4 py-2.5 bg-orange-500 text-white font-bold rounded-lg text-sm hover:bg-orange-600 transition-colors min-h-[44px]"
+            aria-disabled="true"
+            tabIndex={-1}
+          >
+            Request
+          </button>
         </div>
       </div>
       <div className="lg:hidden h-20" />
@@ -483,7 +643,7 @@ export function ServicePreviewClient({ data }: ServicePreviewClientProps) {
                       "relative w-16 h-12 flex-shrink-0 rounded-md overflow-hidden transition-all",
                       index === lightboxIndex
                         ? "ring-2 ring-teal-500 ring-offset-2 ring-offset-black"
-                        : "opacity-60 hover:opacity-100"
+                        : "opacity-60 hover:opacity-100",
                     )}
                   >
                     <Image
@@ -534,9 +694,14 @@ function PriceCard({
     return (
       <div className="flex items-center gap-0.5">
         {[...Array(full)].map((_, i) => (
-          <Star key={`full-${i}`} className="w-4 h-4 text-slate-900 fill-slate-900" />
+          <Star
+            key={`full-${i}`}
+            className="w-4 h-4 text-slate-900 fill-slate-900"
+          />
         ))}
-        {hasHalf && <Star className="w-4 h-4 text-slate-900 fill-slate-900/50" />}
+        {hasHalf && (
+          <Star className="w-4 h-4 text-slate-900 fill-slate-900/50" />
+        )}
         {[...Array(empty)].map((_, i) => (
           <Star key={`empty-${i}`} className="w-4 h-4 text-slate-300" />
         ))}
@@ -551,7 +716,13 @@ function PriceCard({
         <div className="relative flex-shrink-0">
           <div className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-teal-400 to-teal-600 ring-4 ring-slate-50">
             {data.provider.profile_photo_url ? (
-              <Image src={data.provider.profile_photo_url} alt="" width={80} height={80} className="w-full h-full object-cover" />
+              <Image
+                src={data.provider.profile_photo_url}
+                alt=""
+                width={80}
+                height={80}
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-white font-bold text-3xl">
                 {(data.provider.business_name || "?").charAt(0)}
@@ -566,15 +737,22 @@ function PriceCard({
         </div>
         <div className="flex-1 min-w-0 space-y-2">
           {/* Name */}
-          <Link href={`/services/provider/${data.provider.id}`} className="block">
-            <h3 className="font-bold text-lg text-slate-900 truncate hover:text-teal-600 transition-colors cursor-pointer">{data.provider.business_name || "Business Name"}</h3>
+          <Link
+            href={`/services/provider/${data.provider.id}`}
+            className="block"
+          >
+            <h3 className="font-bold text-lg text-slate-900 truncate hover:text-teal-600 transition-colors cursor-pointer">
+              {data.provider.business_name || "Business Name"}
+            </h3>
           </Link>
-          
+
           {/* Rating row */}
           <div className="flex items-center gap-2">
             {renderStars(data.provider.rating_average)}
             <span className="font-bold text-sm text-slate-900">
-              {data.provider.rating_average ? formatRating(data.provider.rating_average) : "—"}
+              {data.provider.rating_average
+                ? formatRating(data.provider.rating_average)
+                : "None yet"}
             </span>
             <span className="text-sm text-slate-400">
               ({data.provider.rating_count ?? 0})
@@ -595,12 +773,13 @@ function PriceCard({
                 Joined {memberSinceCompact}
               </span>
             )}
-            {data.provider.total_jobs_completed != null && data.provider.total_jobs_completed > 0 && (
-              <span className="flex items-center gap-1">
-                <CalendarCheck className="w-3.5 h-3.5" />
-                {data.provider.total_jobs_completed} orders completed
-              </span>
-            )}
+            {data.provider.total_jobs_completed != null &&
+              data.provider.total_jobs_completed > 0 && (
+                <span className="flex items-center gap-1">
+                  <CalendarCheck className="w-3.5 h-3.5" />
+                  {data.provider.total_jobs_completed} orders completed
+                </span>
+              )}
           </div>
         </div>
       </div>
@@ -608,17 +787,23 @@ function PriceCard({
       {/* Price + CTAs */}
       <div className="pt-2 space-y-4">
         <div className="flex items-end justify-between">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest pb-0.5">Service Fee</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest pb-0.5">
+            Service Fee
+          </p>
           <div className="text-right">
             {priceDisplay.sub && (
-              <p className="text-[10px] text-slate-400 mb-0.5">{priceDisplay.sub}</p>
+              <p className="text-[10px] text-slate-400 mb-0.5">
+                {priceDisplay.sub}
+              </p>
             )}
             {priceDisplay.main.startsWith("KES") ? (
               <span className="text-xl font-bold text-teal-600">
                 {priceDisplay.main}
               </span>
             ) : (
-              <span className="text-base font-bold text-slate-900">{priceDisplay.main}</span>
+              <span className="text-base font-bold text-slate-900">
+                {priceDisplay.main}
+              </span>
             )}
           </div>
         </div>
@@ -627,6 +812,8 @@ function PriceCard({
           {/* Request Service - Primary CTA */}
           <button
             className="w-full bg-orange-500 py-3.5 rounded-lg text-white font-bold text-sm hover:bg-orange-600 transition-all shadow-[0_4px_14px_0_rgba(234,88,12,0.25)] active:scale-[0.98]"
+            aria-disabled="true"
+            tabIndex={-1}
           >
             Request Service
           </button>
@@ -637,25 +824,25 @@ function PriceCard({
               href={whatsappUrl || "https://wa.me/"}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-2.5 border border-slate-200 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 border border-slate-200 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 min-h-[44px]"
+              aria-disabled="true"
+              tabIndex={-1}
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
               </svg>
               WhatsApp
             </a>
             {phoneUrl ? (
               <a
                 href={phoneUrl}
-                className="w-full py-2.5 border border-slate-200 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 border border-slate-200 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 min-h-[44px]"
               >
                 <Phone className="w-4 h-4" />
                 Call
               </a>
             ) : (
-              <button 
-                className="w-full py-2.5 border border-slate-200 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
-              >
+              <button className="w-full py-2.5 border border-slate-200 text-slate-700 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 min-h-[44px]">
                 <Phone className="w-4 h-4" />
                 Call
               </button>
@@ -666,7 +853,8 @@ function PriceCard({
 
       {/* Trust Indicators */}
       <ul className="space-y-3 pt-5 border-t border-slate-100">
-        {(data.provider.response_time_minutes != null || data.provider.response_time) && (
+        {(data.provider.response_time_minutes != null ||
+          data.provider.response_time) && (
           <li className="flex items-center gap-2.5 text-xs text-slate-500">
             <Timer className="w-3.5 h-3.5 text-slate-400" />
             {data.provider.response_time_minutes != null
@@ -683,7 +871,9 @@ function PriceCard({
         {data.provider.verification_badge && (
           <li className="flex items-center gap-2.5 text-xs text-slate-500">
             <Award className="w-3.5 h-3.5 text-slate-400" />
-            <span className="capitalize">{data.provider.verification_badge} seller</span>
+            <span className="capitalize">
+              {data.provider.verification_badge} seller
+            </span>
           </li>
         )}
       </ul>
@@ -691,14 +881,9 @@ function PriceCard({
   );
 }
 
-
 // ─── Stats Card ──────────────────────────────────────────────────────────────
 
-function StatsCard({
-  data,
-}: {
-  data: ServicePreviewData;
-}) {
+function StatsCard({ data }: { data: ServicePreviewData }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200/60 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
       <div className="px-5 py-[18px]">
@@ -709,15 +894,21 @@ function StatsCard({
         <div className="grid grid-cols-2">
           <div className="flex flex-col items-center gap-1 p-4">
             <span className="text-[22px] font-extrabold text-teal-600">
-              {data.provider.rating_average ? formatRating(data.provider.rating_average) : "—"}
+              {data.provider.rating_average
+                ? formatRating(data.provider.rating_average)
+                : "None yet"}
             </span>
-            <span className="text-[11px] font-medium text-gray-400">Rating</span>
+            <span className="text-[11px] font-medium text-gray-400">
+              Rating
+            </span>
           </div>
           <div className="flex flex-col items-center gap-1 p-4 border-l border-gray-100">
             <span className="text-[22px] font-extrabold text-teal-600">
-              {data.provider.total_jobs_completed ?? "—"}
+              {data.provider.total_jobs_completed ?? "None yet"}
             </span>
-            <span className="text-[11px] font-medium text-gray-400">Jobs Done</span>
+            <span className="text-[11px] font-medium text-gray-400">
+              Jobs Done
+            </span>
           </div>
         </div>
         <div className="border-t border-gray-100" />
@@ -726,12 +917,16 @@ function StatsCard({
           <div className="flex flex-col items-center gap-1 p-4">
             <span className="text-[22px] font-extrabold text-emerald-600">
               {data.provider.response_time_minutes != null
-                ? getResponseTimeLabel(data.provider.response_time_minutes).replace("Responds in ", "")
+                ? getResponseTimeLabel(
+                    data.provider.response_time_minutes,
+                  ).replace("Responds in ", "")
                 : data.provider.response_time
                   ? formatResponseTimeText(data.provider.response_time)
-                  : "—"}
+                  : "None yet"}
             </span>
-            <span className="text-[11px] font-medium text-gray-400">Response</span>
+            <span className="text-[11px] font-medium text-gray-400">
+              Response
+            </span>
           </div>
           <div className="flex flex-col items-center gap-1 p-4 border-l border-gray-100">
             <span className="text-[22px] font-extrabold text-teal-600">
@@ -741,9 +936,11 @@ function StatsCard({
                   ? formatExperienceText(data.provider.years_experience)
                   : data.provider.years_in_business
                     ? `${data.provider.years_in_business} yrs`
-                    : "—"}
+                    : "None yet"}
             </span>
-            <span className="text-[11px] font-medium text-gray-400">Experience</span>
+            <span className="text-[11px] font-medium text-gray-400">
+              Experience
+            </span>
           </div>
         </div>
       </div>
@@ -770,7 +967,11 @@ function ProviderSidebar({
 }) {
   return (
     <div className="sticky top-24 space-y-6">
-      <PriceCard data={data} priceDisplay={priceDisplay} memberSinceCompact={memberSinceCompact} />
+      <PriceCard
+        data={data}
+        priceDisplay={priceDisplay}
+        memberSinceCompact={memberSinceCompact}
+      />
       <StatsCard data={data} />
     </div>
   );

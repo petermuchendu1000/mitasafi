@@ -36,7 +36,11 @@ function addDays(dateStr: string, days: number): string {
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-function formatDayHeader(isoDate: string): { dayName: string; dayNumber: string; monthShort: string } {
+function formatDayHeader(isoDate: string): {
+  dayName: string;
+  dayNumber: string;
+  monthShort: string;
+} {
   const d = new Date(isoDate + "T12:00:00"); // noon to avoid timezone shifts
   return {
     dayName: DAY_NAMES[d.getDay() === 0 ? 6 : d.getDay() - 1],
@@ -111,7 +115,7 @@ export function CalendarView({ bookings, weekStartISO }: CalendarViewProps) {
       ...opts,
       year: "numeric",
     });
-    return `${startStr} — ${endStr}`;
+    return `${startStr} to ${endStr}`;
   }, [weekStartISO]);
 
   return (
@@ -120,7 +124,7 @@ export function CalendarView({ bookings, weekStartISO }: CalendarViewProps) {
       <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
         <button
           onClick={() => goToWeek(prevWeek)}
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors min-h-[44px]"
           aria-label="Previous week"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -130,7 +134,7 @@ export function CalendarView({ bookings, weekStartISO }: CalendarViewProps) {
           <h2 className="text-sm font-semibold text-gray-900">{weekLabel}</h2>
           <button
             onClick={goToToday}
-            className="text-xs font-medium text-teal-600 hover:text-teal-700 px-2 py-1 rounded hover:bg-teal-50 transition-colors"
+            className="text-xs font-medium text-teal-600 hover:text-teal-700 px-2 py-1 rounded hover:bg-teal-50 transition-colors min-h-[44px]"
           >
             Today
           </button>
@@ -138,7 +142,7 @@ export function CalendarView({ bookings, weekStartISO }: CalendarViewProps) {
 
         <button
           onClick={() => goToWeek(nextWeek)}
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors min-h-[44px]"
           aria-label="Next week"
         >
           <ChevronRight className="w-5 h-5" />
@@ -156,7 +160,9 @@ export function CalendarView({ bookings, weekStartISO }: CalendarViewProps) {
             <div
               key={day}
               className={`bg-white rounded-xl border ${
-                today ? "border-teal-300 ring-1 ring-teal-100" : "border-gray-200"
+                today
+                  ? "border-teal-300 ring-1 ring-teal-100"
+                  : "border-gray-200"
               } overflow-hidden`}
             >
               {/* Day header */}
@@ -194,7 +200,7 @@ export function CalendarView({ bookings, weekStartISO }: CalendarViewProps) {
                 ) : (
                   dayBookings.map((b) => {
                     const config = getBookingStatusConfig(
-                      b.status as BookingStatus
+                      b.status as BookingStatus,
                     );
                     return (
                       <Link
@@ -204,7 +210,10 @@ export function CalendarView({ bookings, weekStartISO }: CalendarViewProps) {
                       >
                         <div
                           className={`rounded-lg px-2.5 py-2 border-l-3 ${config.bgColor}`}
-                          style={{ borderLeftWidth: "3px", borderLeftColor: "currentColor" }}
+                          style={{
+                            borderLeftWidth: "3px",
+                            borderLeftColor: "currentColor",
+                          }}
                         >
                           <p
                             className={`text-xs font-medium truncate ${config.color}`}

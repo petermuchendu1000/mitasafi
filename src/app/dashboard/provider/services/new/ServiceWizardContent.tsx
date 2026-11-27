@@ -1,6 +1,6 @@
 /**
  * Service Wizard Content
- * 
+ *
  * Client component that renders the wizard UI.
  * Includes progress indicator, step content, and navigation.
  */
@@ -62,7 +62,10 @@ export function ServiceWizardContent() {
           imageUrls: formData.serviceImages?.[s.serviceId]?.imageUrls || [],
         })),
         serviceAreas: formData.serviceAreas
-          ? { bulk: formData.serviceAreas.bulk, canTravelOutside: formData.serviceAreas.canTravelOutside }
+          ? {
+              bulk: formData.serviceAreas.bulk,
+              canTravelOutside: formData.serviceAreas.canTravelOutside,
+            }
           : undefined,
       });
 
@@ -120,10 +123,7 @@ export function ServiceWizardContent() {
               const isActive = step.id === currentStep;
               const isCompleted = step.id < currentStep;
               return (
-                <div
-                  key={step.id}
-                  className="flex items-center gap-2"
-                >
+                <div key={step.id} className="flex items-center gap-2">
                   {/* Step number/check */}
                   <div
                     className={cn(
@@ -131,8 +131,8 @@ export function ServiceWizardContent() {
                       isCompleted
                         ? "bg-teal-600 text-white"
                         : isActive
-                        ? "bg-teal-600 text-white"
-                        : "bg-gray-200 text-gray-500"
+                          ? "bg-teal-600 text-white"
+                          : "bg-gray-200 text-gray-500",
                     )}
                   >
                     {step.id}
@@ -141,7 +141,7 @@ export function ServiceWizardContent() {
                   <span
                     className={cn(
                       "text-sm hidden sm:block",
-                      isActive ? "font-medium text-gray-900" : "text-gray-500"
+                      isActive ? "font-medium text-gray-900" : "text-gray-500",
                     )}
                   >
                     {step.shortTitle}
@@ -151,7 +151,7 @@ export function ServiceWizardContent() {
                     <div
                       className={cn(
                         "flex-1 h-0.5 mx-2 min-w-[20px] sm:min-w-[40px]",
-                        isCompleted ? "bg-teal-600" : "bg-gray-200"
+                        isCompleted ? "bg-teal-600" : "bg-gray-200",
                       )}
                     />
                   )}
@@ -163,9 +163,7 @@ export function ServiceWizardContent() {
       </div>
 
       {/* Step Content */}
-      <main className="flex-1 px-6 py-8 overflow-auto">
-        {renderStep()}
-      </main>
+      <main className="flex-1 px-6 py-8 overflow-auto">{renderStep()}</main>
 
       {/* Navigation Footer */}
       <footer className="bg-white border-t border-gray-200 px-6 py-4">
@@ -174,9 +172,9 @@ export function ServiceWizardContent() {
           <button
             onClick={handleBack}
             className={cn(
-              "inline-flex items-center gap-2 px-4 py-2 rounded-lg",
+              "inline-flex items-center gap-2 px-4 min-h-[44px] rounded-lg",
               "text-gray-600 hover:text-gray-900 hover:bg-gray-100",
-              "transition-colors text-sm font-medium"
+              "transition-colors text-sm font-medium",
             )}
           >
             <ArrowLeft className="w-4 h-4" />
@@ -188,14 +186,14 @@ export function ServiceWizardContent() {
             onClick={handleContinue}
             disabled={!canProceed() || isSubmitting || isPending}
             className={cn(
-              "inline-flex items-center gap-2 px-5 py-2.5 rounded-lg",
+              "inline-flex items-center gap-2 px-5 min-h-[44px] rounded-lg",
               "text-white font-medium text-sm transition-all",
               canProceed() && !isSubmitting && !isPending
                 ? "bg-teal-600 hover:bg-teal-700"
-                : "bg-gray-300 cursor-not-allowed"
+                : "bg-gray-300 cursor-not-allowed",
             )}
           >
-            {(isSubmitting || isPending) ? (
+            {isSubmitting || isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Saving...

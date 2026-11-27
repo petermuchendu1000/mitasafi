@@ -1,6 +1,6 @@
 /**
  * Service Wizard Context
- * 
+ *
  * React Context + useReducer for managing wizard state.
  * Pattern borrowed from listings wizard.
  */
@@ -35,7 +35,11 @@ type WizardAction =
   | { type: "UPDATE_FORM_DATA"; data: Partial<ServiceFormData> }
   | { type: "ADD_SERVICE"; service: SelectedService }
   | { type: "REMOVE_SERVICE"; serviceId: string }
-  | { type: "UPDATE_SERVICE"; serviceId: string; updates: Partial<SelectedService> }
+  | {
+      type: "UPDATE_SERVICE";
+      serviceId: string;
+      updates: Partial<SelectedService>;
+    }
   | { type: "SET_ERRORS"; errors: Record<string, string> }
   | { type: "CLEAR_ERRORS" }
   | { type: "SET_SUBMITTING"; isSubmitting: boolean }
@@ -73,23 +77,31 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
 
       case "ADD_SERVICE":
         // Prevent duplicates
-        if (!draft.formData.selectedServices.some(s => s.serviceId === action.service.serviceId)) {
+        if (
+          !draft.formData.selectedServices.some(
+            (s) => s.serviceId === action.service.serviceId,
+          )
+        ) {
           draft.formData.selectedServices.push(action.service);
         }
         break;
 
       case "REMOVE_SERVICE":
-        draft.formData.selectedServices = draft.formData.selectedServices.filter(
-          s => s.serviceId !== action.serviceId
-        );
+        draft.formData.selectedServices =
+          draft.formData.selectedServices.filter(
+            (s) => s.serviceId !== action.serviceId,
+          );
         break;
 
       case "UPDATE_SERVICE":
         const serviceIndex = draft.formData.selectedServices.findIndex(
-          s => s.serviceId === action.serviceId
+          (s) => s.serviceId === action.serviceId,
         );
         if (serviceIndex !== -1) {
-          Object.assign(draft.formData.selectedServices[serviceIndex], action.updates);
+          Object.assign(
+            draft.formData.selectedServices[serviceIndex],
+            action.updates,
+          );
         }
         break;
 
@@ -117,22 +129,22 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
 
 interface WizardContextValue {
   state: WizardState;
-  
+
   // Navigation
   nextStep: () => boolean;
   prevStep: () => void;
   goToStep: (step: number) => void;
   canProceed: () => boolean;
-  
+
   // Form Data
   updateFormData: (data: Partial<ServiceFormData>) => void;
-  
+
   // Services
   addService: (service: SelectedService) => void;
   removeService: (serviceId: string) => void;
   updateService: (serviceId: string, updates: Partial<SelectedService>) => void;
   isServiceSelected: (serviceId: string) => boolean;
-  
+
   // Submission
   setSubmitting: (isSubmitting: boolean) => void;
   reset: () => void;
@@ -189,13 +201,21 @@ export function WizardProvider({ children }: WizardProviderProps) {
     dispatch({ type: "REMOVE_SERVICE", serviceId });
   }, []);
 
-  const updateService = useCallback((serviceId: string, updates: Partial<SelectedService>) => {
-    dispatch({ type: "UPDATE_SERVICE", serviceId, updates });
-  }, []);
+  const updateService = useCallback(
+    (serviceId: string, updates: Partial<SelectedService>) => {
+      dispatch({ type: "UPDATE_SERVICE", serviceId, updates });
+    },
+    [],
+  );
 
-  const isServiceSelected = useCallback((serviceId: string) => {
-    return state.formData.selectedServices.some(s => s.serviceId === serviceId);
-  }, [state.formData.selectedServices]);
+  const isServiceSelected = useCallback(
+    (serviceId: string) => {
+      return state.formData.selectedServices.some(
+        (s) => s.serviceId === serviceId,
+      );
+    },
+    [state.formData.selectedServices],
+  );
 
   // Submission
   const setSubmitting = useCallback((isSubmitting: boolean) => {
@@ -222,9 +242,7 @@ export function WizardProvider({ children }: WizardProviderProps) {
   };
 
   return (
-    <WizardContext.Provider value={value}>
-      {children}
-    </WizardContext.Provider>
+    <WizardContext.Provider value={value}>{children}</WizardContext.Provider>
   );
 }
 

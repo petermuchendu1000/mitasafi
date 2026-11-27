@@ -1,6 +1,6 @@
 /**
  * Service Wizard Types
- * 
+ *
  * Type definitions for the "Add Services" wizard.
  * Follows KISS principle - minimal, focused types.
  */
@@ -26,8 +26,16 @@ export const WIZARD_STEPS = [
 
 export const PRICE_TYPES = [
   { id: "fixed", label: "Fixed price", description: "Same price for this job" },
-  { id: "starting_from", label: "Starting from", description: "Price may change depending on work" },
-  { id: "quote", label: "Request a quote", description: "Customer asks first, then you agree" },
+  {
+    id: "starting_from",
+    label: "Starting from",
+    description: "Price may change depending on work",
+  },
+  {
+    id: "quote",
+    label: "Request a quote",
+    description: "Customer asks first, then you agree",
+  },
 ] as const;
 
 export type PriceType = "fixed" | "starting_from" | "quote";
@@ -41,31 +49,31 @@ export type PriceType = "fixed" | "starting_from" | "quote";
  * Shared by Step2 (service selection) and Step3 (pricing).
  */
 export const CATEGORY_PRICE_DEFAULTS: Record<string, PriceType> = {
-  "Plumbing": "quote",
-  "Electrical": "quote",
-  "HVAC": "quote",
+  Plumbing: "quote",
+  Electrical: "quote",
+  HVAC: "quote",
   "Appliance Repair": "quote",
-  "Carpentry": "starting_from",
-  "Painting": "starting_from",
-  "Flooring": "starting_from",
-  "Roofing": "quote",
-  "Moving": "starting_from",
-  "Security": "quote",
-  "Cleaning": "fixed",
-  "Laundry": "fixed",
+  Carpentry: "starting_from",
+  Painting: "starting_from",
+  Flooring: "starting_from",
+  Roofing: "quote",
+  Moving: "starting_from",
+  Security: "quote",
+  Cleaning: "fixed",
+  Laundry: "fixed",
   "Pest Control": "starting_from",
-  "Landscaping": "starting_from",
+  Landscaping: "starting_from",
   "Pet Care": "fixed",
   "Waste Management": "fixed",
   "Water Services": "quote",
   "Tech Support": "starting_from",
-  "Locksmith": "starting_from",
+  Locksmith: "starting_from",
   "Interior Design": "quote",
-  "Renovation": "quote",
-  "Events": "quote",
-  "Catering": "starting_from",
-  "Childcare": "fixed",
-  "Glass": "starting_from",
+  Renovation: "quote",
+  Events: "quote",
+  Catering: "starting_from",
+  Childcare: "fixed",
+  Glass: "starting_from",
 };
 
 // =============================================================================
@@ -93,19 +101,19 @@ export interface ServiceFormData {
   // Step 1: Category (supports multiple)
   categoryIds: string[];
   subcategoryId: string | null;
-  
+
   // Step 2: Services (multiple selection)
   selectedServices: SelectedService[];
-  
+
   // Step 3 is editing the selectedServices pricing
-  
+
   // Step 4: Service Areas
   serviceAreas?: {
     bulk?: string[]; // Area IDs when bulk applying
     perService?: Record<string, string[]>; // serviceId -> area IDs
     canTravelOutside?: boolean;
   };
-  
+
   // Step 5: Service image URLs (uploaded to Supabase Storage)
   serviceImages?: Record<string, { description: string; imageUrls: string[] }>;
 }
@@ -138,7 +146,10 @@ export const DEFAULT_WIZARD_STATE: WizardState = {
 // VALIDATION
 // =============================================================================
 
-export function validateStep(step: number, formData: ServiceFormData): Record<string, string> {
+export function validateStep(
+  step: number,
+  formData: ServiceFormData,
+): Record<string, string> {
   const errors: Record<string, string> = {};
 
   switch (step) {
@@ -158,7 +169,8 @@ export function validateStep(step: number, formData: ServiceFormData): Record<st
       // Validate pricing for each selected service
       formData.selectedServices.forEach((service, index) => {
         if (service.priceType !== "quote" && !service.customPrice) {
-          errors[`price_${index}`] = `Please set a price for ${service.serviceName}`;
+          errors[`price_${index}`] =
+            `Please set a price for ${service.serviceName}`;
         }
         if (service.customPrice && service.customPrice < 0) {
           errors[`price_${index}`] = "Price cannot be negative";
@@ -176,7 +188,7 @@ export function validateStep(step: number, formData: ServiceFormData): Record<st
         }
       } else if (formData.serviceAreas.perService) {
         const allEmpty = Object.values(formData.serviceAreas.perService).every(
-          (areas) => areas.length === 0
+          (areas) => areas.length === 0,
         );
         if (allEmpty) {
           errors.serviceAreas = "Please select areas for at least one service";
@@ -187,9 +199,11 @@ export function validateStep(step: number, formData: ServiceFormData): Record<st
     case 5:
       // Validate images — at least 1 photo per service
       formData.selectedServices.forEach((service) => {
-        const imgs = formData.serviceImages?.[service.serviceId]?.imageUrls || [];
+        const imgs =
+          formData.serviceImages?.[service.serviceId]?.imageUrls || [];
         if (imgs.length === 0) {
-          errors[`images_${service.serviceId}`] = `Upload at least one photo for ${service.serviceName}`;
+          errors[`images_${service.serviceId}`] =
+            `Upload at least one photo for ${service.serviceName}`;
         }
       });
       break;

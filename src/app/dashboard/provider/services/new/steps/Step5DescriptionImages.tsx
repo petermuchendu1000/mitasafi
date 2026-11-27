@@ -195,14 +195,14 @@ export function Step5DescriptionImages() {
               <button
                 onClick={handlePrevService}
                 disabled={currentServiceIndex === 0}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
               >
                 ← Previous
               </button>
               <button
                 onClick={handleNextService}
                 disabled={currentServiceIndex === totalServices - 1}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
               >
                 Next →
               </button>
@@ -269,7 +269,7 @@ export function Step5DescriptionImages() {
               />
               <button
                 onClick={() => handleImageRemove(index)}
-                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                className="absolute top-1 right-1 min-w-[44px] min-h-[44px] grid place-items-center bg-red-500 text-white rounded-full hover:bg-red-600"
               >
                 <X className="w-3 h-3" />
               </button>

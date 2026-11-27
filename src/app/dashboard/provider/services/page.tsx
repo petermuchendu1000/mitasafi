@@ -1,6 +1,6 @@
 /**
  * My Services Page
- * 
+ *
  * Main page for service providers to manage their services.
  * No verification gate - users can add services freely.
  * Verification is required only when going live.
@@ -20,7 +20,7 @@ export default async function MyServicesPage() {
   // Get provider's services (no verification gate - anyone can add)
   // This handles auth internally, so no need for separate auth check
   const { services, providerMeta, error } = await getProviderServices();
-  
+
   // Only fetch verification status if we have services (for "Go Live" button)
   // Uses cache layer — layout already called these, free dedup
   let isFullyVerified = false;
@@ -31,8 +31,10 @@ export default async function MyServicesPage() {
       if (providerData) {
         const level = providerData.profile.verification_level || "none";
         const supabasePhoneVerified = user.phone && user.phone_confirmed_at;
-        const effective = supabasePhoneVerified && level === "none" ? "phone" : level;
-        isFullyVerified = effective === "full" || !!providerData.provider.is_verified;
+        const effective =
+          supabasePhoneVerified && level === "none" ? "phone" : level;
+        isFullyVerified =
+          effective === "full" || !!providerData.provider.is_verified;
       }
     }
   }
@@ -47,11 +49,12 @@ export default async function MyServicesPage() {
               Complete Your Profile
             </h2>
             <p className="text-gray-500 mb-6">
-              You need to set up your service provider profile before you can add services.
+              You need to set up your service provider profile before you can
+              add services.
             </p>
             <a
               href="/dashboard/provider/profile"
-              className="inline-flex items-center px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700"
+              className="inline-flex items-center px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 min-h-[44px]"
             >
               Set Up Profile
             </a>
@@ -59,7 +62,7 @@ export default async function MyServicesPage() {
         </div>
       );
     }
-    
+
     return (
       <div className="p-6">
         <div className="text-center py-12">
@@ -74,8 +77,8 @@ export default async function MyServicesPage() {
       {services.length === 0 ? (
         <ServicesEmptyState />
       ) : (
-        <ServicesGrid 
-          initialServices={services} 
+        <ServicesGrid
+          initialServices={services}
           isVerified={isFullyVerified}
           providerMeta={providerMeta}
         />

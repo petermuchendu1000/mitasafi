@@ -1,6 +1,6 @@
 /**
  * Service Provider Services - Server Actions
- * 
+ *
  * CRUD operations for provider_services table.
  * Pattern: Auth check → Ownership verify → Operation → Revalidate
  */
@@ -75,7 +75,7 @@ export async function getNeighborhoodsGrouped(): Promise<{
     }
 
     const clusters: NeighborhoodClusterResult[] = Array.from(
-      clusterMap.entries()
+      clusterMap.entries(),
     ).map(([cluster, neighborhoods]) => ({ cluster, neighborhoods }));
 
     return { clusters, error: null };
@@ -83,7 +83,8 @@ export async function getNeighborhoodsGrouped(): Promise<{
     console.error("getNeighborhoodsGrouped: unexpected error", err);
     return {
       clusters: [],
-      error: err instanceof Error ? err.message : "Failed to load neighborhoods",
+      error:
+        err instanceof Error ? err.message : "Failed to load neighborhoods",
     };
   }
 }
@@ -102,13 +103,16 @@ interface ProviderServiceRow {
  * Get provider ID from currently authenticated user
  * OPTIMIZED: Uses React cache() for request-level deduplication
  */
-async function getProviderId(): Promise<{ providerId: string | null; error: string | null }> {
+async function getProviderId(): Promise<{
+  providerId: string | null;
+  error: string | null;
+}> {
   // Use cached query (eliminates duplicate DB calls within same request)
   const result = await getCachedProviderId();
-  
+
   return {
     providerId: result.providerId || null,
-    error: result.error || null
+    error: result.error || null,
   };
 }
 
@@ -121,7 +125,9 @@ async function getProviderId(): Promise<{ providerId: string | null; error: stri
  * Uses admin client to bypass storage RLS.
  * Returns the public URL on success.
  */
-export async function uploadServiceImage(formData: FormData): Promise<ActionResult<{ url: string }>> {
+export async function uploadServiceImage(
+  formData: FormData,
+): Promise<ActionResult<{ url: string }>> {
   try {
     const { providerId, error: authError } = await getProviderId();
     if (authError || !providerId) {
@@ -159,9 +165,9 @@ export async function uploadServiceImage(formData: FormData): Promise<ActionResu
       return { success: false, error: "Failed to upload image" };
     }
 
-    const { data: { publicUrl } } = admin.storage
-      .from("provider-public")
-      .getPublicUrl(data.path);
+    const {
+      data: { publicUrl },
+    } = admin.storage.from("provider-public").getPublicUrl(data.path);
 
     return { success: true, data: { url: publicUrl } };
   } catch (error) {
@@ -174,7 +180,9 @@ export async function uploadServiceImage(formData: FormData): Promise<ActionResu
  * Delete a service image from Supabase Storage.
  * Extracts the storage path from the public URL.
  */
-export async function deleteServiceImage(publicUrl: string): Promise<ActionResult> {
+export async function deleteServiceImage(
+  publicUrl: string,
+): Promise<ActionResult> {
   try {
     const { providerId, error: authError } = await getProviderId();
     if (authError || !providerId) {
@@ -211,7 +219,9 @@ export async function deleteServiceImage(publicUrl: string): Promise<ActionResul
   }
 }
 
-export async function addProviderServices(input: AddServicesInput): Promise<ActionResult> {
+export async function addProviderServices(
+  input: AddServicesInput,
+): Promise<ActionResult> {
   try {
     const { providerId, error: authError } = await getProviderId();
     if (authError || !providerId) {
@@ -221,18 +231,18 @@ export async function addProviderServices(input: AddServicesInput): Promise<Acti
     const supabase = await createClient();
 
     // Prepare the records to insert
-    const records = input.services.map(service => ({
+    const records = input.services.map((service) => ({
       provider_id: providerId,
       service_id: service.serviceId,
       custom_pricing: {
         amount: service.customPrice,
-        type: service.priceType || 'fixed',
+        type: service.priceType || "fixed",
         description: service.description || null,
         image_urls: service.imageUrls?.length ? service.imageUrls : null,
       },
       experience_years: service.experienceYears,
       is_active: true,
-      capacity_scope: 'per_service',
+      capacity_scope: "per_service",
     }));
 
     // Insert all services (upsert to handle duplicates)
@@ -246,9 +256,9 @@ export async function addProviderServices(input: AddServicesInput): Promise<Acti
 
     if (insertError) {
       console.error("Error adding services:", insertError);
-      return { 
-        success: false, 
-        error: `Failed to add services: ${insertError.message || insertError.code || 'Unknown error'}` 
+      return {
+        success: false,
+        error: `Failed to add services: ${insertError.message || insertError.code || "Unknown error"}`,
       };
     }
 
@@ -268,7 +278,10 @@ export async function addProviderServices(input: AddServicesInput): Promise<Acti
           .in("id", input.serviceAreas.bulk);
 
         if (nError || !neighborhoods?.length) {
-          console.error("[addProviderServices] Neighborhood lookup failed:", nError);
+          console.error(
+            "[addProviderServices] Neighborhood lookup failed:",
+            nError,
+          );
           // Services saved — area persistence is best-effort, don't roll back
         } else {
           // Fetch existing global areas (service_id IS NULL) to avoid duplicates.
@@ -282,7 +295,9 @@ export async function addProviderServices(input: AddServicesInput): Promise<Acti
             .is("service_id", null);
 
           const existingNames = new Set(
-            (existingAreas || []).map((a: { area_name: string }) => a.area_name)
+            (existingAreas || []).map(
+              (a: { area_name: string }) => a.area_name,
+            ),
           );
 
           const newAreas = (neighborhoods as { id: string; name: string }[])
@@ -301,7 +316,10 @@ export async function addProviderServices(input: AddServicesInput): Promise<Acti
               .insert(newAreas);
 
             if (areaError) {
-              console.error("[addProviderServices] Area insert failed:", areaError);
+              console.error(
+                "[addProviderServices] Area insert failed:",
+                areaError,
+              );
             }
           }
         }
@@ -314,8 +332,12 @@ export async function addProviderServices(input: AddServicesInput): Promise<Acti
     return { success: true };
   } catch (error) {
     console.error("Error in addProviderServices:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return { success: false, error: `An unexpected error occurred: ${errorMessage}` };
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    return {
+      success: false,
+      error: `An unexpected error occurred: ${errorMessage}`,
+    };
   }
 }
 
@@ -323,7 +345,9 @@ export async function addProviderServices(input: AddServicesInput): Promise<Acti
 // TOGGLE SERVICE ACTIVE STATUS
 // =============================================================================
 
-export async function toggleServiceActive(providerServiceId: string): Promise<ActionResult> {
+export async function toggleServiceActive(
+  providerServiceId: string,
+): Promise<ActionResult> {
   try {
     const { providerId, error: authError } = await getProviderId();
     if (authError || !providerId) {
@@ -346,14 +370,17 @@ export async function toggleServiceActive(providerServiceId: string): Promise<Ac
     }
 
     if (service.provider_id !== providerId) {
-      return { success: false, error: "You don't have permission to modify this service" };
+      return {
+        success: false,
+        error: "You don't have permission to modify this service",
+      };
     }
 
     // Toggle the status
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase as any)
       .from("provider_services")
-      .update({ 
+      .update({
         is_active: !service.is_active,
         updated_at: new Date().toISOString(),
       })
@@ -383,7 +410,7 @@ export async function updateProviderService(
     price: number | null;
     description: string | null;
     imageUrls: string[];
-  }
+  },
 ): Promise<ActionResult> {
   try {
     const { providerId, error: authError } = await getProviderId();
@@ -443,7 +470,9 @@ export async function updateProviderService(
 // DELETE SERVICE
 // =============================================================================
 
-export async function deleteProviderService(providerServiceId: string): Promise<ActionResult> {
+export async function deleteProviderService(
+  providerServiceId: string,
+): Promise<ActionResult> {
   try {
     const { providerId, error: authError } = await getProviderId();
     if (authError || !providerId) {
@@ -467,7 +496,10 @@ export async function deleteProviderService(providerServiceId: string): Promise<
     }
 
     if (service.provider_id !== providerId) {
-      return { success: false, error: "You don't have permission to delete this service" };
+      return {
+        success: false,
+        error: "You don't have permission to delete this service",
+      };
     }
 
     // Clean up storage images before deleting DB record
@@ -554,19 +586,30 @@ export async function getProviderServices(): Promise<{
     const supabase = await createClient();
 
     // Get current user's provider ID
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return { services: [], providerMeta: null, error: authError?.message || 'Not authenticated' };
+      return {
+        services: [],
+        providerMeta: null,
+        error: authError?.message || "Not authenticated",
+      };
     }
 
     const { data: providerData, error: pidError } = await supabase
-      .from('service_providers')
-      .select('id, primary_location, average_rating, total_reviews, created_at')
-      .eq('user_id', user.id)
+      .from("service_providers")
+      .select("id, primary_location, average_rating, total_reviews, created_at")
+      .eq("user_id", user.id)
       .single();
 
     if (pidError || !providerData) {
-      return { services: [], providerMeta: null, error: pidError?.message || 'Provider profile not found' };
+      return {
+        services: [],
+        providerMeta: null,
+        error: pidError?.message || "Provider profile not found",
+      };
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -582,8 +625,9 @@ export async function getProviderServices(): Promise<{
 
     // Query ALL services (active + paused) — dashboard needs full list
     const { data, error } = await supabase
-      .from('provider_services')
-      .select(`
+      .from("provider_services")
+      .select(
+        `
         id,
         service_id,
         custom_pricing,
@@ -598,9 +642,10 @@ export async function getProviderServices(): Promise<{
           category_slug,
           subcategory_name
         )
-      `)
-      .eq('provider_id', pid)
-      .order('created_at', { ascending: false });
+      `,
+      )
+      .eq("provider_id", pid)
+      .order("created_at", { ascending: false });
 
     if (error) {
       return { services: [], providerMeta, error: error.message };
@@ -626,11 +671,11 @@ export async function getProviderServices(): Promise<{
           name: svc.name,
           description: svc.description,
           subcategory: {
-            id: svc.subcategory_id || '',
-            name: svc.subcategory_name || '',
+            id: svc.subcategory_id || "",
+            name: svc.subcategory_name || "",
             category: {
-              id: svc.category_id || '',
-              name: svc.category_name || 'Other',
+              id: svc.category_id || "",
+              name: svc.category_name || "Other",
             },
           },
         },
@@ -640,7 +685,11 @@ export async function getProviderServices(): Promise<{
     return { services, providerMeta, error: null };
   } catch (error) {
     console.error("Error in getProviderServices:", error);
-    return { services: [], providerMeta: null, error: "An unexpected error occurred" };
+    return {
+      services: [],
+      providerMeta: null,
+      error: "An unexpected error occurred",
+    };
   }
 }
 
@@ -692,7 +741,7 @@ export interface ServicePreviewData {
 }
 
 export async function getServicePreview(
-  providerServiceId: string
+  providerServiceId: string,
 ): Promise<{ data: ServicePreviewData | null; error: string | null }> {
   try {
     const { providerId, error: authError } = await getProviderId();
@@ -707,7 +756,8 @@ export async function getServicePreview(
     const results: any[] = await Promise.all([
       supabase
         .from("provider_services")
-        .select(`
+        .select(
+          `
           id,
           service_id,
           custom_pricing,
@@ -724,13 +774,16 @@ export async function getServicePreview(
             category_name,
             subcategory_name
           )
-        `)
+        `,
+        )
         .eq("id", providerServiceId)
         .eq("provider_id", providerId)
         .single(),
       supabase
         .from("service_providers")
-        .select("id, business_name, bio, profile_photo_url, is_verified, verification_badge, primary_location, service_radius_km, years_in_business, years_experience, average_rating, total_reviews, total_jobs_completed, response_time_minutes, response_time, phone, email, whatsapp, created_at, last_active_at, emergency_capacity_reserved")
+        .select(
+          "id, business_name, bio, profile_photo_url, is_verified, verification_badge, primary_location, service_radius_km, years_in_business, years_experience, average_rating, total_reviews, total_jobs_completed, response_time_minutes, response_time, phone, email, whatsapp, created_at, last_active_at, emergency_capacity_reserved",
+        )
         .eq("id", providerId)
         .single(),
       supabase
@@ -744,12 +797,24 @@ export async function getServicePreview(
     const areasResult = results[2];
 
     if (serviceResult.error || !serviceResult.data) {
-      console.error("[getServicePreview] serviceResult error:", serviceResult.error);
-      return { data: null, error: serviceResult.error?.message || "Service not found" };
+      console.error(
+        "[getServicePreview] serviceResult error:",
+        serviceResult.error,
+      );
+      return {
+        data: null,
+        error: serviceResult.error?.message || "Service not found",
+      };
     }
     if (providerResult.error || !providerResult.data) {
-      console.error("[getServicePreview] providerResult error:", providerResult.error);
-      return { data: null, error: providerResult.error?.message || "Provider not found" };
+      console.error(
+        "[getServicePreview] providerResult error:",
+        providerResult.error,
+      );
+      return {
+        data: null,
+        error: providerResult.error?.message || "Provider not found",
+      };
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -765,7 +830,9 @@ export async function getServicePreview(
 
     // Extract area names
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const areaNames = (areasResult.data || []).map((a: any) => a.area_name).filter(Boolean) as string[];
+    const areaNames = (areasResult.data || [])
+      .map((a: any) => a.area_name)
+      .filter(Boolean) as string[];
 
     return {
       data: {
@@ -781,8 +848,8 @@ export async function getServicePreview(
           id: svc.id,
           name: svc.name,
           description: svc.description || null,
-          subcategory_name: svc.subcategory_name || '',
-          category_name: svc.category_name || 'Other',
+          subcategory_name: svc.subcategory_name || "",
+          category_name: svc.category_name || "Other",
         },
         provider: {
           id: prov.id,
@@ -835,7 +902,7 @@ export interface ServiceEditData {
 }
 
 export async function getServiceForEdit(
-  providerServiceId: string
+  providerServiceId: string,
 ): Promise<{ service: ServiceEditData | null; error: string | null }> {
   try {
     const { providerId, error: authError } = await getProviderId();
@@ -848,7 +915,8 @@ export async function getServiceForEdit(
     // Use materialized view — same proven pattern as getProviderServices
     const { data, error } = await supabase
       .from("provider_services")
-      .select(`
+      .select(
+        `
         id,
         service_id,
         custom_pricing,
@@ -859,7 +927,8 @@ export async function getServiceForEdit(
           category_name,
           subcategory_name
         )
-      `)
+      `,
+      )
       .eq("id", providerServiceId)
       .eq("provider_id", providerId)
       .single();
@@ -884,8 +953,8 @@ export async function getServiceForEdit(
         service: {
           id: svc.id,
           name: svc.name,
-          subcategory_name: svc.subcategory_name || '',
-          category_name: svc.category_name || 'Other',
+          subcategory_name: svc.subcategory_name || "",
+          category_name: svc.category_name || "Other",
         },
       },
       error: null,

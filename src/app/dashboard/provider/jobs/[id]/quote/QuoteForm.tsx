@@ -79,15 +79,13 @@ export function QuoteForm({
 
   // ── Form fields ──
   const [description, setDescription] = useState(
-    initialData?.description ?? ""
+    initialData?.description ?? "",
   );
   const [validityDays, setValidityDays] = useState(
-    initialData?.validityDays ?? DEFAULT_VALIDITY_DAYS
+    initialData?.validityDays ?? DEFAULT_VALIDITY_DAYS,
   );
   const [useManualTotal, setUseManualTotal] = useState(false);
-  const [manualTotal, setManualTotal] = useState(
-    initialData?.quotedPrice ?? 0
-  );
+  const [manualTotal, setManualTotal] = useState(initialData?.quotedPrice ?? 0);
 
   // ── Computed total from breakdown ──
   const computedTotal = breakdownRows.reduce((sum, row) => {
@@ -112,10 +110,10 @@ export function QuoteForm({
   const updateRow = useCallback(
     (key: string, field: keyof QuoteBreakdownItem, value: string | number) => {
       setBreakdownRows((prev) =>
-        prev.map((r) => (r._key === key ? { ...r, [field]: value } : r))
+        prev.map((r) => (r._key === key ? { ...r, [field]: value } : r)),
       );
     },
-    []
+    [],
   );
 
   // ── Validation ──
@@ -211,10 +209,7 @@ export function QuoteForm({
 
         <div className="space-y-3">
           {breakdownRows.map((row, idx) => (
-            <div
-              key={row._key}
-              className="grid grid-cols-12 gap-2 items-start"
-            >
+            <div key={row._key} className="grid grid-cols-12 gap-2 items-start">
               {/* Label */}
               <div className="col-span-5">
                 {idx === 0 && (
@@ -225,11 +220,9 @@ export function QuoteForm({
                 <input
                   type="text"
                   value={row.label}
-                  onChange={(e) =>
-                    updateRow(row._key, "label", e.target.value)
-                  }
+                  onChange={(e) => updateRow(row._key, "label", e.target.value)}
                   placeholder="e.g., Labour"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-h-[44px]"
                 />
               </div>
 
@@ -249,11 +242,11 @@ export function QuoteForm({
                     updateRow(
                       row._key,
                       "amount",
-                      parseFloat(e.target.value) || 0
+                      parseFloat(e.target.value) || 0,
                     )
                   }
                   placeholder="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-h-[44px]"
                 />
               </div>
 
@@ -272,10 +265,10 @@ export function QuoteForm({
                     updateRow(
                       row._key,
                       "quantity",
-                      parseInt(e.target.value, 10) || 1
+                      parseInt(e.target.value, 10) || 1,
                     )
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-h-[44px]"
                 />
               </div>
 
@@ -290,7 +283,7 @@ export function QuoteForm({
                   type="button"
                   onClick={() => removeRow(row._key)}
                   disabled={breakdownRows.length <= 1}
-                  className="p-2 text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors min-h-[44px]"
                   title="Remove item"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -307,7 +300,7 @@ export function QuoteForm({
                       updateRow(row._key, "note", e.target.value)
                     }
                     placeholder="Optional note for this item"
-                    className="w-full px-3 py-1.5 border border-gray-200 rounded-md text-xs text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-3 py-1.5 border border-gray-200 rounded-md text-xs text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent min-h-[44px]"
                   />
                 </div>
               )}
@@ -350,10 +343,8 @@ export function QuoteForm({
               min={1}
               step="0.01"
               value={manualTotal || ""}
-              onChange={(e) =>
-                setManualTotal(parseFloat(e.target.value) || 0)
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              onChange={(e) => setManualTotal(parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-h-[44px]"
             />
           </div>
         )}
@@ -382,7 +373,7 @@ export function QuoteForm({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Describe what's included in this quote, materials, estimated time, any conditions…"
           rows={4}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none min-h-[44px]"
         />
       </div>
 
@@ -402,9 +393,11 @@ export function QuoteForm({
             max={90}
             value={validityDays}
             onChange={(e) =>
-              setValidityDays(parseInt(e.target.value, 10) || DEFAULT_VALIDITY_DAYS)
+              setValidityDays(
+                parseInt(e.target.value, 10) || DEFAULT_VALIDITY_DAYS,
+              )
             }
-            className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-h-[44px]"
           />
           <span className="text-sm text-gray-500">days</span>
         </div>

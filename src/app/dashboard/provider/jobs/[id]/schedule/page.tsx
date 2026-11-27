@@ -27,7 +27,9 @@ interface PageProps {
 // METADATA
 // =============================================================================
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { id } = await params;
   return {
     title: `Schedule Job ${id.slice(0, 8)} | Provider Dashboard | MitaSafi`,
@@ -46,7 +48,7 @@ export default async function ScheduleJobPage({ params }: PageProps) {
   const { user, error: authError } = await getCachedUser();
   if (authError || !user) {
     redirect(
-      `/login?redirectTo=${encodeURIComponent(`/dashboard/provider/jobs/${bookingId}/schedule`)}`
+      `/login?redirectTo=${encodeURIComponent(`/dashboard/provider/jobs/${bookingId}/schedule`)}`,
     );
   }
 

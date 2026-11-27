@@ -15,7 +15,10 @@ import { useEffect, useState } from "react";
 import { MapPin, Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWizard } from "../context";
-import { getNeighborhoodsGrouped, type NeighborhoodClusterResult } from "../../actions";
+import {
+  getNeighborhoodsGrouped,
+  type NeighborhoodClusterResult,
+} from "../../actions";
 
 interface Neighborhood {
   id: string;
@@ -35,7 +38,7 @@ export function Step4ServiceAreas() {
   const [clusters, setClusters] = useState<NeighborhoodCluster[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>(
-    () => (formData.serviceAreas as { bulk?: string[] })?.bulk ?? []
+    () => (formData.serviceAreas as { bulk?: string[] })?.bulk ?? [],
   );
   const [canTravelOutside, setCanTravelOutside] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,7 +47,8 @@ export function Step4ServiceAreas() {
   useEffect(() => {
     async function loadNeighborhoods() {
       try {
-        const { clusters: serverClusters, error } = await getNeighborhoodsGrouped();
+        const { clusters: serverClusters, error } =
+          await getNeighborhoodsGrouped();
 
         if (error) {
           console.error("Failed to load neighborhoods:", error);
@@ -55,7 +59,7 @@ export function Step4ServiceAreas() {
             serverClusters.map((c: NeighborhoodClusterResult) => ({
               cluster: c.cluster,
               neighborhoods: c.neighborhoods,
-            }))
+            })),
           );
         }
       } catch (err) {
@@ -76,7 +80,7 @@ export function Step4ServiceAreas() {
 
   const toggleNeighborhood = (id: string) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
@@ -90,7 +94,7 @@ export function Step4ServiceAreas() {
         .map((c) => ({
           ...c,
           neighborhoods: c.neighborhoods.filter((n) =>
-            n.name.toLowerCase().includes(searchQuery.toLowerCase())
+            n.name.toLowerCase().includes(searchQuery.toLowerCase()),
           ),
         }))
         .filter((c) => c.neighborhoods.length > 0)
@@ -116,7 +120,7 @@ export function Step4ServiceAreas() {
           placeholder="Search neighborhoods..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent min-h-[44px]"
         />
       </div>
 
@@ -146,20 +150,23 @@ export function Step4ServiceAreas() {
                         "p-4 rounded-lg border-2 text-left transition-all",
                         selected
                           ? "border-teal-600 bg-teal-50"
-                          : "border-gray-200 bg-white hover:border-gray-300"
+                          : "border-gray-200 bg-white hover:border-gray-300",
                       )}
                     >
                       <div className="flex items-center justify-between">
                         <span
                           className={cn(
                             "font-medium",
-                            selected ? "text-teal-700" : "text-gray-900"
+                            selected ? "text-teal-700" : "text-gray-900",
                           )}
                         >
                           {n.name}
                         </span>
                         {selected && (
-                          <Check className="w-5 h-5 text-teal-600" strokeWidth={2.5} />
+                          <Check
+                            className="w-5 h-5 text-teal-600"
+                            strokeWidth={2.5}
+                          />
                         )}
                       </div>
                     </button>
@@ -179,7 +186,7 @@ export function Step4ServiceAreas() {
                     "flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors mt-0.5",
                     canTravelOutside
                       ? "bg-teal-600 border-teal-600"
-                      : "bg-white border-gray-300"
+                      : "bg-white border-gray-300",
                   )}
                 >
                   {canTravelOutside && (

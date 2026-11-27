@@ -1,6 +1,6 @@
 /**
  * Profile Basics Form
- * 
+ *
  * Form for headline, bio, experience, and languages.
  */
 
@@ -36,15 +36,13 @@ export function ProfileBasicsForm({
   const [headline, setHeadline] = useState(initialData.headline);
   const [bio, setBio] = useState(initialData.bio);
   const [yearsExperience, setYearsExperience] = useState(
-    initialData.years_experience
+    initialData.years_experience,
   );
   const [languages, setLanguages] = useState<string[]>(initialData.languages);
 
   const handleLanguageToggle = (lang: string) => {
     setLanguages((prev) =>
-      prev.includes(lang)
-        ? prev.filter((l) => l !== lang)
-        : [...prev, lang]
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang],
     );
   };
 
@@ -89,7 +87,7 @@ export function ProfileBasicsForm({
   // Generate headline suggestion
   const generateHeadlineSuggestion = () => {
     const expLabel = YEARS_EXPERIENCE_OPTIONS.find(
-      (o) => o.value === yearsExperience
+      (o) => o.value === yearsExperience,
     )?.label;
     return `Professional Service Provider • ${expLabel || "Experienced"} • Nairobi`;
   };
@@ -119,7 +117,7 @@ export function ProfileBasicsForm({
           onChange={(e) => setHeadline(e.target.value)}
           maxLength={80}
           placeholder="e.g., Expert Plumber • 8 Years Experience • Kilimani"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent min-h-[44px]"
         />
         <div className="flex justify-between mt-1">
           <button
@@ -129,9 +127,7 @@ export function ProfileBasicsForm({
           >
             Use suggestion
           </button>
-          <span className="text-xs text-gray-400">
-            {headline.length}/80
-          </span>
+          <span className="text-xs text-gray-400">{headline.length}/80</span>
         </div>
       </div>
 
@@ -141,7 +137,8 @@ export function ProfileBasicsForm({
           About You <span className="text-red-500">*</span>
         </label>
         <p className="text-xs text-gray-500 mb-2">
-          Tell clients about your experience, approach, and what makes you different (100-500 characters)
+          Tell clients about your experience, approach, and what makes you
+          different (100-500 characters)
         </p>
         <textarea
           value={bio}
@@ -149,7 +146,7 @@ export function ProfileBasicsForm({
           maxLength={500}
           rows={5}
           placeholder="I've been providing professional services for over 5 years. I specialize in... My approach is... I always ensure..."
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none min-h-[44px]"
         />
         <div className="flex justify-end mt-1">
           <span
@@ -157,7 +154,8 @@ export function ProfileBasicsForm({
               bio.length < 100 ? "text-amber-500" : "text-gray-400"
             }`}
           >
-            {bio.length}/500 {bio.length < 100 && `(${100 - bio.length} more needed)`}
+            {bio.length}/500{" "}
+            {bio.length < 100 && `(${100 - bio.length} more needed)`}
           </span>
         </div>
       </div>
@@ -170,7 +168,7 @@ export function ProfileBasicsForm({
         <select
           value={yearsExperience}
           onChange={(e) => setYearsExperience(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent min-h-[44px]"
         >
           <option value="">Select experience level</option>
           {YEARS_EXPERIENCE_OPTIONS.map((opt) => (
@@ -195,7 +193,7 @@ export function ProfileBasicsForm({
               key={lang}
               type="button"
               onClick={() => handleLanguageToggle(lang)}
-              className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+              className={`px-3 min-h-[44px] text-sm rounded-full border transition-colors ${
                 languages.includes(lang)
                   ? "bg-teal-50 border-teal-300 text-teal-700"
                   : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
@@ -219,7 +217,7 @@ export function ProfileBasicsForm({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors min-h-[44px]"
         >
           <ChevronLeft className="w-4 h-4" />
           Back
@@ -227,7 +225,7 @@ export function ProfileBasicsForm({
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
         >
           {isPending ? "Saving..." : "Continue"}
         </button>

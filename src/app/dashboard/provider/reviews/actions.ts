@@ -9,6 +9,9 @@
 
 import { submitProviderResponse as _submitProviderResponse } from "@/lib/services/reviews";
 
-export async function submitProviderResponse(reviewId: string, response: string) {
+export async function submitProviderResponse(
+  reviewId: string,
+  response: string,
+) {
   return _submitProviderResponse(reviewId, response);
 }

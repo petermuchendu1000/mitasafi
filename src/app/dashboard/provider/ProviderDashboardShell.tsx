@@ -1,6 +1,6 @@
 /**
  * ProviderDashboardShell Component
- * 
+ *
  * Client component wrapper that provides the dashboard UI shell
  * with sidebar and header for service providers.
  */
@@ -16,13 +16,13 @@ import { Logo } from "@/components/ui";
 import { ToastProvider, useToast } from "@/components/ui";
 import { NotificationCenter } from "@/components/shared/NotificationCenter";
 import { reactivateProviderAccount } from "./settings/actions";
-import { 
-  Wrench, 
-  LayoutDashboard, 
-  Briefcase, 
-  DollarSign, 
-  Star, 
-  Settings, 
+import {
+  Wrench,
+  LayoutDashboard,
+  Briefcase,
+  DollarSign,
+  Star,
+  Settings,
   User,
   Eye,
   LogOut,
@@ -35,7 +35,7 @@ import {
   BadgeCheck,
   AlertTriangle,
   Loader2,
-  BarChart3
+  BarChart3,
 } from "lucide-react";
 import type { ProviderSidebarProfile } from "./layout";
 
@@ -112,7 +112,7 @@ export function ProviderDashboardShell({
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const handleMobileMenuToggle = useCallback(() => {
-    setIsMobileMenuOpen(prev => !prev);
+    setIsMobileMenuOpen((prev) => !prev);
   }, []);
 
   const closeMobileMenu = useCallback(() => {
@@ -122,7 +122,10 @@ export function ProviderDashboardShell({
   // Close profile menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
         setIsProfileMenuOpen(false);
       }
     }
@@ -135,26 +138,34 @@ export function ProviderDashboardShell({
       <div className="min-h-screen bg-gray-50">
         {/* Mobile menu overlay */}
         {isMobileMenuOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 md:hidden"
             onClick={closeMobileMenu}
           />
         )}
 
         {/* Sidebar */}
-        <aside className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out",
-          "md:translate-x-0",
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        )}>
+        <aside
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out",
+            "md:translate-x-0",
+            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100">
-            <Link href="/dashboard/provider" onClick={closeMobileMenu}>
+            <Link
+              href="/dashboard/provider"
+              onClick={closeMobileMenu}
+              aria-label="MitaSafi provider dashboard"
+              className="inline-flex items-center min-h-[44px]"
+            >
               <Logo variant="full" color="teal" size="sm" />
             </Link>
-            <button 
+            <button
               onClick={closeMobileMenu}
-              className="md:hidden p-2 text-gray-500 hover:text-gray-700"
+              aria-label="Close menu"
+              className="md:hidden min-w-[44px] min-h-[44px] grid place-items-center text-gray-500 hover:text-gray-700"
             >
               <X className="w-5 h-5" />
             </button>
@@ -163,29 +174,37 @@ export function ProviderDashboardShell({
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
-              const isActive = pathname === item.href || 
-                (item.href !== "/dashboard/provider" && pathname.startsWith(item.href));
-              
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/dashboard/provider" &&
+                  pathname.startsWith(item.href));
+
               // Resolve badge count from profile
-              const badgeCount = item.badgeKey ? (profile as unknown as Record<string, unknown>)[item.badgeKey] as number ?? 0 : 0;
-              
+              const badgeCount = item.badgeKey
+                ? (((profile as unknown as Record<string, unknown>)[
+                    item.badgeKey
+                  ] as number) ?? 0)
+                : 0;
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={closeMobileMenu}
                   className={cn(
-                    "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                    isActive 
-                      ? "bg-brand-50 text-brand-700" 
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    "flex items-center justify-between px-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-brand-50 text-brand-700"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <item.icon className={cn(
-                      "w-5 h-5",
-                      isActive ? "text-brand-600" : "text-gray-400"
-                    )} />
+                    <item.icon
+                      className={cn(
+                        "w-5 h-5",
+                        isActive ? "text-brand-600" : "text-gray-400",
+                      )}
+                    />
                     {item.label}
                   </div>
                   {badgeCount > 0 && (
@@ -199,15 +218,18 @@ export function ProviderDashboardShell({
           </nav>
 
           {/* User section with dropdown */}
-          <div className="p-4 border-t border-gray-200 relative" ref={profileMenuRef}>
+          <div
+            className="p-4 border-t border-gray-200 relative"
+            ref={profileMenuRef}
+          >
             <button
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors min-h-[44px]"
             >
               <div className="relative w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
                 {profile.avatarUrl ? (
-                  <img 
-                    src={profile.avatarUrl} 
+                  <img
+                    src={profile.avatarUrl}
                     alt={profile.name}
                     className="w-10 h-10 rounded-full object-cover"
                   />
@@ -227,13 +249,17 @@ export function ProviderDashboardShell({
                   {profile.name}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
-                  {profile.isVerified ? "Verified Provider" : "Service Provider"}
+                  {profile.isVerified
+                    ? "Verified Provider"
+                    : "Service Provider"}
                 </p>
               </div>
-              <ChevronDown className={cn(
-                "w-4 h-4 text-gray-400 transition-transform",
-                isProfileMenuOpen && "rotate-180"
-              )} />
+              <ChevronDown
+                className={cn(
+                  "w-4 h-4 text-gray-400 transition-transform",
+                  isProfileMenuOpen && "rotate-180",
+                )}
+              />
             </button>
 
             {/* Profile Dropdown Menu */}
@@ -242,7 +268,7 @@ export function ProviderDashboardShell({
                 <Link
                   href={`/services/provider/${profile.providerId}`}
                   onClick={() => setIsProfileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 min-h-[44px]"
                 >
                   <Eye className="w-4 h-4 text-gray-400" />
                   View Profile
@@ -250,7 +276,7 @@ export function ProviderDashboardShell({
                 <Link
                   href="/dashboard/provider/profile"
                   onClick={() => setIsProfileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 min-h-[44px]"
                 >
                   <User className="w-4 h-4 text-gray-400" />
                   Edit Profile
@@ -258,7 +284,7 @@ export function ProviderDashboardShell({
                 <Link
                   href="/dashboard/provider/settings"
                   onClick={() => setIsProfileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 min-h-[44px]"
                 >
                   <Settings className="w-4 h-4 text-gray-400" />
                   Account Settings
@@ -266,7 +292,7 @@ export function ProviderDashboardShell({
                 <div className="border-t border-gray-100 my-1" />
                 <Link
                   href="/auth/signout"
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 min-h-[44px]"
                 >
                   <LogOut className="w-4 h-4" />
                   Sign out
@@ -283,7 +309,9 @@ export function ProviderDashboardShell({
             <div className="flex items-center gap-4">
               <button
                 onClick={handleMobileMenuToggle}
-                className="md:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                aria-label="Open menu"
+                aria-expanded={isMobileMenuOpen}
+                className="md:hidden min-w-[44px] min-h-[44px] grid place-items-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
               >
                 <Menu className="w-5 h-5" />
               </button>
@@ -303,12 +331,14 @@ export function ProviderDashboardShell({
             <div className="flex items-center gap-2">
               <Link
                 href="/dashboard/provider/messages"
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg relative"
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg relative inline-flex items-center min-h-[44px]"
               >
                 <MessageSquare className="w-5 h-5" />
                 {profile.unreadMessageCount > 0 && (
                   <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center text-[9px] font-bold text-white bg-red-500 rounded-full">
-                    {profile.unreadMessageCount > 99 ? "99+" : profile.unreadMessageCount}
+                    {profile.unreadMessageCount > 99
+                      ? "99+"
+                      : profile.unreadMessageCount}
                   </span>
                 )}
               </Link>
@@ -317,14 +347,10 @@ export function ProviderDashboardShell({
           </header>
 
           {/* Deactivation banner — visible on all dashboard pages when account is inactive */}
-          {!profile.isAccountActive && (
-            <DeactivationBanner router={router} />
-          )}
+          {!profile.isAccountActive && <DeactivationBanner router={router} />}
 
           {/* Page content */}
-          <main className="p-4 lg:p-6">
-            {children}
-          </main>
+          <main className="p-4 lg:p-6">{children}</main>
         </div>
       </div>
     </ToastProvider>
@@ -335,7 +361,11 @@ export function ProviderDashboardShell({
 // DEACTIVATION BANNER SUBCOMPONENT
 // =============================================================================
 
-function DeactivationBanner({ router }: { router: ReturnType<typeof useRouter> }) {
+function DeactivationBanner({
+  router,
+}: {
+  router: ReturnType<typeof useRouter>;
+}) {
   const { success: showSuccess, error: showError } = useToast();
   const [isReactivating, startReactivation] = useTransition();
 
@@ -345,7 +375,10 @@ function DeactivationBanner({ router }: { router: ReturnType<typeof useRouter> }
       if (!result.success) {
         showError("Reactivation failed", result.error || "Please try again");
       } else {
-        showSuccess("Account reactivated", "Your profile is now visible to clients");
+        showSuccess(
+          "Account reactivated",
+          "Your profile is now visible to clients",
+        );
         router.refresh();
       }
     });
@@ -361,7 +394,8 @@ function DeactivationBanner({ router }: { router: ReturnType<typeof useRouter> }
               Your account is deactivated
             </p>
             <p className="text-xs text-amber-600 mt-0.5">
-              Your profile and services are hidden from clients. Reactivate to become visible again.
+              Your profile and services are hidden from clients. Reactivate to
+              become visible again.
             </p>
           </div>
         </div>
@@ -369,7 +403,7 @@ function DeactivationBanner({ router }: { router: ReturnType<typeof useRouter> }
           type="button"
           onClick={handleReactivate}
           disabled={isReactivating}
-          className="flex-shrink-0 px-4 py-2 text-sm font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-lg hover:bg-amber-200 transition-colors disabled:opacity-50 flex items-center gap-2"
+          className="flex-shrink-0 px-4 py-2 text-sm font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-lg hover:bg-amber-200 transition-colors disabled:opacity-50 flex items-center gap-2 min-h-[44px]"
         >
           {isReactivating && <Loader2 className="w-4 h-4 animate-spin" />}
           Reactivate
