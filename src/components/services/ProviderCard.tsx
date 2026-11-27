@@ -300,12 +300,15 @@ export function ProviderCard({
     const logo = imageErrorIndexes.includes(-2) ? null : provider.logo_url;
     const media = activeCarouselImage?.url || cover || logo;
     const CategoryIcon = primaryCategory ? getCategoryById(primaryCategory)?.icon : undefined;
+    const description = provider.tagline?.trim() || categoryLabel;
+    const hasRating = provider.rating_average != null && provider.rating_average > 0;
+    const hasPrice = priceDisplay !== "Get Quote";
 
     return (
       <article className={cn(marketStyles.card, className)}>
         <div className={marketStyles.media}>
           {media ? (
-            <Image src={media} alt="" fill sizes="(max-width: 570px) 100vw, (max-width: 950px) 50vw, 400px"
+            <Image src={media} alt="" fill sizes="(max-width: 619px) 100vw, (max-width: 1039px) 50vw, 400px"
               className={media === logo && !activeCarouselImage && !cover ? marketStyles.logo : undefined}
               unoptimized={media.startsWith("/images/services-landing/optimized/")}
               priority={priority} loading={!priority && eagerImage ? "eager" : undefined}
@@ -323,23 +326,35 @@ export function ProviderCard({
             </div>
           )}
         </div>
+
         <div className={marketStyles.body}>
-          {categoryLabel && <p className={marketStyles.category}>{categoryLabel}</p>}
-          <h3><Link href={`/services/provider/${provider.id}`} prefetch={false} onClick={handleCardClick}>{provider.business_name}</Link></h3>
-          {provider.tagline && <p className={marketStyles.tagline}>{provider.tagline}</p>}
-          <div className={marketStyles.meta}>
-            {provider.rating_average != null && provider.rating_average > 0 && (
-              <span><Star size={15} aria-hidden="true" /> {provider.rating_average.toFixed(1)}
-                {provider.rating_count ? <span className={marketStyles.muted}>({provider.rating_count})</span> : null}
-              </span>
-            )}
-            {provider.is_verified && <span><HomeIcon name="shield" size={16} /> ID verified</span>}
-            {canInstantBook && <span><HomeIcon name="bolt" size={16} /> Instant booking</span>}
-            {!isAvailable && <span>Currently unavailable</span>}
+          <div className={marketStyles.identity}>
+            <h3><Link href={`/services/provider/${provider.id}`} prefetch={false} onClick={handleCardClick}>{provider.business_name}</Link></h3>
+            {description && <p className={marketStyles.description}>{description}</p>}
           </div>
-          {areaDisplay && <p className={marketStyles.coverage}><HomeIcon name="pin" size={16} /> <span>{areaDisplay}</span></p>}
+
+          {(areaDisplay || hasRating || provider.is_verified || !isAvailable) && (
+            <div className={marketStyles.details}>
+              {areaDisplay && <p className={marketStyles.coverage}><HomeIcon name="pin" size={17} /> <span>{areaDisplay}</span></p>}
+              <div className={marketStyles.meta}>
+                {hasRating && (
+                  <span className={marketStyles.rating}>
+                    <Star size={15} aria-hidden="true" />
+                    <strong>{provider.rating_average?.toFixed(1)}<span className="sr-only"> out of 5 stars</span></strong>
+                    {provider.rating_count ? <span>({provider.rating_count}<span className="sr-only"> reviews</span>)</span> : null}
+                  </span>
+                )}
+                {provider.is_verified && <span><HomeIcon name="shield" size={17} /> ID verified</span>}
+                {!isAvailable && <span>Currently unavailable</span>}
+              </div>
+            </div>
+          )}
+
           <div className={marketStyles.footer}>
-            <strong>{priceDisplay === "Get Quote" ? "Request a quote" : priceDisplay}</strong>
+            <p className={marketStyles.price}>
+              {hasPrice && <span>From </span>}
+              <strong>{hasPrice ? priceDisplay : "Quote on request"}</strong>
+            </p>
             <CompareButton provider={provider} variant="full" className={marketStyles.compare} />
           </div>
         </div>
