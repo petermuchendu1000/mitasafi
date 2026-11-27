@@ -44,8 +44,8 @@ const WIRED: Record<string, { describedby: number; invalid: number }> = {
     invalid: 2,
   },
   "src/app/dashboard/landlord/listings/new/steps/Step2Location.tsx": {
-    describedby: 3, // buildingName, streetAddress, area
-    invalid: 3,
+    describedby: 5, // buildingName, streetAddress, city, and both area controls
+    invalid: 5,
   },
 };
 
