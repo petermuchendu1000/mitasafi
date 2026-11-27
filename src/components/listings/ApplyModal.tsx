@@ -157,7 +157,7 @@ export function ApplyModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="p-1 rounded-lg hover:bg-gray-100"
+            className="min-w-11 min-h-11 grid place-items-center rounded-lg hover:bg-gray-100"
           >
             <X aria-hidden="true" className="w-5 h-5 text-gray-500" />
           </button>
@@ -174,7 +174,7 @@ export function ApplyModal({
             <button
               type="button"
               onClick={onClose}
-              className="mt-6 px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium"
+              className="mt-6 px-4 min-h-11 rounded-lg bg-[#103f34] hover:bg-[#15604e] text-white text-sm font-medium"
             >
               Done
             </button>
@@ -182,12 +182,11 @@ export function ApplyModal({
         ) : !isAuthenticated ? (
           <div className="px-6 py-10 text-center">
             <p className="text-sm text-gray-700">
-              Applying needs an account, so your details stay yours and you can
-              withdraw later. Asking a question does not — use Contact instead.
+              Sign in to send an application and see when the landlord responds.
             </p>
             <a
-              href="/login"
-              className="mt-6 inline-block px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium"
+              href={`/login?redirectTo=${encodeURIComponent(`/listings/${listingId}`)}`}
+              className="mt-6 inline-flex min-h-11 items-center px-4 rounded-lg bg-[#103f34] hover:bg-[#15604e] text-white text-sm font-medium"
             >
               Sign in to apply
             </a>
@@ -321,7 +320,7 @@ export function ApplyModal({
               type="submit"
               disabled={pending}
               aria-describedby={error ? errorId : undefined}
-              className="w-full py-2.5 rounded-lg bg-teal-600 text-white font-medium disabled:opacity-60"
+              className="w-full min-h-11 py-2.5 rounded-lg bg-[#103f34] hover:bg-[#15604e] text-white font-medium disabled:opacity-60"
             >
               {pending ? "Sending…" : "Send application"}
             </button>

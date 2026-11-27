@@ -1,54 +1,27 @@
-/**
- * Listing Detail Client Component
- *
- * Client-side wrapper for the listing detail page.
- * Handles interactivity like inquiry modal, navigation, etc.
- *
- * Layout:
- * - Mobile: Stacked cards with sticky bottom CTA
- * - Desktop: 2-column with sticky sidebar
- */
-
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Bell, ChevronLeft, Heart, Share2 } from "lucide-react";
+import { Footer } from "@/components/landing";
+import { HomeIcon } from "@/components/landing/HomeIcons";
+import { HomeNavbar } from "@/components/landing/HomeNavbar";
+import homeStyles from "@/components/landing/HomePage.module.css";
+import {
+  InquiryModal, ListingDetails, ListingGallery, ListingLandlord, ListingMap,
+  ListingPriceCard, SimilarListings,
+} from "@/components/listings";
+import { ApplyModal } from "@/components/listings/ApplyModal";
+import { UnavailableListingModal } from "@/components/listings/UnavailableListingModal";
+import { formatCurrency } from "@/components/shared/listing-types";
 import { sessionFlagStore } from "@/lib/browser-storage/local-store";
 import { useLocalStore } from "@/lib/browser-storage/useLocalStore";
-import {
-  ArrowLeft,
-  Share2,
-  Heart,
-  MessageCircle,
-  FileText,
-  AlertTriangle,
-  Clock,
-  Bell,
-} from "lucide-react";
-import { Navbar, Footer } from "@/components/landing";
-import { Container } from "@/components/ui";
-import {
-  ListingGallery,
-  ListingPriceCard,
-  ListingMap,
-  ListingDetails,
-  ListingLandlord,
-  InquiryModal,
-  SimilarListings,
-} from "@/components/listings";
-import { UnavailableListingModal } from "@/components/listings/UnavailableListingModal";
-import { ApplyModal } from "@/components/listings/ApplyModal";
-import type {
-  Listing,
-  ListingCard,
-  PriceBreakdown,
-} from "@/lib/listings/types";
-import { cn } from "@/lib/utils";
-import {
-  addSavedListing,
-  removeSavedListing,
-} from "@/lib/saved-listings/store";
+import { generateListingSlug, type Listing, type ListingCard, type PriceBreakdown } from "@/lib/listings/types";
+import { addSavedListing, removeSavedListing } from "@/lib/saved-listings/store";
 import { useIsListingSaved } from "@/lib/saved-listings/useIsListingSaved";
+import { findPlace } from "@/lib/site/places";
+import styles from "./listing-detail.module.css";
 
 interface ListingDetailClientProps {
   listing: Listing;
@@ -61,472 +34,184 @@ interface ListingDetailClientProps {
   userPhone?: string;
 }
 
-// Format relative time
-function formatRelativeTime(dateString: string | null): string {
-  if (!dateString) return "";
-
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-  return `${Math.floor(diffDays / 365)} years ago`;
+function placeSlug(value: string) {
+  return value.toLowerCase().replace(/[’']/g, "").trim().replace(/\s+/g, "-");
 }
 
-// Property type labels
-const PROPERTY_TYPE_LABELS: Record<Listing["property_type"], string> = {
-  bedsitter: "Bedsitter",
-  studio: "Studio",
-  apartment: "Apartment",
-  house: "House",
-  townhouse: "Townhouse",
-  maisonette: "Maisonette",
-  villa: "Villa",
-};
-
 export function ListingDetailClient({
-  listing,
-  priceBreakdown,
-  similarListings,
-  isAuthenticated,
-  userId,
-  userName,
-  userEmail,
-  userPhone,
+  listing, priceBreakdown, similarListings, isAuthenticated, userId, userName, userEmail, userPhone,
 }: ListingDetailClientProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  // An explicit open from one of the Contact buttons, as opposed to the URL flag.
-  const [inquiryOpenedByUser, setInquiryOpenedByUser] = useState(false);
-  const [unavailableModalOpen, setUnavailableModalOpen] = useState(false);
+  const params = useSearchParams();
+  const [inquiry, setInquiry] = useState<"contact" | "viewing" | null>(null);
+  const [notifyOpen, setNotifyOpen] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
-
-  // Subscribed, not sampled at mount. This page renders THREE readers of the saved key at
-  // once — this heart, the Navbar count, and the SimilarListings cards — and this was the
-  // only one that did not listen. Measured in a browser before the change: a save made by
-  // any other component moved the Navbar badge to 1 while this heart stayed empty, and
-  // because handleSave then still believed the listing was unsaved, the next click on it
-  // appended a SECOND entry for the same id and the badge read 2.
+  const [shareStatus, setShareStatus] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
   const isSaved = useIsListingSaved(listing.id);
-
-  // Check if listing is unavailable
   const isUnavailable = listing.status !== "active";
   const unavailableStatus = listing.status as "rented" | "paused" | "archived";
 
-  // Auto-open unavailable modal for non-active listings
-  useEffect(() => {
-    if (isUnavailable) {
-      // Small delay to let page render first
-      const timer = setTimeout(() => {
-        setUnavailableModalOpen(true);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isUnavailable]);
-
-  // Whether the inquiry modal is open is DERIVED from the URL, the dismissal flag and
-  // an explicit open, rather than written into state by an effect.
-  //
-  // The effect this replaces read ?openInquiry=true and sessionStorage and then called
-  // setInquiryOpenedByUser(true) — the reported setState — so a visitor returning from signup
-  // got one painted frame of the page without the modal before it appeared.
-  //
-  // sessionStorage cannot be read during render directly: the server has none, so the
-  // server and the hydration render would disagree. sessionFlagStore goes through
-  // useSyncExternalStore, whose server snapshot is false, so both sides render the
-  // same markup and the real value is applied immediately after hydration.
-  const inquiryDismissed = useLocalStore(
-    sessionFlagStore(`inquiry-dismissed-${listing.id}`),
+  const dismissKey = `inquiry-dismissed-${listing.id}`;
+  const inquiryDismissed = useLocalStore(sessionFlagStore(dismissKey));
+  const urlWantsInquiry = params.get("openInquiry") === "true" && isAuthenticated;
+  // Keep the initial request when replaceState removes its URL flag.
+  const [arrivedForInquiry] = useState(() => params.get("openInquiry") === "true");
+  const inquiryOpen = !isUnavailable && (
+    inquiry !== null || (isAuthenticated && (arrivedForInquiry || urlWantsInquiry) && !inquiryDismissed)
   );
-  const urlWantsInquiry =
-    searchParams.get("openInquiry") === "true" && isAuthenticated;
-  const inquiryOpen =
-    inquiryOpenedByUser || (urlWantsInquiry && !inquiryDismissed);
 
-  // Clean the ?openInquiry flag out of the address bar.
-  //
-  // BUG FIXED HERE, and it is not the lint finding: this built a URL with the
-  // parameter removed and then called
-  //     window.history.replaceState({}, "", url.pathname)
-  // passing only the PATH. Every other query parameter went with it — so arriving at
-  // /listings/x?openInquiry=true&ref=whatsapp&utm_source=newsletter silently dropped
-  // ref and utm_source from the address bar, and from anything that later read them.
-  // url.search is now carried through.
-  //
-  // No setState here, and none needed: the modal's visibility no longer depends on
-  // this running.
   useEffect(() => {
     if (!urlWantsInquiry) return;
     const url = new URL(window.location.href);
     url.searchParams.delete("openInquiry");
-    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
   }, [urlWantsInquiry]);
 
-  // Handle modal close - track dismissal to prevent re-open on back
-  const handleInquiryClose = () => {
-    setInquiryOpenedByUser(false);
-    // Mark as dismissed so browser back doesn't reopen it. Writing through the store
-    // notifies, so the derived value above updates in the same tick.
-    sessionFlagStore(`inquiry-dismissed-${listing.id}`).write(true);
-  };
+  function closeInquiry() {
+    setInquiry(null);
+    sessionFlagStore(dismissKey).write(true);
+  }
 
-  const handleShare = async () => {
-    const shareData = {
-      title: listing.title,
-      text: `Check out this ${listing.bedrooms} bedroom ${listing.property_type} in ${listing.area}`,
-      url: window.location.href,
-    };
+  function toggleSaved() {
+    if (isSaved) removeSavedListing(listing.id);
+    else addSavedListing(listing.id, listing.status);
+  }
 
+  async function shareListing() {
+    const url = new URL(`/listings/${generateListingSlug(listing)}`, window.location.origin).href;
+    setShareStatus("");
+    setShareUrl("");
     if (navigator.share) {
       try {
-        await navigator.share(shareData);
-      } catch {
-        // User cancelled or error
-      }
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      // TODO: Show toast
-    }
-  };
-
-  // Toggle saved state in local storage (works for everyone, syncs when logged in).
-  // addSavedListing is idempotent, so even a stale view cannot append a duplicate entry
-  // the way the previous read-push-write did.
-  const handleSave = () => {
-    if (isSaved) {
-      removeSavedListing(listing.id);
-    } else {
-      addSavedListing(listing.id, listing.status || "active");
-    }
-  };
-
-  // Safe back navigation - only goes back if previous page was internal
-  const handleBack = () => {
-    // Check if there's a meaningful history to go back to
-    // If user came directly to this page (e.g., from Google), go to listings
-    if (window.history.length <= 1) {
-      router.push("/properties");
-    } else {
-      // Check referrer to avoid going back to external sites
-      const referrer = document.referrer;
-      const isInternalReferrer =
-        referrer && referrer.includes(window.location.host);
-      if (isInternalReferrer) {
-        router.back();
-      } else {
-        router.push("/properties");
+        await navigator.share({ title: listing.title, url });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
       }
     }
-  };
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareStatus("Link copied");
+    } catch {
+      setShareUrl(url);
+      setShareStatus("Copy the listing link");
+    }
+  }
+
+  const areaPlace = findPlace(placeSlug(listing.area));
+  const servicePlace = areaPlace ?? findPlace(placeSlug(listing.city));
+  const rentalLocation = areaPlace ? { location: areaPlace.slug } : { area: listing.area };
+  const locationText = Array.from(new Set([listing.area, listing.city].filter(Boolean))).join(", ");
+  const monthly = formatCurrency(priceBreakdown.totalMonthly, priceBreakdown.currency);
+  const openContact = () => setInquiry("contact");
+  const openNotify = () => setNotifyOpen(true);
+  const openApply = () => setApplyOpen(true);
 
   return (
-    <>
-      <Navbar />
-
-      <main className="min-h-screen bg-white pt-16 pb-24 md:pb-8">
-        {/* Breadcrumb & Actions Bar */}
-        <div className="border-b border-gray-100 sticky top-16 z-30 bg-white">
-          <Container>
-            <div className="flex items-center justify-between py-3 lg:py-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleBack}
-                  className="min-w-[44px] min-h-[44px] -ml-2 grid place-items-center hover:bg-gray-100 rounded-full transition-colors"
-                  aria-label="Go back"
-                >
-                  <ArrowLeft className="w-5 h-5 text-gray-600" />
+    <div className={`${homeStyles.home} ${styles.page}`}>
+      <a href="#listing-main" className={homeStyles.skipLink}>Skip to listing</a>
+      <HomeNavbar activePage="rentals" />
+      <main id="listing-main" tabIndex={-1}>
+        <header className={styles.intro}>
+          <div className={styles.wrap}>
+            <div className={styles.topLine}>
+              <nav className={styles.breadcrumb} aria-label="Rental navigation">
+                <Link href="/properties"><ChevronLeft size={17} aria-hidden="true" /> Rentals</Link>
+                {listing.area && <Link className={styles.areaCrumb} href={{ pathname: "/properties", query: rentalLocation }}>{listing.area}</Link>}
+              </nav>
+              <div className={styles.toolbar}>
+                <button type="button" onClick={shareListing} aria-label="Share listing">
+                  <Share2 size={18} aria-hidden="true" /><span>Share</span>
                 </button>
-                <nav className="hidden sm:flex items-center gap-2 text-sm text-gray-500">
-                  <button
-                    onClick={() => router.replace("/properties")}
-                    className="inline-flex items-center min-h-[44px] hover:text-brand-600 transition-colors"
-                  >
-                    Listings
-                  </button>
-                  <span>/</span>
-                  <button
-                    onClick={() =>
-                      router.replace(
-                        `/properties?area=${encodeURIComponent(listing.area)}`,
-                      )
-                    }
-                    className="inline-flex items-center min-h-[44px] hover:text-brand-600 transition-colors"
-                  >
-                    {listing.area}
-                  </button>
-                  <span>/</span>
-                  <span className="text-gray-900 font-medium truncate max-w-[200px]">
-                    {listing.title}
-                  </span>
-                </nav>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleShare}
-                  className="min-w-[44px] min-h-[44px] grid place-items-center hover:bg-gray-100 rounded-full transition-colors"
-                  aria-label="Share"
-                >
-                  <Share2 className="w-5 h-5 text-gray-600" />
-                </button>
-                <button
-                  onClick={handleSave}
-                  className={cn(
-                    "min-w-[44px] min-h-[44px] grid place-items-center rounded-full transition-colors",
-                    isSaved
-                      ? "bg-error-50 text-error-500"
-                      : "hover:bg-gray-100 text-gray-600",
-                  )}
-                  aria-label={isSaved ? "Remove from saved" : "Save listing"}
-                >
-                  <Heart className={cn("w-5 h-5", isSaved && "fill-current")} />
+                <button type="button" onClick={toggleSaved} aria-label={isSaved ? "Remove from saved" : "Save listing"} aria-pressed={isSaved}>
+                  <Heart size={19} fill={isSaved ? "currentColor" : "none"} aria-hidden="true" /><span>{isSaved ? "Saved" : "Save"}</span>
                 </button>
               </div>
             </div>
-          </Container>
-        </div>
-
-        <Container className="mt-4">
-          {/* Unavailable Banner */}
-          {isUnavailable && (
-            <div
-              className={cn(
-                "rounded-xl p-4 mb-4 flex items-start gap-3",
-                unavailableStatus === "rented"
-                  ? "bg-red-50 border border-red-100"
-                  : "bg-yellow-50 border border-yellow-100",
-              )}
-            >
-              {unavailableStatus === "rented" ? (
-                <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              ) : (
-                <Clock className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-              )}
-              <div className="flex-1">
-                <p
-                  className={cn(
-                    "font-medium",
-                    unavailableStatus === "rented"
-                      ? "text-red-800"
-                      : "text-yellow-800",
-                  )}
-                >
-                  {unavailableStatus === "rented"
-                    ? "This property has been rented"
-                    : "This property is temporarily unavailable"}
-                </p>
-                <p
-                  className={cn(
-                    "text-sm mt-1",
-                    unavailableStatus === "rented"
-                      ? "text-red-600"
-                      : "text-yellow-700",
-                  )}
-                >
-                  {unavailableStatus === "rented"
-                    ? "Someone else got there first, but we can notify you about similar properties."
-                    : "The landlord has paused this listing. We can notify you when it's available again."}
-                </p>
+            <p className={shareStatus ? styles.shareStatus : styles.srOnly} role="status">{shareStatus}</p>
+            {shareUrl && <input aria-label="Listing link" className={styles.shareInput} type="url" value={shareUrl} readOnly onFocus={(event) => event.target.select()} />}
+            <div className={styles.heading}>
+              <h1>{listing.title}</h1>
+              <div className={styles.meta}>
+                {locationText && <p><HomeIcon name="pin" size={19} />{locationText}</p>}
+                {listing.is_verified && <p className={styles.verified}><HomeIcon name="shield" size={19} />Verified listing</p>}
               </div>
-              <button
-                onClick={() => setUnavailableModalOpen(true)}
-                className={cn(
-                  "flex-shrink-0 font-medium text-sm py-2 px-4 rounded-lg flex items-center gap-2 transition-colors",
-                  unavailableStatus === "rented"
-                    ? "bg-red-100 text-red-700 hover:bg-red-200"
-                    : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
-                )}
-              >
-                <Bell className="w-4 h-4" />
-                Notify Me
-              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className={styles.wrap}>
+          {isUnavailable && (
+            <div className={styles.notice}>
+              <HomeIcon name="bell" size={20} />
+              <p><strong>{unavailableStatus === "rented" ? "This home has been rented" : "This listing is unavailable"}</strong>
+                {" "}{unavailableStatus === "paused" ? "You can ask to be notified if it returns." : "You can ask to be notified about similar homes."}</p>
             </div>
           )}
-
-          {/* Photo Gallery */}
-          <ListingGallery
-            photos={listing.photos}
-            title={listing.title}
-            isVerified={listing.is_verified}
-          />
-
-          {/* Main Content */}
-          <div className="mt-4 lg:grid lg:grid-cols-3 lg:gap-6">
-            {/* Left Column - Details */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Title & Meta */}
-              <div>
-                <div className="flex items-center gap-3 text-sm text-gray-500 mb-1">
-                  <span className="text-gray-600 font-medium">
-                    {PROPERTY_TYPE_LABELS[listing.property_type]}
-                  </span>
-                  <span className="text-gray-300">•</span>
-                  <span>{listing.views_count} views</span>
-                  {listing.published_at && (
-                    <>
-                      <span className="text-gray-300">•</span>
-                      <span>{formatRelativeTime(listing.published_at)}</span>
-                    </>
-                  )}
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                  {listing.title}
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  {listing.area}, {listing.city}
-                  {listing.building_name && ` • ${listing.building_name}`}
-                </p>
-              </div>
-
-              {/* Price Card - Mobile Only */}
-              <div className="lg:hidden">
-                <ListingPriceCard
-                  price={priceBreakdown}
-                  availableNow={listing.available_now}
-                  availableFrom={listing.available_from}
-                  onContact={
-                    isUnavailable
-                      ? () => setUnavailableModalOpen(true)
-                      : () => setInquiryOpenedByUser(true)
-                  }
-                  onApply={isUnavailable ? undefined : () => setApplyOpen(true)}
-                  onScheduleViewing={
-                    isUnavailable
-                      ? () => setUnavailableModalOpen(true)
-                      : () => setInquiryOpenedByUser(true)
-                  }
-                  isAuthenticated={isAuthenticated}
-                  isUnavailable={isUnavailable}
-                />
-              </div>
-
-              {/* Details */}
-              <ListingDetails listing={listing} />
-
-              {/* Map */}
+          <div className={styles.layout}>
+            <div className={styles.media}>
+              <ListingGallery key={listing.id} photos={listing.photos} title={listing.title} coverPhoto={listing.cover_photo} />
+            </div>
+            <aside className={styles.pricing} aria-label="Rent and next steps">
+              <ListingPriceCard
+                price={priceBreakdown}
+                availableNow={listing.available_now}
+                availableFrom={listing.available_from}
+                onContact={isUnavailable ? openNotify : openContact}
+                onApply={isUnavailable ? undefined : openApply}
+                onScheduleViewing={() => setInquiry("viewing")}
+                isUnavailable={isUnavailable}
+              />
+            </aside>
+            <div className={styles.info}>
+              <section aria-label="Property details">
+                <ListingDetails listing={listing} className={styles.details} />
+              </section>
               <ListingMap
+                className={styles.location}
                 latitude={listing.latitude}
                 longitude={listing.longitude}
                 address={listing.address}
                 area={listing.area}
                 city={listing.city}
                 landmarks={listing.landmarks}
-                buildingName={listing.building_name}
+                buildingName={listing.hide_exact_address ? null : listing.building_name}
                 hideExactAddress={listing.hide_exact_address}
               />
-
-              {/* Landlord - Mobile Only */}
-              <div className="lg:hidden">
-                <ListingLandlord landlord={listing.landlord} />
-              </div>
-            </div>
-
-            {/* Right Column - Sticky Sidebar (Desktop) */}
-            <div className="hidden lg:block">
-              <div className="sticky top-28 space-y-4">
-                <ListingPriceCard
-                  price={priceBreakdown}
-                  availableNow={listing.available_now}
-                  availableFrom={listing.available_from}
-                  onContact={
-                    isUnavailable
-                      ? () => setUnavailableModalOpen(true)
-                      : () => setInquiryOpenedByUser(true)
-                  }
-                  onApply={isUnavailable ? undefined : () => setApplyOpen(true)}
-                  onScheduleViewing={
-                    isUnavailable
-                      ? () => setUnavailableModalOpen(true)
-                      : () => setInquiryOpenedByUser(true)
-                  }
-                  isAuthenticated={isAuthenticated}
-                  isUnavailable={isUnavailable}
-                />
-                <ListingLandlord landlord={listing.landlord} />
-              </div>
+              {listing.landlord && <ListingLandlord landlord={listing.landlord} />}
             </div>
           </div>
 
-          {/* Similar Listings */}
-          <SimilarListings
-            listings={similarListings}
-            currentArea={listing.area}
-            className="mt-8 border-t border-gray-100 pt-6"
-          />
-        </Container>
-
-        {/* Mobile Sticky CTA */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 lg:hidden z-40">
-          {/* This row came to 412px in a 360px viewport: a price, two
-              labelled buttons and two icons, none of which could shrink.
-              The price is allowed to truncate, the buttons lose half their
-              side padding below sm:, and the icons are hidden there. */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-lg sm:text-xl font-bold text-gray-900 truncate">
-                {new Intl.NumberFormat("en-KE", {
-                  style: "currency",
-                  currency: priceBreakdown.currency,
-                  minimumFractionDigits: 0,
-                }).format(priceBreakdown.rent)}
-                <span className="text-sm font-normal text-gray-500">/mo</span>
-              </p>
-              {priceBreakdown.serviceCharge && (
-                <p className="text-xs text-gray-500">
-                  +
-                  {new Intl.NumberFormat("en-KE", {
-                    style: "currency",
-                    currency: priceBreakdown.currency,
-                    minimumFractionDigits: 0,
-                  }).format(priceBreakdown.serviceCharge)}{" "}
-                  service
-                </p>
-              )}
-            </div>
-            {isUnavailable ? (
-              <button
-                onClick={() => setUnavailableModalOpen(true)}
-                className="shrink-0 bg-gray-900 hover:bg-gray-800 text-white font-semibold min-h-[44px] px-4 sm:px-6 rounded-xl flex items-center gap-2 transition-all shadow-md"
-              >
-                <Bell className="w-5 h-5 hidden sm:block" />
-                Notify Me
-              </button>
-            ) : (
-              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                {/* Contact asks a question; Apply makes an offer. They are
-                    different acts, so they are different buttons. */}
-                <button
-                  onClick={() => setInquiryOpenedByUser(true)}
-                  className="bg-white hover:bg-gray-50 text-gray-800 font-semibold min-h-[44px] px-4 sm:px-6 rounded-xl flex items-center gap-2 transition-all border border-gray-300"
-                >
-                  <MessageCircle className="w-5 h-5 hidden sm:block" />
-                  Contact
-                </button>
-                <button
-                  onClick={() => setApplyOpen(true)}
-                  className="bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 text-white font-semibold min-h-[44px] px-4 sm:px-6 rounded-xl flex items-center gap-2 transition-all shadow-md"
-                >
-                  <FileText className="w-5 h-5 hidden sm:block" />
-                  Apply
-                </button>
-              </div>
-            )}
-          </div>
+          <SimilarListings listings={similarListings} currentArea={listing.area} className={styles.similar} />
+          <section className={styles.resources} aria-label="Rental resources">
+            <Link href="/guides/tenants"><HomeIcon name="key" size={23} /><span>Tenant guide</span><HomeIcon name="arrow" size={17} /></Link>
+            <Link href={{ pathname: "/services/browse", query: servicePlace ? { location: servicePlace.slug } : {} }}>
+              <HomeIcon name="tools" size={23} /><span>{servicePlace ? `Home services in ${servicePlace.name}` : "Find home services"}</span><HomeIcon name="arrow" size={17} />
+            </Link>
+          </section>
         </div>
       </main>
-
       <Footer />
 
-      {/* Inquiry Modal - Works for everyone (no login required) */}
+      <div className={styles.mobileBar} role="group" aria-label="Rental actions">
+        <div className={styles.mobilePrice}>
+          <strong>{monthly}</strong>
+          <span>{priceBreakdown.serviceCharge ? "Monthly total" : "Per month"}</span>
+        </div>
+        {isUnavailable ? (
+          <button type="button" className={styles.primary} onClick={openNotify}><Bell size={17} aria-hidden="true" /> Notify me</button>
+        ) : (
+          <>
+            <button type="button" className={styles.secondary} onClick={openContact}>Contact</button>
+            <button type="button" className={styles.primary} onClick={openApply}>Apply</button>
+          </>
+        )}
+      </div>
+
       <InquiryModal
         isOpen={inquiryOpen}
-        onClose={handleInquiryClose}
+        onClose={closeInquiry}
+        preferViewing={inquiry === "viewing"}
         listingId={listing.id}
         listingTitle={listing.title}
         listingArea={listing.area}
@@ -538,51 +223,21 @@ export function ListingDetailClient({
         userEmail={userEmail}
         userPhone={userPhone}
       />
-
-      <ApplyModal
-        isOpen={applyOpen}
-        onClose={() => setApplyOpen(false)}
-        listingId={listing.id}
-        listingTitle={listing.title}
-        isAuthenticated={isAuthenticated}
-        userName={userName}
-        userEmail={userEmail}
-        userPhone={userPhone}
-      />
-
-      {/* Unavailable Listing Modal - Lead capture */}
+      <ApplyModal isOpen={applyOpen} onClose={() => setApplyOpen(false)} listingId={listing.id}
+        listingTitle={listing.title} isAuthenticated={isAuthenticated} userName={userName} userEmail={userEmail} userPhone={userPhone} />
       {isUnavailable && (
         <UnavailableListingModal
-          isOpen={unavailableModalOpen}
-          onClose={() => setUnavailableModalOpen(false)}
-          listing={{
-            id: listing.id,
-            title: listing.title,
-            area: listing.area,
-            city: listing.city,
-            property_type: listing.property_type,
-            bedrooms: listing.bedrooms,
-            rent_amount: listing.rent_amount,
-            currency: listing.currency,
-            cover_photo: listing.cover_photo,
-            status: unavailableStatus,
-          }}
-          similarListings={similarListings.map((l) => ({
-            id: l.id,
-            title: l.title,
-            area: l.area,
-            rent_amount: l.rent_amount,
-            currency: l.currency,
-            cover_photo: l.cover_photo,
-            bedrooms: l.bedrooms,
-          }))}
+          isOpen={notifyOpen}
+          onClose={() => setNotifyOpen(false)}
+          listing={{ ...listing, status: unavailableStatus }}
+          similarListings={similarListings}
           isAuthenticated={isAuthenticated}
           userId={userId}
           userEmail={userEmail}
           userPhone={userPhone}
         />
       )}
-    </>
+    </div>
   );
 }
 

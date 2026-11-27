@@ -27,6 +27,8 @@ import {
   generateListingSlug,
 } from "@/lib/listings/types";
 import { createClient } from "@/lib/supabase/server";
+import { siteUrl } from "@/lib/site/urls";
+import { homeFont } from "@/components/landing/home-font";
 import { ListingDetailClient } from "./ListingDetailClient";
 
 interface PageProps {
@@ -88,14 +90,17 @@ export async function generateMetadata({
   }).format(listing.rent_amount);
 
   const title = `${listing.title} | ${priceFormatted}/mo | MitaSafi`;
-  const description = `${listing.bedrooms} bedroom ${listing.property_type} in ${listing.area}, ${listing.city}. ${listing.description.slice(0, 150)}...`;
+  const description = [`${listing.property_type} for rent in ${listing.area}, ${listing.city}.`, listing.description?.trim().slice(0, 150)].filter(Boolean).join(" ");
+  const canonical = siteUrl(`/listings/${generateListingSlug(listing)}`);
 
   return {
     title,
     description,
+    alternates: { canonical },
     openGraph: {
       title,
       description,
+      url: canonical,
       images: listing.cover_photo ? [listing.cover_photo] : [],
       type: "website",
     },
@@ -150,13 +155,6 @@ export default async function ListingDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  // Verify URL slug matches (redirect if wrong for SEO)
-  const correctSlug = generateListingSlug(listing);
-  if (slug !== correctSlug) {
-    // In production, redirect to correct URL
-    // For now, just continue
-  }
-
   // Fetch similar listings
   const { listings: similarListings } = await getSimilarListings({
     id: listing.id,
@@ -198,15 +196,18 @@ export default async function ListingDetailPage({ params }: PageProps) {
   }
 
   return (
-    <ListingDetailClient
-      listing={listing}
-      priceBreakdown={priceBreakdown}
-      similarListings={similarListings}
-      isAuthenticated={isAuthenticated}
-      userId={user?.id}
-      userName={userName}
-      userEmail={userEmail}
-      userPhone={userPhone}
-    />
+    <div className={homeFont.variable}>
+      <ListingDetailClient
+        key={listing.id}
+        listing={listing}
+        priceBreakdown={priceBreakdown}
+        similarListings={similarListings}
+        isAuthenticated={isAuthenticated}
+        userId={user?.id}
+        userName={userName}
+        userEmail={userEmail}
+        userPhone={userPhone}
+      />
+    </div>
   );
 }

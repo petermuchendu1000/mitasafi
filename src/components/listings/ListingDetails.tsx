@@ -14,12 +14,11 @@
 
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   Bed,
   Bath,
   Square,
-  Building2,
   Calendar,
   Sofa,
   Sparkles,
@@ -256,65 +255,33 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
   );
 
   const FurnishingIcon = FURNISHING_LABELS[listing.furnishing]?.icon || Sofa;
+  const furnishing = FURNISHING_LABELS[listing.furnishing]?.label;
+  const condition = listing.condition && CONDITION_LABELS[listing.condition]?.label;
+  const description = listing.description || "";
 
   return (
     <div className={cn("space-y-5", className)}>
       {/* Key Specs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="border border-gray-200 rounded-lg p-3 text-center">
-          <Bed className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-          <p className="text-xl font-bold text-gray-900">{listing.bedrooms}</p>
-          <p className="text-xs text-gray-500">
-            {listing.bedrooms === 1 ? "Bedroom" : "Bedrooms"}
-          </p>
-        </div>
-        <div className="border border-gray-200 rounded-lg p-3 text-center">
-          <Bath className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-          <p className="text-xl font-bold text-gray-900">{listing.bathrooms}</p>
-          <p className="text-xs text-gray-500">
-            {listing.bathrooms === 1 ? "Bathroom" : "Bathrooms"}
-          </p>
-        </div>
+      <ul data-part="specs" aria-label="Property features" role="list">
+        {listing.bedrooms > 0 && (
+          <li data-part="spec"><Bed size={19} aria-hidden="true" /> {listing.bedrooms} {listing.bedrooms === 1 ? "bedroom" : "bedrooms"}</li>
+        )}
+        <li data-part="spec"><Bath size={19} aria-hidden="true" /> {listing.bathrooms} {listing.bathrooms === 1 ? "bathroom" : "bathrooms"}</li>
         {listing.size_sqft && (
-          <div className="border border-gray-200 rounded-lg p-3 text-center">
-            <Square className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-            <p className="text-xl font-bold text-gray-900">
-              {listing.size_sqft.toLocaleString()}
-            </p>
-            <p className="text-xs text-gray-500">
-              {listing.size_unit || "sqft"}
-            </p>
-          </div>
+          <li data-part="spec"><Square size={19} aria-hidden="true" /> {listing.size_sqft.toLocaleString("en-KE")} {listing.size_unit === "sqm" ? "m²" : "sq ft"}</li>
         )}
         {listing.floor_level && (
-          <div className="border border-gray-200 rounded-lg p-3 text-center">
-            <Layers className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-            <p className="text-xl font-bold text-gray-900">
-              {listing.floor_level}
-            </p>
-            <p className="text-xs text-gray-500">Floor</p>
-          </div>
+          <li data-part="spec"><Layers size={19} aria-hidden="true" /> Floor {listing.floor_level}</li>
         )}
-      </div>
+      </ul>
 
       {/* Quick Info Pills */}
-      <div className="flex flex-wrap gap-2">
-        <span className="inline-flex items-center gap-1.5 text-sm border border-gray-200 text-gray-600 px-2.5 py-1 rounded-full">
-          <Home className="w-3.5 h-3.5" />
-          {PROPERTY_TYPE_LABELS[listing.property_type]}
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-sm border border-gray-200 text-gray-600 px-2.5 py-1 rounded-full">
-          <FurnishingIcon className="w-3.5 h-3.5" />
-          {FURNISHING_LABELS[listing.furnishing].label}
-        </span>
-        {listing.condition && (
-          <span className="inline-flex items-center gap-1.5 text-sm border border-gray-200 text-gray-600 px-2.5 py-1 rounded-full">
-            <Sparkles className="w-3.5 h-3.5" />
-            {CONDITION_LABELS[listing.condition].label}
-          </span>
-        )}
+      <div data-part="facts">
+        <span><Home size={15} aria-hidden="true" /> {PROPERTY_TYPE_LABELS[listing.property_type] ?? listing.property_type}</span>
+        {furnishing && <span><FurnishingIcon size={15} aria-hidden="true" /> {furnishing}</span>}
+        {condition && <span><Sparkles size={15} aria-hidden="true" /> {condition}</span>}
         {listing.year_built && (
-          <span className="inline-flex items-center gap-1.5 text-sm border border-gray-200 text-gray-600 px-2.5 py-1 rounded-full">
+          <span>
             <Calendar className="w-3.5 h-3.5" />
             Built {listing.year_built}
           </span>
@@ -323,21 +290,24 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
 
       {/* Description */}
       <div>
-        <h3 className="text-base font-semibold text-gray-900 mb-2">
+        <h2 className="mb-2">
           About this property
-        </h3>
+        </h2>
         <div
+          data-part="description"
           className={cn(
             "text-gray-600 text-sm leading-relaxed whitespace-pre-line",
             !showFullDescription &&
-              listing.description.length > 400 &&
+              description.length > 400 &&
               "line-clamp-4",
           )}
         >
-          {listing.description}
+          {description || "No description provided."}
         </div>
-        {listing.description.length > 400 && (
+        {description.length > 400 && (
           <button
+            type="button"
+            aria-expanded={showFullDescription}
             onClick={() => setShowFullDescription(!showFullDescription)}
             className="text-brand-600 hover:text-brand-700 font-medium text-sm mt-2 inline-flex items-center min-h-[44px] gap-1"
           >
@@ -397,7 +367,7 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
         <div className="grid sm:grid-cols-2 gap-4">
           {/* Water */}
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div data-part="utility-icon">
               <Droplets className="w-5 h-5 text-brand-600" />
             </div>
             <div>
@@ -413,8 +383,8 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
 
           {/* Power */}
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-cta-50 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Zap className="w-5 h-5 text-cta-600" />
+            <div data-part="utility-icon">
+              <Zap className="w-5 h-5 text-brand-600" />
             </div>
             <div>
               <p className="font-medium text-gray-900">Backup Power</p>
@@ -428,7 +398,7 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
 
           {/* Internet */}
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div data-part="utility-icon">
               <Wifi className="w-5 h-5 text-brand-600" />
             </div>
             <div>
@@ -452,7 +422,7 @@ export function ListingDetails({ listing, className }: ListingDetailsProps) {
 
           {/* Parking */}
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div data-part="utility-icon">
               <Car className="w-5 h-5 text-gray-600" />
             </div>
             <div>
@@ -597,32 +567,16 @@ function CollapsibleSection({
   count,
   children,
 }: CollapsibleSectionProps) {
+  const panelId = useId();
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-brand-600">{icon}</span>
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          {count !== undefined && (
-            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-              {count}
-            </span>
-          )}
-        </div>
-        {isOpen ? (
-          <ChevronUp className="w-5 h-5 text-gray-400" />
-        ) : (
-          <ChevronDown className="w-5 h-5 text-gray-400" />
-        )}
-      </button>
-      {isOpen && (
-        <div className="p-4 pt-0 border-t border-gray-100 bg-white">
-          {children}
-        </div>
-      )}
+    <div data-part="section">
+      <h3>
+        <button type="button" onClick={onToggle} aria-expanded={isOpen} aria-controls={panelId}>
+          <span>{icon} {title}{count ? <small className="font-normal text-gray-600">({count})</small> : null}</span>
+          {isOpen ? <ChevronUp size={18} aria-hidden="true" /> : <ChevronDown size={18} aria-hidden="true" />}
+        </button>
+      </h3>
+      <div id={panelId} data-part="panel" hidden={!isOpen}>{children}</div>
     </div>
   );
 }

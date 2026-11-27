@@ -48,9 +48,9 @@ jest.mock("next/navigation", () => ({
 // The page's children pull in Supabase, Mapbox and a modal tree. None of them read the
 // saved-listings key, so they are stubbed to keep this test about the heart.
 jest.mock("@/components/landing", () => ({
-  Navbar: () => null,
   Footer: () => null,
 }));
+jest.mock("@/components/landing/HomeNavbar", () => ({ HomeNavbar: () => null }));
 jest.mock("@/components/listings", () => ({
   ListingGallery: () => null,
   ListingPriceCard: () => null,
