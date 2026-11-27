@@ -69,55 +69,87 @@ describe("tenant pages and the listing detail", () => {
     },
   );
 
+  // THE GALLERY AND THE PRICE CARD MOVED TO CSS MODULES.
+  //
+  // The redesign rebuilt both on stylesheets, so the Tailwind class strings
+  // the two blocks below used to read no longer exist, and three assertions
+  // went red. The PROPERTY each one protected is still true: every control
+  // is 44px and the price still shrinks rather than widening its row. So the
+  // assertions follow the markup into the stylesheet instead of being
+  // deleted, which would have been the easy way to a green run.
+  //
+  // The dots are genuinely gone, replaced by a counter and two arrows, so
+  // the dot assertions are replaced rather than ported.
+  const CSS = {
+    gallery: fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/components/listings/listing-gallery.module.css",
+      ),
+      "utf8",
+    ),
+    price: fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/components/listings/listing-price.module.css",
+      ),
+      "utf8",
+    ),
+  };
+
+  /** The min-height / min-width a selector declares, in px. */
+  function minBox(css: string, selector: string) {
+    const rule = css
+      .split("\n")
+      .find((l) => l.trimStart().startsWith(selector) && l.includes("{"));
+    const h = rule?.match(/min-height:\s*(\d+)px/);
+    const w = rule?.match(/min-width:\s*(\d+)px/);
+    return { h: h ? Number(h[1]) : null, w: w ? Number(w[1]) : null };
+  }
+
   describe("the photo carousel", () => {
-    it("gives each dot a 44px box while the dot stays 8px", () => {
-      // These were 8px targets: the smallest control in the product, on
-      // the thing that moves the photos. The button is the box and the
-      // dot is a span inside it.
-      expect(CODE.gallery).toMatch(
-        /className="min-w-\[44px\] min-h-\[44px\] grid place-items-center"/,
-      );
-      // The visual is still a dot, not a 44px blob.
-      expect(CODE.gallery).toMatch(/"h-2 rounded-full transition-all"/);
-      expect(CODE.gallery).not.toMatch(/"w-2 h-2 rounded-full transition-all"/);
+    it("gives every control a 44px box", () => {
+      expect(
+        minBox(CSS.gallery, ".photoControl, .viewPhotos, .viewerControl").h,
+      ).toBe(44);
+      // The round ones need the width too, or min-height alone gives a pill.
+      expect(minBox(CSS.gallery, ".photoControl, .viewerControl").w).toBe(44);
     });
 
-    it("says which dot is the current one", () => {
+    it("covers the filmstrip and the category chips, not just the arrows", () => {
+      // Counted the same way as before: one rule must name all of them, so a
+      // mutant that drops a single selector from it is caught.
+      const rule =
+        CSS.gallery.split("\n").find((l) => /min-height:\s*44px/.test(l)) ?? "";
+      expect(rule).toContain(".photoControl");
+      expect(rule).toContain(".viewPhotos");
+      expect(rule).toContain(".viewerControl");
+      expect(rule).toContain(".categories button");
+      expect(rule).toContain(".filmstrip button");
+    });
+
+    it("says which photo is the current one", () => {
       expect(CODE.gallery).toMatch(/aria-current=/);
-    });
-
-    it("sizes BOTH arrows and the expand control", () => {
-      // Counted, not merely found. The first version asserted the class
-      // existed somewhere in the file, and a mutant that shrank only the
-      // left arrow passed because the right one still carried it.
-      expect(CODE.gallery.match(/w-11 h-11 bg-white\/90/g)).toHaveLength(2);
-      expect(CODE.gallery).not.toMatch(/w-10 h-10 bg-white\/90/);
-      expect(CODE.gallery).toMatch(
-        /min-w-\[44px\] min-h-\[44px\] grid place-items-center rounded-full backdrop-blur-sm/,
-      );
     });
   });
 
-  describe("the listing's sticky bottom bar", () => {
-    it("lets the price shrink and the buttons stay put", () => {
-      // The row came to 412px in a 360px viewport: a price, two labelled
-      // buttons and two icons, none of which could shrink.
-      const bar = CODE.listingDetail.slice(
-        CODE.listingDetail.indexOf("fixed bottom-0"),
-      );
-      expect(bar).toMatch(/flex-1 min-w-0/);
-      expect(bar).toMatch(
-        /text-lg sm:text-xl font-bold text-gray-900 truncate/,
-      );
+  describe("the price card that replaced the sticky bottom bar", () => {
+    it("gives every action a 44px box", () => {
+      expect(minBox(CSS.price, ".actions button").h).toBe(44);
+    });
 
-      // Counted, not merely found. Three buttons live in this bar, and a
-      // mutant that put px-6 back on one of them passed an existence
-      // check because the other two still carried px-4 sm:px-6.
-      expect(bar.match(/px-4 sm:px-6/g)).toHaveLength(3);
-      expect(bar).not.toMatch(/py-3 px-6/);
+    it("lets a long price shrink instead of widening the card", () => {
+      // The old bar came to 412px in a 360px viewport because the price
+      // could not shrink. Whatever replaces it must not repeat that.
+      expect(CSS.price).toMatch(/\.card\s*\{[^}]*min-width:\s*0/);
+      expect(CSS.price).toMatch(/\.amount\s*\{[^}]*overflow-wrap:\s*anywhere/);
+    });
 
-      // The icons are what pushed it over; all three hide on a phone.
-      expect(bar.match(/w-5 h-5 hidden sm:block/g)).toHaveLength(3);
+    it("confirms the sticky bar is gone rather than merely renamed", () => {
+      // Without this the two assertions above could sit next to a bar that
+      // came back and is checked by nobody.
+      expect(CODE.listingDetail).not.toMatch(/fixed bottom-0/);
+      expect(CSS.price).not.toMatch(/position:\s*fixed/);
     });
   });
 
