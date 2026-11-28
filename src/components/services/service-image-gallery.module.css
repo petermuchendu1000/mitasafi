@@ -1,0 +1,153 @@
+.gallery {
+  min-width: 0;
+  width: min(100%, var(--service-gallery-width));
+  margin: 10px auto 14px;
+}
+
+.stage {
+  position: relative;
+}
+
+.preview,
+.thumbnail {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: #f5f6f5;
+}
+
+.preview {
+  width: 100%;
+  aspect-ratio: var(--service-gallery-ratio);
+  border-radius: 10px;
+  cursor: zoom-in;
+  touch-action: pan-y pinch-zoom;
+}
+
+.previewImage {
+  object-fit: cover;
+}
+
+.preview .previewImage {
+  object-position: center;
+}
+
+.enlarge {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+}
+
+.stageNavigation {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  border-radius: 8px;
+  background: white;
+}
+
+.thumbnails {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 7px;
+  padding: 3px 3px 5px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--control-line) transparent;
+}
+
+.thumbnail {
+  flex: none;
+  width: 72px;
+  height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.thumbnail[aria-pressed="true"] {
+  outline: 2px solid var(--forest);
+  outline-offset: 1px;
+}
+
+.navigation {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1px;
+  color: var(--muted);
+  font-size: .82rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.navigation button,
+.dialogTop button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--ink);
+}
+
+.navigation button:hover,
+.dialogTop button:hover {
+  color: var(--green);
+}
+
+.dialog {
+  position: fixed;
+  inset: 0;
+  width: min(960px, calc(100% - 28px));
+  max-height: calc(100dvh - 28px);
+  margin: auto;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+}
+
+.dialog::backdrop {
+  background: rgb(16 30 25 / 54%);
+}
+
+.dialogTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-inline: 4px;
+  font-weight: 620;
+  overflow-wrap: anywhere;
+}
+
+.dialogTop button {
+  flex: none;
+}
+
+.fullPhoto {
+  position: relative;
+  height: min(65dvh, 65vw);
+}
+
+.fullImage {
+  object-fit: contain;
+}
+
+@media (min-width: 640px) {
+  .preview .previewImage {
+    object-position: center 26%;
+  }
+}

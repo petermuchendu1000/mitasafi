@@ -1,19 +1,9 @@
-/**
- * Service Image Gallery — Fiverr-style Main Image + Thumbnails
- *
- * Renders a large hero image with thumbnail strip below. Clicking a
- * thumbnail swaps the main image. Clicking the main image opens a
- * fullscreen lightbox with keyboard navigation (← → Esc).
- *
- * Falls back gracefully when no images are provided (handled by parent).
- */
-
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useEffect, useRef, useState, type TouchEvent } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
+import styles from "./service-image-gallery.module.css";
 
 interface ServiceImageGalleryProps {
   images: string[];
@@ -21,207 +11,154 @@ interface ServiceImageGalleryProps {
 }
 
 export function ServiceImageGallery({ images, title }: ServiceImageGalleryProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [errorIndexes, setErrorIndexes] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState(images[0]);
+  const [failed, setFailed] = useState<Set<string>>(new Set());
+  const [isOpen, setIsOpen] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const rail = useRef<HTMLDivElement>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swipeEndedAt = useRef(0);
+  const photos = images.filter((url) => !failed.has(url));
+  const activeIndex = Math.max(0, photos.indexOf(selected));
+  const activePhoto = photos[activeIndex];
 
-  const validImages = images.filter((_, i) => !errorIndexes.has(i));
-
-  const goTo = useCallback((index: number) => {
-    setActiveIndex(index);
-  }, []);
-
-  const prev = useCallback(() => {
-    setActiveIndex((i) => (i === 0 ? validImages.length - 1 : i - 1));
-  }, [validImages.length]);
-
-  const next = useCallback(() => {
-    setActiveIndex((i) => (i === validImages.length - 1 ? 0 : i + 1));
-  }, [validImages.length]);
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (lightboxOpen) {
-        if (e.key === "ArrowLeft") prev();
-        if (e.key === "ArrowRight") next();
-        if (e.key === "Escape") setLightboxOpen(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [lightboxOpen, prev, next]);
-
-  // Lock scroll when lightbox is open
-  useEffect(() => {
-    if (lightboxOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+  function step(direction: number) {
+    if (photos.length > 1) {
+      setSelected(photos[(activeIndex + direction + photos.length) % photos.length]);
     }
-    return () => { document.body.style.overflow = ""; };
-  }, [lightboxOpen]);
+  }
 
-  if (validImages.length === 0) return null;
+  function markFailed(url: string) {
+    if (photos.length === 1) dialog.current?.close();
+    setFailed((previous) => new Set(previous).add(url));
+  }
+
+  function finishSwipe(event: TouchEvent<HTMLButtonElement>) {
+    const start = touchStart.current;
+    touchStart.current = null;
+    const end = event.changedTouches[0];
+    if (!start || !end || photos.length < 2) return;
+
+    const horizontal = end.clientX - start.x;
+    const vertical = end.clientY - start.y;
+    if (Math.abs(horizontal) >= 44 && Math.abs(horizontal) > Math.abs(vertical) * 1.3) {
+      swipeEndedAt.current = Date.now();
+      step(horizontal < 0 ? 1 : -1);
+    }
+  }
+
+  useEffect(() => {
+    const strip = rail.current;
+    const thumbnail = strip?.querySelector<HTMLButtonElement>('[aria-pressed="true"]');
+    if (!strip || !thumbnail) return;
+
+    const inset = 3;
+    const left = thumbnail.offsetLeft - inset;
+    const right = thumbnail.offsetLeft + thumbnail.offsetWidth + inset;
+    if (left < strip.scrollLeft) strip.scrollLeft = left;
+    if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth;
+  }, [activeIndex, activePhoto, photos.length]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  if (!activePhoto) return null;
 
   return (
-    <>
-      {/* Main Image */}
-      <div
-        className="relative w-full aspect-[16/9] sm:aspect-[16/10] rounded-xl overflow-hidden bg-gray-100 cursor-zoom-in group"
-        onClick={() => setLightboxOpen(true)}
-      >
-        <Image
-          src={validImages[activeIndex]}
-          alt={`${title} – image ${activeIndex + 1}`}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 70vw, 680px"
-          className="object-cover"
-          priority
-          onError={() => {
-            setErrorIndexes((prev) => new Set(prev).add(images.indexOf(validImages[activeIndex])));
-            setActiveIndex(0);
+    <div className={styles.gallery} role="group" aria-label="Service photos">
+      <div className={styles.stage}>
+        <button
+          type="button"
+          className={styles.preview}
+          onClick={(event) => {
+            if (event.detail > 0 && Date.now() - swipeEndedAt.current < 400) return;
+            dialog.current?.showModal();
+            setIsOpen(true);
           }}
-        />
-
-        {/* Image counter badge */}
-        {validImages.length > 1 && (
-          <span className="absolute bottom-3 right-3 px-2.5 py-1 bg-black/60 text-white text-xs font-medium rounded-md">
-            {activeIndex + 1} / {validImages.length}
-          </span>
-        )}
-
-        {/* Hover arrows on main image */}
-        {validImages.length > 1 && (
-          <>
-            <button
-              onClick={(e) => { e.stopPropagation(); prev(); }}
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label="Previous image"
-            >
-              <ChevronLeft className="w-5 h-5 text-gray-700" />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); next(); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label="Next image"
-            >
-              <ChevronRight className="w-5 h-5 text-gray-700" />
-            </button>
-          </>
+          onTouchStart={(event) => {
+            const finger = event.touches[0];
+            touchStart.current = event.touches.length === 1 && finger ? { x: finger.clientX, y: finger.clientY } : null;
+          }}
+          onTouchEnd={finishSwipe}
+          onTouchCancel={() => { touchStart.current = null; }}
+          aria-label="Enlarge photo"
+          aria-haspopup="dialog"
+        >
+          <Image
+            src={activePhoto}
+            alt={title + " photo " + (activeIndex + 1)}
+            fill
+            sizes="(max-width: 844px) 90vw, 760px"
+            loading={activeIndex === 0 ? "eager" : undefined}
+            fetchPriority={activeIndex === 0 ? "high" : undefined}
+            className={styles.previewImage}
+            unoptimized={activePhoto.startsWith("/images/services-landing/optimized/")}
+            onError={() => markFailed(activePhoto)}
+          />
+          <span className={styles.enlarge}><Maximize2 size={17} aria-hidden="true" /></span>
+        </button>
+        {photos.length > 1 && (
+          <div className={`${styles.navigation} ${styles.stageNavigation}`}>
+            <button type="button" onClick={() => step(-1)} aria-label="Previous photo"><ChevronLeft size={20} aria-hidden="true" /></button>
+            <span role="status">{activeIndex + 1} / {photos.length}</span>
+            <button type="button" onClick={() => step(1)} aria-label="Next photo"><ChevronRight size={20} aria-hidden="true" /></button>
+          </div>
         )}
       </div>
 
-      {/* Thumbnail Strip */}
-      {validImages.length > 1 && (
-        <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-          {validImages.map((url, i) => (
-            <button
-              key={i}
-              onClick={() => goTo(i)}
-              className={cn(
-                "relative w-16 h-12 sm:w-20 sm:h-14 flex-shrink-0 rounded-lg overflow-hidden transition-all",
-                i === activeIndex
-                  ? "ring-2 ring-teal-500 opacity-100"
-                  : "opacity-60 hover:opacity-100"
-              )}
-            >
-              <Image
-                src={url}
-                alt={`Thumbnail ${i + 1}`}
-                fill
-                className="object-cover"
-                sizes="80px"
-                onError={() => {
-                  setErrorIndexes((prev) => new Set(prev).add(images.indexOf(url)));
-                }}
-              />
+      {photos.length > 1 && (
+        <div ref={rail} className={styles.thumbnails} role="group" aria-label="Photo thumbnails">
+          {photos.map((photo, index) => (
+            <button type="button" key={photo} onClick={() => setSelected(photo)}
+              aria-label={"Show photo " + (index + 1)} aria-pressed={index === activeIndex}
+              className={styles.thumbnail}>
+              <Image src={photo} alt="" fill sizes="72px" className={styles.previewImage}
+                unoptimized={photo.startsWith("/images/services-landing/optimized/")} onError={() => markFailed(photo)} />
             </button>
           ))}
         </div>
       )}
 
-      {/* Fullscreen Lightbox */}
-      {lightboxOpen && (
-        <div className="fixed inset-0 z-50 bg-black">
-          {/* Header */}
-          <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent">
-            <div className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setLightboxOpen(false)}
-                  className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-                >
-                  <X className="w-5 h-5 text-white" />
-                </button>
-                <span className="text-white font-medium">
-                  {activeIndex + 1} / {validImages.length}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Main image */}
-          <div className="absolute inset-0 flex items-center justify-center p-4 pt-20 pb-24">
-            <div className="relative w-full h-full max-w-6xl">
-              <Image
-                src={validImages[activeIndex]}
-                alt={`${title} – Photo ${activeIndex + 1}`}
-                fill
-                className="object-contain"
-                sizes="100vw"
-                priority
-              />
-            </div>
-          </div>
-
-          {/* Navigation arrows */}
-          {validImages.length > 1 && (
-            <>
-              <button
-                onClick={prev}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-              >
-                <ChevronLeft className="w-6 h-6 text-white" />
-              </button>
-              <button
-                onClick={next}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-              >
-                <ChevronRight className="w-6 h-6 text-white" />
-              </button>
-            </>
-          )}
-
-          {/* Thumbnail strip */}
-          {validImages.length > 1 && (
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-              <div className="flex justify-center gap-2 overflow-x-auto pb-2">
-                {validImages.map((url, index) => (
-                  <button
-                    key={index}
-                    onClick={() => goTo(index)}
-                    className={cn(
-                      "relative w-16 h-12 flex-shrink-0 rounded-md overflow-hidden transition-all",
-                      index === activeIndex
-                        ? "ring-2 ring-teal-500 ring-offset-2 ring-offset-black"
-                        : "opacity-60 hover:opacity-100"
-                    )}
-                  >
-                    <Image
-                      src={url}
-                      alt={`Thumbnail ${index + 1}`}
-                      fill
-                      className="object-cover"
-                      sizes="64px"
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+      <dialog
+        ref={dialog}
+        className={styles.dialog}
+        aria-label={title + " photos"}
+        onClose={() => setIsOpen(false)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+            event.preventDefault();
+            step(event.key === "ArrowRight" ? 1 : -1);
+          }
+        }}
+      >
+        <div className={styles.dialogTop}>
+          <span>{title}</span>
+          <button type="button" onClick={() => dialog.current?.close()} aria-label="Close photo">
+            <X size={22} aria-hidden="true" />
+          </button>
         </div>
-      )}
-    </>
+        {isOpen && (
+          <div className={styles.fullPhoto}>
+            <Image src={activePhoto} alt={title + " photo " + (activeIndex + 1)} fill
+              sizes="(max-width: 1000px) 100vw, 950px" className={styles.fullImage}
+              unoptimized={activePhoto.startsWith("/images/services-landing/optimized/")}
+              onError={() => markFailed(activePhoto)} />
+          </div>
+        )}
+        {photos.length > 1 && (
+          <div className={styles.navigation}>
+            <button type="button" onClick={() => step(-1)} aria-label="Previous photo"><ChevronLeft size={20} aria-hidden="true" /></button>
+            <span role="status">{activeIndex + 1} / {photos.length}</span>
+            <button type="button" onClick={() => step(1)} aria-label="Next photo"><ChevronRight size={20} aria-hidden="true" /></button>
+          </div>
+        )}
+      </dialog>
+    </div>
   );
 }

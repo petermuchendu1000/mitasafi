@@ -107,9 +107,9 @@ export function SocialLinksSection({
   if (socialEntries.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
-      <h3 className="text-sm font-semibold tracking-[-0.01em] text-slate-900 mb-4">Find online</h3>
-      <div className="space-y-1.5">
+    <div className="rounded-[15px] border border-gray-200 bg-white px-4 py-3 sm:px-5">
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">Find online</h3>
+      <div>
         {socialEntries.map(([key, url]) => {
           const Icon = SOCIAL_ICON_MAP[key as SocialPlatformKey];
           const hoverColorClass = SOCIAL_HOVER_COLOR_MAP[key as SocialPlatformKey];
@@ -121,15 +121,13 @@ export function SocialLinksSection({
               target="_blank"
               rel="noopener"
               aria-label={`Visit ${labelMap[key] || key}`}
-              className="group/social flex items-center justify-between rounded-xl border border-transparent px-3 py-2.5 text-sm hover:border-slate-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60 transition-colors"
+              className="group/social flex min-h-11 items-center justify-between gap-2 rounded-md px-1.5 text-sm hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60 transition-colors"
             >
               <span className="flex items-center gap-2.5 text-slate-600 group-hover/social:text-slate-900 group-focus-visible/social:text-slate-900 transition-colors">
-                <span className="w-7 h-7 rounded-lg border border-slate-200 bg-white grid place-items-center">
-                  {Icon && <Icon className={`w-4 h-4 text-slate-400 transition-colors ${hoverColorClass}`} />}
-                </span>
+                {Icon && <Icon aria-hidden="true" className={`w-4 h-4 text-slate-600 transition-colors ${hoverColorClass}`} />}
                 {labelMap[key] || key}
               </span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover/social:text-teal-600 group-focus-visible/social:text-teal-600 transition-colors" />
+              <ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-slate-600 group-hover/social:text-teal-700 group-focus-visible/social:text-teal-700 transition-colors" />
             </a>
           );
         })}

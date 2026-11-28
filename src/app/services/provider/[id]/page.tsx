@@ -13,22 +13,10 @@
  * 6. Detailed reviews with attribution
  */
 
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import {
-  Star,
-  CheckCircle,
-  ChevronRight,
-  ArrowLeft,
-  Pencil,
-  Phone,
-  Clock3,
-  CalendarDays,
-  Users,
-  MapPin,
-  BadgeCheck,
-} from "lucide-react";
+import { ChevronDown, ChevronLeft, Pencil, Phone, Star } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import Link from "next/link";
 import {
@@ -50,6 +38,12 @@ import { TrackProviderView } from "@/components/services/TrackProviderView";
 import { createClient } from "@/lib/supabase/server";
 import { ExpandableText } from "@/components/ui/ExpandableText";
 import { siteUrl } from "@/lib/site/urls";
+import { HomeIcon } from "@/components/landing/HomeIcons";
+import { HomeNavbar } from "@/components/landing/HomeNavbar";
+import { Footer } from "@/components/landing/Footer";
+import { homeFont } from "@/components/landing/home-font";
+import homeStyles from "@/components/landing/HomePage.module.css";
+import styles from "./provider-profile.module.css";
 
 // Below-fold client components — lazy loaded to reduce initial JS bundle
 const ProviderServiceCards = dynamic(
@@ -107,7 +101,7 @@ function getCurrentNairobiDayAndMinutes() {
     weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hourCycle: "h23",
   });
 
   const parts = formatter.formatToParts(now);
@@ -156,7 +150,7 @@ function lastActiveLabel(lastActive: string | null): string | null {
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 5) return "Online now";
+  if (diffMins < 5) return "Recently active";
   if (diffMins < 60) return `Active ${diffMins}m ago`;
   const diffHours = Math.floor(diffMins / 60);
   if (diffHours < 24) return `Active ${diffHours}h ago`;
@@ -196,16 +190,19 @@ export async function generateMetadata({
     : null;
 
   const title = `${provider.business_name} | ${firstCategory?.name || "Service Provider"} | MitaSafi`;
-  const description =
-    provider.bio?.slice(0, 160) ||
-    `${provider.business_name} - Verified service provider in Nairobi. ${provider.average_rating ? `${formatRating(provider.average_rating)} stars` : ""}`;
+  const area = provider.service_areas?.[0];
+  const description = provider.bio?.trim().slice(0, 160) ||
+    `Explore services, coverage and reviews for ${provider.business_name}${area ? ` in ${area}` : ""} on MitaSafi.`;
+  const canonical = siteUrl(`/services/provider/${provider.id}`);
 
   return {
     title,
     description,
+    alternates: { canonical },
     openGraph: {
       title,
       description,
+      url: canonical,
       images: provider.profile_photo_url ? [provider.profile_photo_url] : [],
       type: "profile",
     },
@@ -249,7 +246,7 @@ export default async function ProviderProfilePage({ params }: PageProps) {
       const psAny = ps as unknown as Record<string, unknown>;
       const cp = psAny.custom_pricing as Record<string, unknown> | null;
       const imageUrls = Array.isArray(cp?.image_urls)
-        ? (cp.image_urls as string[])
+        ? cp.image_urls.filter((url): url is string => typeof url === "string" && Boolean(url.trim()))
         : [];
       return {
         id: ps.id,
@@ -257,7 +254,7 @@ export default async function ProviderProfilePage({ params }: PageProps) {
         category: ps.service?.subcategory?.category?.name || "",
         subcategory: ps.service?.subcategory?.name || "",
         priceType: (cp?.type as string) || "fixed",
-        price: (cp?.amount as number) || null,
+        price: typeof cp?.amount === "number" ? cp.amount : null,
         description:
           (cp?.description as string) || ps.service?.description || "",
         imageUrls,
@@ -329,7 +326,6 @@ export default async function ProviderProfilePage({ params }: PageProps) {
   const lastActive = lastActiveLabel(
     providerAny.last_active_at as string | null,
   );
-  const isOnline = lastActive === "Online now";
 
   // Format phone for WhatsApp
   const phone = providerAny.phone as string | undefined;
@@ -374,28 +370,20 @@ export default async function ProviderProfilePage({ params }: PageProps) {
       show: isBackgroundChecked,
       label: "Background checked",
     },
-    { key: "registration", show: hasBusinessReg, label: "Registered business" },
-    { key: "tax", show: hasTaxId, label: "KRA registered" },
+    { key: "registration", show: hasBusinessReg, label: "Business registration provided" },
+    { key: "tax", show: hasTaxId, label: "KRA PIN provided" },
   ].filter((item) => item.show);
 
   const serviceAreas = provider.service_areas || [];
   const teamSize = providerAny.team_size as number | undefined;
   const languages = providerAny.languages as string[] | undefined;
-  const heroImageUrl =
-    provider.cover_photo_url ||
-    servicesWithPricing.find((s) => s.imageUrls.length > 0)?.imageUrls[0] ||
-    null;
-  const hasAbout = !!provider.bio;
+  const heroImageUrl = provider.cover_photo_url;
+  const headline = provider.headline?.trim() || provider.tagline?.trim();
+  const bio = provider.bio?.trim();
   const hasServices = servicesWithPricing.length > 0;
-  const hasReviews = (provider.total_reviews ?? 0) > 0;
-  const surfaceCardClass =
-    "rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm";
-  const sectionTitleClass =
-    "text-base font-semibold tracking-[-0.01em] leading-6 text-slate-900 mb-4";
-  const ratingText =
-    provider.average_rating == null
-      ? "No ratings yet"
-      : formatRating(provider.average_rating);
+  const canonical = siteUrl(`/services/provider/${provider.id}`);
+  const requestHref = `/services/provider/${provider.id}/request`;
+  const hasFacts = yearsLabel || teamSize || memberSince || lastActive;
 
   // Social links
   const socialLinks = (providerAny.social_links || {}) as Record<
@@ -427,23 +415,18 @@ export default async function ProviderProfilePage({ params }: PageProps) {
     name: provider.business_name,
     description:
       provider.bio?.slice(0, 300) ||
-      `${provider.business_name} — verified service provider on MitaSafi`,
-    url: siteUrl(`/services/provider/${provider.id}`),
+      `${provider.business_name} on MitaSafi`,
+    url: canonical,
     ...(provider.profile_photo_url
       ? { image: provider.profile_photo_url }
       : {}),
     ...(phone ? { telephone: phone } : {}),
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: "Nairobi",
-      addressCountry: "KE",
-    },
-    ...(provider.average_rating
+    ...(provider.average_rating && totalReviews > 0
       ? {
           aggregateRating: {
             "@type": "AggregateRating",
             ratingValue: provider.average_rating,
-            reviewCount: provider.total_reviews || 0,
+            reviewCount: totalReviews,
             bestRating: 5,
             worstRating: 1,
           },
@@ -464,7 +447,7 @@ export default async function ProviderProfilePage({ params }: PageProps) {
         }
       : {}),
     areaServed: (serviceAreas || []).slice(0, 10).map((area) => ({
-      "@type": "City",
+      "@type": "Place",
       name: area,
     })),
   };
@@ -478,582 +461,198 @@ export default async function ProviderProfilePage({ params }: PageProps) {
     servicePrices.length > 0 ? Math.min(...servicePrices) : null;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Record this visit for the home page's "Recently viewed" section. Renders
-          nothing; see components/services/TrackProviderView.tsx for why this writer
-          did not previously exist. */}
+    <div className={[homeFont.variable, homeStyles.home, styles.page, !isOwnProfile && styles.withAction].filter(Boolean).join(" ")}>
       <TrackProviderView
         id={provider.id}
         businessName={provider.business_name}
-        tagline={(providerAny.tagline as string | null) ?? null}
+        tagline={headline ?? null}
         logoUrl={provider.profile_photo_url ?? null}
         ratingAverage={provider.average_rating ?? null}
         ratingCount={provider.total_reviews ?? null}
         minPrice={minServicePrice}
         categoryIds={(provider.categories ?? []).join(",")}
       />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <a className={homeStyles.skipLink} href="#provider-content">Skip to provider profile</a>
+      <HomeNavbar activePage="services" />
 
-      {/* JSON-LD Structured Data for SEO */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-
-      {/* ─── Navigation Bar ─── */}
-      <nav className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-12 sm:h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {isOwnProfile ? (
-              <>
-                <Link
-                  href="/dashboard/provider"
-                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Back to dashboard</span>
+      <main id="provider-content" tabIndex={-1}>
+        <header className={styles.intro}>
+          <div className={styles.wrap}>
+            <div className={styles.topLine}>
+              <nav aria-label="Back navigation">
+                <Link href={isOwnProfile ? "/dashboard/provider" : "/services/browse"} className={styles.back}>
+                  <ChevronLeft size={17} aria-hidden="true" /> {isOwnProfile ? "Dashboard" : "Browse services"}
                 </Link>
-                <span className="text-gray-200 hidden sm:inline">|</span>
-                <div className="hidden sm:flex items-center gap-1.5 text-sm text-gray-400">
-                  <Link
-                    href="/dashboard/provider"
-                    className="hover:text-gray-600 transition-colors"
-                  >
-                    Dashboard
-                  </Link>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                  <span className="text-gray-600">Your Profile</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/services/browse"
-                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Back to search</span>
-                </Link>
-                <span className="text-gray-200 hidden sm:inline">|</span>
-                <div className="hidden sm:flex items-center gap-1.5 text-sm text-gray-400">
-                  <Link
-                    href="/services/browse"
-                    className="hover:text-gray-600 transition-colors"
-                  >
-                    Services
-                  </Link>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                  <span className="text-gray-600">
-                    {provider.business_name}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {isOwnProfile && (
-              <Link
-                href="/dashboard/provider/profile"
-                className="text-sm text-teal-600 hover:text-teal-700 transition-colors flex items-center gap-1.5"
-              >
-                <Pencil className="w-4 h-4" />
-                <span className="hidden sm:inline">Edit Profile</span>
-              </Link>
-            )}
-            <div className="hidden sm:block">
-              <ShareButton
-                title={provider.business_name}
-                text={`Check out ${provider.business_name} on MitaSafi`}
-                url={siteUrl(`/services/provider/${provider.id}`)}
-              />
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* ─── Premium Hero ─── */}
-      <section className="relative border-b border-slate-200">
-        <div className="absolute inset-0">
-          {heroImageUrl ? (
-            <Image
-              src={heroImageUrl}
-              alt={provider.business_name}
-              fill
-              className="object-cover"
-              priority
-              sizes="100vw"
-            />
-          ) : (
-            <div className="h-full w-full bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/60 to-slate-950/40" />
-        </div>
-
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
-          <div className="flex flex-col md:flex-row md:items-end gap-6">
-            <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden ring-4 ring-white/20 border border-white/20 bg-white/10 backdrop-blur">
-              {provider.profile_photo_url ? (
-                <Image
-                  src={provider.profile_photo_url}
-                  alt={provider.business_name}
-                  fill
-                  sizes="112px"
-                  className="object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-teal-100 text-teal-700 font-semibold text-3xl">
-                  {provider.business_name.charAt(0)}
-                </div>
-              )}
-              {isOnline && (
-                <div className="absolute right-1.5 bottom-1.5 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h1 className="text-2xl sm:text-4xl font-semibold tracking-[-0.02em] leading-[1.08] text-white">
-                  {provider.business_name}
-                </h1>
-                {provider.is_verified && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200 border border-emerald-400/40">
-                    <BadgeCheck className="w-3.5 h-3.5" />
-                    Verified
-                  </span>
-                )}
-                {memberSince && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-slate-100 border border-white/20">
-                    <CalendarDays className="w-3.5 h-3.5" />
-                    Member since {memberSince}
-                  </span>
-                )}
+              </nav>
+              <div className={styles.utilities}>
+                {isOwnProfile && <Link href="/dashboard/provider/profile" className={styles.utility}>
+                  <Pencil size={16} aria-hidden="true" /> Edit profile
+                </Link>}
+                <ShareButton title={provider.business_name} text={provider.business_name} url={canonical} className={styles.utility} />
               </div>
+            </div>
 
-              {((providerAny.headline as string) ||
-                (providerAny.tagline as string)) && (
-                <p className="text-sm sm:text-base leading-7 text-slate-100/90 max-w-3xl">
-                  {(providerAny.headline as string) ||
-                    (providerAny.tagline as string)}
-                </p>
-              )}
-
-              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white text-slate-900 px-3 py-1.5 font-semibold">
-                  <Star className="w-3.5 h-3.5 fill-slate-900 text-slate-900" />
-                  {ratingText}
-                </span>
-                {provider.response_time_minutes != null && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 text-white px-3 py-1.5">
-                    <Clock3 className="w-3.5 h-3.5" />
-                    {getResponseTimeLabel(provider.response_time_minutes)}
-                  </span>
+            <div className={styles.introLayout}>
+              <div className={styles.identity}>
+                {provider.profile_photo_url && (
+                  <div className={styles.avatar}>
+                    <Image src={provider.profile_photo_url} alt="" fill sizes="72px" className={styles.photo} />
+                  </div>
                 )}
+                <h1>{provider.business_name}</h1>
+                {headline && <p className={styles.headline}>{headline}</p>}
+                <div className={styles.profileMeta}>
+                  {provider.average_rating && totalReviews > 0 ? (
+                    <a href="#reviews-section">
+                      <Star size={16} aria-hidden="true" className={styles.star} />
+                      <strong>{formatRating(provider.average_rating)}</strong>
+                      <span>{totalReviews} {totalReviews === 1 ? "review" : "reviews"}</span>
+                    </a>
+                  ) : null}
+                  {(provider.is_verified || isIdentityVerified) && <span><HomeIcon name="shield" size={18} /> {isIdentityVerified ? "Identity verified" : "Verified provider"}</span>}
+                  {serviceAreas.length > 0 && (
+                    <a href="#coverage-section"><HomeIcon name="pin" size={18} />
+                      <span>{serviceAreas.slice(0, 2).join(", ")}{serviceAreas.length > 2 ? " +" + (serviceAreas.length - 2) : ""}</span>
+                    </a>
+                  )}
+                </div>
               </div>
-
-              {serviceAreas && serviceAreas.length > 0 && (
-                <p className="mt-2 text-xs sm:text-sm text-slate-100/90 inline-flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {serviceAreas[0]}
-                  {serviceAreas.length > 1 &&
-                    ` +${serviceAreas.length - 1} more areas`}
-                </p>
+              {heroImageUrl && (
+                <div className={styles.cover}>
+                  <Image src={heroImageUrl} alt="" fill sizes="(max-width: 759px) 100vw, 550px" priority
+                    unoptimized={heroImageUrl.startsWith("/images/services-landing/optimized/")} className={styles.photo} />
+                </div>
               )}
             </div>
+            <nav className={styles.jumpLinks} aria-label="On this profile">
+              <a href="#services-section">Services</a>
+              <a href="#reviews-section">Reviews</a>
+              {(serviceAreas.length > 0 || languages?.length) ? <a href="#coverage-section">Coverage</a> : null}
+              {bio && <a href="#about-section">About</a>}
+            </nav>
           </div>
-        </div>
-      </section>
+        </header>
 
-      <section className="border-b border-slate-200 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-nowrap items-center gap-2 overflow-x-auto whitespace-nowrap">
-          {hasAbout && (
-            <a
-              href="#about-section"
-              className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors"
-            >
-              About
-            </a>
-          )}
-          {hasServices && (
-            <a
-              href="#services-section"
-              className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors"
-            >
-              Services
-            </a>
-          )}
-          {hasReviews && (
-            <a
-              href="#reviews-section"
-              className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors"
-            >
-              Reviews
-            </a>
-          )}
-        </div>
-      </section>
-
-      {/* ─── Main Content ─── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-28 lg:pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-8">
-          <main className="space-y-5 min-w-0">
-            {provider.bio && (
-              <section
-                id="about-section"
-                className={`scroll-mt-24 ${surfaceCardClass}`}
-              >
-                <h2 className={sectionTitleClass}>About this provider</h2>
-                <ExpandableText
-                  text={provider.bio}
-                  maxChars={380}
-                  className="text-[15px] leading-7 text-slate-600"
-                />
-              </section>
-            )}
-
-            {servicesWithPricing.length > 0 && (
-              <section
-                id="services-section"
-                className={`scroll-mt-24 ${surfaceCardClass}`}
-              >
-                <h2 className={sectionTitleClass}>
-                  {servicesWithPricing.length === 1
-                    ? "Service offered"
-                    : "Services by this provider"}
-                </h2>
+        <div className={styles.wrap}>
+          <div className={styles.layout}>
+            <section className={styles.services} id="services-section" aria-labelledby="provider-services-heading">
+              <h2 id="provider-services-heading">Services</h2>
+              {hasServices ? (
                 <ProviderServiceCards
-                  services={servicesWithPricing}
+                  services={servicesWithPricing.map((service) => service.imageUrls[0] === heroImageUrl && service.imageUrls.length > 1
+                    ? { ...service, imageUrls: [...service.imageUrls.slice(1), service.imageUrls[0]] } : service)}
                   providerId={provider.id}
                   isOwnProfile={isOwnProfile}
                   phoneUrl={phoneUrl}
                   whatsappUrl={whatsappUrl}
+                  profileLayout
                 />
-              </section>
-            )}
-
-            {((serviceAreas && serviceAreas.length > 0) ||
-              (languages && languages.length > 0)) && (
-              <section className={surfaceCardClass}>
-                <h2 className={sectionTitleClass}>
-                  Coverage and communication
-                </h2>
-                {serviceAreas && serviceAreas.length > 0 && (
-                  <div className="mb-5">
-                    <p className="text-xs uppercase tracking-[0.04em] text-slate-500 mb-2">
-                      Service areas
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {serviceAreas.slice(0, 16).map((area) => (
-                        <span
-                          key={area}
-                          className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs font-medium"
-                        >
-                          {area}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {languages && languages.length > 0 && (
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.04em] text-slate-500 mb-2">
-                      Languages
-                    </p>
-                    <p className="text-sm text-slate-700">
-                      {languages.join(", ")}
-                    </p>
-                  </div>
-                )}
-              </section>
-            )}
-
-            {trustItems.length > 0 && (
-              <section className={surfaceCardClass}>
-                <h2 className={sectionTitleClass}>Trust and verification</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {trustItems.map((item) => (
-                    <div
-                      key={item.key}
-                      className="rounded-xl border border-slate-200 p-3 text-sm text-slate-800 flex items-center gap-2"
-                    >
-                      <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      {item.label}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            <section
-              id="reviews-section"
-              className={`scroll-mt-24 ${surfaceCardClass}`}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-base font-semibold text-slate-900">
-                  Reviews
-                </h2>
-                <div className="text-sm text-slate-600">
-                  {totalReviews} review{totalReviews !== 1 ? "s" : ""}
-                </div>
-              </div>
-
-              {totalReviews === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
-                  This provider is new on MitaSafi and has no public reviews
-                  yet. You can still evaluate service quality from pricing
-                  clarity, service details, and response behavior.
-                </div>
-              ) : (
-                <ProviderReviewsList
-                  providerId={id}
-                  initialReviews={reviews}
-                  totalReviews={totalReviews}
-                  isAuthenticated={!!user}
-                />
-              )}
+              ) : <p className={styles.note}>No services listed yet.</p>}
             </section>
 
-            {similarProviders.length > 0 && (
-              <section className={surfaceCardClass}>
-                <h2 className="text-base font-semibold text-slate-900 mb-5">
-                  Similar providers
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {similarProviders.map((p) => (
-                    <ProviderCard key={p.id} provider={p} />
-                  ))}
-                </div>
-              </section>
-            )}
-          </main>
-
-          <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-            <div className={surfaceCardClass}>
-              {provider.response_time_minutes != null && (
-                <div className="mt-4">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[11px] uppercase tracking-[0.04em] text-slate-500">
-                      Response
-                    </p>
-                    <p className="text-xs font-semibold text-slate-900 mt-1">
-                      {getResponseTimeLabel(provider.response_time_minutes)}
-                    </p>
+            <aside id="provider-contact" className={styles.sidebar} aria-label="Provider contact and hours">
+              <section className={styles.contact} aria-labelledby="provider-contact-heading">
+                <h2 id="provider-contact-heading">{isOwnProfile ? "Your public profile" : "Get in touch"}</h2>
+                {isOwnProfile
+                  ? <Link href="/dashboard/provider/profile" className={styles.primary}>Edit public profile</Link>
+                  : <Link href={requestHref} className={styles.primary}>Request a service <HomeIcon name="arrow" size={17} /></Link>}
+                {(whatsappUrl || phoneUrl) && (
+                  <div className={styles.contactLinks}>
+                    {whatsappUrl && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"><FaWhatsapp size={18} aria-hidden="true" /> WhatsApp</a>}
+                    {phoneUrl && <a href={phoneUrl}><Phone size={16} aria-hidden="true" /> Call</a>}
                   </div>
-                </div>
+                )}
+                {provider.response_time_minutes != null && <p className={styles.note}>{getResponseTimeLabel(provider.response_time_minutes)}</p>}
+                {workingHours.length > 0 && (
+                  <details className={styles.hours}>
+                    <summary>Working hours <ChevronDown size={16} aria-hidden="true" /></summary>
+                    {availabilityStatusLabel && <p className={styles.note}>{availabilityStatusLabel}</p>}
+                    <p className={styles.note}>East Africa Time</p>
+                    <dl className={styles.schedule} aria-label="Working hours in East Africa Time">
+                      {normalizedWorkingHours.map((hours) => (
+                        <div key={hours.day_of_week}>
+                          <dt>{DAY_NAMES[hours.day_of_week]}{hours.day_of_week === currentDayOfWeek ? " (Today)" : ""}</dt>
+                          <dd>{hours.is_available ? [formatTime(hours.start_time), formatTime(hours.end_time)].filter(Boolean).join(" – ") : "Closed"}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </details>
+                )}
+              </section>
+              {socialEntries.length > 0 && <SocialLinksSection providerId={provider.id} socialEntries={socialEntries} labelMap={SOCIAL_LABEL_MAP} />}
+            </aside>
+
+            <div className={styles.sections}>
+              {bio && (
+                <section id="about-section" aria-labelledby="provider-about-heading">
+                  <h2 id="provider-about-heading">About {provider.business_name}</h2>
+                  <ExpandableText text={bio} maxChars={380} className={styles.prose} buttonClassName={styles.textButton} />
+                </section>
               )}
 
-              <div className="mt-4 space-y-2.5">
-                {!isOwnProfile && (
-                  <Link
-                    href={`/services/provider/${provider.id}/request`}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-teal-600 text-white font-semibold text-sm rounded-xl hover:bg-teal-700 transition-colors shadow-sm"
-                  >
-                    Request
-                  </Link>
-                )}
-                {(whatsappUrl || phoneUrl) && (
-                  <div
-                    className={`grid gap-2 ${whatsappUrl && phoneUrl ? "grid-cols-2" : "grid-cols-1"}`}
-                  >
-                    {whatsappUrl && (
-                      <a
-                        href={whatsappUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full px-3 py-3 border border-slate-300 text-slate-800 font-semibold text-sm rounded-xl hover:bg-slate-50 transition-colors"
-                      >
-                        <FaWhatsapp className="w-4 h-4" />
-                        WhatsApp
-                      </a>
-                    )}
-                    {phoneUrl && (
-                      <a
-                        href={phoneUrl}
-                        className="flex items-center justify-center gap-2 w-full px-3 py-3 border border-slate-300 text-slate-800 font-semibold text-sm rounded-xl hover:bg-slate-50 transition-colors"
-                      >
-                        <Phone className="w-4 h-4" />
-                        Call
-                      </a>
-                    )}
-                  </div>
-                )}
-                {isOwnProfile && !whatsappUrl && !phoneUrl && (
-                  <p className="text-sm text-slate-400 text-center py-2">
-                    Add contact info in your profile settings
-                  </p>
-                )}
-              </div>
+              {(serviceAreas.length > 0 || languages?.length) ? (
+                <section id="coverage-section" aria-labelledby="provider-coverage-heading">
+                  <h2 id="provider-coverage-heading">Service areas</h2>
+                  {serviceAreas.length > 0
+                    ? <p className={styles.coverage}><HomeIcon name="pin" size={18} /> <span>{serviceAreas.join(", ")}</span></p>
+                    : <p className={styles.note}>Ask this provider if they cover your area.</p>}
+                  {languages?.length ? <dl className={styles.facts}><div><dt>Languages</dt><dd>{languages.join(", ")}</dd></div></dl> : null}
+                </section>
+              ) : null}
 
-              <p className="mt-3 text-xs text-slate-500 inline-flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                {lastActive || "Profile is active on MitaSafi"}
-              </p>
-            </div>
-
-            <div className={surfaceCardClass}>
-              <h3 className="text-sm font-semibold text-slate-900 mb-4">
-                Business facts
-              </h3>
-              <dl className="space-y-3 text-sm">
-                {yearsLabel && (
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-slate-500">Experience</dt>
-                    <dd className="text-slate-900 font-medium text-right">
-                      {yearsLabel}
-                    </dd>
-                  </div>
-                )}
-                {teamSize && (
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-slate-500 inline-flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5" />
-                      Team size
-                    </dt>
-                    <dd className="text-slate-900 font-medium text-right">
-                      {teamSize === 1 ? "Solo" : `${teamSize} people`}
-                    </dd>
-                  </div>
-                )}
-                {memberSince && (
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-slate-500">Member since</dt>
-                    <dd className="text-slate-900 font-medium text-right">
-                      {memberSince}
-                    </dd>
-                  </div>
-                )}
-                {lastActive && (
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-slate-500">Last active</dt>
-                    <dd className="text-slate-900 font-medium text-right">
-                      {lastActive}
-                    </dd>
-                  </div>
-                )}
-              </dl>
-            </div>
-
-            {workingHours.length > 0 && (
-              <div className={surfaceCardClass}>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold tracking-[-0.01em] text-slate-900">
-                    Availability
-                  </h3>
-                  <span className="text-[11px] font-medium text-slate-500">
-                    EAT
-                  </span>
+              <section id="reviews-section" aria-labelledby="provider-reviews-heading">
+                <div className={styles.sectionHead}>
+                  <h2 id="provider-reviews-heading">Reviews</h2>
+                  {totalReviews > 0 && <span>{totalReviews} {totalReviews === 1 ? "review" : "reviews"}</span>}
                 </div>
-
-                {availabilityStatusLabel && (
-                  <div className="mb-4 rounded-lg border border-slate-200 px-3 py-2">
-                    <p className="text-xs text-slate-700">
-                      {availabilityStatusLabel}
-                    </p>
-                  </div>
+                {totalReviews === 0 ? <p className={styles.note}>No public reviews yet.</p> : (
+                  <ProviderReviewsList providerId={id} initialReviews={reviews} totalReviews={totalReviews} isAuthenticated={!!user} />
                 )}
+              </section>
 
-                <div className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-                  {normalizedWorkingHours.map((h) => {
-                    const isToday = h.day_of_week === currentDayOfWeek;
-                    const timeRange = h.is_available
-                      ? `${formatTime(h.start_time)} – ${formatTime(h.end_time)}`
-                      : "Closed all day";
-
-                    return (
-                      <div key={h.day_of_week} className="px-3 py-2.5">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-sm font-medium text-slate-700">
-                              {DAY_NAMES[h.day_of_week]}
-                            </span>
-                            {isToday && (
-                              <span className="text-[11px] text-slate-500 whitespace-nowrap">
-                                (Today)
-                              </span>
-                            )}
-                          </div>
-
-                          <span
-                            className={`text-xs whitespace-nowrap ${h.is_available ? "text-slate-700" : "text-slate-500"}`}
-                          >
-                            {h.is_available ? "Open" : "Closed"}
-                          </span>
-                        </div>
-
-                        <p
-                          className={`mt-1 text-sm leading-5 ${h.is_available ? "text-slate-900" : "text-slate-500"}`}
-                        >
-                          {timeRange}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {socialEntries.length > 0 && (
-              <SocialLinksSection
-                providerId={provider.id}
-                socialEntries={socialEntries}
-                labelMap={SOCIAL_LABEL_MAP}
-              />
-            )}
-          </aside>
-        </div>
-      </div>
-
-      {/* ─── Mobile CTA Bar ─── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 z-40">
-        <div className="flex items-center gap-2.5">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900 truncate">
-              {provider.business_name}
-            </p>
-            <p className="text-xs text-slate-500 truncate">
-              {servicesWithPricing.length} service
-              {servicesWithPricing.length !== 1 ? "s" : ""} available
-            </p>
+              {(trustItems.length > 0 || hasFacts) && (
+                <section aria-labelledby="provider-business-heading">
+                  <h2 id="provider-business-heading">Business details</h2>
+                  {trustItems.length > 0 && (
+                    <ul className={styles.trust} role="list">
+                      {trustItems.map((item) => <li key={item.key}><HomeIcon name="shield" size={18} /> {item.label}</li>)}
+                    </ul>
+                  )}
+                  {hasFacts && (
+                    <dl className={styles.facts}>
+                      {yearsLabel && <div><dt>Experience</dt><dd>{yearsLabel}</dd></div>}
+                      {teamSize ? <div><dt>Team size</dt><dd>{teamSize === 1 ? "One person" : teamSize + " people"}</dd></div> : null}
+                      {memberSince && <div><dt>On MitaSafi since</dt><dd>{memberSince}</dd></div>}
+                      {lastActive && <div><dt>Last active</dt><dd>{lastActive}</dd></div>}
+                    </dl>
+                  )}
+                </section>
+              )}
+            </div>
           </div>
-          {!isOwnProfile && (
-            <Link
-              href={`/services/provider/${provider.id}/request`}
-              className="px-4 py-2.5 bg-teal-600 text-white font-semibold text-sm rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              Request
-            </Link>
-          )}
-          {whatsappUrl && (
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:grid w-10 h-10 rounded-lg border border-slate-300 text-slate-700 place-items-center"
-              aria-label="WhatsApp"
-            >
-              <FaWhatsapp className="w-4 h-4" />
-            </a>
-          )}
-          {phoneUrl && (
-            <a
-              href={phoneUrl}
-              className="hidden sm:grid w-10 h-10 rounded-lg border border-slate-300 text-slate-700 place-items-center"
-              aria-label="Call"
-            >
-              <Phone className="w-4 h-4" />
-            </a>
-          )}
-          {(whatsappUrl || phoneUrl) && (
-            <a
-              href={whatsappUrl || phoneUrl || "#"}
-              target={whatsappUrl ? "_blank" : undefined}
-              rel={whatsappUrl ? "noopener noreferrer" : undefined}
-              className="sm:hidden px-3 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg"
-            >
-              {whatsappUrl ? "WhatsApp" : "Call"}
-            </a>
+
+          {similarProviders.length > 0 && (
+            <section className={styles.related} aria-labelledby="similar-providers-heading">
+              <div className={styles.sectionHead}>
+                <h2 id="similar-providers-heading">Similar providers</h2>
+                <Link href="/services/browse" className={styles.textLink}>Browse all <HomeIcon name="arrow" size={16} /></Link>
+              </div>
+              <ul className={styles.relatedGrid} role="list">
+                {similarProviders.map((item) => <li key={item.id}><ProviderCard provider={item} variant="marketplace" showCompare={false} /></li>)}
+              </ul>
+            </section>
           )}
         </div>
-      </div>
-      <div className="lg:hidden h-20" />
+      </main>
+
+      <Footer />
+      {!isOwnProfile && (
+        <div className={styles.actionBar} role="group" aria-label="Provider actions">
+          <Link href={requestHref} className={styles.primary}>Request a service <HomeIcon name="arrow" size={17} /></Link>
+          {(whatsappUrl || phoneUrl) && <a href="#provider-contact" className={styles.secondary}>Contact</a>}
+        </div>
+      )}
     </div>
   );
 }
