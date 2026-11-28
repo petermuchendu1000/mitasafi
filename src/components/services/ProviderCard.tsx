@@ -108,6 +108,7 @@ export function ProviderCard({
   variant = "default",
   priority = false,
   eagerImage = false,
+  showCompare = true,
   onSaveToggle,
   isSaved = false,
 }: ProviderCardProps) {
@@ -355,7 +356,7 @@ export function ProviderCard({
               {hasPrice && <span>From </span>}
               <strong>{hasPrice ? priceDisplay : "Quote on request"}</strong>
             </p>
-            <CompareButton provider={provider} variant="full" className={marketStyles.compare} />
+            {showCompare && <CompareButton provider={provider} variant="full" className={marketStyles.compare} />}
           </div>
         </div>
       </article>

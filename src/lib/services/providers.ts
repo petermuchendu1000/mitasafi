@@ -580,6 +580,12 @@ export async function getProviderById(
       FR: 5,
       SA: 6,
     };
+    const localTime = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Nairobi",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    });
 
     const workingHours = (intervals || []).map(
       (interval: Record<string, unknown>) => {
@@ -594,8 +600,8 @@ export async function getProviderById(
         return {
           day_of_week: dayOfWeek,
           is_available: true,
-          start_time: fromDate.toTimeString().slice(0, 5),
-          end_time: toDate.toTimeString().slice(0, 5),
+          start_time: Number.isNaN(fromDate.getTime()) ? null : localTime.format(fromDate),
+          end_time: Number.isNaN(toDate.getTime()) ? null : localTime.format(toDate),
         };
       },
     );

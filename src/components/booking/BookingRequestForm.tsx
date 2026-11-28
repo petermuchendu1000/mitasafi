@@ -35,7 +35,7 @@ import {
   type LocationData,
   type SavedLocation,
 } from "@/components/booking/LocationPicker";
-import { formatServicePrice } from "@/lib/constants";
+import type { getServiceListingPrice } from "@/lib/services/listing-price";
 import type { BookingFlowType, LocationType } from "@/types/bookings";
 
 // =============================================================================
@@ -50,8 +50,7 @@ export interface ServiceInfo {
   name: string;
   category: string;
   subcategory: string;
-  priceType: string;
-  price: number | null;
+  pricing: ReturnType<typeof getServiceListingPrice>;
 }
 
 export interface ProviderInfo {
@@ -281,23 +280,7 @@ export function BookingRequestForm({
                 </p>
               )}
             </div>
-            <div className="text-right">
-              {service.priceType === "quote" ? (
-                <span className="text-sm text-gray-500">Quote on request</span>
-              ) : (
-                <div>
-                  {service.priceType === "starting_from" && (
-                    <span className="text-xs text-gray-400">From </span>
-                  )}
-                  <span className="text-base font-semibold text-gray-900">
-                    {formatServicePrice(service.price)}
-                  </span>
-                  {service.priceType === "hourly" && (
-                    <span className="text-xs text-gray-400">/hr</span>
-                  )}
-                </div>
-              )}
-            </div>
+            <p className="text-right text-sm font-semibold text-gray-900">{service.pricing.label}</p>
           </div>
         </div>
 
@@ -587,15 +570,13 @@ export function BookingRequestForm({
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">
               Estimated price
             </p>
-            {service.priceType === "quote" ? (
+            {service.pricing.type === "quote_only" ? (
               <p className="text-sm text-gray-900">
                 Provider will send a quote
               </p>
             ) : (
               <p className="text-sm font-semibold text-gray-900">
-                {service.priceType === "starting_from" && "From "}
-                {formatServicePrice(service.price)}
-                {service.priceType === "hourly" && "/hr"}
+                {service.pricing.label}
               </p>
             )}
           </div>

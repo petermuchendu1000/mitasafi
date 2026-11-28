@@ -14,6 +14,7 @@ import Link from "next/link";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getProviderByIdCached } from "@/lib/services/providers";
+import { getServiceListingPrice } from "@/lib/services/listing-price";
 import { getCategoryById } from "@/lib/constants";
 import {
   BookingRequestForm,
@@ -142,8 +143,7 @@ export default async function BookingRequestPage({
     : serviceRow.service_type;
 
   // Build custom pricing info
-  const cpAny = selectedPs as unknown as Record<string, unknown>;
-  const cp = cpAny.custom_pricing as Record<string, unknown> | null;
+  const pricing = getServiceListingPrice(selectedPs.custom_pricing);
 
   // Determine if provider's category supports emergency
   const firstCategoryId = provider.categories?.[0];
@@ -157,8 +157,7 @@ export default async function BookingRequestPage({
     name: selectedPs.service?.name || serviceRow.name || "Service",
     category: selectedPs.service?.subcategory?.category?.name || "",
     subcategory: selectedPs.service?.subcategory?.name || "",
-    priceType: (cp?.type as string) || "fixed",
-    price: (cp?.amount as number) || null,
+    pricing,
   };
 
   const providerInfo: ProviderInfo = {

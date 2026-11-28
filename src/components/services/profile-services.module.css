@@ -1,0 +1,23 @@
+.grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); list-style: none; }
+.card { display: flex; flex-direction: column; min-width: 0; position: relative; border-radius: 15px; border: 1px solid var(--line); background: white; transition: border-color .2s ease; }
+.card:hover { border-color: #a4b9ac; }
+.media { position: relative; aspect-ratio: 1.9; overflow: hidden; margin: 9px 9px 0; background: #eff4ef; border-radius: 10px; }
+.photoControls { position: absolute; z-index: 1; inset: auto 6px 6px auto; display: flex; align-items: center; border-radius: 8px; background: rgb(255 255 255 / 96%); color: var(--forest); font-size: .75rem; }
+.photoControls button { display: grid; min-width: 44px; min-height: 44px; place-items: center; border-radius: 8px; }
+.photoControls button:hover { background: #f0f5ef; }
+.body { display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 15px 16px 13px; }
+.body h3 { color: var(--ink); font-size: 1.06rem; line-height: 1.2; font-weight: 680; letter-spacing: -.027em; overflow-wrap: anywhere; }
+.body h3 a::after { position: absolute; inset: 0; border-radius: 15px; content: ""; }
+.body h3 a:focus-visible { outline: none; }
+.body h3 a:focus-visible::after { outline: 2px solid #087b66; outline-offset: 3px; }
+.description { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; color: var(--muted); font-size: .89rem; line-height: 1.5; overflow-wrap: anywhere; }
+.price { display: flex; align-items: center; justify-content: space-between; gap: 7px; min-height: 36px; margin-top: auto; padding-top: 8px; color: var(--forest); font-size: .92rem; font-weight: 660; }
+.price svg { flex: none; }
+.price span { color: var(--muted); font-weight: 500; font-size: .82rem; }
+@media (min-width: 600px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .grid[data-mixed] { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .grid[data-mixed] .card:has(.media) { display: grid; grid-template-columns: minmax(130px, .65fr) minmax(0, 1fr); align-items: center; }
+  .grid[data-mixed] .media { margin: 9px 0 9px 9px; }
+  .grid[data-mixed] .body { padding: 16px 18px; }
+}

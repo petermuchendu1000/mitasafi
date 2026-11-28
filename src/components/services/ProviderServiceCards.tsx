@@ -18,6 +18,8 @@ import { FaWhatsapp } from "react-icons/fa";
 import { MdCall } from "react-icons/md";
 import { cn } from "@/lib/utils";
 import { formatServicePrice } from "@/lib/constants";
+import { HomeIcon } from "@/components/landing/HomeIcons";
+import styles from "./profile-services.module.css";
 
 // =============================================================================
 // TYPES
@@ -42,6 +44,7 @@ interface ProviderServiceCardsProps {
   phoneUrl: string | null;
   /** WhatsApp deep link */
   whatsappUrl: string | null;
+  profileLayout?: boolean;
 }
 
 // =============================================================================
@@ -51,9 +54,13 @@ interface ProviderServiceCardsProps {
 function CardImageCarousel({
   images,
   serviceName,
+  profileLayout = false,
+  eager = false,
 }: {
   images: string[];
   serviceName: string;
+  profileLayout?: boolean;
+  eager?: boolean;
 }) {
   const [index, setIndex] = useState(0);
   const [errorIndexes, setErrorIndexes] = useState<Set<number>>(new Set());
@@ -79,6 +86,7 @@ function CardImageCarousel({
   );
 
   if (validImages.length === 0) {
+    if (profileLayout) return null;
     return (
       <div className="aspect-video bg-gray-100 flex items-center justify-center">
         <Wrench className="w-10 h-10 text-gray-300" />
@@ -87,20 +95,28 @@ function CardImageCarousel({
   }
 
   return (
-    <div className="relative aspect-video bg-gray-100 group/carousel overflow-hidden">
+    <div className={profileLayout ? styles.media : "relative aspect-video bg-gray-100 group/carousel overflow-hidden"}>
       <Image
         src={validImages[index]}
         alt={`${serviceName} – image ${index + 1}`}
         fill
+        unoptimized={validImages[index].startsWith("/images/services-landing/optimized/")}
+        loading={eager ? "eager" : undefined}
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-        className="object-cover transition-transform duration-300 group-hover/carousel:scale-105"
+        className={profileLayout ? "object-cover" : "object-cover transition-transform duration-300 group-hover/carousel:scale-105"}
         onError={() => {
           setErrorIndexes((prev) => new Set(prev).add(images.indexOf(validImages[index])));
           setIndex(0);
         }}
       />
 
-      {validImages.length > 1 && (
+      {validImages.length > 1 && (profileLayout ? (
+        <div className={styles.photoControls} role="group" aria-label={serviceName + " photos"}>
+          <button type="button" onClick={prev} aria-label="Previous image"><ChevronLeft size={18} aria-hidden="true" /></button>
+          <span role="status">{index + 1}/{validImages.length}</span>
+          <button type="button" onClick={next} aria-label="Next image"><ChevronRight size={18} aria-hidden="true" /></button>
+        </div>
+      ) : (
         <>
           <button
             onClick={prev}
@@ -132,7 +148,7 @@ function CardImageCarousel({
             )}
           </div>
         </>
-      )}
+      ))}
     </div>
   );
 }
@@ -147,6 +163,7 @@ export function ProviderServiceCards({
   isOwnProfile,
   phoneUrl,
   whatsappUrl,
+  profileLayout = false,
 }: ProviderServiceCardsProps) {
   if (services.length === 0) return null;
 
@@ -155,6 +172,37 @@ export function ProviderServiceCards({
     if (normalized.length <= 80) return normalized;
     return `${normalized.slice(0, 80).trimEnd()}…`;
   };
+
+  if (profileLayout) {
+    const mixedPhotos = services.some((service) => service.imageUrls.length > 0) &&
+      services.some((service) => service.imageUrls.length === 0);
+
+    return (
+      <ul className={styles.grid} data-mixed={mixedPhotos || undefined} role="list">
+        {services.map((service, serviceIndex) => {
+          const { priceType } = service;
+          const price = priceType === "quote" || priceType === "quote_only"
+            ? "Get Quote"
+            : formatServicePrice(service.price, priceType === "hourly" || priceType === "per_sqm" ? priceType : "fixed");
+          const href = isOwnProfile ? "/dashboard/provider/services" : `/services/provider/${providerId}/service/${service.id}`;
+
+          return (
+            <li key={service.id} className={styles.card}>
+              <CardImageCarousel images={service.imageUrls} serviceName={service.name} profileLayout eager={serviceIndex < 2} />
+              <div className={styles.body}>
+                <h3><Link href={href} prefetch={false}>{service.name}</Link></h3>
+                {service.description.trim() && <p className={styles.description}>{service.description}</p>}
+                <div className={styles.price}>
+                  <p>{price === "Get Quote" ? "Quote on request" : <>{service.priceType === "starting_from" && <span>From </span>}{price}</>}</p>
+                  <HomeIcon name="arrow" size={18} />
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
