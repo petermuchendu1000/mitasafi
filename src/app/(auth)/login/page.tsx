@@ -4,46 +4,28 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import {
-  readActiveRoles,
-  type RoleQueryClient,
-} from "@/lib/identity/roles";
+import { readActiveRoles, type RoleQueryClient } from "@/lib/identity/roles";
 import {
   usePageLoadPerformance,
   useComponentPerformance,
   useMeasureAsync,
 } from "@/lib/performance";
+// The open-redirect control, from the one module that owns it. A private
+// `sanitizeClientRedirectUrl` used to live here and byte-identically in
+// signup/page.tsx, so the shared module was bypassed by the two busiest entry
+// points and all three had already diverged. The shared one is strictly
+// stronger: it also blocks double-encoding, refuses /api/ and the auth routes,
+// filters query parameters, and allows /service-providers and /onboarding.
+import { sanitizeRedirectUrl } from "@/lib/security/url-sanitizer";
 import { AuthPanel, AuthHeading, AuthLoading } from "../AuthPanel";
-import { AuthCode, AuthError, AuthMethods, formatPhoneNumber, validateKenyanPhone } from "../AuthMethods";
+import {
+  AuthCode,
+  AuthError,
+  AuthMethods,
+  formatPhoneNumber,
+  validateKenyanPhone,
+} from "../AuthMethods";
 import styles from "../auth.module.css";
-
-// SECURITY: URL sanitizer for client-side redirect validation
-function sanitizeClientRedirectUrl(url: string | null): string {
-  const fallback = "/dashboard";
-  if (!url) return fallback;
-
-  try {
-    const decoded = decodeURIComponent(url);
-    // Must start with / but not //
-    if (!decoded.startsWith("/") || decoded.startsWith("//")) return fallback;
-    // No protocols (javascript:, data:, http:, etc.)
-    if (decoded.includes(":")) return fallback;
-    // No path traversal
-    if (decoded.includes("..")) return fallback;
-    // Only allow specific paths
-    const allowedPaths = [
-      "/dashboard",
-      "/properties",
-      "/listings",
-      "/services",
-      "/saved",
-    ];
-    if (!allowedPaths.some((p) => decoded.startsWith(p))) return fallback;
-    return decoded;
-  } catch {
-    return fallback;
-  }
-}
 
 export default function LoginPage() {
   return (
@@ -57,7 +39,7 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   // SECURITY: Sanitize redirect URL to prevent open redirect attacks
-  const redirectTo = sanitizeClientRedirectUrl(searchParams.get("redirectTo"));
+  const redirectTo = sanitizeRedirectUrl(searchParams.get("redirectTo"));
 
   // 🔍 PERFORMANCE: Track component performance
   usePageLoadPerformance();
@@ -245,7 +227,10 @@ function LoginPageContent() {
     }
   };
 
-  const signupHref = redirectTo === "/dashboard" ? "/signup" : `/signup?redirectTo=${encodeURIComponent(redirectTo)}`;
+  const signupHref =
+    redirectTo === "/dashboard"
+      ? "/signup"
+      : `/signup?redirectTo=${encodeURIComponent(redirectTo)}`;
   const changeNumber = () => {
     setRestorePhoneFocus(true);
     setOtpSent(false);
@@ -256,39 +241,74 @@ function LoginPageContent() {
 
   return (
     <AuthPanel mode="login">
-      <section key={noAccountFound ? "no-account" : otpSent ? "code" : "login"} className={styles.screen}>
+      <section
+        key={noAccountFound ? "no-account" : otpSent ? "code" : "login"}
+        className={styles.screen}
+      >
         {noAccountFound ? (
           <>
-            <AuthHeading title="No account found">Create an account with this number or try another.</AuthHeading>
+            <AuthHeading title="No account found">
+              Create an account with this number or try another.
+            </AuthHeading>
             <div className={styles.form}>
-              <Link href={signupHref} className={styles.primary}>Create an account</Link>
-              <button type="button" className={styles.secondary} onClick={() => {
-                setNoAccountFound(false);
-                setPhoneNumber("");
-                setTouched(false);
-                setRestorePhoneFocus(true);
-              }}>Try another number</button>
+              <Link href={signupHref} className={styles.primary}>
+                Create an account
+              </Link>
+              <button
+                type="button"
+                className={styles.secondary}
+                onClick={() => {
+                  setNoAccountFound(false);
+                  setPhoneNumber("");
+                  setTouched(false);
+                  setRestorePhoneFocus(true);
+                }}
+              >
+                Try another number
+              </button>
             </div>
           </>
         ) : otpSent ? (
           <>
-            <AuthHeading title="Check your phone">Enter the 6-digit code sent to <strong>+254 {phoneNumber}</strong>.</AuthHeading>
+            <AuthHeading title="Check your phone">
+              Enter the 6-digit code sent to <strong>+254 {phoneNumber}</strong>
+              .
+            </AuthHeading>
             {error && <AuthError id="verification-error">{error}</AuthError>}
             <AuthCode
-              code={otp} busy={isLoading} verifyLabel="Verify and log in" status={codeStatus} invalid={Boolean(error)}
-              onCode={(value) => { setOtp(value); setError(null); }}
-              onChangeNumber={changeNumber} onResend={handleResendOtp} onSubmit={handleVerifyOtp}
+              code={otp}
+              busy={isLoading}
+              verifyLabel="Verify and log in"
+              status={codeStatus}
+              invalid={Boolean(error)}
+              onCode={(value) => {
+                setOtp(value);
+                setError(null);
+              }}
+              onChangeNumber={changeNumber}
+              onResend={handleResendOtp}
+              onSubmit={handleVerifyOtp}
             />
           </>
         ) : (
           <>
-            <AuthHeading title="Welcome back">Log in with Google or a code sent to your phone.</AuthHeading>
+            <AuthHeading title="Welcome back">
+              Log in with Google or a code sent to your phone.
+            </AuthHeading>
             {error && <AuthError>{error}</AuthError>}
             <AuthMethods
-              phone={phoneNumber} phoneError={phoneError} busy={isLoading} restoreFocus={restorePhoneFocus}
-              onGoogle={handleGoogleLogin} onChange={handlePhoneChange} onBlur={() => phoneNumber && setTouched(true)} onSubmit={handlePhoneSubmit}
+              phone={phoneNumber}
+              phoneError={phoneError}
+              busy={isLoading}
+              restoreFocus={restorePhoneFocus}
+              onGoogle={handleGoogleLogin}
+              onChange={handlePhoneChange}
+              onBlur={() => phoneNumber && setTouched(true)}
+              onSubmit={handlePhoneSubmit}
             />
-            <p className={styles.switchPrompt}>New to MitaSafi? <Link href={signupHref}>Create an account</Link></p>
+            <p className={styles.switchPrompt}>
+              New to MitaSafi? <Link href={signupHref}>Create an account</Link>
+            </p>
           </>
         )}
       </section>

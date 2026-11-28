@@ -21,37 +21,19 @@ import {
   type RoleQueryClient,
 } from "@/lib/identity/roles";
 import { buildProviderProfile } from "@/lib/identity/provider-profile";
+// The open-redirect control, from the one module that owns it. See the note in
+// login/page.tsx: this file held a byte-identical private copy.
+import { sanitizeRedirectUrl } from "@/lib/security/url-sanitizer";
 import { AuthPanel, AuthHeading, AuthLoading } from "../AuthPanel";
-import { AuthCode, AuthError, AuthMethods, AuthSpinner, formatPhoneNumber, validateKenyanPhone } from "../AuthMethods";
+import {
+  AuthCode,
+  AuthError,
+  AuthMethods,
+  AuthSpinner,
+  formatPhoneNumber,
+  validateKenyanPhone,
+} from "../AuthMethods";
 import styles from "../auth.module.css";
-
-// SECURITY: URL sanitizer for client-side redirect validation
-function sanitizeClientRedirectUrl(url: string | null): string {
-  const fallback = "/dashboard";
-  if (!url) return fallback;
-
-  try {
-    const decoded = decodeURIComponent(url);
-    // Must start with / but not //
-    if (!decoded.startsWith("/") || decoded.startsWith("//")) return fallback;
-    // No protocols (javascript:, data:, http:, etc.)
-    if (decoded.includes(":")) return fallback;
-    // No path traversal
-    if (decoded.includes("..")) return fallback;
-    // Only allow specific paths
-    const allowedPaths = [
-      "/dashboard",
-      "/properties",
-      "/listings",
-      "/services",
-      "/saved",
-    ];
-    if (!allowedPaths.some((p) => decoded.startsWith(p))) return fallback;
-    return decoded;
-  } catch {
-    return fallback;
-  }
-}
 
 // Local type for signup role selection (uses "provider" shorthand)
 // null = basic user (no role needed), "landlord" or "provider" = business role
@@ -77,11 +59,15 @@ function SignupPageContent() {
   // Only set role if explicitly passed as landlord or provider
   const roleParam = searchParams.get("role");
   const initialRole: SignupRole =
-    roleParam === "landlord" ? "landlord" : roleParam === "provider" || roleParam === "service_provider" ? "provider" : null;
+    roleParam === "landlord"
+      ? "landlord"
+      : roleParam === "provider" || roleParam === "service_provider"
+        ? "provider"
+        : null;
 
   // SECURITY: Sanitize redirect URL to prevent open redirect attacks
   const redirectToRaw = searchParams.get("redirectTo") || "/dashboard";
-  const redirectTo = sanitizeClientRedirectUrl(redirectToRaw);
+  const redirectTo = sanitizeRedirectUrl(redirectToRaw);
 
   const intent = searchParams.get("intent"); // 'list' | 'manage' | null
 
@@ -671,7 +657,10 @@ function SignupPageContent() {
     }
   };
 
-  const loginHref = redirectTo === "/dashboard" ? "/login" : `/login?redirectTo=${encodeURIComponent(redirectTo)}`;
+  const loginHref =
+    redirectTo === "/dashboard"
+      ? "/login"
+      : `/login?redirectTo=${encodeURIComponent(redirectTo)}`;
   const changeNumber = () => {
     setRestorePhoneFocus(true);
     setOtpSent(false);
@@ -682,26 +671,56 @@ function SignupPageContent() {
 
   return (
     <AuthPanel mode="signup">
-      <section key={welcomeBack ? "welcome" : roleUpgradeWarning ? "upgrade" : otpSent ? "code" : "signup"} className={styles.screen}>
+      <section
+        key={
+          welcomeBack
+            ? "welcome"
+            : roleUpgradeWarning
+              ? "upgrade"
+              : otpSent
+                ? "code"
+                : "signup"
+        }
+        className={styles.screen}
+      >
         {welcomeBack ? (
           <AuthHeading title="Welcome back">
-            <span className={styles.status} role="status"><AuthSpinner /> Taking you to your account…</span>
+            <span className={styles.status} role="status">
+              <AuthSpinner /> Taking you to your account…
+            </span>
           </AuthHeading>
         ) : roleUpgradeWarning ? (
           <>
-            <AuthHeading title={roleUpgradeWarning.title}>{roleUpgradeWarning.message}</AuthHeading>
+            <AuthHeading title={roleUpgradeWarning.title}>
+              {roleUpgradeWarning.message}
+            </AuthHeading>
             {roleUpgradeWarning.requirements.length > 0 && (
               <div className={styles.requirements}>
                 <h2>{roleUpgradeWarning.requirementsLabel}</h2>
-                <ul>{roleUpgradeWarning.requirements.map((requirement) => <li key={requirement}>{requirement}</li>)}</ul>
+                <ul>
+                  {roleUpgradeWarning.requirements.map((requirement) => (
+                    <li key={requirement}>{requirement}</li>
+                  ))}
+                </ul>
               </div>
             )}
             {error && <AuthError>{error}</AuthError>}
             <div className={styles.form}>
-              <button type="button" className={styles.primary} onClick={handleConfirmRoleUpgrade} disabled={isLoading}>
-                {isLoading && <AuthSpinner />}{roleUpgradeWarning.confirmButton}
+              <button
+                type="button"
+                className={styles.primary}
+                onClick={handleConfirmRoleUpgrade}
+                disabled={isLoading}
+              >
+                {isLoading && <AuthSpinner />}
+                {roleUpgradeWarning.confirmButton}
               </button>
-              <button type="button" className={styles.secondary} onClick={handleCancelRoleUpgrade} disabled={isLoading}>
+              <button
+                type="button"
+                className={styles.secondary}
+                onClick={handleCancelRoleUpgrade}
+                disabled={isLoading}
+              >
                 {roleUpgradeWarning.cancelButton}
               </button>
             </div>
@@ -710,18 +729,28 @@ function SignupPageContent() {
         ) : (
           <>
             {otpSent ? (
-              <AuthHeading title="Check your phone">Enter the 6-digit code sent to <strong>+254 {phoneNumber}</strong>.</AuthHeading>
+              <AuthHeading title="Check your phone">
+                Enter the 6-digit code sent to{" "}
+                <strong>+254 {phoneNumber}</strong>.
+              </AuthHeading>
             ) : (
               <>
-                <AuthHeading title="Create your account">Sign up with Google or your mobile number.</AuthHeading>
+                <AuthHeading title="Create your account">
+                  Sign up with Google or your mobile number.
+                </AuthHeading>
                 <fieldset className={styles.rolePicker} disabled={isLoading}>
                   <legend>What brings you here?</legend>
                   <div className={styles.roleChoices}>
                     {roleChoices.map(({ value, label, icon: Icon }) => (
-                      <button key={label} type="button" aria-pressed={selectedRole === value} onClick={() => {
-                        setSelectedRole(value);
-                        setError(null);
-                      }}>
+                      <button
+                        key={label}
+                        type="button"
+                        aria-pressed={selectedRole === value}
+                        onClick={() => {
+                          setSelectedRole(value);
+                          setError(null);
+                        }}
+                      >
                         <Icon size={17} aria-hidden="true" />
                         {label}
                       </button>
@@ -730,23 +759,48 @@ function SignupPageContent() {
                 </fieldset>
               </>
             )}
-            {error && <AuthError id={otpSent ? "verification-error" : undefined}>{error}</AuthError>}
+            {error && (
+              <AuthError id={otpSent ? "verification-error" : undefined}>
+                {error}
+              </AuthError>
+            )}
             {otpSent ? (
               <AuthCode
-                code={otp} busy={isLoading} verifyLabel="Verify and continue" status={codeStatus} invalid={Boolean(error)}
-                onCode={(value) => { setOtp(value); setError(null); }}
-                onChangeNumber={changeNumber} onResend={handleResendOtp} onSubmit={handleVerifyOtp}
+                code={otp}
+                busy={isLoading}
+                verifyLabel="Verify and continue"
+                status={codeStatus}
+                invalid={Boolean(error)}
+                onCode={(value) => {
+                  setOtp(value);
+                  setError(null);
+                }}
+                onChangeNumber={changeNumber}
+                onResend={handleResendOtp}
+                onSubmit={handleVerifyOtp}
               />
             ) : (
               <AuthMethods
-                phone={phoneNumber} phoneError={phoneError} busy={isLoading} restoreFocus={restorePhoneFocus}
-                onGoogle={handleGoogleSignup} onChange={handlePhoneChange} onBlur={() => phoneNumber && setTouched(true)} onSubmit={handlePhoneSubmit}
+                phone={phoneNumber}
+                phoneError={phoneError}
+                busy={isLoading}
+                restoreFocus={restorePhoneFocus}
+                onGoogle={handleGoogleSignup}
+                onChange={handlePhoneChange}
+                onBlur={() => phoneNumber && setTouched(true)}
+                onSubmit={handlePhoneSubmit}
               />
             )}
             <p className={styles.terms}>
-              By signing up, you agree to the <Link href="/terms">Terms of Service</Link> and <Link href="/privacy">Privacy Policy</Link>.
+              By signing up, you agree to the{" "}
+              <Link href="/terms">Terms of Service</Link> and{" "}
+              <Link href="/privacy">Privacy Policy</Link>.
             </p>
-            {!otpSent && <p className={styles.switchPrompt}>Already have an account? <Link href={loginHref}>Log in</Link></p>}
+            {!otpSent && (
+              <p className={styles.switchPrompt}>
+                Already have an account? <Link href={loginHref}>Log in</Link>
+              </p>
+            )}
           </>
         )}
       </section>
